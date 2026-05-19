@@ -33,8 +33,7 @@ export function UpdatePasswordForm({
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+      router.push("/dashboard");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
@@ -48,7 +47,7 @@ export function UpdatePasswordForm({
         <CardHeader>
           <CardTitle className="text-2xl">Reset Your Password</CardTitle>
           <CardDescription>
-            Please enter your new password below.
+            Enter a new password for your NIS2 Compliance Checker account.
           </CardDescription>
         </CardHeader>
         <CardContent>
