@@ -6,6 +6,17 @@ function isPublicRoute(pathname: string) {
   return pathname === "/" || pathname.startsWith("/auth");
 }
 
+function redirectToLogin(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+
+  url.pathname = "/auth/login";
+  url.search = "";
+  url.searchParams.set("next", next);
+
+  return NextResponse.redirect(url);
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -13,9 +24,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!hasEnvVars) {
     if (!isPublicRoute(request.nextUrl.pathname)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/auth/login";
-      return NextResponse.redirect(url);
+      return redirectToLogin(request);
     }
 
     return supabaseResponse;
@@ -54,9 +63,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && !isPublicRoute(request.nextUrl.pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+    return redirectToLogin(request);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
