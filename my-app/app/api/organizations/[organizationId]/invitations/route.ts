@@ -9,7 +9,7 @@ import {
   createOrganizationInvitationSchema,
   organizationIdSchema,
 } from "@/src/server/organizations/validation";
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 
 type RouteContext = {
   params: Promise<{
@@ -18,6 +18,8 @@ type RouteContext = {
 };
 
 export async function GET(_request: Request, context: RouteContext) {
+  await connection();
+
   try {
     const user = await requireApiUser();
     const { organizationId } = await context.params;

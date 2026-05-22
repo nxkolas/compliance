@@ -6,9 +6,11 @@ import {
   listOrganizationsForUser,
 } from "@/src/server/organizations/service";
 import { createOrganizationSchema } from "@/src/server/organizations/validation";
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 
 export async function GET() {
+  await connection();
+
   try {
     const user = await requireApiUser();
     const organizations = await listOrganizationsForUser(user.id);
