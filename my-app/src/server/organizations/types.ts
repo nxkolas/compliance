@@ -33,6 +33,10 @@ export type OrganizationInvitationDto = Omit<
   "tokenHash"
 >;
 
+export type OrganizationMailboxInvitationDto = OrganizationInvitationDto & {
+  organization: OrganizationDto;
+};
+
 export type CreatedOrganizationInvitationDto = OrganizationInvitationDto & {
   token: string;
 };

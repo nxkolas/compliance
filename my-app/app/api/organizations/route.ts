@@ -8,8 +8,6 @@ import {
 import { createOrganizationSchema } from "@/src/server/organizations/validation";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 export async function GET() {
   try {
     const user = await requireApiUser();

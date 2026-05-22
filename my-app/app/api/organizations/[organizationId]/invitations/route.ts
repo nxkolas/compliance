@@ -11,8 +11,6 @@ import {
 } from "@/src/server/organizations/validation";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 type RouteContext = {
   params: Promise<{
     organizationId: string;

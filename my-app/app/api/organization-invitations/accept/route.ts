@@ -5,8 +5,6 @@ import { acceptOrganizationInvitation } from "@/src/server/organizations/service
 import { acceptOrganizationInvitationSchema } from "@/src/server/organizations/validation";
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
-
 export async function POST(request: Request) {
   try {
     const user = await requireApiUser();

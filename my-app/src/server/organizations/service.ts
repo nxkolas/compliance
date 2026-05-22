@@ -15,6 +15,7 @@ import type {
   CreatedOrganizationInvitationDto,
   OrganizationDto,
   OrganizationInvitationDto,
+  OrganizationMailboxInvitationDto,
   OrganizationRole,
 } from "./types";
 
@@ -81,6 +82,30 @@ export async function listOrganizationInvitations(
   return invitations.map(toInvitationDto);
 }
 
+export async function listMailboxInvitationsForUser(
+  user: User,
+): Promise<OrganizationMailboxInvitationDto[]> {
+  if (!user.email) {
+    return [];
+  }
+
+  const invitations = await db.query.organizationInvitations.findMany({
+    where: and(
+      eq(organizationInvitations.email, normalizeEmail(user.email)),
+      eq(organizationInvitations.status, "pending"),
+    ),
+    with: {
+      organization: true,
+    },
+    orderBy: (invitation, { desc }) => [desc(invitation.createdAt)],
+  });
+
+  return invitations.map((invitation) => ({
+    ...toInvitationDto(invitation),
+    organization: invitation.organization,
+  }));
+}
+
 export async function createOrganizationInvitation(
   invitedByUserId: string,
   organizationId: string,
@@ -144,6 +169,50 @@ export async function acceptOrganizationInvitation(
     throw new ApiError(404, "Invitation not found");
   }
 
+  return acceptInvitationRecord(user, invitation);
+}
+
+export async function acceptMailboxInvitation(
+  user: User,
+  invitationId: string,
+): Promise<OrganizationInvitationDto> {
+  const invitation = await db.query.organizationInvitations.findFirst({
+    where: eq(organizationInvitations.id, invitationId),
+  });
+
+  if (!invitation) {
+    throw new ApiError(404, "Invitation not found");
+  }
+
+  return acceptInvitationRecord(user, invitation);
+}
+
+async function assertCanManageOrganization(
+  userId: string,
+  organizationId: string,
+) {
+  const membership = await db.query.organizationMembers.findFirst({
+    where: and(
+      eq(organizationMembers.userId, userId),
+      eq(organizationMembers.organizationId, organizationId),
+    ),
+  });
+
+  if (!membership) {
+    throw new ApiError(404, "Organization not found");
+  }
+
+  if (!organizationManagerRoles.includes(membership.role)) {
+    throw new ApiError(403, "You cannot manage invitations for this organization");
+  }
+
+  return membership;
+}
+
+async function acceptInvitationRecord(
+  user: User,
+  invitation: typeof organizationInvitations.$inferSelect,
+) {
   if (invitation.status !== "pending") {
     throw new ApiError(409, `Invitation is ${invitation.status}`);
   }
@@ -191,28 +260,6 @@ export async function acceptOrganizationInvitation(
   });
 
   return toInvitationDto(acceptedInvitation);
-}
-
-async function assertCanManageOrganization(
-  userId: string,
-  organizationId: string,
-) {
-  const membership = await db.query.organizationMembers.findFirst({
-    where: and(
-      eq(organizationMembers.userId, userId),
-      eq(organizationMembers.organizationId, organizationId),
-    ),
-  });
-
-  if (!membership) {
-    throw new ApiError(404, "Organization not found");
-  }
-
-  if (!organizationManagerRoles.includes(membership.role)) {
-    throw new ApiError(403, "You cannot manage invitations for this organization");
-  }
-
-  return membership;
 }
 
 function toInvitationDto(

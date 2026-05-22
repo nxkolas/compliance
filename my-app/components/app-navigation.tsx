@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 const appLinks = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/organizations", label: "Organizations" },
   { href: "/self-check", label: "Self-check" },
   { href: "/requirements", label: "Requirements" },
   { href: "/risk-management", label: "Risk management" },
