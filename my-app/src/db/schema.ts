@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -118,9 +119,7 @@ export const organizationMembers = pgTable(
   "organization_members",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
     userId: uuid("user_id").notNull(),
     role: organizationRoleEnum("role").default("member").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -128,6 +127,11 @@ export const organizationMembers = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "org_members_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
     uniqueIndex("organization_members_org_user_unique").on(
       table.organizationId,
       table.userId,
@@ -140,9 +144,7 @@ export const organizationInvitations = pgTable(
   "organization_invitations",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
     email: varchar("email", { length: 255 }).notNull(),
     role: organizationRoleEnum("role").default("member").notNull(),
     invitedByUserId: uuid("invited_by_user_id").notNull(),
@@ -161,6 +163,11 @@ export const organizationInvitations = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "org_invitations_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
     uniqueIndex("organization_invitations_token_hash_unique").on(
       table.tokenHash,
     ),
@@ -189,16 +196,22 @@ export const organizationSectors = pgTable(
   "organization_sectors",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
-    sectorId: uuid("sector_id")
-      .notNull()
-      .references(() => nis2Sectors.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id").notNull(),
+    sectorId: uuid("sector_id").notNull(),
     isPrimary: boolean("is_primary").default(false).notNull(),
     notes: text("notes"),
   },
   (table) => [
+    foreignKey({
+      name: "org_sectors_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "org_sectors_sector_fk",
+      columns: [table.sectorId],
+      foreignColumns: [nis2Sectors.id],
+    }).onDelete("restrict"),
     uniqueIndex("organization_sectors_org_sector_unique").on(
       table.organizationId,
       table.sectorId,
@@ -224,9 +237,7 @@ export const selfCheckAssessments = pgTable(
   "self_check_assessments",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
     performedByUserId: uuid("performed_by_user_id"),
     status: assessmentStatusEnum("status").default("draft").notNull(),
     category: nis2EntityCategoryEnum("category").default("unknown").notNull(),
@@ -243,6 +254,11 @@ export const selfCheckAssessments = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "self_checks_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
     index("self_check_assessments_org_idx").on(table.organizationId),
     index("self_check_assessments_status_idx").on(table.status),
   ],
@@ -252,15 +268,21 @@ export const assessmentLexSpecialisMatches = pgTable(
   "assessment_lex_specialis_matches",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    assessmentId: uuid("assessment_id")
-      .notNull()
-      .references(() => selfCheckAssessments.id, { onDelete: "cascade" }),
-    ruleId: uuid("rule_id")
-      .notNull()
-      .references(() => lexSpecialisRules.id, { onDelete: "restrict" }),
+    assessmentId: uuid("assessment_id").notNull(),
+    ruleId: uuid("rule_id").notNull(),
     notes: text("notes"),
   },
   (table) => [
+    foreignKey({
+      name: "assessment_lex_assessment_fk",
+      columns: [table.assessmentId],
+      foreignColumns: [selfCheckAssessments.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "assessment_lex_rule_fk",
+      columns: [table.ruleId],
+      foreignColumns: [lexSpecialisRules.id],
+    }).onDelete("restrict"),
     uniqueIndex("assessment_lex_specialis_unique").on(
       table.assessmentId,
       table.ruleId,
@@ -283,12 +305,8 @@ export const organizationRequirements = pgTable(
   "organization_requirements",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
-    tomAreaId: uuid("tom_area_id")
-      .notNull()
-      .references(() => tomAreas.id, { onDelete: "restrict" }),
+    organizationId: uuid("organization_id").notNull(),
+    tomAreaId: uuid("tom_area_id").notNull(),
     status: requirementStatusEnum("status").default("not_started").notNull(),
     riskLevel: riskLevelEnum("risk_level").default("medium").notNull(),
     ownerUserId: uuid("owner_user_id"),
@@ -304,6 +322,16 @@ export const organizationRequirements = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "org_requirements_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "org_requirements_tom_fk",
+      columns: [table.tomAreaId],
+      foreignColumns: [tomAreas.id],
+    }).onDelete("restrict"),
     uniqueIndex("organization_requirements_org_tom_unique").on(
       table.organizationId,
       table.tomAreaId,
@@ -316,9 +344,7 @@ export const requirementEvidence = pgTable(
   "requirement_evidence",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    requirementId: uuid("requirement_id")
-      .notNull()
-      .references(() => organizationRequirements.id, { onDelete: "cascade" }),
+    requirementId: uuid("requirement_id").notNull(),
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description"),
     filePath: text("file_path"),
@@ -328,16 +354,21 @@ export const requirementEvidence = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [index("requirement_evidence_requirement_idx").on(table.requirementId)],
+  (table) => [
+    foreignKey({
+      name: "req_evidence_requirement_fk",
+      columns: [table.requirementId],
+      foreignColumns: [organizationRequirements.id],
+    }).onDelete("cascade"),
+    index("requirement_evidence_requirement_idx").on(table.requirementId),
+  ],
 );
 
 export const suppliers = pgTable(
   "suppliers",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     contactEmail: varchar("contact_email", { length: 255 }),
     serviceDescription: text("service_description"),
@@ -352,6 +383,11 @@ export const suppliers = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "suppliers_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
     index("suppliers_org_idx").on(table.organizationId),
     index("suppliers_risk_level_idx").on(table.riskLevel),
   ],
@@ -361,9 +397,7 @@ export const supplierAssessments = pgTable(
   "supplier_assessments",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    supplierId: uuid("supplier_id")
-      .notNull()
-      .references(() => suppliers.id, { onDelete: "cascade" }),
+    supplierId: uuid("supplier_id").notNull(),
     performedByUserId: uuid("performed_by_user_id"),
     status: assessmentStatusEnum("status").default("draft").notNull(),
     riskLevel: riskLevelEnum("risk_level").default("medium").notNull(),
@@ -374,16 +408,21 @@ export const supplierAssessments = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [index("supplier_assessments_supplier_idx").on(table.supplierId)],
+  (table) => [
+    foreignKey({
+      name: "supplier_assessments_supplier_fk",
+      columns: [table.supplierId],
+      foreignColumns: [suppliers.id],
+    }).onDelete("cascade"),
+    index("supplier_assessments_supplier_idx").on(table.supplierId),
+  ],
 );
 
 export const registrationTasks = pgTable(
   "registration_tasks",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description"),
     authority: varchar("authority", { length: 120 }).notNull(),
@@ -395,6 +434,11 @@ export const registrationTasks = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "registration_tasks_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
     index("registration_tasks_org_idx").on(table.organizationId),
     index("registration_tasks_status_idx").on(table.status),
   ],
@@ -404,9 +448,7 @@ export const securityIncidents = pgTable(
   "security_incidents",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description"),
     severity: riskLevelEnum("severity").default("medium").notNull(),
@@ -420,6 +462,11 @@ export const securityIncidents = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "security_incidents_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
     index("security_incidents_org_idx").on(table.organizationId),
     index("security_incidents_severity_idx").on(table.severity),
   ],
@@ -429,9 +476,7 @@ export const incidentReports = pgTable(
   "incident_reports",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    incidentId: uuid("incident_id")
-      .notNull()
-      .references(() => securityIncidents.id, { onDelete: "cascade" }),
+    incidentId: uuid("incident_id").notNull(),
     stage: incidentReportStageEnum("stage").notNull(),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
@@ -442,6 +487,11 @@ export const incidentReports = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "incident_reports_incident_fk",
+      columns: [table.incidentId],
+      foreignColumns: [securityIncidents.id],
+    }).onDelete("cascade"),
     uniqueIndex("incident_reports_incident_stage_unique").on(
       table.incidentId,
       table.stage,
@@ -453,9 +503,7 @@ export const managementTrainings = pgTable(
   "management_trainings",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id").notNull(),
     managerUserId: uuid("manager_user_id"),
     title: varchar("title", { length: 255 }).notNull(),
     provider: varchar("provider", { length: 255 }),
@@ -466,7 +514,14 @@ export const managementTrainings = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [index("management_trainings_org_idx").on(table.organizationId)],
+  (table) => [
+    foreignKey({
+      name: "management_trainings_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    index("management_trainings_org_idx").on(table.organizationId),
+  ],
 );
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
