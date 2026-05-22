@@ -1,5 +1,5 @@
 import { AppNavigation } from "@/components/app-navigation";
-import { OrganizationAssessmentWorkspace } from "@/components/organizations/organization-assessment-workspace";
+import { OrganizationInvitePanel } from "@/components/organizations/organization-invite-panel";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,31 +11,33 @@ import {
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getOrganizationForUser,
-  listSelfCheckAssessmentsForOrganization,
+  listOrganizationInvitations,
 } from "@/src/server/organizations/service";
-import { ArrowLeft, Building2, Users } from "lucide-react";
+import { ArrowLeft, Building2, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-type OrganizationPageProps = {
+type OrganizationTeamPageProps = {
   params: Promise<{
     organizationId: string;
   }>;
 };
 
-export default async function OrganizationPage({
+export default async function OrganizationTeamPage({
   params,
-}: OrganizationPageProps) {
+}: OrganizationTeamPageProps) {
   return (
-    <Suspense fallback={<OrganizationPageFallback />}>
-      <OrganizationPageContent params={params} />
+    <Suspense fallback={<OrganizationTeamPageFallback />}>
+      <OrganizationTeamPageContent params={params} />
     </Suspense>
   );
 }
 
-async function OrganizationPageContent({ params }: OrganizationPageProps) {
+async function OrganizationTeamPageContent({
+  params,
+}: OrganizationTeamPageProps) {
   await connection();
   const user = await requireAuth();
   const { organizationId } = await params;
@@ -45,10 +47,7 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
     notFound();
   }
 
-  const assessments = await listSelfCheckAssessmentsForOrganization(
-    user.id,
-    organization.id,
-  );
+  const invitations = await listOrganizationInvitations(user.id, organization.id);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 p-8">
@@ -62,16 +61,16 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/organizations/${organization.id}/team`}>
-              <Users />
-              Team
+            <Link href={`/organizations/${organization.id}`}>
+              <ClipboardCheck />
+              Assessments
             </Link>
           </Button>
         </div>
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">{organization.name}</h1>
+          <h1 className="text-3xl font-bold">{organization.name} team</h1>
           <p className="max-w-2xl text-muted-foreground">
-            Create and review NIS2 assessments for this organization.
+            Manage organization invitations and teammate access.
           </p>
         </div>
       </section>
@@ -105,23 +104,21 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
         </CardContent>
       </Card>
 
-      <OrganizationAssessmentWorkspace
+      <OrganizationInvitePanel
         organizationId={organization.id}
-        initialAssessments={serializeForClient(assessments)}
+        initialInvitations={serializeForClient(invitations)}
       />
     </main>
   );
 }
 
-function OrganizationPageFallback() {
+function OrganizationTeamPageFallback() {
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 p-8">
       <AppNavigation />
       <section className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Organization</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Loading organization workspace...
-        </p>
+        <h1 className="text-3xl font-bold">Organization team</h1>
+        <p className="max-w-2xl text-muted-foreground">Loading team...</p>
       </section>
     </main>
   );

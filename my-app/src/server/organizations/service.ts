@@ -3,6 +3,7 @@ import {
   organizationInvitations,
   organizationMembers,
   organizations,
+  selfCheckAssessments,
 } from "@/src/db/schema";
 import { and, eq } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
@@ -12,11 +13,13 @@ import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
   CreateOrganizationInvitationInput,
+  CreateSelfCheckAssessmentInput,
   CreatedOrganizationInvitationDto,
   OrganizationDto,
   OrganizationInvitationDto,
   OrganizationMailboxInvitationDto,
   OrganizationRole,
+  SelfCheckAssessmentDto,
 } from "./types";
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
@@ -66,6 +69,56 @@ export async function createOrganizationForUser(
 
     return organization;
   });
+}
+
+export async function getOrganizationForUser(
+  userId: string,
+  organizationId: string,
+): Promise<OrganizationDto | null> {
+  const membership = await db.query.organizationMembers.findFirst({
+    where: and(
+      eq(organizationMembers.userId, userId),
+      eq(organizationMembers.organizationId, organizationId),
+    ),
+    with: {
+      organization: true,
+    },
+  });
+
+  return membership?.organization ?? null;
+}
+
+export async function listSelfCheckAssessmentsForOrganization(
+  userId: string,
+  organizationId: string,
+): Promise<SelfCheckAssessmentDto[]> {
+  await assertCanAccessOrganization(userId, organizationId);
+
+  return db.query.selfCheckAssessments.findMany({
+    where: eq(selfCheckAssessments.organizationId, organizationId),
+    orderBy: (assessment, { desc }) => [desc(assessment.createdAt)],
+  });
+}
+
+export async function createSelfCheckAssessmentForOrganization(
+  userId: string,
+  organizationId: string,
+  input: CreateSelfCheckAssessmentInput,
+): Promise<SelfCheckAssessmentDto> {
+  await assertCanAccessOrganization(userId, organizationId);
+
+  const [assessment] = await db
+    .insert(selfCheckAssessments)
+    .values({
+      organizationId,
+      performedByUserId: userId,
+      title: normalizeRequiredString(input.title, "title"),
+      status: "draft",
+      category: "unknown",
+    })
+    .returning();
+
+  return assessment;
 }
 
 export async function listOrganizationInvitations(
@@ -204,6 +257,21 @@ async function assertCanManageOrganization(
 
   if (!organizationManagerRoles.includes(membership.role)) {
     throw new ApiError(403, "You cannot manage invitations for this organization");
+  }
+
+  return membership;
+}
+
+async function assertCanAccessOrganization(userId: string, organizationId: string) {
+  const membership = await db.query.organizationMembers.findFirst({
+    where: and(
+      eq(organizationMembers.userId, userId),
+      eq(organizationMembers.organizationId, organizationId),
+    ),
+  });
+
+  if (!membership) {
+    throw new ApiError(404, "Organization not found");
   }
 
   return membership;

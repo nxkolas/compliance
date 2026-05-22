@@ -1,6 +1,12 @@
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 
+const databaseUrl = process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error('DRIZZLE_DATABASE_URL or DATABASE_URL is required');
+}
+
 export default defineConfig({
   out: './drizzle',
   schema: './src/db/schema.ts',
@@ -26,6 +32,6 @@ export default defineConfig({
     'tom_areas',
   ],
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    url: databaseUrl,
   },
 });

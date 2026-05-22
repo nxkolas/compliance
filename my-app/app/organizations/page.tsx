@@ -70,7 +70,7 @@ async function OrganizationsPageContent() {
           <div>
             <h2 className="text-xl font-semibold">Your organizations</h2>
             <p className="text-sm text-muted-foreground">
-              Select an organization to view details and invite teammates.
+              Select an organization to create and review NIS2 assessments.
             </p>
           </div>
           <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
@@ -126,7 +126,7 @@ async function OrganizationsPageContent() {
                   </div>
                   <Button asChild variant="outline" className="justify-self-start">
                     <Link href={`/organizations/${organization.id}`}>
-                      Open organization
+                      Open assessments
                     </Link>
                   </Button>
                 </CardContent>

@@ -2,8 +2,8 @@
 
 This document explains the Drizzle/Supabase database model for the NIS2
 Compliance Checker. The schema is defined in `src/db/schema.ts`, the database
-client is exported from `src/db/index.ts`, and the generated SQL migration is in
-`drizzle/0000_ambitious_clea.sql`.
+client is exported from `src/db/index.ts`. Schema changes are applied directly
+with `drizzle-kit push`.
 
 The model is organization-centric. Almost every operational table has an
 `organization_id` so future row level security policies can restrict data to the
@@ -219,6 +219,7 @@ Stores one NIS2 applicability assessment for an organization.
 
 Important columns:
 - `organization_id`: Organization being assessed.
+- `title`: Human-readable name for the assessment run.
 - `performed_by_user_id`: Supabase Auth user UUID of the person who ran it.
 - `status`: Draft/review/completed lifecycle.
 - `category`: Final classification: not affected, important, essential, special case, or unknown.
@@ -237,6 +238,7 @@ const [assessment] = await db
   .insert(selfCheckAssessments)
   .values({
     organizationId,
+    title: "NIS2 assessment Q2",
     performedByUserId: userId,
     status: "completed",
     category: "important",
@@ -628,6 +630,7 @@ Store the derived classification and the raw questionnaire answers.
 ```ts
 await db.insert(selfCheckAssessments).values({
   organizationId,
+  title: "Initial NIS2 applicability check",
   performedByUserId: user.id,
   status: "completed",
   category: "essential",

@@ -238,6 +238,7 @@ export const selfCheckAssessments = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     organizationId: uuid("organization_id").notNull(),
+    title: varchar("title", { length: 255 }).default("NIS2 assessment").notNull(),
     performedByUserId: uuid("performed_by_user_id"),
     status: assessmentStatusEnum("status").default("draft").notNull(),
     category: nis2EntityCategoryEnum("category").default("unknown").notNull(),

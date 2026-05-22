@@ -43,6 +43,10 @@ export const createOrganizationInvitationSchema = z.object({
   expiresInDays: z.number().int().min(1).max(90).default(14),
 });
 
+export const createSelfCheckAssessmentSchema = z.object({
+  title: z.string().trim().min(1).max(255).default("NIS2 assessment"),
+});
+
 export const acceptOrganizationInvitationSchema = z.object({
   token: z.string().trim().min(1),
 });

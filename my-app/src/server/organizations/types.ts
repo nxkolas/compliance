@@ -2,12 +2,14 @@ import type {
   organizationInvitations,
   organizationMembers,
   organizations,
+  selfCheckAssessments,
 } from "@/src/db/schema";
 import type * as z from "zod";
 import type {
   acceptOrganizationInvitationSchema,
   createOrganizationInvitationSchema,
   createOrganizationSchema,
+  createSelfCheckAssessmentSchema,
 } from "./validation";
 
 export type OrganizationRole =
@@ -22,11 +24,17 @@ export type CreateOrganizationInvitationInput = z.infer<
   typeof createOrganizationInvitationSchema
 >;
 
+export type CreateSelfCheckAssessmentInput = z.infer<
+  typeof createSelfCheckAssessmentSchema
+>;
+
 export type AcceptOrganizationInvitationInput = z.infer<
   typeof acceptOrganizationInvitationSchema
 >;
 
 export type OrganizationDto = typeof organizations.$inferSelect;
+
+export type SelfCheckAssessmentDto = typeof selfCheckAssessments.$inferSelect;
 
 export type OrganizationInvitationDto = Omit<
   typeof organizationInvitations.$inferSelect,
