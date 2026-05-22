@@ -22,6 +22,11 @@ export const organizationRoleEnum = pgEnum("organization_role", [
   "auditor",
 ]);
 
+export const organizationInvitationStatusEnum = pgEnum(
+  "organization_invitation_status",
+  ["pending", "accepted", "revoked", "expired"],
+);
+
 export const organizationSizeEnum = pgEnum("organization_size", [
   "micro",
   "small",
@@ -128,6 +133,40 @@ export const organizationMembers = pgTable(
       table.userId,
     ),
     index("organization_members_user_idx").on(table.userId),
+  ],
+);
+
+export const organizationInvitations = pgTable(
+  "organization_invitations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 255 }).notNull(),
+    role: organizationRoleEnum("role").default("member").notNull(),
+    invitedByUserId: uuid("invited_by_user_id").notNull(),
+    acceptedByUserId: uuid("accepted_by_user_id"),
+    tokenHash: text("token_hash").notNull(),
+    status: organizationInvitationStatusEnum("status")
+      .default("pending")
+      .notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("organization_invitations_token_hash_unique").on(
+      table.tokenHash,
+    ),
+    index("organization_invitations_org_idx").on(table.organizationId),
+    index("organization_invitations_email_idx").on(table.email),
+    index("organization_invitations_status_idx").on(table.status),
   ],
 );
 
@@ -432,6 +471,7 @@ export const managementTrainings = pgTable(
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   members: many(organizationMembers),
+  invitations: many(organizationInvitations),
   sectors: many(organizationSectors),
   selfCheckAssessments: many(selfCheckAssessments),
   requirements: many(organizationRequirements),
@@ -446,6 +486,16 @@ export const organizationMembersRelations = relations(
   ({ one }) => ({
     organization: one(organizations, {
       fields: [organizationMembers.organizationId],
+      references: [organizations.id],
+    }),
+  }),
+);
+
+export const organizationInvitationsRelations = relations(
+  organizationInvitations,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationInvitations.organizationId],
       references: [organizations.id],
     }),
   }),

@@ -118,6 +118,38 @@ await db.insert(organizationMembers).values({
 });
 ```
 
+### `organization_invitations`
+
+Stores pending, accepted, revoked, and expired invitations to join an
+organization.
+
+Important columns:
+- `organization_id`: Organization the invited person should join.
+- `email`: Email address that is allowed to accept the invitation.
+- `role`: Role granted after acceptance. Invitations intentionally do not grant
+  `owner` by default.
+- `invited_by_user_id`: Supabase Auth user UUID of the inviter.
+- `accepted_by_user_id`: Supabase Auth user UUID of the accepting user.
+- `token_hash`: SHA-256 hash of the invitation token. The raw token is only
+  returned once by the create-invitation API.
+- `status`: `pending`, `accepted`, `revoked`, or `expired`.
+- `expires_at`: Expiration deadline.
+- `accepted_at`: Set when the invitation is accepted.
+
+Typical use:
+- Owners/admins create invitations after login.
+- The frontend sends the raw token to the accept endpoint.
+- The backend hashes the token, validates status/expiry/email, and creates an
+  `organization_members` row.
+
+```ts
+const invitation = await createOrganizationInvitation(user.id, organizationId, {
+  email: "teammate@example.com",
+  role: "member",
+  expiresInDays: 14,
+});
+```
+
 ### `nis2_sectors`
 
 Reference table for NIS2 sectors.
