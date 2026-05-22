@@ -13,35 +13,35 @@ import { Suspense } from "react";
 
 const productLinks = [
   {
-    href: "/self-check",
+    href: "/organizations",
     label: "Self-check",
     description:
       "Pruefen Sie Betroffenheit, Sektor und Unternehmensgroesse fuer NIS2.",
     tag: "Start",
   },
   {
-    href: "/requirements",
+    href: "/organizations",
     label: "Requirements",
     description:
       "Sammeln Sie Anforderungen aus Recherche, Interviews und Nachweisen.",
     tag: "Analyse",
   },
   {
-    href: "/risk-management",
+    href: "/organizations",
     label: "Risk management",
     description:
       "Dokumentieren Sie Massnahmen fuer Governance, Technik und Organisation.",
     tag: "Kontrolle",
   },
   {
-    href: "/suppliers",
+    href: "/organizations",
     label: "Suppliers",
     description:
       "Bewerten Sie Zulieferer, Dienstleister und Risiken in der Lieferkette.",
     tag: "Supply chain",
   },
   {
-    href: "/registration",
+    href: "/organizations",
     label: "Registration",
     description:
       "Bereiten Sie den Registrierungsprozess bei MUK/ELSTER und BSI vor.",
@@ -103,7 +103,7 @@ export default function Home() {
                 <Link href="/dashboard">Zum Dashboard</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/self-check">Self-check starten</Link>
+                <Link href="/organizations">Self-check starten</Link>
               </Button>
             </div>
             <div className="grid max-w-xl grid-cols-3 gap-3">

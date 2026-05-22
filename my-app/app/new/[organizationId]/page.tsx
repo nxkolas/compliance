@@ -1,4 +1,4 @@
-import { AppNavigation } from "@/components/app-navigation";
+import { AppShell } from "@/components/app-shell";
 import { AssessmentCreateForm } from "@/components/organizations/assessment-create-form";
 import { Button } from "@/components/ui/button";
 import { requireAuth } from "@/lib/supabase/require-auth";
@@ -36,8 +36,11 @@ async function NewAssessmentPageContent({ params }: NewAssessmentPageProps) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell
+      organizationId={organization.id}
+      organizationName={organization.name}
+    >
+      <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <section className="flex flex-col gap-4">
         <Button asChild variant="outline" className="w-fit">
           <Link href={`/organizations/${organization.id}`}>
@@ -53,20 +56,20 @@ async function NewAssessmentPageContent({ params }: NewAssessmentPageProps) {
         </div>
       </section>
       <AssessmentCreateForm organizationId={organization.id} />
-    </main>
+      </div>
+    </AppShell>
   );
 }
 
 function NewAssessmentPageFallback() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell>
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">New NIS2 assessment</h1>
         <p className="max-w-2xl text-muted-foreground">
           Loading assessment form...
         </p>
       </section>
-    </main>
+    </AppShell>
   );
 }

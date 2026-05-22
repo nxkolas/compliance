@@ -131,6 +131,11 @@ export function OrganizationAssessmentWorkspace({
                       Completed {formatDate(assessment.completedAt)}
                     </span>
                   )}
+                  <Button asChild size="sm" variant="outline" className="ml-auto">
+                    <Link href={`/assessments/${assessment.id}`}>
+                      Open
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             ))}

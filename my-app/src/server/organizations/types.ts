@@ -36,6 +36,11 @@ export type OrganizationDto = typeof organizations.$inferSelect;
 
 export type SelfCheckAssessmentDto = typeof selfCheckAssessments.$inferSelect;
 
+export type SelfCheckAssessmentWithOrganizationDto =
+  SelfCheckAssessmentDto & {
+    organization: OrganizationDto;
+  };
+
 export type OrganizationInvitationDto = Omit<
   typeof organizationInvitations.$inferSelect,
   "tokenHash"

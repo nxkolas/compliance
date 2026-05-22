@@ -1,4 +1,4 @@
-import { AppNavigation } from "@/components/app-navigation";
+import { AppShell } from "@/components/app-shell";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
@@ -13,14 +13,13 @@ export async function SimpleAppPage({ title, children }: SimpleAppPageProps) {
   await requireAuth();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell>
       <section className="flex flex-col gap-4">
         <h1 className="text-3xl font-bold">{title}</h1>
         <div className="flex flex-col gap-3 text-muted-foreground">
           {children}
         </div>
       </section>
-    </main>
+    </AppShell>
   );
 }

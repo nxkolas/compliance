@@ -20,6 +20,7 @@ import type {
   OrganizationMailboxInvitationDto,
   OrganizationRole,
   SelfCheckAssessmentDto,
+  SelfCheckAssessmentWithOrganizationDto,
 } from "./types";
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
@@ -119,6 +120,29 @@ export async function createSelfCheckAssessmentForOrganization(
     .returning();
 
   return assessment;
+}
+
+export async function getSelfCheckAssessmentForUser(
+  userId: string,
+  assessmentId: string,
+): Promise<SelfCheckAssessmentWithOrganizationDto | null> {
+  const assessment = await db.query.selfCheckAssessments.findFirst({
+    where: eq(selfCheckAssessments.id, assessmentId),
+    with: {
+      organization: true,
+    },
+  });
+
+  if (!assessment) {
+    return null;
+  }
+
+  await assertCanAccessOrganization(userId, assessment.organizationId);
+
+  return {
+    ...assessment,
+    organization: assessment.organization,
+  };
 }
 
 export async function listOrganizationInvitations(

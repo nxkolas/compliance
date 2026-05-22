@@ -1,4 +1,4 @@
-import { AppNavigation } from "@/components/app-navigation";
+import { AppShell } from "@/components/app-shell";
 import { OrganizationInvitePanel } from "@/components/organizations/organization-invite-panel";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,8 +50,11 @@ async function OrganizationTeamPageContent({
   const invitations = await listOrganizationInvitations(user.id, organization.id);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell
+      organizationId={organization.id}
+      organizationName={organization.name}
+    >
+      <div className="mx-auto flex max-w-5xl flex-col gap-8">
       <section className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
@@ -108,19 +111,19 @@ async function OrganizationTeamPageContent({
         organizationId={organization.id}
         initialInvitations={serializeForClient(invitations)}
       />
-    </main>
+      </div>
+    </AppShell>
   );
 }
 
 function OrganizationTeamPageFallback() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell>
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">Organization team</h1>
         <p className="max-w-2xl text-muted-foreground">Loading team...</p>
       </section>
-    </main>
+    </AppShell>
   );
 }
 

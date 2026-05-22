@@ -1,4 +1,4 @@
-import { AppNavigation } from "@/components/app-navigation";
+import { AppShell } from "@/components/app-shell";
 import { OrganizationCreateForm } from "@/components/organizations/organization-create-form";
 import { Button } from "@/components/ui/button";
 import { requireAuth } from "@/lib/supabase/require-auth";
@@ -20,8 +20,8 @@ async function NewOrganizationPageContent() {
   await requireAuth();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell>
+      <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <section className="flex flex-col gap-4">
         <Button asChild variant="outline" className="w-fit">
           <Link href="/organizations">
@@ -38,20 +38,20 @@ async function NewOrganizationPageContent() {
         </div>
       </section>
       <OrganizationCreateForm />
-    </main>
+      </div>
+    </AppShell>
   );
 }
 
 function NewOrganizationPageFallback() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell>
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">New organization</h1>
         <p className="max-w-2xl text-muted-foreground">
           Loading organization form...
         </p>
       </section>
-    </main>
+    </AppShell>
   );
 }

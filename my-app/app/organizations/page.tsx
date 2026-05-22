@@ -1,4 +1,4 @@
-import { AppNavigation } from "@/components/app-navigation";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,8 +38,8 @@ async function OrganizationsPageContent() {
   );
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell>
+      <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">Organizations</h1>
@@ -135,20 +135,20 @@ async function OrganizationsPageContent() {
           </div>
         )}
       </section>
-    </main>
+      </div>
+    </AppShell>
   );
 }
 
 function OrganizationsPageFallback() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-8 p-8">
-      <AppNavigation />
+    <AppShell>
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">Organizations</h1>
         <p className="max-w-2xl text-muted-foreground">
           Loading your organizations...
         </p>
       </section>
-    </main>
+    </AppShell>
   );
 }
