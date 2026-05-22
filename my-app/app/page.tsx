@@ -2,7 +2,6 @@ import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -48,7 +47,7 @@ const productLinks = [
     tag: "Meldung",
   },
   {
-    href: "/dashboard",
+    href: "/organizations",
     label: "Dashboard",
     description:
       "Behalten Sie Status, offene Aufgaben und naechste Schritte im Blick.",
@@ -100,7 +99,7 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/dashboard">Zum Dashboard</Link>
+                <Link href="/organizations">Zum Dashboard</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/organizations">Self-check starten</Link>
@@ -165,7 +164,7 @@ export default function Home() {
           <div>
             <h2 className="text-2xl font-semibold">Produktmodule</h2>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              Direkte Links in die Bereiche, die den Compliance-Prozess vom
+              Die Bereiche, die den Compliance-Prozess vom
               ersten Check bis zur Registrierung abbilden.
             </p>
           </div>
@@ -186,11 +185,6 @@ export default function Home() {
                 </div>
                 <CardDescription>{link.description}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button asChild variant="outline" className="w-full">
-                  <Link href={link.href}>Oeffnen</Link>
-                </Button>
-              </CardContent>
             </Card>
           ))}
         </div>
