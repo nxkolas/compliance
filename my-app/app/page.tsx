@@ -2,7 +2,6 @@ import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -13,42 +12,42 @@ import { Suspense } from "react";
 
 const productLinks = [
   {
-    href: "/self-check",
+    href: "/organizations",
     label: "Self-check",
     description:
       "Pruefen Sie Betroffenheit, Sektor und Unternehmensgroesse fuer NIS2.",
     tag: "Start",
   },
   {
-    href: "/requirements",
+    href: "/organizations",
     label: "Requirements",
     description:
       "Sammeln Sie Anforderungen aus Recherche, Interviews und Nachweisen.",
     tag: "Analyse",
   },
   {
-    href: "/risk-management",
+    href: "/organizations",
     label: "Risk management",
     description:
       "Dokumentieren Sie Massnahmen fuer Governance, Technik und Organisation.",
     tag: "Kontrolle",
   },
   {
-    href: "/suppliers",
+    href: "/organizations",
     label: "Suppliers",
     description:
       "Bewerten Sie Zulieferer, Dienstleister und Risiken in der Lieferkette.",
     tag: "Supply chain",
   },
   {
-    href: "/registration",
+    href: "/organizations",
     label: "Registration",
     description:
       "Bereiten Sie den Registrierungsprozess bei MUK/ELSTER und BSI vor.",
     tag: "Meldung",
   },
   {
-    href: "/dashboard",
+    href: "/organizations",
     label: "Dashboard",
     description:
       "Behalten Sie Status, offene Aufgaben und naechste Schritte im Blick.",
@@ -100,10 +99,10 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/dashboard">Zum Dashboard</Link>
+                <Link href="/organizations">Zum Dashboard</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/self-check">Self-check starten</Link>
+                <Link href="/organizations">Self-check starten</Link>
               </Button>
             </div>
             <div className="grid max-w-xl grid-cols-3 gap-3">
@@ -165,7 +164,7 @@ export default function Home() {
           <div>
             <h2 className="text-2xl font-semibold">Produktmodule</h2>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              Direkte Links in die Bereiche, die den Compliance-Prozess vom
+              Die Bereiche, die den Compliance-Prozess vom
               ersten Check bis zur Registrierung abbilden.
             </p>
           </div>
@@ -186,11 +185,6 @@ export default function Home() {
                 </div>
                 <CardDescription>{link.description}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button asChild variant="outline" className="w-full">
-                  <Link href={link.href}>Oeffnen</Link>
-                </Button>
-              </CardContent>
             </Card>
           ))}
         </div>
