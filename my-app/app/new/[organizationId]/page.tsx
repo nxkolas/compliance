@@ -1,10 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { AssessmentCreateForm } from "@/components/organizations/assessment-create-form";
-import { Button } from "@/components/ui/button";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -42,12 +39,6 @@ async function NewAssessmentPageContent({ params }: NewAssessmentPageProps) {
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <section className="flex flex-col gap-4">
-        <Button asChild variant="outline" className="w-fit">
-          <Link href={`/organizations/${organization.id}`}>
-            <ArrowLeft />
-            {organization.name}
-          </Link>
-        </Button>
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">New NIS2 assessment</h1>
           <p className="max-w-2xl text-muted-foreground">

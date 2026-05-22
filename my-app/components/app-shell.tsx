@@ -1,32 +1,27 @@
-import { AuthButton } from "@/components/auth-button";
+import { AppTopbar } from "@/components/app-topbar";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarProvider,
 } from "@/components/ui/sidebar";
-import { hasEnvVars } from "@/lib/utils";
 import {
   Building2,
   ClipboardCheck,
   FileCheck2,
   Inbox,
-  LayoutDashboard,
   ListChecks,
-  Plus,
   ShieldCheck,
   Truck,
   UserRoundCheck,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Suspense, type ComponentType, type ReactNode } from "react";
+import { type ComponentType, type ReactNode } from "react";
 
 type AppShellProps = {
   children: ReactNode;
@@ -37,10 +32,8 @@ type AppShellProps = {
 };
 
 const globalLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/organizations", label: "Organizations", icon: Building2 },
   { href: "/organizations/inbox", label: "Inbox", icon: Inbox },
-  { href: "/organizations/new", label: "New organization", icon: Plus },
 ];
 
 export function AppShell({
@@ -56,11 +49,6 @@ export function AppShell({
           href: `/organizations/${organizationId}`,
           label: "Overview",
           icon: ClipboardCheck,
-        },
-        {
-          href: `/new/${organizationId}`,
-          label: "New assessment",
-          icon: Plus,
         },
         {
           href: `/organizations/${organizationId}/team`,
@@ -112,66 +100,54 @@ export function AppShell({
 
   return (
     <SidebarProvider>
-      <Sidebar>
-        <SidebarContent>
-          <SidebarHeader>
-            <Link href="/dashboard" className="px-2 text-sm font-semibold">
-              NIS2 Compliance Checker
-            </Link>
-            <p className="px-2 text-xs text-muted-foreground">
-              Compliance workspace
-            </p>
-          </SidebarHeader>
+      <AppTopbar
+        organizationId={organizationId}
+        organizationName={organizationName}
+      />
 
-          <SidebarGroup>
-            <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-            <SidebarMenu>
-              {globalLinks.map((link) => (
-                <SidebarLink key={link.href} {...link} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-
-          {organizationLinks.length > 0 && (
+      <div className="grid min-h-[calc(100vh-4rem)] md:grid-cols-[260px_minmax(0,1fr)]">
+        <Sidebar className="md:sticky md:top-16 md:h-[calc(100vh-4rem)]">
+          <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>
-                {organizationName ?? "Organization"}
-              </SidebarGroupLabel>
+              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
               <SidebarMenu>
-                {organizationLinks.map((link) => (
+                {globalLinks.map((link) => (
                   <SidebarLink key={link.href} {...link} />
                 ))}
               </SidebarMenu>
             </SidebarGroup>
-          )}
 
-          {assessmentLinks.length > 0 && (
-            <SidebarGroup>
-              <SidebarGroupLabel>
-                {assessmentTitle ?? "Assessment"}
-              </SidebarGroupLabel>
-              <SidebarMenu>
-                {assessmentLinks.map((link) => (
-                  <SidebarLink key={link.href} {...link} />
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
-          )}
-
-          <SidebarFooter>
-            {hasEnvVars ? (
-              <Suspense>
-                <AuthButton />
-              </Suspense>
-            ) : (
-              <p className="px-2 text-sm text-muted-foreground">
-                Supabase environment variables missing.
-              </p>
+            {organizationLinks.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel>
+                  {organizationName ?? "Organization"}
+                </SidebarGroupLabel>
+                <SidebarMenu>
+                  {organizationLinks.map((link) => (
+                    <SidebarLink key={link.href} {...link} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
             )}
-          </SidebarFooter>
-        </SidebarContent>
-      </Sidebar>
-      <SidebarInset>{children}</SidebarInset>
+
+            {assessmentLinks.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel>
+                  {assessmentTitle ?? "Assessment"}
+                </SidebarGroupLabel>
+                <SidebarMenu>
+                  {assessmentLinks.map((link) => (
+                    <SidebarLink key={link.href} {...link} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
+            )}
+          </SidebarContent>
+        </Sidebar>
+        <SidebarInset className="p-0">
+          <div className="px-6 py-6 md:px-8 md:py-8">{children}</div>
+        </SidebarInset>
+      </div>
     </SidebarProvider>
   );
 }
@@ -188,8 +164,8 @@ function SidebarLink({
   return (
     <SidebarMenuButton asChild>
       <Link href={href}>
-        <Icon className="h-4 w-4" />
-        {label}
+        <Icon className="h-4 w-4 shrink-0 text-foreground/70" />
+        <span className="whitespace-nowrap">{label}</span>
       </Link>
     </SidebarMenuButton>
   );

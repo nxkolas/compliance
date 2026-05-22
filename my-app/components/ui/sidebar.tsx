@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const SidebarProvider = ({ className, ...props }: React.ComponentProps<"div">) => (
   <div
     className={cn(
-      "grid min-h-screen w-full bg-background md:grid-cols-[260px_minmax(0,1fr)]",
+      "min-h-screen w-full bg-background",
       className,
     )}
     {...props}
@@ -19,7 +19,7 @@ const Sidebar = React.forwardRef<HTMLElement, React.ComponentProps<"aside">>(
     <aside
       ref={ref}
       className={cn(
-        "border-b bg-muted/30 md:min-h-screen md:border-b-0 md:border-r",
+        "z-20 border-b bg-background md:w-64 md:border-b-0 md:border-r",
         className,
       )}
       {...props}
@@ -62,7 +62,10 @@ const SidebarGroupLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("px-2 text-xs font-medium text-muted-foreground", className)}
+    className={cn(
+      "px-2 text-xs font-medium text-muted-foreground",
+      className,
+    )}
     {...props}
   />
 ));

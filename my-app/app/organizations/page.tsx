@@ -126,7 +126,7 @@ async function OrganizationsPageContent() {
                   </div>
                   <Button asChild variant="outline" className="justify-self-start">
                     <Link href={`/organizations/${organization.id}`}>
-                      Open assessments
+                      Open Organization
                     </Link>
                   </Button>
                 </CardContent>

@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/app-shell";
 import { OrganizationInvitePanel } from "@/components/organizations/organization-invite-panel";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,8 +12,7 @@ import {
   getOrganizationForUser,
   listOrganizationInvitations,
 } from "@/src/server/organizations/service";
-import { ArrowLeft, Building2, ClipboardCheck } from "lucide-react";
-import Link from "next/link";
+import { Building2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -56,20 +54,6 @@ async function OrganizationTeamPageContent({
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-8">
       <section className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-3">
-          <Button asChild variant="outline">
-            <Link href="/organizations">
-              <ArrowLeft />
-              Organizations
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href={`/organizations/${organization.id}`}>
-              <ClipboardCheck />
-              Assessments
-            </Link>
-          </Button>
-        </div>
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">{organization.name} team</h1>
           <p className="max-w-2xl text-muted-foreground">
