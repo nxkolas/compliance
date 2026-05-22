@@ -13,12 +13,19 @@ The code is split into three layers:
   authorization rules, validation, invitation token handling, and transactions.
 - `src/server/organizations/types.ts`: Request/response/domain types for this
   feature.
+- `src/server/organizations/validation.ts`: Zod schemas for route params and
+  request bodies. Types for API inputs are inferred from these schemas.
 
 Shared API helpers live in:
 
 - `src/server/api/auth.ts`: Authenticated API user lookup through Supabase Auth.
 - `src/server/api/errors.ts`: Consistent JSON error responses.
 - `src/server/api/request.ts`: JSON body parsing and small request validators.
+
+Request data is validated at the API boundary with Zod before it reaches the
+service layer. This means route handlers validate untrusted JSON and route
+params, while services keep business rules such as role permissions,
+transactions, token hashing, and email ownership checks.
 
 ## Routes
 
@@ -163,7 +170,8 @@ All API errors return:
 
 ```json
 {
-  "error": "Message"
+  "error": "Message",
+  "details": []
 }
 ```
 

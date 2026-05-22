@@ -5,7 +5,7 @@ import {
   createOrganizationForUser,
   listOrganizationsForUser,
 } from "@/src/server/organizations/service";
-import type { CreateOrganizationInput } from "@/src/server/organizations/types";
+import { createOrganizationSchema } from "@/src/server/organizations/validation";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await requireApiUser();
-    const body = await readJsonBody<CreateOrganizationInput>(request);
+    const body = await readJsonBody(request, createOrganizationSchema);
     const organization = await createOrganizationForUser(user.id, body);
 
     return NextResponse.json({ organization }, { status: 201 });

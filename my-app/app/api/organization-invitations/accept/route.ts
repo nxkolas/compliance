@@ -2,7 +2,7 @@ import { requireApiUser } from "@/src/server/api/auth";
 import { getErrorResponse } from "@/src/server/api/errors";
 import { readJsonBody } from "@/src/server/api/request";
 import { acceptOrganizationInvitation } from "@/src/server/organizations/service";
-import type { AcceptOrganizationInvitationInput } from "@/src/server/organizations/types";
+import { acceptOrganizationInvitationSchema } from "@/src/server/organizations/validation";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const user = await requireApiUser();
-    const body = await readJsonBody<AcceptOrganizationInvitationInput>(request);
+    const body = await readJsonBody(request, acceptOrganizationInvitationSchema);
     const invitation = await acceptOrganizationInvitation(user, body);
 
     return NextResponse.json({ invitation });

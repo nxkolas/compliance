@@ -3,6 +3,12 @@ import type {
   organizationMembers,
   organizations,
 } from "@/src/db/schema";
+import type * as z from "zod";
+import type {
+  acceptOrganizationInvitationSchema,
+  createOrganizationInvitationSchema,
+  createOrganizationSchema,
+} from "./validation";
 
 export type OrganizationRole =
   (typeof organizationMembers.$inferSelect)["role"];
@@ -10,26 +16,15 @@ export type OrganizationRole =
 export type OrganizationInvitationStatus =
   (typeof organizationInvitations.$inferSelect)["status"];
 
-export type CreateOrganizationInput = {
-  name: string;
-  legalName?: string | null;
-  industryDescription?: string | null;
-  employeeCount?: number | null;
-  annualRevenueEur?: string | null;
-  balanceSheetTotalEur?: string | null;
-  size?: (typeof organizations.$inferSelect)["size"];
-  countryCode?: string | null;
-};
+export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 
-export type CreateOrganizationInvitationInput = {
-  email: string;
-  role?: OrganizationRole;
-  expiresInDays?: number;
-};
+export type CreateOrganizationInvitationInput = z.infer<
+  typeof createOrganizationInvitationSchema
+>;
 
-export type AcceptOrganizationInvitationInput = {
-  token: string;
-};
+export type AcceptOrganizationInvitationInput = z.infer<
+  typeof acceptOrganizationInvitationSchema
+>;
 
 export type OrganizationDto = typeof organizations.$inferSelect;
 

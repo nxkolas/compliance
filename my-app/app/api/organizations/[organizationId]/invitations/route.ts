@@ -1,11 +1,14 @@
 import { requireApiUser } from "@/src/server/api/auth";
 import { getErrorResponse } from "@/src/server/api/errors";
-import { readJsonBody, requireString } from "@/src/server/api/request";
+import { parseInput, readJsonBody } from "@/src/server/api/request";
 import {
   createOrganizationInvitation,
   listOrganizationInvitations,
 } from "@/src/server/organizations/service";
-import type { CreateOrganizationInvitationInput } from "@/src/server/organizations/types";
+import {
+  createOrganizationInvitationSchema,
+  organizationIdSchema,
+} from "@/src/server/organizations/validation";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -22,7 +25,7 @@ export async function GET(_request: Request, context: RouteContext) {
     const { organizationId } = await context.params;
     const invitations = await listOrganizationInvitations(
       user.id,
-      requireString(organizationId, "organizationId"),
+      parseInput(organizationIdSchema, organizationId, "Invalid organizationId"),
     );
 
     return NextResponse.json({ invitations });
@@ -36,10 +39,10 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const user = await requireApiUser();
     const { organizationId } = await context.params;
-    const body = await readJsonBody<CreateOrganizationInvitationInput>(request);
+    const body = await readJsonBody(request, createOrganizationInvitationSchema);
     const invitation = await createOrganizationInvitation(
       user.id,
-      requireString(organizationId, "organizationId"),
+      parseInput(organizationIdSchema, organizationId, "Invalid organizationId"),
       body,
     );
 
