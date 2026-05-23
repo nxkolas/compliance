@@ -49,13 +49,6 @@ async function OrganizationsPageContent() {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button asChild variant="outline">
-            <Link href="/tool/organizations/inbox">
-              <Inbox />
-              Inbox
-              {invitations.length > 0 && ` (${invitations.length})`}
-            </Link>
-          </Button>
           <Button asChild>
             <Link href="/tool/organizations/new">
               <Plus />
