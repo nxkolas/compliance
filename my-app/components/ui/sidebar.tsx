@@ -93,7 +93,7 @@ const SidebarMenuButton = React.forwardRef<
     <Comp
       ref={ref}
       className={cn(
-        "flex min-h-9 items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+        "flex min-h-9 items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground data-[active=true]:bg-accent data-[active=true]:font-medium data-[active=true]:text-accent-foreground",
         className,
       )}
       {...props}

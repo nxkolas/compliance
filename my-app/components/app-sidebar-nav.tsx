@@ -118,11 +118,16 @@ export function AppSidebarNav({
     <>
       <SidebarGroup>
         <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-        <SidebarMenu>
-          {globalLinks.map((link) => (
-            <SidebarLink key={link.href} {...link} />
-          ))}
-        </SidebarMenu>
+          <SidebarMenu>
+            {globalLinks.map((link) => (
+              <SidebarLink
+                key={link.href}
+                currentPath={pathname}
+                match="exact"
+                {...link}
+              />
+            ))}
+          </SidebarMenu>
       </SidebarGroup>
 
       {organizationLinks.length > 0 && (
@@ -132,7 +137,12 @@ export function AppSidebarNav({
           </SidebarGroupLabel>
           <SidebarMenu>
             {organizationLinks.map((link) => (
-              <SidebarLink key={link.href} {...link} />
+              <SidebarLink
+                key={link.href}
+                currentPath={pathname}
+                match="exact"
+                {...link}
+              />
             ))}
           </SidebarMenu>
         </SidebarGroup>
@@ -143,7 +153,12 @@ export function AppSidebarNav({
           <SidebarGroupLabel>Settings</SidebarGroupLabel>
           <SidebarMenu>
             {settingsLinks.map((link) => (
-              <SidebarLink key={link.href} {...link} />
+              <SidebarLink
+                key={link.href}
+                currentPath={pathname}
+                match="exact"
+                {...link}
+              />
             ))}
           </SidebarMenu>
         </SidebarGroup>
@@ -154,7 +169,12 @@ export function AppSidebarNav({
           <SidebarGroupLabel>{assessmentTitle ?? "Assessment"}</SidebarGroupLabel>
           <SidebarMenu>
             {assessmentLinks.map((link) => (
-              <SidebarLink key={link.href} {...link} />
+              <SidebarLink
+                key={link.href}
+                currentPath={pathname}
+                match="exact"
+                {...link}
+              />
             ))}
           </SidebarMenu>
         </SidebarGroup>
@@ -167,14 +187,26 @@ function SidebarLink({
   href,
   label,
   icon: Icon,
+  currentPath,
+  match = "exact",
 }: {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  currentPath: string;
+  match?: "exact" | "prefix";
 }) {
+  const isActive =
+    currentPath === href ||
+    (match === "prefix" && currentPath.startsWith(`${href}/`));
+
   return (
     <SidebarMenuButton asChild>
-      <Link href={href}>
+      <Link
+        href={href}
+        aria-current={isActive ? "page" : undefined}
+        data-active={isActive ? "true" : undefined}
+      >
         <Icon className="h-4 w-4 shrink-0 text-foreground/70" />
         <span className="whitespace-nowrap">{label}</span>
       </Link>
