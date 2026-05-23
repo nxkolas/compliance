@@ -12,42 +12,42 @@ import { Suspense } from "react";
 
 const productLinks = [
   {
-    href: "/organizations",
+    href: "/tool/organizations",
     label: "Self-check",
     description:
       "Pruefen Sie Betroffenheit, Sektor und Unternehmensgroesse fuer NIS2.",
     tag: "Start",
   },
   {
-    href: "/organizations",
+    href: "/tool/organizations",
     label: "Requirements",
     description:
       "Sammeln Sie Anforderungen aus Recherche, Interviews und Nachweisen.",
     tag: "Analyse",
   },
   {
-    href: "/organizations",
+    href: "/tool/organizations",
     label: "Risk management",
     description:
       "Dokumentieren Sie Massnahmen fuer Governance, Technik und Organisation.",
     tag: "Kontrolle",
   },
   {
-    href: "/organizations",
+    href: "/tool/organizations",
     label: "Suppliers",
     description:
       "Bewerten Sie Zulieferer, Dienstleister und Risiken in der Lieferkette.",
     tag: "Supply chain",
   },
   {
-    href: "/organizations",
+    href: "/tool/organizations",
     label: "Registration",
     description:
       "Bereiten Sie den Registrierungsprozess bei MUK/ELSTER und BSI vor.",
     tag: "Meldung",
   },
   {
-    href: "/organizations",
+    href: "/tool/organizations",
     label: "Dashboard",
     description:
       "Behalten Sie Status, offene Aufgaben und naechste Schritte im Blick.",
@@ -99,10 +99,10 @@ export default function Home() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/organizations">Zum Dashboard</Link>
+                <Link href="/tool/organizations">Zum Dashboard</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/organizations">Self-check starten</Link>
+                <Link href="/tool/organizations">Self-check starten</Link>
               </Button>
             </div>
             <div className="grid max-w-xl grid-cols-3 gap-3">

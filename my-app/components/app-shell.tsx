@@ -32,8 +32,8 @@ type AppShellProps = {
 };
 
 const globalLinks = [
-  { href: "/organizations", label: "Organizations", icon: Building2 },
-  { href: "/organizations/inbox", label: "Inbox", icon: Inbox },
+  { href: "/tool/organizations", label: "Organizations", icon: Building2 },
+  { href: "/tool/organizations/inbox", label: "Inbox", icon: Inbox },
 ];
 
 export function AppShell({
@@ -46,32 +46,32 @@ export function AppShell({
   const organizationLinks = organizationId
     ? [
         {
-          href: `/organizations/${organizationId}`,
+          href: `/tool/organizations/${organizationId}`,
           label: "Overview",
           icon: ClipboardCheck,
         },
         {
-          href: `/organizations/${organizationId}/team`,
+          href: `/tool/organizations/${organizationId}/team`,
           label: "Team",
           icon: Users,
         },
         {
-          href: `/organizations/${organizationId}/requirements`,
+          href: `/tool/organizations/${organizationId}/requirements`,
           label: "Requirements",
           icon: ListChecks,
         },
         {
-          href: `/organizations/${organizationId}/risk-management`,
+          href: `/tool/organizations/${organizationId}/risk-management`,
           label: "Risk management",
           icon: ShieldCheck,
         },
         {
-          href: `/organizations/${organizationId}/suppliers`,
+          href: `/tool/organizations/${organizationId}/suppliers`,
           label: "Suppliers",
           icon: Truck,
         },
         {
-          href: `/organizations/${organizationId}/registration`,
+          href: `/tool/organizations/${organizationId}/registration`,
           label: "Registration",
           icon: FileCheck2,
         },
@@ -81,17 +81,17 @@ export function AppShell({
   const assessmentLinks = assessmentId
     ? [
         {
-          href: `/assessments/${assessmentId}`,
+          href: `/tool/assessments/${assessmentId}`,
           label: "Assessment",
           icon: ClipboardCheck,
         },
         {
-          href: `/assessments/${assessmentId}/questionnaire`,
+          href: `/tool/assessments/${assessmentId}/questionnaire`,
           label: "Questionnaire",
           icon: ListChecks,
         },
         {
-          href: `/assessments/${assessmentId}/result`,
+          href: `/tool/assessments/${assessmentId}/result`,
           label: "Result",
           icon: UserRoundCheck,
         },

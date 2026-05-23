@@ -50,14 +50,14 @@ async function OrganizationsPageContent() {
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
-            <Link href="/organizations/inbox">
+            <Link href="/tool/organizations/inbox">
               <Inbox />
               Inbox
               {invitations.length > 0 && ` (${invitations.length})`}
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/organizations/new">
+            <Link href="/tool/organizations/new">
               <Plus />
               New organization
             </Link>
@@ -125,7 +125,7 @@ async function OrganizationsPageContent() {
                     )}
                   </div>
                   <Button asChild variant="outline" className="justify-self-start">
-                    <Link href={`/organizations/${organization.id}`}>
+                    <Link href={`/tool/organizations/${organization.id}`}>
                       Open Organization
                     </Link>
                   </Button>

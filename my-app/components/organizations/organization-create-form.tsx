@@ -88,7 +88,7 @@ export function OrganizationCreateForm() {
         throw new Error(body.error ?? "Organization could not be created");
       }
 
-      router.push(`/organizations/${body.organization.id}`);
+      router.push(`/tool/organizations/${body.organization.id}`);
       router.refresh();
     } catch (error) {
       setNotice({

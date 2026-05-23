@@ -20,7 +20,7 @@ export function AppTopbar(props: AppTopbarProps) {
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-6 md:px-8">
       <div className="flex min-w-0 items-center gap-4">
-        <Link href="/organizations" className="text-sm font-semibold">
+        <Link href="/tool/organizations" className="text-sm font-semibold">
           complyx
         </Link>
         {props.organizationId && (
@@ -39,7 +39,7 @@ export function AppTopbar(props: AppTopbarProps) {
       </div>
       <div className="flex items-center gap-3">
         <Button asChild variant="outline">
-          <Link href="/organizations/inbox">
+          <Link href="/tool/organizations/inbox">
             <Inbox />
             Inbox
           </Link>

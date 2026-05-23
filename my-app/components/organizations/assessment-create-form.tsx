@@ -76,7 +76,7 @@ export function AssessmentCreateForm({
         throw new Error(body.error ?? "Assessment could not be created");
       }
 
-      router.push(`/assessments/${body.assessment.id}`);
+      router.push(`/tool/assessments/${body.assessment.id}`);
       router.refresh();
     } catch (error) {
       setNotice({

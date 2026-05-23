@@ -44,7 +44,7 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/organizations`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/tool/organizations`,
         },
       });
       if (error) throw error;

@@ -14,7 +14,7 @@ function getNextPath() {
   const next = new URLSearchParams(window.location.search).get("next");
 
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/organizations";
+    return "/tool/organizations";
   }
 
   return next;

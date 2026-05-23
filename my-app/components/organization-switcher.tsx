@@ -30,7 +30,7 @@ export function OrganizationSwitcher({
   return (
     <Select
       value={organizationId}
-      onValueChange={(value) => router.push(`/organizations/${value}`)}
+      onValueChange={(value) => router.push(`/tool/organizations/${value}`)}
     >
       <SelectTrigger className="h-9 w-[220px]">
         <SelectValue placeholder="Organization" />
