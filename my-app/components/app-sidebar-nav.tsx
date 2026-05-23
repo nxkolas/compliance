@@ -6,6 +6,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import type { Dictionary } from "@/lib/i18n";
 import {
   Building2,
   ClipboardCheck,
@@ -27,52 +28,53 @@ type AppSidebarNavProps = {
   organizationName?: string;
   assessmentId?: string;
   assessmentTitle?: string;
+  labels: Dictionary["sidebar"];
 };
-
-const globalLinks = [
-  { href: "/tool/organizations", label: "Organizations", icon: Building2 },
-  { href: "/tool/organizations/inbox", label: "Inbox", icon: Inbox },
-];
 
 export function AppSidebarNav({
   organizationId,
   organizationName,
   assessmentId,
   assessmentTitle,
+  labels,
 }: AppSidebarNavProps) {
   const pathname = usePathname();
   const isSettings = pathname.includes("/settings");
+  const globalLinks = [
+    { href: "/tool/organizations", label: labels.organizations, icon: Building2 },
+    { href: "/tool/organizations/inbox", label: labels.inbox, icon: Inbox },
+  ];
 
   const organizationLinks = organizationId
     ? [
         {
           href: `/tool/organizations/${organizationId}`,
-          label: "Overview",
+          label: labels.overview,
           icon: ClipboardCheck,
         },
         {
           href: `/tool/organizations/${organizationId}/requirements`,
-          label: "Requirements",
+          label: labels.requirements,
           icon: ListChecks,
         },
         {
           href: `/tool/organizations/${organizationId}/risk-management`,
-          label: "Risk management",
+          label: labels.riskManagement,
           icon: ShieldCheck,
         },
         {
           href: `/tool/organizations/${organizationId}/suppliers`,
-          label: "Suppliers",
+          label: labels.suppliers,
           icon: Truck,
         },
         {
           href: `/tool/organizations/${organizationId}/registration`,
-          label: "Registration",
+          label: labels.registration,
           icon: FileCheck2,
         },
         {
           href: `/tool/organizations/${organizationId}/settings`,
-          label: "Settings",
+          label: labels.settings,
           icon: Settings,
         },
       ]
@@ -83,12 +85,12 @@ export function AppSidebarNav({
       ? [
           {
             href: `/tool/organizations/${organizationId}/settings`,
-            label: "General",
+            label: labels.general,
             icon: Settings,
           },
           {
             href: `/tool/organizations/${organizationId}/settings/team`,
-            label: "Team",
+            label: labels.team,
             icon: Users,
           },
         ]
@@ -98,17 +100,17 @@ export function AppSidebarNav({
     ? [
         {
           href: `/tool/assessments/${assessmentId}`,
-          label: "Assessment",
+          label: labels.assessment,
           icon: ClipboardCheck,
         },
         {
           href: `/tool/assessments/${assessmentId}/questionnaire`,
-          label: "Questionnaire",
+          label: labels.questionnaire,
           icon: ListChecks,
         },
         {
           href: `/tool/assessments/${assessmentId}/result`,
-          label: "Result",
+          label: labels.result,
           icon: UserRoundCheck,
         },
       ]
@@ -117,7 +119,7 @@ export function AppSidebarNav({
   return (
     <>
       <SidebarGroup>
-        <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+        <SidebarGroupLabel>{labels.workspace}</SidebarGroupLabel>
           <SidebarMenu>
             {globalLinks.map((link) => (
               <SidebarLink
@@ -133,7 +135,7 @@ export function AppSidebarNav({
       {organizationLinks.length > 0 && (
         <SidebarGroup>
           <SidebarGroupLabel>
-            {organizationName ?? "Organization"}
+            {organizationName ?? labels.organizations}
           </SidebarGroupLabel>
           <SidebarMenu>
             {organizationLinks.map((link) => (
@@ -150,7 +152,7 @@ export function AppSidebarNav({
 
       {settingsLinks.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupLabel>{labels.settings}</SidebarGroupLabel>
           <SidebarMenu>
             {settingsLinks.map((link) => (
               <SidebarLink
@@ -166,7 +168,7 @@ export function AppSidebarNav({
 
       {assessmentLinks.length > 0 && (
         <SidebarGroup>
-          <SidebarGroupLabel>{assessmentTitle ?? "Assessment"}</SidebarGroupLabel>
+          <SidebarGroupLabel>{assessmentTitle ?? labels.assessment}</SidebarGroupLabel>
           <SidebarMenu>
             {assessmentLinks.map((link) => (
               <SidebarLink

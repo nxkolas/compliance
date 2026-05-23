@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 type LogoutButtonProps = Omit<ButtonProps, "onClick" | "type">;
 
-export function LogoutButton(props: LogoutButtonProps) {
+export function LogoutButton({ children = "Log out", ...props }: LogoutButtonProps) {
   const router = useRouter();
 
   const logout = async () => {
@@ -17,7 +17,7 @@ export function LogoutButton(props: LogoutButtonProps) {
 
   return (
     <Button type="button" onClick={logout} {...props}>
-      Logout
+      {children}
     </Button>
   );
 }

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import type { Dictionary, Locale } from "@/lib/i18n";
 import type { OrganizationMailboxInvitationDto } from "@/src/server/organizations/types";
 import { Check, Inbox, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -20,6 +21,8 @@ type SerializedMailboxInvitation =
 type OrganizationInboxProps = {
   initialInvitations: SerializedMailboxInvitation[];
   userEmail: string | null;
+  labels: Dictionary["inbox"];
+  locale: Locale;
 };
 
 type RequestState = {
@@ -42,6 +45,8 @@ type SerializeDates<T> = {
 export function OrganizationInbox({
   initialInvitations,
   userEmail,
+  labels,
+  locale,
 }: OrganizationInboxProps) {
   const router = useRouter();
   const [invitations, setInvitations] = useState(initialInvitations);
@@ -67,21 +72,21 @@ export function OrganizationInbox({
       const body = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        throw new Error(body.error ?? "Invitation could not be accepted");
+        throw new Error(body.error ?? labels.acceptError);
       }
 
       setInvitations((current) =>
         current.filter((invitation) => invitation.id !== invitationId),
       );
       setNotice({
-        message: "Invitation accepted.",
+        message: labels.accepted,
         tone: "success",
       });
       router.refresh();
     } catch (error) {
       setNotice({
         message:
-          error instanceof Error ? error.message : "Invitation acceptance failed",
+          error instanceof Error ? error.message : labels.acceptErrorFallback,
         tone: "error",
       });
     } finally {
@@ -113,21 +118,21 @@ export function OrganizationInbox({
                 <Inbox className="h-4 w-4" />
               </span>
               <div>
-                <CardTitle>Invitation inbox</CardTitle>
+                <CardTitle>{labels.cardTitle}</CardTitle>
                 <CardDescription>
-                  Pending invitations for {userEmail ?? "your account"}.
+                  {labels.pendingFor} {userEmail ?? labels.yourAccount}.
                 </CardDescription>
               </div>
             </div>
             <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
-              {invitations.length} pending
+              {invitations.length} {labels.pending}
             </span>
           </div>
         </CardHeader>
         <CardContent className="grid gap-3">
           {invitations.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No invitations waiting right now.
+              {labels.empty}
             </div>
           ) : (
             invitations.map((invitation) => (
@@ -140,8 +145,12 @@ export function OrganizationInbox({
                     {invitation.organization.name}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Role: {invitation.role} &middot; Expires{" "}
-                    {formatDate(invitation.expiresAt)}
+                    {labels.role}: {invitation.role} &middot; {labels.expires}{" "}
+                    {formatDate(
+                      invitation.expiresAt,
+                      locale,
+                      labels.withoutDeadline,
+                    )}
                   </p>
                 </div>
                 <Button
@@ -154,7 +163,7 @@ export function OrganizationInbox({
                   ) : (
                     <Check />
                   )}
-                  Accept
+                  {labels.accept}
                 </Button>
               </div>
             ))
@@ -165,12 +174,12 @@ export function OrganizationInbox({
   );
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale: Locale, fallback: string) {
   if (!value) {
-    return "without deadline";
+    return fallback;
   }
 
-  return new Intl.DateTimeFormat("de-DE", {
+  return new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", {
     dateStyle: "medium",
   }).format(new Date(value));
 }

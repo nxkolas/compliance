@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { listOrganizationsForUser } from "@/src/server/organizations/service";
 import { Building2, Plus, Users } from "lucide-react";
@@ -25,6 +26,7 @@ export default function OrganizationsPage() {
 async function OrganizationsPageContent() {
   await connection();
   const user = await requireAuth();
+  const dictionary = await getDictionary();
   const organizations = await listOrganizationsForUser(user.id);
 
   const sortedOrganizations = [...organizations].sort((a, b) =>
@@ -32,21 +34,20 @@ async function OrganizationsPageContent() {
   );
 
   return (
-    <AppShell>
+    <AppShell dictionary={dictionary}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">Organizations</h1>
+          <h1 className="text-3xl font-bold">{dictionary.organizations.title}</h1>
           <p className="max-w-2xl text-muted-foreground">
-            Review every organization you belong to and open a workspace to
-            manage its team invitations.
+            {dictionary.organizations.description}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild>
             <Link href="/tool/organizations/new">
               <Plus />
-              New organization
+              {dictionary.organizations.newOrganization}
             </Link>
           </Button>
         </div>
@@ -55,13 +56,15 @@ async function OrganizationsPageContent() {
       <section className="grid gap-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Your organizations</h2>
+            <h2 className="text-xl font-semibold">
+              {dictionary.organizations.yourOrganizations}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Select an organization to create and review NIS2 assessments.
+              {dictionary.organizations.selectDescription}
             </p>
           </div>
           <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
-            {organizations.length} total
+            {organizations.length} {dictionary.organizations.total}
           </span>
         </div>
 
@@ -70,10 +73,11 @@ async function OrganizationsPageContent() {
             <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
               <Building2 className="h-8 w-8 text-muted-foreground" />
               <div>
-                <p className="font-medium">No organization yet</p>
+                <p className="font-medium">
+                  {dictionary.organizations.noOrganization}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  Create the first workspace or accept an invitation from your
-                  inbox.
+                  {dictionary.organizations.createFirst}
                 </p>
               </div>
             </CardContent>
@@ -92,7 +96,8 @@ async function OrganizationsPageContent() {
                         {organization.name}
                       </CardTitle>
                       <CardDescription className="truncate">
-                        {organization.legalName || "No legal name set"}
+                        {organization.legalName ||
+                          dictionary.organizations.legalNameEmpty}
                       </CardDescription>
                     </div>
                   </div>
@@ -100,20 +105,20 @@ async function OrganizationsPageContent() {
                 <CardContent className="grid gap-4">
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="rounded-md border px-2 py-1">
-                      {organization.size ?? "Size unknown"}
+                      {organization.size ?? dictionary.common.sizeUnknown}
                     </span>
                     <span className="rounded-md border px-2 py-1">
                       {organization.countryCode ?? "DE"}
                     </span>
                     {organization.employeeCount !== null && (
                       <span className="rounded-md border px-2 py-1">
-                        {organization.employeeCount} employees
+                        {organization.employeeCount} {dictionary.common.employees}
                       </span>
                     )}
                   </div>
                   <Button asChild variant="outline" className="justify-self-start">
                     <Link href={`/tool/organizations/${organization.id}`}>
-                      Open Organization
+                      {dictionary.organizations.openOrganization}
                     </Link>
                   </Button>
                 </CardContent>

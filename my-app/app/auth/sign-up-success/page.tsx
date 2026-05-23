@@ -5,6 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getDictionary } from "@/lib/i18n";
+import { Suspense } from "react";
 
 export default function Page() {
   return (
@@ -12,23 +14,34 @@ export default function Page() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">
-                Thank you for signing up!
-              </CardTitle>
-              <CardDescription>
-                Check your email to confirm your checker account.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                You&apos;ve successfully signed up for the NIS2 Compliance
-                Checker. Please confirm your account before signing in.
-              </p>
-            </CardContent>
+            <Suspense fallback={null}>
+              <SignUpSuccessContent />
+            </Suspense>
           </Card>
         </div>
       </div>
     </div>
+  );
+}
+
+async function SignUpSuccessContent() {
+  const dictionary = await getDictionary();
+
+  return (
+    <>
+      <CardHeader>
+        <CardTitle className="text-2xl">
+          {dictionary.auth.signupSuccessTitle}
+        </CardTitle>
+        <CardDescription>
+          {dictionary.auth.signupSuccessDescription}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">
+          {dictionary.auth.signupSuccessBody}
+        </p>
+      </CardContent>
+    </>
   );
 }

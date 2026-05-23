@@ -1,4 +1,5 @@
 import { OrganizationModulePage } from "@/components/organization-module-page";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type RiskManagementPageProps = {
@@ -19,16 +20,14 @@ async function RiskManagementPageContent({
   params,
 }: RiskManagementPageProps) {
   const { organizationId } = await params;
+  const dictionary = await getDictionary();
 
   return (
     <OrganizationModulePage
       organizationId={organizationId}
-      title="Risk management"
+      title={dictionary.sidebar.riskManagement}
     >
-      <p>
-        Platzhalter fuer die Dokumentation der technischen und
-        organisatorischen Massnahmen aus den Risikomanagementbereichen des BSIG.
-      </p>
+      <p>{dictionary.modules.riskManagementDescription}</p>
     </OrganizationModulePage>
   );
 }

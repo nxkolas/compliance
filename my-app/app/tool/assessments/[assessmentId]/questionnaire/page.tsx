@@ -1,4 +1,5 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type AssessmentQuestionnairePageProps = {
@@ -21,16 +22,14 @@ async function AssessmentQuestionnairePageContent({
   params,
 }: AssessmentQuestionnairePageProps) {
   const { assessmentId } = await params;
+  const dictionary = await getDictionary();
 
   return (
     <AssessmentModulePage
       assessmentId={assessmentId}
-      title="Assessment questionnaire"
+      title={dictionary.assessment.questionnaireTitle}
     >
-      <p>
-        Platzhalter fuer die spaetere Pruefung von Sektor,
-        Unternehmensgroesse und Kategorie nach NIS2 beziehungsweise BSIG.
-      </p>
+      <p>{dictionary.assessment.questionnaireDescription}</p>
     </AssessmentModulePage>
   );
 }

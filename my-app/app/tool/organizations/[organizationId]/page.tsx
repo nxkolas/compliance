@@ -15,6 +15,7 @@ import { Building2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { getDictionary, getLocale } from "@/lib/i18n";
 
 type OrganizationPageProps = {
   params: Promise<{
@@ -35,6 +36,8 @@ export default async function OrganizationPage({
 async function OrganizationPageContent({ params }: OrganizationPageProps) {
   await connection();
   const user = await requireAuth();
+  const dictionary = await getDictionary();
+  const locale = await getLocale();
   const { organizationId } = await params;
   const organization = await getOrganizationForUser(user.id, organizationId);
 
@@ -53,7 +56,7 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">{organization.name}</h1>
           <p className="max-w-2xl text-muted-foreground">
-            Create and review NIS2 assessments for this organization.
+            {dictionary.organizations.workspaceDescription}
           </p>
         </div>
       </section>
@@ -65,23 +68,24 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
               <Building2 className="h-4 w-4" />
             </span>
             <div>
-              <CardTitle>Organization details</CardTitle>
+              <CardTitle>{dictionary.organizations.details}</CardTitle>
               <CardDescription>
-                {organization.legalName || "No legal name set"}
+                {organization.legalName ||
+                  dictionary.organizations.legalNameEmpty}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
           <span className="rounded-md border px-2.5 py-1">
-            {organization.size ?? "Size unknown"}
+            {organization.size ?? dictionary.common.sizeUnknown}
           </span>
           <span className="rounded-md border px-2.5 py-1">
             {organization.countryCode ?? "DE"}
           </span>
           {organization.employeeCount !== null && (
             <span className="rounded-md border px-2.5 py-1">
-              {organization.employeeCount} employees
+              {organization.employeeCount} {dictionary.common.employees}
             </span>
           )}
         </CardContent>
@@ -90,6 +94,11 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
       <OrganizationAssessmentWorkspace
         organizationId={organization.id}
         initialAssessments={serializeForClient(assessments)}
+        labels={{
+          assessment: dictionary.assessment,
+          common: dictionary.common,
+        }}
+        locale={locale}
       />
     </div>
   );

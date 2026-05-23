@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 async function ErrorContent({
@@ -7,16 +8,17 @@ async function ErrorContent({
   searchParams: Promise<{ error: string }>;
 }) {
   const params = await searchParams;
+  const dictionary = await getDictionary();
 
   return (
     <>
       {params?.error ? (
         <p className="text-sm text-muted-foreground">
-          Code error: {params.error}
+          {dictionary.auth.codeError}: {params.error}
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">
-          An unspecified error occurred.
+          {dictionary.auth.unspecifiedError}
         </p>
       )}
     </>
@@ -35,7 +37,9 @@ export default function Page({
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">
-                Sorry, something went wrong.
+                <Suspense fallback={null}>
+                  <ErrorTitle />
+                </Suspense>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -48,4 +52,10 @@ export default function Page({
       </div>
     </div>
   );
+}
+
+async function ErrorTitle() {
+  const dictionary = await getDictionary();
+
+  return dictionary.auth.sorryTitle;
 }

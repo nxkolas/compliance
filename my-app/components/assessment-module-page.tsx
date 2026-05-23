@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getSelfCheckAssessmentForUser } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
@@ -19,6 +20,7 @@ export async function AssessmentModulePage({
 }: AssessmentModulePageProps) {
   await connection();
   const user = await requireAuth();
+  const dictionary = await getDictionary();
   const assessment = await getSelfCheckAssessmentForUser(user.id, assessmentId);
 
   if (!assessment) {
@@ -31,6 +33,7 @@ export async function AssessmentModulePage({
       organizationName={assessment.organization.name}
       assessmentId={assessment.id}
       assessmentTitle={assessment.title}
+      dictionary={dictionary}
     >
       <section className="mx-auto flex max-w-5xl flex-col gap-6">
         <div className="flex flex-col gap-2">

@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
@@ -27,6 +28,7 @@ async function OrganizationLayoutContent({
   await connection();
   const user = await requireAuth();
   const { organizationId } = await params;
+  const dictionary = await getDictionary();
   const organization = await getOrganizationForUser(user.id, organizationId);
 
   if (!organization) {
@@ -37,6 +39,7 @@ async function OrganizationLayoutContent({
     <AppShell
       organizationId={organization.id}
       organizationName={organization.name}
+      dictionary={dictionary}
     >
       {children}
     </AppShell>

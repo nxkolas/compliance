@@ -15,11 +15,13 @@ import { useRouter } from "next/navigation";
 type OrganizationSwitcherProps = {
   organizations: Pick<OrganizationDto, "id" | "name">[];
   organizationId: string;
+  placeholder: string;
 };
 
 export function OrganizationSwitcher({
   organizations,
   organizationId,
+  placeholder,
 }: OrganizationSwitcherProps) {
   const router = useRouter();
 
@@ -33,7 +35,7 @@ export function OrganizationSwitcher({
       onValueChange={(value) => router.push(`/tool/organizations/${value}`)}
     >
       <SelectTrigger className="h-9 w-[220px]">
-        <SelectValue placeholder="Organization" />
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
         {organizations.map((organization) => (

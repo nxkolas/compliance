@@ -1,4 +1,5 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type AssessmentResultPageProps = {
@@ -21,13 +22,14 @@ async function AssessmentResultPageContent({
   params,
 }: AssessmentResultPageProps) {
   const { assessmentId } = await params;
+  const dictionary = await getDictionary();
 
   return (
-    <AssessmentModulePage assessmentId={assessmentId} title="Assessment result">
-      <p>
-        Assessment-specific NIS2 classification, reasoning, and review output
-        will live here.
-      </p>
+    <AssessmentModulePage
+      assessmentId={assessmentId}
+      title={dictionary.assessment.resultTitle}
+    >
+      <p>{dictionary.assessment.resultDescription}</p>
     </AssessmentModulePage>
   );
 }

@@ -1,4 +1,5 @@
 import { OrganizationSettingsForm } from "@/components/organizations/organization-settings-form";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
@@ -26,6 +27,7 @@ async function OrganizationSettingsPageContent({
 }: OrganizationSettingsPageProps) {
   await connection();
   const user = await requireAuth();
+  const dictionary = await getDictionary();
   const { organizationId } = await params;
   const organization = await getOrganizationForUser(user.id, organizationId);
 
@@ -36,12 +38,17 @@ async function OrganizationSettingsPageContent({
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <section className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Organization settings</h1>
+        <h1 className="text-3xl font-bold">
+          {dictionary.organizations.settingsTitle}
+        </h1>
         <p className="max-w-2xl text-muted-foreground">
-          Edit organization data and workspace settings.
+          {dictionary.organizations.settingsDescription}
         </p>
       </section>
-      <OrganizationSettingsForm organization={serializeForClient(organization)} />
+      <OrganizationSettingsForm
+        organization={serializeForClient(organization)}
+        labels={dictionary.organizationForm}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { OrganizationModulePage } from "@/components/organization-module-page";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type RegistrationPageProps = {
@@ -17,13 +18,14 @@ export default function RegistrationPage({ params }: RegistrationPageProps) {
 
 async function RegistrationPageContent({ params }: RegistrationPageProps) {
   const { organizationId } = await params;
+  const dictionary = await getDictionary();
 
   return (
-    <OrganizationModulePage organizationId={organizationId} title="Registration">
-      <p>
-        Platzhalter fuer den zweistufigen Registrierungsprozess mit
-        MUK/ELSTER-Organisationskonto und BSI-Portal.
-      </p>
+    <OrganizationModulePage
+      organizationId={organizationId}
+      title={dictionary.sidebar.registration}
+    >
+      <p>{dictionary.modules.registrationDescription}</p>
     </OrganizationModulePage>
   );
 }

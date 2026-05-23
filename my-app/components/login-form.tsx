@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { Dictionary } from "@/lib/i18n";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -21,9 +22,12 @@ function getNextPath() {
 }
 
 export function LoginForm({
+  labels,
   className,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & {
+  labels: Dictionary["auth"];
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +49,7 @@ export function LoginForm({
       router.replace(getNextPath());
       router.refresh();
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : labels.errorFallback);
     } finally {
       setIsLoading(false);
     }
@@ -58,10 +62,10 @@ export function LoginForm({
           comply<span className="font-semibold text-[#003BFF]">X</span>
         </p>
         <h1 className="text-[34px] font-semibold leading-tight tracking-normal">
-          Willkommen zur&uuml;ck
+          {labels.welcomeBack}
         </h1>
         <p className="mt-2 text-base font-normal text-white/90">
-          Melden Sie sich an, um fortzufahren
+          {labels.signInContinue}
         </p>
       </div>
 
@@ -71,14 +75,14 @@ export function LoginForm({
             <div className="flex flex-col gap-6">
               <div className="grid gap-3">
                 <Label htmlFor="email" className="text-base font-semibold">
-                  E-Mail
+                  {labels.email}
                 </Label>
                 <div className="relative">
                   <MailIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#003BFF]" />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="ihre@email.com"
+                    placeholder="you@example.com"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -88,7 +92,7 @@ export function LoginForm({
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="password" className="text-base font-semibold">
-                  Passwort
+                  {labels.password}
                 </Label>
                 <div className="relative">
                   <LockIcon className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#003BFF]" />
@@ -110,13 +114,13 @@ export function LoginForm({
                     type="checkbox"
                     className="size-4 rounded border-[#bdbdbd] accent-[#003BFF]"
                   />
-                  Angemeldet bleiben
+                  {labels.keepSignedIn}
                 </label>
                 <Link
                   href="/auth/forgot-password"
                   className="text-[#003BFF] underline-offset-4 hover:underline"
                 >
-                  Passwort vergessen?
+                  {labels.forgotPassword}
                 </Link>
               </div>
 
@@ -126,7 +130,7 @@ export function LoginForm({
                 className="h-12 w-full rounded-lg bg-[#073BFF] text-base font-semibold text-white shadow-none hover:bg-[#002EEF]"
                 disabled={isLoading}
               >
-                {isLoading ? "Anmelden..." : "Anmelden"}
+                {isLoading ? labels.signingIn : labels.login}
               </Button>
             </div>
           </form>
@@ -134,9 +138,9 @@ export function LoginForm({
       </Card>
 
       <div className="mt-9 text-center text-base text-white/90">
-        Noch kein Konto?{" "}
+        {labels.noAccount}{" "}
         <Link href="/auth/sign-up" className="font-semibold text-white">
-          Registrieren
+          {labels.signUp}
         </Link>
       </div>
     </div>

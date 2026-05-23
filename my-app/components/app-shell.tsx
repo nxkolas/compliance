@@ -6,6 +6,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
+import { getDefaultDictionary, type Dictionary } from "@/lib/i18n";
 import { Suspense, type ReactNode } from "react";
 
 type AppShellProps = {
@@ -14,6 +15,7 @@ type AppShellProps = {
   organizationName?: string;
   assessmentId?: string;
   assessmentTitle?: string;
+  dictionary?: Dictionary;
 };
 
 export function AppShell({
@@ -22,12 +24,14 @@ export function AppShell({
   organizationName,
   assessmentId,
   assessmentTitle,
+  dictionary = getDefaultDictionary(),
 }: AppShellProps) {
   return (
     <SidebarProvider>
       <AppTopbar
         organizationId={organizationId}
         organizationName={organizationName}
+        dictionary={dictionary}
       />
 
       <div className="grid min-h-[calc(100vh-4rem)] md:grid-cols-[260px_minmax(0,1fr)]">
@@ -39,6 +43,7 @@ export function AppShell({
                 organizationName={organizationName}
                 assessmentId={assessmentId}
                 assessmentTitle={assessmentTitle}
+                labels={dictionary.sidebar}
               />
             </Suspense>
           </SidebarContent>

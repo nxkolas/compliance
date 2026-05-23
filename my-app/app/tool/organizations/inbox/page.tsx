@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { OrganizationInbox } from "@/components/organizations/organization-inbox";
+import { getDefaultDictionary, getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { listMailboxInvitationsForUser } from "@/src/server/organizations/service";
 import { connection } from "next/server";
@@ -16,22 +17,26 @@ export default function OrganizationInboxPage() {
 async function OrganizationInboxPageContent() {
   await connection();
   const user = await requireAuth();
+  const dictionary = await getDictionary();
+  const locale = await getLocale();
   const invitations = await listMailboxInvitationsForUser(user);
 
   return (
-    <AppShell>
+    <AppShell dictionary={dictionary}>
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">Invitation inbox</h1>
+          <h1 className="text-3xl font-bold">{dictionary.inbox.title}</h1>
           <p className="max-w-2xl text-muted-foreground">
-            Accept pending organization invitations for your account.
+            {dictionary.inbox.description}
           </p>
         </div>
       </section>
       <OrganizationInbox
         initialInvitations={serializeForClient(invitations)}
         userEmail={user.email ?? null}
+        labels={dictionary.inbox}
+        locale={locale}
       />
       </div>
     </AppShell>
@@ -39,12 +44,14 @@ async function OrganizationInboxPageContent() {
 }
 
 function OrganizationInboxPageFallback() {
+  const dictionary = getDefaultDictionary();
+
   return (
     <AppShell>
       <section className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Invitation inbox</h1>
+        <h1 className="text-3xl font-bold">{dictionary.inbox.title}</h1>
         <p className="max-w-2xl text-muted-foreground">
-          Loading invitations...
+          {dictionary.inbox.loading}
         </p>
       </section>
     </AppShell>

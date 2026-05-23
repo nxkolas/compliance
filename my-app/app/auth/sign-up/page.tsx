@@ -1,11 +1,21 @@
 import { SignUpForm } from "@/components/sign-up-form";
+import { getDictionary } from "@/lib/i18n";
+import { Suspense } from "react";
 
 export default function Page() {
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
-        <SignUpForm />
+        <Suspense fallback={null}>
+          <SignUpFormLoader />
+        </Suspense>
       </div>
     </div>
   );
+}
+
+async function SignUpFormLoader() {
+  const dictionary = await getDictionary();
+
+  return <SignUpForm labels={dictionary.auth} />;
 }

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { SelfCheckAssessmentDto } from "@/src/server/organizations/types";
+import type { Dictionary, Locale } from "@/lib/i18n";
 import { ClipboardCheck, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -18,6 +19,11 @@ type SerializedAssessment = SerializeDates<SelfCheckAssessmentDto>;
 type OrganizationAssessmentWorkspaceProps = {
   organizationId: string;
   initialAssessments: SerializedAssessment[];
+  labels: {
+    assessment: Dictionary["assessment"];
+    common: Dictionary["common"];
+  };
+  locale: Locale;
 };
 
 type SerializeDates<T> = {
@@ -35,6 +41,8 @@ type SerializeDates<T> = {
 export function OrganizationAssessmentWorkspace({
   organizationId,
   initialAssessments,
+  labels,
+  locale,
 }: OrganizationAssessmentWorkspaceProps) {
   const statusCounts = useMemo(
     () =>
@@ -52,15 +60,15 @@ export function OrganizationAssessmentWorkspace({
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <CardTitle>Assessment overview</CardTitle>
+                <CardTitle>{labels.assessment.overviewTitle}</CardTitle>
                 <CardDescription>
-                  Current NIS2 applicability work for this organization.
+                  {labels.assessment.overviewDescription}
                 </CardDescription>
               </div>
               <Button asChild>
                 <Link href={`/tool/new/${organizationId}`}>
                   <Plus />
-                  New assessment
+                  {labels.assessment.newAssessment}
                 </Link>
               </Button>
             </div>
@@ -73,7 +81,7 @@ export function OrganizationAssessmentWorkspace({
                     {statusCounts[status] ?? 0}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatStatus(status)}
+                    {formatStatus(status, labels.assessment.statuses)}
                   </p>
                 </div>
               ))}
@@ -85,13 +93,13 @@ export function OrganizationAssessmentWorkspace({
       <section className="grid gap-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">NIS2 assessments</h2>
+            <h2 className="text-xl font-semibold">{labels.assessment.listTitle}</h2>
             <p className="text-sm text-muted-foreground">
-              Review previous runs and continue from saved drafts.
+              {labels.assessment.listDescription}
             </p>
           </div>
           <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
-            {initialAssessments.length} total
+            {initialAssessments.length} {labels.common.total}
           </span>
         </div>
 
@@ -100,9 +108,9 @@ export function OrganizationAssessmentWorkspace({
             <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
               <ClipboardCheck className="h-8 w-8 text-muted-foreground" />
               <div>
-                <p className="font-medium">No assessments yet</p>
+                <p className="font-medium">{labels.assessment.emptyTitle}</p>
                 <p className="text-sm text-muted-foreground">
-                  Create the first draft to begin NIS2 applicability work.
+                  {labels.assessment.emptyDescription}
                 </p>
               </div>
             </CardContent>
@@ -114,24 +122,24 @@ export function OrganizationAssessmentWorkspace({
                 <CardHeader>
                   <CardTitle className="text-lg">{assessment.title}</CardTitle>
                   <CardDescription>
-                    Created {formatDate(assessment.createdAt)}
+                    {labels.assessment.created} {formatDate(assessment.createdAt, locale, labels.common.withoutDate)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                   <span className="rounded-md border px-2 py-1">
-                    {formatStatus(assessment.status)}
+                    {formatStatus(assessment.status, labels.assessment.statuses)}
                   </span>
                   <span className="rounded-md border px-2 py-1">
                     {formatCategory(assessment.category)}
                   </span>
                   {assessment.completedAt && (
                     <span className="rounded-md border px-2 py-1">
-                      Completed {formatDate(assessment.completedAt)}
+                      {labels.assessment.completed} {formatDate(assessment.completedAt, locale, labels.common.withoutDate)}
                     </span>
                   )}
                   <Button asChild size="sm" variant="outline" className="ml-auto">
                     <Link href={`/tool/assessments/${assessment.id}`}>
-                      Open
+                      {labels.common.open}
                     </Link>
                   </Button>
                 </CardContent>
@@ -144,18 +152,21 @@ export function OrganizationAssessmentWorkspace({
   );
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale: Locale, fallback: string) {
   if (!value) {
-    return "without date";
+    return fallback;
   }
 
-  return new Intl.DateTimeFormat("de-DE", {
+  return new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", {
     dateStyle: "medium",
   }).format(new Date(value));
 }
 
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
+function formatStatus(
+  value: string,
+  statuses: Dictionary["assessment"]["statuses"],
+) {
+  return statuses[value as keyof typeof statuses] ?? value.replaceAll("_", " ");
 }
 
 function formatCategory(value: string) {

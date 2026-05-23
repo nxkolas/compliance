@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getOrganizationForUser,
@@ -37,6 +38,8 @@ async function OrganizationTeamPageContent({
 }: OrganizationTeamPageProps) {
   await connection();
   const user = await requireAuth();
+  const dictionary = await getDictionary();
+  const locale = await getLocale();
   const { organizationId } = await params;
   const organization = await getOrganizationForUser(user.id, organizationId);
 
@@ -50,9 +53,11 @@ async function OrganizationTeamPageContent({
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">{organization.name} team</h1>
+          <h1 className="text-3xl font-bold">
+            {organization.name} {dictionary.organizations.teamTitle}
+          </h1>
           <p className="max-w-2xl text-muted-foreground">
-            Manage organization invitations and teammate access.
+            {dictionary.organizations.teamDescription}
           </p>
         </div>
       </section>
@@ -64,23 +69,24 @@ async function OrganizationTeamPageContent({
               <Building2 className="h-4 w-4" />
             </span>
             <div>
-              <CardTitle>Organization details</CardTitle>
+              <CardTitle>{dictionary.organizations.details}</CardTitle>
               <CardDescription>
-                {organization.legalName || "No legal name set"}
+                {organization.legalName ||
+                  dictionary.organizations.legalNameEmpty}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
           <span className="rounded-md border px-2.5 py-1">
-            {organization.size ?? "Size unknown"}
+            {organization.size ?? dictionary.common.sizeUnknown}
           </span>
           <span className="rounded-md border px-2.5 py-1">
             {organization.countryCode ?? "DE"}
           </span>
           {organization.employeeCount !== null && (
             <span className="rounded-md border px-2.5 py-1">
-              {organization.employeeCount} employees
+              {organization.employeeCount} {dictionary.common.employees}
             </span>
           )}
         </CardContent>
@@ -89,6 +95,8 @@ async function OrganizationTeamPageContent({
       <OrganizationInvitePanel
         organizationId={organization.id}
         initialInvitations={serializeForClient(invitations)}
+        labels={dictionary.invite}
+        locale={locale}
       />
     </div>
   );

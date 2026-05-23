@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import type { Dictionary } from "@/lib/i18n";
 import type { OrganizationDto } from "@/src/server/organizations/types";
 import { Building2, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -27,6 +28,7 @@ type SerializedOrganization = SerializeDates<OrganizationDto>;
 
 type OrganizationSettingsFormProps = {
   organization: SerializedOrganization;
+  labels: Dictionary["organizationForm"];
 };
 
 type OrganizationFormState = {
@@ -56,6 +58,7 @@ type SerializeDates<T> = {
 
 export function OrganizationSettingsForm({
   organization,
+  labels,
 }: OrganizationSettingsFormProps) {
   const router = useRouter();
   const [form, setForm] = useState<OrganizationFormState>({
@@ -98,18 +101,18 @@ export function OrganizationSettingsForm({
       };
 
       if (!response.ok || !body.organization) {
-        throw new Error(body.error ?? "Organization could not be updated");
+        throw new Error(body.error ?? labels.updateError);
       }
 
       setNotice({
-        message: "Organization settings saved.",
+        message: labels.saveSuccess,
         tone: "success",
       });
       router.refresh();
     } catch (error) {
       setNotice({
         message:
-          error instanceof Error ? error.message : "Organization update failed",
+          error instanceof Error ? error.message : labels.updateErrorFallback,
         tone: "error",
       });
     } finally {
@@ -140,9 +143,9 @@ export function OrganizationSettingsForm({
               <Building2 className="h-4 w-4" />
             </span>
             <div>
-              <CardTitle>Organization data</CardTitle>
+              <CardTitle>{labels.dataTitle}</CardTitle>
               <CardDescription>
-                Update the company profile used across this workspace.
+                {labels.dataDescription}
               </CardDescription>
             </div>
           </div>
@@ -150,7 +153,7 @@ export function OrganizationSettingsForm({
         <CardContent>
           <form className="grid gap-4" onSubmit={handleSubmit}>
             <div className="grid gap-2">
-              <Label htmlFor="organization-name">Organization name</Label>
+              <Label htmlFor="organization-name">{labels.organizationName}</Label>
               <Input
                 id="organization-name"
                 value={form.name}
@@ -164,7 +167,7 @@ export function OrganizationSettingsForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="legal-name">Legal name</Label>
+              <Label htmlFor="legal-name">{labels.legalName}</Label>
               <Input
                 id="legal-name"
                 value={form.legalName}
@@ -178,7 +181,7 @@ export function OrganizationSettingsForm({
             </div>
             <div className="grid gap-3 sm:grid-cols-[1fr_0.8fr_0.55fr]">
               <div className="grid gap-2">
-                <Label htmlFor="employee-count">Employees</Label>
+                <Label htmlFor="employee-count">{labels.employees}</Label>
                 <Input
                   id="employee-count"
                   inputMode="numeric"
@@ -194,7 +197,7 @@ export function OrganizationSettingsForm({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="organization-size">Size</Label>
+                <Label htmlFor="organization-size">{labels.size}</Label>
                 <Select
                   value={form.size || "unknown"}
                   onValueChange={(value) =>
@@ -208,19 +211,19 @@ export function OrganizationSettingsForm({
                   }
                 >
                   <SelectTrigger id="organization-size">
-                    <SelectValue placeholder="Unknown" />
+                    <SelectValue placeholder={labels.sizeOptions.unknown} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="unknown">Unknown</SelectItem>
-                    <SelectItem value="micro">Micro</SelectItem>
-                    <SelectItem value="small">Small</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="large">Large</SelectItem>
+                    <SelectItem value="unknown">{labels.sizeOptions.unknown}</SelectItem>
+                    <SelectItem value="micro">{labels.sizeOptions.micro}</SelectItem>
+                    <SelectItem value="small">{labels.sizeOptions.small}</SelectItem>
+                    <SelectItem value="medium">{labels.sizeOptions.medium}</SelectItem>
+                    <SelectItem value="large">{labels.sizeOptions.large}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="country-code">Country</Label>
+                <Label htmlFor="country-code">{labels.country}</Label>
                 <Input
                   id="country-code"
                   maxLength={2}
@@ -236,7 +239,7 @@ export function OrganizationSettingsForm({
             </div>
             <Button type="submit" disabled={isSaving}>
               {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-              Save organization
+              {isSaving ? labels.savePending : labels.saveButton}
             </Button>
           </form>
         </CardContent>

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import type { Dictionary, Locale } from "@/lib/i18n";
 import type {
   OrganizationInvitationDto,
   OrganizationRole,
@@ -30,6 +31,8 @@ type SerializedInvitation = SerializeDates<OrganizationInvitationDto>;
 type OrganizationInvitePanelProps = {
   organizationId: string;
   initialInvitations: SerializedInvitation[];
+  labels: Dictionary["invite"];
+  locale: Locale;
 };
 
 type InviteState = {
@@ -59,6 +62,8 @@ const roleOptions: Array<InviteState["role"]> = ["member", "admin", "auditor"];
 export function OrganizationInvitePanel({
   organizationId,
   initialInvitations,
+  labels,
+  locale,
 }: OrganizationInvitePanelProps) {
   const [invitations, setInvitations] = useState(initialInvitations);
   const [inviteForm, setInviteForm] = useState<InviteState>({
@@ -94,7 +99,7 @@ export function OrganizationInvitePanel({
       };
 
       if (!response.ok || !body.invitation) {
-        throw new Error(body.error ?? "Invitation could not be created");
+        throw new Error(body.error ?? labels.createError);
       }
 
       setInvitations((current) => [body.invitation!, ...current]);
@@ -103,13 +108,13 @@ export function OrganizationInvitePanel({
         role: current.role,
       }));
       setNotice({
-        message: `Invitation for ${body.invitation.email} is now in their inbox.`,
+        message: `${labels.successPrefix} ${body.invitation.email} ${labels.successSuffix}`,
         tone: "success",
       });
     } catch (error) {
       setNotice({
         message:
-          error instanceof Error ? error.message : "Invitation creation failed",
+          error instanceof Error ? error.message : labels.createErrorFallback,
         tone: "error",
       });
     } finally {
@@ -135,16 +140,16 @@ export function OrganizationInvitePanel({
 
       <Card className="rounded-lg shadow-sm">
         <CardHeader>
-          <CardTitle>Invite teammate</CardTitle>
+          <CardTitle>{labels.title}</CardTitle>
           <CardDescription>
-            Send an invitation to this organization by email.
+            {labels.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={handleCreateInvitation}>
             <div className="grid gap-3 sm:grid-cols-[1fr_150px_auto]">
               <div className="grid gap-2">
-                <Label htmlFor="invite-email">Email</Label>
+                <Label htmlFor="invite-email">{labels.email}</Label>
                 <Input
                   id="invite-email"
                   type="email"
@@ -160,7 +165,7 @@ export function OrganizationInvitePanel({
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="invite-role">Role</Label>
+                <Label htmlFor="invite-role">{labels.role}</Label>
                 <Select
                   value={inviteForm.role}
                   onValueChange={(value) =>
@@ -193,7 +198,7 @@ export function OrganizationInvitePanel({
                   ) : (
                     <Send />
                   )}
-                  Invite
+                  {labels.invite}
                 </Button>
               </div>
             </div>
@@ -203,15 +208,15 @@ export function OrganizationInvitePanel({
 
       <Card className="rounded-lg shadow-sm">
         <CardHeader>
-          <CardTitle>Invitation history</CardTitle>
+          <CardTitle>{labels.historyTitle}</CardTitle>
           <CardDescription>
-            Recent invitations created for this organization.
+            {labels.historyDescription}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
           {invitations.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No invitations have been sent yet.
+              {labels.empty}
             </div>
           ) : (
             invitations.map((invitation) => (
@@ -222,8 +227,12 @@ export function OrganizationInvitePanel({
                 <div>
                   <p className="font-medium">{invitation.email}</p>
                   <p className="text-sm text-muted-foreground">
-                    Role: {invitation.role} &middot; Expires{" "}
-                    {formatDate(invitation.expiresAt)}
+                    {labels.role}: {invitation.role} &middot; {labels.expires}{" "}
+                    {formatDate(
+                      invitation.expiresAt,
+                      locale,
+                      labels.withoutDeadline,
+                    )}
                   </p>
                 </div>
                 <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
@@ -238,12 +247,12 @@ export function OrganizationInvitePanel({
   );
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale: Locale, fallback: string) {
   if (!value) {
-    return "without deadline";
+    return fallback;
   }
 
-  return new Intl.DateTimeFormat("de-DE", {
+  return new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", {
     dateStyle: "medium",
   }).format(new Date(value));
 }

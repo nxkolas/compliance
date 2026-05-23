@@ -1,4 +1,5 @@
 import { OrganizationModulePage } from "@/components/organization-module-page";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type SuppliersPageProps = {
@@ -17,13 +18,14 @@ export default function SuppliersPage({ params }: SuppliersPageProps) {
 
 async function SuppliersPageContent({ params }: SuppliersPageProps) {
   const { organizationId } = await params;
+  const dictionary = await getDictionary();
 
   return (
-    <OrganizationModulePage organizationId={organizationId} title="Suppliers">
-      <p>
-        Platzhalter fuer Supply Chain Risk Mapping und die spaetere Erfassung
-        unmittelbarer Zulieferer und Dienstleister.
-      </p>
+    <OrganizationModulePage
+      organizationId={organizationId}
+      title={dictionary.sidebar.suppliers}
+    >
+      <p>{dictionary.modules.suppliersDescription}</p>
     </OrganizationModulePage>
   );
 }

@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import type { Dictionary } from "@/lib/i18n";
 import type { SelfCheckAssessmentDto } from "@/src/server/organizations/types";
 import { ClipboardCheck, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,7 @@ import { FormEvent, useState } from "react";
 
 type AssessmentCreateFormProps = {
   organizationId: string;
+  labels: Dictionary["assessment"];
 };
 
 type SerializedAssessment = SerializeDates<SelfCheckAssessmentDto>;
@@ -41,9 +43,10 @@ type SerializeDates<T> = {
 
 export function AssessmentCreateForm({
   organizationId,
+  labels,
 }: AssessmentCreateFormProps) {
   const router = useRouter();
-  const [title, setTitle] = useState("NIS2 assessment");
+  const [title, setTitle] = useState<string>(labels.defaultTitle);
   const [isCreatingAssessment, setIsCreatingAssessment] = useState(false);
   const [notice, setNotice] = useState<RequestState>({
     message: null,
@@ -73,7 +76,7 @@ export function AssessmentCreateForm({
       };
 
       if (!response.ok || !body.assessment) {
-        throw new Error(body.error ?? "Assessment could not be created");
+        throw new Error(body.error ?? labels.createError);
       }
 
       router.push(`/tool/assessments/${body.assessment.id}`);
@@ -81,7 +84,7 @@ export function AssessmentCreateForm({
     } catch (error) {
       setNotice({
         message:
-          error instanceof Error ? error.message : "Assessment creation failed",
+          error instanceof Error ? error.message : labels.createErrorFallback,
         tone: "error",
       });
     } finally {
@@ -107,20 +110,20 @@ export function AssessmentCreateForm({
 
       <Card className="rounded-lg shadow-sm">
         <CardHeader>
-          <CardTitle>Create NIS2 assessment</CardTitle>
+          <CardTitle>{labels.createTitle}</CardTitle>
           <CardDescription>
-            Start a new draft assessment for this organization.
+            {labels.createDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={handleCreateAssessment}>
             <div className="grid gap-2">
-              <Label htmlFor="assessment-title">Assessment title</Label>
+              <Label htmlFor="assessment-title">{labels.titleLabel}</Label>
               <Input
                 id="assessment-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="NIS2 assessment"
+                placeholder={labels.defaultTitle}
                 required
               />
             </div>
@@ -130,7 +133,7 @@ export function AssessmentCreateForm({
               ) : (
                 <ClipboardCheck />
               )}
-              Create assessment
+              {isCreatingAssessment ? labels.createPending : labels.createButton}
             </Button>
           </form>
         </CardContent>

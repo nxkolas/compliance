@@ -1,4 +1,6 @@
 import { LoginForm } from "@/components/login-form";
+import { getDictionary } from "@/lib/i18n";
+import { Suspense } from "react";
 
 export default function Page() {
   return (
@@ -22,8 +24,16 @@ export default function Page() {
         <div className="absolute bottom-0 right-[30%] size-[100px] bg-[#D9D9D9]" />
       </div>
       <div className="relative z-10 w-full max-w-[400px]">
-        <LoginForm />
+        <Suspense fallback={null}>
+          <LoginFormLoader />
+        </Suspense>
       </div>
     </main>
   );
+}
+
+async function LoginFormLoader() {
+  const dictionary = await getDictionary();
+
+  return <LoginForm labels={dictionary.auth} />;
 }

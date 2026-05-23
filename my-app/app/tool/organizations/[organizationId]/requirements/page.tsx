@@ -1,4 +1,5 @@
 import { OrganizationModulePage } from "@/components/organization-module-page";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type RequirementsPageProps = {
@@ -17,13 +18,14 @@ export default function RequirementsPage({ params }: RequirementsPageProps) {
 
 async function RequirementsPageContent({ params }: RequirementsPageProps) {
   const { organizationId } = await params;
+  const dictionary = await getDictionary();
 
   return (
-    <OrganizationModulePage organizationId={organizationId} title="Requirements">
-      <p>
-        Platzhalter fuer Requirements Engineering aus Recherche, Interview-
-        Leitfaden und Unternehmensinterviews.
-      </p>
+    <OrganizationModulePage
+      organizationId={organizationId}
+      title={dictionary.sidebar.requirements}
+    >
+      <p>{dictionary.modules.requirementsDescription}</p>
     </OrganizationModulePage>
   );
 }

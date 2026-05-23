@@ -4,6 +4,12 @@ import {
 } from "@/components/organization-switcher";
 import { ProfileMenu, ProfileMenuFallback } from "@/components/profile-menu";
 import { Button } from "@/components/ui/button";
+import {
+  getDefaultDictionary,
+  getDictionary,
+  getLocale,
+  type Dictionary,
+} from "@/lib/i18n";
 import { hasEnvVars } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/supabase/require-auth";
@@ -15,25 +21,29 @@ import { Suspense } from "react";
 type AppTopbarProps = {
   organizationId?: string;
   organizationName?: string;
+  dictionary?: Dictionary;
 };
 
 export function AppTopbar(props: AppTopbarProps) {
+  const dictionary = props.dictionary ?? getDefaultDictionary();
+
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-6 md:px-8">
       <div className="flex min-w-0 items-center gap-4">
         <Link href="/tool/organizations" className="text-sm font-semibold">
-          complyx
+          {dictionary.common.complyx}
         </Link>
         {props.organizationId && (
           <Suspense
             fallback={
               <OrganizationSwitcherFallback
-                label={props.organizationName ?? "Organization"}
+                label={props.organizationName ?? dictionary.sidebar.organizations}
               />
             }
           >
             <OrganizationSwitcherLoader
               organizationId={props.organizationId}
+              placeholder={dictionary.sidebar.organizations}
             />
           </Suspense>
         )}
@@ -42,16 +52,20 @@ export function AppTopbar(props: AppTopbarProps) {
         <Button asChild variant="outline">
           <Link href="/tool/organizations/inbox">
             <Inbox />
-            Inbox
+            {dictionary.common.inbox}
           </Link>
         </Button>
         {hasEnvVars ? (
-          <Suspense fallback={<ProfileMenuFallback />}>
+          <Suspense
+            fallback={
+              <ProfileMenuFallback label={dictionary.common.loadingProfile} />
+            }
+          >
             <ProfileMenuLoader />
           </Suspense>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Supabase environment variables missing.
+            {dictionary.common.supabaseMissing}
           </p>
         )}
       </div>
@@ -61,8 +75,10 @@ export function AppTopbar(props: AppTopbarProps) {
 
 async function OrganizationSwitcherLoader({
   organizationId,
+  placeholder,
 }: {
   organizationId: string;
+  placeholder: string;
 }) {
   const user = await requireAuth();
   const organizations = await listOrganizationsForUser(user.id);
@@ -74,14 +90,27 @@ async function OrganizationSwitcherLoader({
         name: organization.name,
       }))}
       organizationId={organizationId}
+      placeholder={placeholder}
     />
   );
 }
 
 async function ProfileMenuLoader() {
+  const locale = await getLocale();
+  const labels = await getDictionary();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const email = data?.claims?.email;
 
-  return <ProfileMenu email={typeof email === "string" ? email : null} />;
+  return (
+    <ProfileMenu
+      email={typeof email === "string" ? email : null}
+      locale={locale}
+      labels={{
+        common: labels.common,
+        languages: labels.languages,
+        profile: labels.profile,
+      }}
+    />
+  );
 }
