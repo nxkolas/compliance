@@ -13,11 +13,11 @@ export default function Page() {
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-40 -top-40 size-[460px] rounded-full bg-primary/20 blur-[120px]"
+        className="pointer-events-none absolute -right-40 -top-40 size-115 rounded-full bg-primary/20 blur-[120px]"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-44 -left-40 size-[520px] rounded-full bg-primary/15 blur-[130px]"
+        className="pointer-events-none absolute -bottom-44 -left-40 size-130 rounded-full bg-primary/15 blur-[130px]"
       />
       <div className="relative z-10 w-full max-w-md">
         <Suspense fallback={null}>
