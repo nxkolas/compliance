@@ -39,7 +39,7 @@ const dictionaries = {
       complyx: "complyx",
       inbox: "Postfach",
       language: "Sprache",
-      loadingProfile: "Profilmenue wird geladen",
+      loadingProfile: "Profilmenü wird geladen",
       logout: "Abmelden",
       signIn: "Anmelden",
       signedInAs: "Angemeldet als",
@@ -48,15 +48,15 @@ const dictionaries = {
       workspace: "Arbeitsbereich",
       loading: "Wird geladen...",
       total: "gesamt",
-      open: "Oeffnen",
+      open: "Öffnen",
       unknown: "Unbekannt",
-      sizeUnknown: "Groesse unbekannt",
+      sizeUnknown: "Größe unbekannt",
       employees: "Mitarbeitende",
       withoutDate: "ohne Datum",
       withoutDeadline: "ohne Frist",
     },
     auth: {
-      welcomeBack: "Willkommen zurueck",
+      welcomeBack: "Willkommen zurück",
       signInContinue: "Melde dich an, um fortzufahren",
       signUp: "Registrieren",
       email: "E-Mail",
@@ -66,36 +66,36 @@ const dictionaries = {
       signingIn: "Anmelden...",
       noAccount: "Noch kein Konto?",
       repeatPassword: "Passwort wiederholen",
-      passwordsDoNotMatch: "Passwoerter stimmen nicht ueberein",
+      passwordsDoNotMatch: "Passwörter stimmen nicht überein",
       creatingAccount: "Account wird erstellt...",
       alreadyHaveAccount: "Du hast bereits ein Konto?",
       login: "Anmelden",
       createAccountDescription:
-        "Erstelle einen Account fuer den NIS2 Compliance Checker.",
-      checkEmailTitle: "Pruefe dein E-Mail-Postfach",
-      resetInstructionsSent: "Anweisungen zum Zuruecksetzen gesendet",
+        "Erstelle einen Account für den NIS2 Compliance Checker.",
+      checkEmailTitle: "Prüfe dein E-Mail-Postfach",
+      resetInstructionsSent: "Anweisungen zum Zurücksetzen gesendet",
       resetEmailSent:
-        "Wenn fuer diese E-Mail ein Account existiert, erhaeltst du eine E-Mail zum Zuruecksetzen des Passworts.",
-      resetPasswordTitle: "Passwort zuruecksetzen",
+        "Wenn für diese E-Mail ein Account existiert, erhältst du eine E-Mail zum Zurücksetzen des Passworts.",
+      resetPasswordTitle: "Passwort zurücksetzen",
       resetPasswordDescription:
-        "Gib die E-Mail-Adresse fuer deinen NIS2 Compliance Checker Account ein.",
+        "Gib die E-Mail-Adresse für deinen NIS2 Compliance Checker Account ein.",
       sending: "Wird gesendet...",
       sendResetEmail: "E-Mail senden",
       alreadyHaveAnAccount: "Du hast bereits ein Konto?",
       newPassword: "Neues Passwort",
       newPasswordDescription:
-        "Gib ein neues Passwort fuer deinen NIS2 Compliance Checker Account ein.",
+        "Gib ein neues Passwort für deinen NIS2 Compliance Checker Account ein.",
       saving: "Wird gespeichert...",
       saveNewPassword: "Neues Passwort speichern",
       errorFallback: "Ein Fehler ist aufgetreten",
       sorryTitle: "Entschuldigung, etwas ist schiefgelaufen.",
       codeError: "Code-Fehler",
       unspecifiedError: "Ein unbekannter Fehler ist aufgetreten.",
-      signupSuccessTitle: "Danke fuer deine Registrierung!",
+      signupSuccessTitle: "Danke für deine Registrierung!",
       signupSuccessDescription:
-        "Pruefe dein E-Mail-Postfach, um deinen Account zu bestaetigen.",
+        "Prüfe dein E-Mail-Postfach, um deinen Account zu bestätigen.",
       signupSuccessBody:
-        "Du hast dich erfolgreich fuer den NIS2 Compliance Checker registriert. Bitte bestaetige deinen Account, bevor du dich anmeldest.",
+        "Du hast dich erfolgreich für den NIS2 Compliance Checker registriert. Bitte bestätige deinen Account, bevor du dich anmeldest.",
     },
     languages: {
       de: "Deutsch",
@@ -106,7 +106,7 @@ const dictionaries = {
       general: "Allgemein",
       inbox: "Postfach",
       organizations: "Organisationen",
-      overview: "Uebersicht",
+      overview: "Übersicht",
       questionnaire: "Fragebogen",
       registration: "Registrierung",
       requirements: "Anforderungen",
@@ -121,42 +121,42 @@ const dictionaries = {
       createFirst:
         "Erstelle den ersten Arbeitsbereich oder akzeptiere eine Einladung aus deinem Postfach.",
       description:
-        "Pruefe alle Organisationen, zu denen du gehoerst, und oeffne einen Arbeitsbereich.",
+        "Prüfe alle Organisationen, zu denen du gehörst, und öffne einen Arbeitsbereich.",
       legalNameEmpty: "Kein rechtlicher Name gesetzt",
       loading: "Organisationen werden geladen...",
       newOrganization: "Neue Organisation",
       noOrganization: "Noch keine Organisation",
-      openOrganization: "Organisation oeffnen",
+      openOrganization: "Organisation öffnen",
       selectDescription:
-        "Waehle eine Organisation, um NIS2-Bewertungen zu erstellen und zu pruefen.",
+        "Wähle eine Organisation, um NIS2-Bewertungen zu erstellen und zu prüfen.",
       title: "Organisationen",
       total: "gesamt",
       yourOrganizations: "Deine Organisationen",
       pageDescription:
-        "Pruefe alle Organisationen, zu denen du gehoerst, und oeffne einen Arbeitsbereich, um NIS2-Bewertungen zu verwalten.",
+        "Prüfe alle Organisationen, zu denen du gehörst, und öffne einen Arbeitsbereich, um NIS2-Bewertungen zu verwalten.",
       newDescription:
-        "Erstelle einen Arbeitsbereich fuer eine juristische Person und lade danach Teammitglieder ein.",
+        "Erstelle einen Arbeitsbereich für eine juristische Person und lade danach Teammitglieder ein.",
       loadingForm: "Organisationsformular wird geladen...",
       details: "Organisationsdaten",
       workspaceDescription:
-        "Erstelle und pruefe NIS2-Bewertungen fuer diese Organisation.",
+        "Erstelle und prüfe NIS2-Bewertungen für diese Organisation.",
       settingsTitle: "Organisationseinstellungen",
       settingsDescription:
-        "Bearbeite Stammdaten, die fuer diese Organisation verwendet werden.",
+        "Bearbeite Stammdaten, die für diese Organisation verwendet werden.",
       settingsLoading: "Organisationseinstellungen werden geladen...",
       teamTitle: "Team",
       teamDescription:
-        "Lade Teammitglieder ein und verwalte offene Einladungen fuer diese Organisation.",
+        "Lade Teammitglieder ein und verwalte offene Einladungen für diese Organisation.",
       teamLoading: "Team wird geladen...",
     },
     organizationForm: {
       createTitle: "Organisation erstellen",
       createDescription:
-        "Starte einen Compliance-Arbeitsbereich fuer eine juristische Person.",
+        "Starte einen Compliance-Arbeitsbereich für eine juristische Person.",
       organizationName: "Organisationsname",
       legalName: "Rechtlicher Name",
       employees: "Mitarbeitende",
-      size: "Groesse",
+      size: "Größe",
       country: "Land",
       createButton: "Organisation erstellen",
       createPending: "Organisation wird erstellt...",
@@ -164,7 +164,7 @@ const dictionaries = {
       createErrorFallback: "Erstellung der Organisation fehlgeschlagen",
       dataTitle: "Organisationsdaten",
       dataDescription:
-        "Aktualisiere das Unternehmensprofil fuer diesen Arbeitsbereich.",
+        "Aktualisiere das Unternehmensprofil für diesen Arbeitsbereich.",
       saveButton: "Organisation speichern",
       savePending: "Organisation wird gespeichert...",
       saveSuccess: "Organisationseinstellungen gespeichert.",
@@ -180,24 +180,24 @@ const dictionaries = {
     },
     assessment: {
       newTitle: "Neue NIS2-Bewertung",
-      newDescription: "Erstelle eine Entwurfsbewertung fuer",
+      newDescription: "Erstelle eine Entwurfsbewertung für",
       loadingForm: "Bewertungsformular wird geladen...",
       createTitle: "NIS2-Bewertung erstellen",
       createDescription:
-        "Starte eine neue Entwurfsbewertung fuer diese Organisation.",
+        "Starte eine neue Entwurfsbewertung für diese Organisation.",
       titleLabel: "Bewertungstitel",
       defaultTitle: "NIS2-Bewertung",
       createButton: "Bewertung erstellen",
       createPending: "Bewertung wird erstellt...",
       createError: "Bewertung konnte nicht erstellt werden",
       createErrorFallback: "Erstellung der Bewertung fehlgeschlagen",
-      overviewTitle: "Bewertungsuebersicht",
+      overviewTitle: "Bewertungsübersicht",
       overviewDescription:
-        "Aktuelle NIS2-Betroffenheitsarbeit fuer diese Organisation.",
+        "Aktuelle NIS2-Betroffenheitsarbeit für diese Organisation.",
       newAssessment: "Neue Bewertung",
       listTitle: "NIS2-Bewertungen",
       listDescription:
-        "Pruefe vorherige Durchlaeufe und fahre mit gespeicherten Entwuerfen fort.",
+        "Prüfe vorherige Durchläufe und fahre mit gespeicherten Entwürfen fort.",
       emptyTitle: "Noch keine Bewertungen",
       emptyDescription:
         "Erstelle den ersten Entwurf, um mit der NIS2-Betroffenheitsarbeit zu beginnen.",
@@ -205,31 +205,31 @@ const dictionaries = {
       completed: "Abgeschlossen",
       pageTitle: "Bewertung",
       pageDescription:
-        "Uebersicht fuer diesen NIS2-Bewertungsentwurf, inklusive Status, Ergebnis und naechsten Schritten.",
+        "Übersicht für diesen NIS2-Bewertungsentwurf, inklusive Status, Ergebnis und nächsten Schritten.",
       questionnaireTitle: "Bewertungsfragebogen",
       questionnaireDescription:
-        "Platzhalter fuer die spaetere Pruefung von Sektor, Unternehmensgroesse und Kategorie nach NIS2 beziehungsweise BSIG.",
+        "Platzhalter für die spätere Prüfung von Sektor, Unternehmensgröße und Kategorie nach NIS2 beziehungsweise BSIG.",
       resultTitle: "Bewertungsergebnis",
       resultDescription:
-        "Bewertungsspezifische NIS2-Klassifizierung, Begruendung und Pruefergebnis fuer diese Organisation.",
+        "Bewertungsspezifische NIS2-Klassifizierung, Begründung und Prüfergebnis für diese Organisation.",
       statuses: {
         draft: "Entwurf",
-        in_review: "In Pruefung",
+        in_review: "In Prüfung",
         completed: "Abgeschlossen",
         archived: "Archiviert",
       },
     },
     inbox: {
       title: "Einladungspostfach",
-      description: "Akzeptiere offene Organisationseinladungen fuer dein Konto.",
+      description: "Akzeptiere offene Organisationseinladungen für dein Konto.",
       loading: "Einladungen werden geladen...",
       cardTitle: "Einladungspostfach",
-      pendingFor: "Offene Einladungen fuer",
+      pendingFor: "Offene Einladungen für",
       yourAccount: "dein Konto",
       pending: "offen",
       empty: "Aktuell warten keine Einladungen.",
       role: "Rolle",
-      expires: "Laeuft ab",
+      expires: "Läuft ab",
       accept: "Akzeptieren",
       accepted: "Einladung akzeptiert.",
       acceptError: "Einladung konnte nicht akzeptiert werden",
@@ -244,10 +244,10 @@ const dictionaries = {
       invite: "Einladen",
       historyTitle: "Einladungshistorie",
       historyDescription:
-        "Aktuelle Einladungen, die fuer diese Organisation erstellt wurden.",
+        "Aktuelle Einladungen, die für diese Organisation erstellt wurden.",
       empty: "Es wurden noch keine Einladungen gesendet.",
-      expires: "Laeuft ab",
-      successPrefix: "Einladung fuer",
+      expires: "Läuft ab",
+      successPrefix: "Einladung für",
       successSuffix: "liegt jetzt im Postfach.",
       createError: "Einladung konnte nicht erstellt werden",
       createErrorFallback: "Erstellung der Einladung fehlgeschlagen",
@@ -256,28 +256,28 @@ const dictionaries = {
     modules: {
       dashboardTitle: "Dashboard",
       dashboardDescription:
-        "Uebersicht fuer den NIS2 Compliance Checker. Von hier aus fuehren die ersten Schritte zur Betroffenheitspruefung, Requirements-Erfassung, Risikomanagement, Lieferkettenbewertung und Registrierung.",
+        "Uebersicht für den NIS2 Compliance Checker. Von hier aus führen die ersten Schritte zur Betroffenheitsprüfung, Requirements-Erfassung, Risikomanagement, Lieferkettenbewertung und Registrierung.",
       requirementsDescription:
-        "Platzhalter fuer Requirements Engineering aus Recherche, Interview-Leitfaeden und Unternehmensinterviews.",
+        "Platzhalter für Requirements Engineering aus Recherche, Interview-Leitfäden und Unternehmensinterviews.",
       riskManagementDescription:
-        "Platzhalter fuer die Dokumentation technischer und organisatorischer Massnahmen aus den Risikomanagementbereichen des BSIG.",
+        "Platzhalter für die Dokumentation technischer und organisatorischer Massnahmen aus den Risikomanagementbereichen des BSIG.",
       suppliersDescription:
-        "Platzhalter fuer Supply-Chain-Risk-Mapping und die spaetere Erfassung direkter Zulieferer und Dienstleister.",
+        "Platzhalter für Supply-Chain-Risk-Mapping und die spätere Erfassung direkter Zulieferer und Dienstleister.",
       registrationDescription:
-        "Platzhalter fuer den zweistufigen Registrierungsprozess mit MUK/ELSTER-Organisationskonto und BSI-Portal.",
+        "Platzhalter für den zweistufigen Registrierungsprozess mit MUK/ELSTER-Organisationskonto und BSI-Portal.",
     },
     profile: {
-      openMenu: "Profilmenue oeffnen",
+      openMenu: "Profilmenü öffnen",
     },
     home: {
       brand: "NIS2 Compliance Checker",
-      eyebrow: "Compliance-Workflow fuer die NIS2-Vorbereitung",
+      eyebrow: "Compliance-Workflow für die NIS2-Vorbereitung",
       heroDescription:
-        "Strukturieren Sie Betroffenheitspruefung, Anforderungen, Risikomanagement, Lieferkettenbewertung und Registrierung in einem klaren Produktfluss.",
+        "Strukturieren Sie Betroffenheitsprüfung, Anforderungen, Risikomanagement, Lieferkettenbewertung und Registrierung in einem klaren Produktfluss.",
       dashboardCta: "Zum Arbeitsbereich",
       selfCheckCta: "Self-check starten",
       statusTitle: "Compliance-Status",
-      statusSubtitle: "Arbeitsbereiche und naechste Schritte",
+      statusSubtitle: "Arbeitsbereiche und nächste Schritte",
       active: "Aktiv",
       modulesTitle: "Produktmodule",
       modulesDescription:
@@ -292,7 +292,7 @@ const dictionaries = {
         {
           label: "Self-check",
           description:
-            "Pruefen Sie Betroffenheit, Sektor und Unternehmensgroesse fuer NIS2.",
+            "Prüfen Sie Betroffenheit, Sektor und Unternehmensgröße für NIS2.",
           tag: "Start",
         },
         {
@@ -304,7 +304,7 @@ const dictionaries = {
         {
           label: "Risk management",
           description:
-            "Dokumentieren Sie Massnahmen fuer Governance, Technik und Organisation.",
+            "Dokumentieren Sie Massnahmen für Governance, Technik und Organisation.",
           tag: "Kontrolle",
         },
         {
@@ -322,8 +322,8 @@ const dictionaries = {
         {
           label: "Dashboard",
           description:
-            "Behalten Sie Status, offene Aufgaben und naechste Schritte im Blick.",
-          tag: "Ueberblick",
+            "Behalten Sie Status, offene Aufgaben und nächste Schritte im Blick.",
+          tag: "Überblick",
         },
       ],
     },
