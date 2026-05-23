@@ -268,6 +268,7 @@ const dictionaries = {
     },
     profile: {
       openMenu: "Profilmenü öffnen",
+      darkMode: "Dunkler Modus",
     },
     home: {
       brand: "NIS2 Compliance Checker",
@@ -564,6 +565,7 @@ const dictionaries = {
     },
     profile: {
       openMenu: "Open profile menu",
+      darkMode: "Dark mode",
     },
     home: {
       brand: "NIS2 Compliance Checker",
