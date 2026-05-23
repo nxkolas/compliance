@@ -21,6 +21,7 @@ import type {
   OrganizationRole,
   SelfCheckAssessmentDto,
   SelfCheckAssessmentWithOrganizationDto,
+  UpdateOrganizationInput,
 } from "./types";
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
@@ -70,6 +71,33 @@ export async function createOrganizationForUser(
 
     return organization;
   });
+}
+
+export async function updateOrganizationForUser(
+  userId: string,
+  organizationId: string,
+  input: UpdateOrganizationInput,
+): Promise<OrganizationDto> {
+  await assertCanManageOrganization(userId, organizationId);
+  const name = normalizeRequiredString(input.name, "name");
+
+  const [organization] = await db
+    .update(organizations)
+    .set({
+      name,
+      legalName: normalizeOptionalString(input.legalName),
+      industryDescription: normalizeOptionalString(input.industryDescription),
+      employeeCount: normalizeOptionalInteger(input.employeeCount),
+      annualRevenueEur: normalizeOptionalMoney(input.annualRevenueEur),
+      balanceSheetTotalEur: normalizeOptionalMoney(input.balanceSheetTotalEur),
+      size: input.size ?? null,
+      countryCode: normalizeCountryCode(input.countryCode),
+      updatedAt: new Date(),
+    })
+    .where(eq(organizations.id, organizationId))
+    .returning();
+
+  return organization;
 }
 
 export async function getOrganizationForUser(

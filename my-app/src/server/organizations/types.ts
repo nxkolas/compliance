@@ -10,6 +10,7 @@ import type {
   createOrganizationInvitationSchema,
   createOrganizationSchema,
   createSelfCheckAssessmentSchema,
+  updateOrganizationSchema,
 } from "./validation";
 
 export type OrganizationRole =
@@ -19,6 +20,8 @@ export type OrganizationInvitationStatus =
   (typeof organizationInvitations.$inferSelect)["status"];
 
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+
+export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
 
 export type CreateOrganizationInvitationInput = z.infer<
   typeof createOrganizationInvitationSchema

@@ -1,27 +1,12 @@
 import { AppTopbar } from "@/components/app-topbar";
+import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupLabel,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
   SidebarProvider,
 } from "@/components/ui/sidebar";
-import {
-  Building2,
-  ClipboardCheck,
-  FileCheck2,
-  Inbox,
-  ListChecks,
-  ShieldCheck,
-  Truck,
-  UserRoundCheck,
-  Users,
-} from "lucide-react";
-import Link from "next/link";
-import { type ComponentType, type ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
 type AppShellProps = {
   children: ReactNode;
@@ -31,11 +16,6 @@ type AppShellProps = {
   assessmentTitle?: string;
 };
 
-const globalLinks = [
-  { href: "/tool/organizations", label: "Organizations", icon: Building2 },
-  { href: "/tool/organizations/inbox", label: "Inbox", icon: Inbox },
-];
-
 export function AppShell({
   children,
   organizationId,
@@ -43,61 +23,6 @@ export function AppShell({
   assessmentId,
   assessmentTitle,
 }: AppShellProps) {
-  const organizationLinks = organizationId
-    ? [
-        {
-          href: `/tool/organizations/${organizationId}`,
-          label: "Overview",
-          icon: ClipboardCheck,
-        },
-        {
-          href: `/tool/organizations/${organizationId}/team`,
-          label: "Team",
-          icon: Users,
-        },
-        {
-          href: `/tool/organizations/${organizationId}/requirements`,
-          label: "Requirements",
-          icon: ListChecks,
-        },
-        {
-          href: `/tool/organizations/${organizationId}/risk-management`,
-          label: "Risk management",
-          icon: ShieldCheck,
-        },
-        {
-          href: `/tool/organizations/${organizationId}/suppliers`,
-          label: "Suppliers",
-          icon: Truck,
-        },
-        {
-          href: `/tool/organizations/${organizationId}/registration`,
-          label: "Registration",
-          icon: FileCheck2,
-        },
-      ]
-    : [];
-
-  const assessmentLinks = assessmentId
-    ? [
-        {
-          href: `/tool/assessments/${assessmentId}`,
-          label: "Assessment",
-          icon: ClipboardCheck,
-        },
-        {
-          href: `/tool/assessments/${assessmentId}/questionnaire`,
-          label: "Questionnaire",
-          icon: ListChecks,
-        },
-        {
-          href: `/tool/assessments/${assessmentId}/result`,
-          label: "Result",
-          icon: UserRoundCheck,
-        },
-      ]
-    : [];
-
   return (
     <SidebarProvider>
       <AppTopbar
@@ -108,40 +33,14 @@ export function AppShell({
       <div className="grid min-h-[calc(100vh-4rem)] md:grid-cols-[260px_minmax(0,1fr)]">
         <Sidebar className="md:sticky md:top-16 md:h-[calc(100vh-4rem)]">
           <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-              <SidebarMenu>
-                {globalLinks.map((link) => (
-                  <SidebarLink key={link.href} {...link} />
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
-
-            {organizationLinks.length > 0 && (
-              <SidebarGroup>
-                <SidebarGroupLabel>
-                  {organizationName ?? "Organization"}
-                </SidebarGroupLabel>
-                <SidebarMenu>
-                  {organizationLinks.map((link) => (
-                    <SidebarLink key={link.href} {...link} />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroup>
-            )}
-
-            {assessmentLinks.length > 0 && (
-              <SidebarGroup>
-                <SidebarGroupLabel>
-                  {assessmentTitle ?? "Assessment"}
-                </SidebarGroupLabel>
-                <SidebarMenu>
-                  {assessmentLinks.map((link) => (
-                    <SidebarLink key={link.href} {...link} />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroup>
-            )}
+            <Suspense fallback={null}>
+              <AppSidebarNav
+                organizationId={organizationId}
+                organizationName={organizationName}
+                assessmentId={assessmentId}
+                assessmentTitle={assessmentTitle}
+              />
+            </Suspense>
           </SidebarContent>
         </Sidebar>
         <SidebarInset className="p-0">
@@ -149,24 +48,5 @@ export function AppShell({
         </SidebarInset>
       </div>
     </SidebarProvider>
-  );
-}
-
-function SidebarLink({
-  href,
-  label,
-  icon: Icon,
-}: {
-  href: string;
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-}) {
-  return (
-    <SidebarMenuButton asChild>
-      <Link href={href}>
-        <Icon className="h-4 w-4 shrink-0 text-foreground/70" />
-        <span className="whitespace-nowrap">{label}</span>
-      </Link>
-    </SidebarMenuButton>
   );
 }

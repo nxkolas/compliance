@@ -37,6 +37,8 @@ export const createOrganizationSchema = z.object({
     .default("DE"),
 });
 
+export const updateOrganizationSchema = createOrganizationSchema;
+
 export const createOrganizationInvitationSchema = z.object({
   email: z.email().trim().toLowerCase(),
   role: assignableOrganizationRoleSchema.default("member"),
