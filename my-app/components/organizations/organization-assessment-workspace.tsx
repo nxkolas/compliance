@@ -11,7 +11,7 @@ import {
 import type { SelfCheckAssessmentDto } from "@/src/server/organizations/types";
 import { ClipboardCheck, Plus } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 type SerializedAssessment = SerializeDates<SelfCheckAssessmentDto>;
 
@@ -36,15 +36,13 @@ export function OrganizationAssessmentWorkspace({
   organizationId,
   initialAssessments,
 }: OrganizationAssessmentWorkspaceProps) {
-  const [assessments] = useState(initialAssessments);
-
   const statusCounts = useMemo(
     () =>
-      assessments.reduce<Record<string, number>>((counts, assessment) => {
+      initialAssessments.reduce<Record<string, number>>((counts, assessment) => {
         counts[assessment.status] = (counts[assessment.status] ?? 0) + 1;
         return counts;
       }, {}),
-    [assessments],
+    [initialAssessments],
   );
 
   return (
@@ -93,11 +91,11 @@ export function OrganizationAssessmentWorkspace({
             </p>
           </div>
           <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
-            {assessments.length} total
+            {initialAssessments.length} total
           </span>
         </div>
 
-        {assessments.length === 0 ? (
+        {initialAssessments.length === 0 ? (
           <Card className="rounded-lg border-dashed shadow-sm">
             <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
               <ClipboardCheck className="h-8 w-8 text-muted-foreground" />
@@ -111,7 +109,7 @@ export function OrganizationAssessmentWorkspace({
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {assessments.map((assessment) => (
+            {initialAssessments.map((assessment) => (
               <Card key={assessment.id} className="rounded-lg shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg">{assessment.title}</CardTitle>

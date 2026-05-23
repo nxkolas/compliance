@@ -9,6 +9,7 @@ import {
   createSelfCheckAssessmentSchema,
   organizationIdSchema,
 } from "@/src/server/organizations/validation";
+import { revalidatePath } from "next/cache";
 import { connection, NextResponse } from "next/server";
 
 type RouteContext = {
@@ -39,12 +40,19 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const user = await requireApiUser();
     const { organizationId } = await context.params;
+    const parsedOrganizationId = parseInput(
+      organizationIdSchema,
+      organizationId,
+      "Invalid organizationId",
+    );
     const body = await readJsonBody(request, createSelfCheckAssessmentSchema);
     const assessment = await createSelfCheckAssessmentForOrganization(
       user.id,
-      parseInput(organizationIdSchema, organizationId, "Invalid organizationId"),
+      parsedOrganizationId,
       body,
     );
+
+    revalidatePath(`/tool/organizations/${parsedOrganizationId}`);
 
     return NextResponse.json({ assessment }, { status: 201 });
   } catch (error) {

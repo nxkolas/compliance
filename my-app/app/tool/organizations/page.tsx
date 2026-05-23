@@ -8,11 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import {
-  listMailboxInvitationsForUser,
-  listOrganizationsForUser,
-} from "@/src/server/organizations/service";
-import { Building2, Inbox, Plus, Users } from "lucide-react";
+import { listOrganizationsForUser } from "@/src/server/organizations/service";
+import { Building2, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -28,10 +25,7 @@ export default function OrganizationsPage() {
 async function OrganizationsPageContent() {
   await connection();
   const user = await requireAuth();
-  const [organizations, invitations] = await Promise.all([
-    listOrganizationsForUser(user.id),
-    listMailboxInvitationsForUser(user),
-  ]);
+  const organizations = await listOrganizationsForUser(user.id);
 
   const sortedOrganizations = [...organizations].sort((a, b) =>
     a.name.localeCompare(b.name, "de", { sensitivity: "base" }),
