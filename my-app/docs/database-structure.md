@@ -32,6 +32,24 @@ const client = postgres(process.env.DATABASE_URL!, {
 });
 ```
 
+## Development Reset
+
+Schema changes are applied with `drizzle-kit push`:
+
+```bash
+npm run db:push
+```
+
+To clear Drizzle-managed app tables in a development database, run:
+
+```bash
+DB_CLEAR_CONFIRM=clear-app-tables npm run db:clear
+```
+
+The reset script calls `drizzle-seed`'s `reset(db, schema)` with the local
+Drizzle schema exports. It is intended for app tables only and refuses to run
+when `NODE_ENV=production`.
+
 ## Enum Types
 
 Enums keep frequently filtered status/category values consistent.
