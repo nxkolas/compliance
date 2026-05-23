@@ -1,10 +1,11 @@
-import { AuthButton } from "@/components/auth-button";
 import {
   OrganizationSwitcher,
   OrganizationSwitcherFallback,
 } from "@/components/organization-switcher";
+import { ProfileMenu, ProfileMenuFallback } from "@/components/profile-menu";
 import { Button } from "@/components/ui/button";
 import { hasEnvVars } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { listOrganizationsForUser } from "@/src/server/organizations/service";
 import { Inbox } from "lucide-react";
@@ -45,8 +46,8 @@ export function AppTopbar(props: AppTopbarProps) {
           </Link>
         </Button>
         {hasEnvVars ? (
-          <Suspense>
-            <AuthButton />
+          <Suspense fallback={<ProfileMenuFallback />}>
+            <ProfileMenuLoader />
           </Suspense>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -75,4 +76,12 @@ async function OrganizationSwitcherLoader({
       organizationId={organizationId}
     />
   );
+}
+
+async function ProfileMenuLoader() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const email = data?.claims?.email;
+
+  return <ProfileMenu email={typeof email === "string" ? email : null} />;
 }
