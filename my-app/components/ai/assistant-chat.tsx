@@ -14,8 +14,10 @@ import type {
   AiAttachment,
   AiChatListItem,
   AiProviderMode,
+  AssistantMode,
   ComplianceUIMessage,
 } from "@/lib/ai/types";
+import { assistantModes } from "@/lib/ai/types";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import {
@@ -39,6 +41,7 @@ type AssistantChatProps = {
   organizationName: string;
   chats: AiChatListItem[];
   defaultProvider: AiProviderMode;
+  defaultMode: AssistantMode;
   initialMessages: ComplianceUIMessage[];
   labels: Dictionary["aiAssistant"];
 };
@@ -49,6 +52,7 @@ export function AssistantChat({
   organizationName,
   chats,
   defaultProvider,
+  defaultMode,
   initialMessages,
   labels,
 }: AssistantChatProps) {
@@ -61,6 +65,7 @@ export function AssistantChat({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] =
     useState<AiProviderMode>(defaultProvider);
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>(defaultMode);
   const transport = useMemo(
     () =>
       new DefaultChatTransport<ComplianceUIMessage>({
@@ -71,12 +76,13 @@ export function AssistantChat({
               chatId: id,
               organizationId,
               selectedProvider,
+              assistantMode,
               messages,
             },
           };
         },
       }),
-    [organizationId, selectedProvider],
+    [assistantMode, organizationId, selectedProvider],
   );
   const { messages, sendMessage, stop, regenerate, status, error } =
     useChat<ComplianceUIMessage>({
@@ -99,11 +105,12 @@ export function AssistantChat({
       {
         id: chatId,
         title: titleFromMessage(messages[0]) ?? labels.title,
+        assistantMode,
         updatedAt: new Date().toISOString(),
       },
       ...chats,
     ];
-  }, [chatId, chats, labels.title, messages]);
+  }, [assistantMode, chatId, chats, labels.title, messages]);
 
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -276,6 +283,22 @@ export function AssistantChat({
             <p className="text-sm text-muted-foreground">{organizationName}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={assistantMode}
+              onValueChange={(value) => setAssistantMode(value as AssistantMode)}
+              disabled={isBusy}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue aria-label={labels.mode} />
+              </SelectTrigger>
+              <SelectContent>
+                {assistantModes.map((mode) => (
+                  <SelectItem key={mode} value={mode}>
+                    {labels.modes[mode]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select
               value={selectedProvider}
               onValueChange={(value) =>

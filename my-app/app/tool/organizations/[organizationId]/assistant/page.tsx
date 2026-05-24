@@ -48,6 +48,7 @@ async function AssistantPageContent({
   const initialMessages = isUuid(requestedChatId)
     ? await listMessagesForChat({ chatId, organizationId: organization.id })
     : [];
+  const activeChat = chats.find((chat) => chat.id === chatId);
 
   return (
     <AssistantChat
@@ -56,6 +57,7 @@ async function AssistantPageContent({
       organizationName={organization.name}
       chats={chats}
       defaultProvider={getDefaultAiProviderMode()}
+      defaultMode={activeChat?.assistantMode ?? "general_compliance_qa"}
       initialMessages={initialMessages}
       labels={dictionary.aiAssistant}
     />

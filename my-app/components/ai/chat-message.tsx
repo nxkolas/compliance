@@ -30,6 +30,7 @@ export function ChatMessage({
   const isUser = message.role === "user";
   const citations = message.metadata?.citations ?? [];
   const attachments = message.metadata?.attachments ?? [];
+  const validationWarnings = message.metadata?.validationWarnings ?? [];
 
   return (
     <article
@@ -74,6 +75,16 @@ export function ChatMessage({
         </div>
       )}
       {!isUser && <SourceList citations={citations} labels={labels} />}
+      {!isUser && validationWarnings.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          <p className="font-medium">Validation warning</p>
+          <ul className="mt-1 list-inside list-disc">
+            {validationWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </article>
   );
 }

@@ -9,7 +9,13 @@ import type { AiProviderMode } from "./types";
 
 export function getComplianceChatModel(providerMode: AiProviderMode) {
   const modelId = getChatModelId(providerMode);
+  return getComplianceChatModelById(providerMode, modelId);
+}
 
+export function getComplianceChatModelById(
+  providerMode: AiProviderMode,
+  modelId: string,
+) {
   if (providerMode === "openai") {
     return getOpenAIProvider()(modelId);
   }
@@ -50,7 +56,7 @@ export function getComplianceEmbeddingModel(providerMode: AiProviderMode) {
   );
 }
 
-function getChatModelId(providerMode: AiProviderMode) {
+export function getChatModelId(providerMode: AiProviderMode) {
   if (providerMode === "company_hosted") {
     return requireModelEnv("COMPANY_AI_MODEL");
   }
@@ -66,6 +72,12 @@ function getChatModelId(providerMode: AiProviderMode) {
   return requireModelEnv("SELF_HOSTED_AI_MODEL");
 }
 
+export function getSmallChatModelId(providerMode: AiProviderMode) {
+  const envName = smallModelEnvName(providerMode);
+  const value = process.env[envName]?.trim();
+  return value || null;
+}
+
 function requireModelEnv(name: string) {
   const value = process.env[name]?.trim();
 
@@ -74,4 +86,20 @@ function requireModelEnv(name: string) {
   }
 
   return value;
+}
+
+function smallModelEnvName(providerMode: AiProviderMode) {
+  if (providerMode === "company_hosted") {
+    return "COMPANY_AI_SMALL_MODEL";
+  }
+
+  if (providerMode === "openai") {
+    return "OPENAI_SMALL_MODEL";
+  }
+
+  if (providerMode === "anthropic") {
+    return "ANTHROPIC_SMALL_MODEL";
+  }
+
+  return "SELF_HOSTED_AI_SMALL_MODEL";
 }

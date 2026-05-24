@@ -1,7 +1,7 @@
 import { embed, type UIMessage } from "ai";
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { db } from "@/src/db";
 import {
@@ -16,6 +16,7 @@ import type {
   AiCitation,
   AiChatListItem,
   AiProviderMode,
+  AssistantMode,
   ComplianceMessageMetadata,
   ComplianceUIMessage,
   RetrievedContextChunk,
@@ -32,11 +33,13 @@ export async function ensureAiChat({
   organizationId,
   userId,
   title,
+  assistantMode = "general_compliance_qa",
 }: {
   chatId: string;
   organizationId: string;
   userId: string;
   title?: string;
+  assistantMode?: AssistantMode;
 }) {
   const existingChat = await db.query.aiChats.findFirst({
     where: eq(aiChats.id, chatId),
@@ -45,6 +48,16 @@ export async function ensureAiChat({
   if (existingChat) {
     if (existingChat.organizationId !== organizationId) {
       throw new ApiError(404, "Chat not found");
+    }
+
+    if (existingChat.assistantMode !== assistantMode) {
+      const [updatedChat] = await db
+        .update(aiChats)
+        .set({ assistantMode, updatedAt: new Date() })
+        .where(eq(aiChats.id, chatId))
+        .returning();
+
+      return updatedChat;
     }
 
     return existingChat;
@@ -56,6 +69,7 @@ export async function ensureAiChat({
       id: chatId,
       organizationId,
       createdByUserId: userId,
+      assistantMode,
       title: titleFromText(title) ?? "Compliance assistant",
     })
     .returning();
@@ -95,6 +109,7 @@ export async function listAiChatsForOrganization({
   return chats.map((chat) => ({
     id: chat.id,
     title: chat.title,
+    assistantMode: chat.assistantMode,
     updatedAt: chat.updatedAt.toISOString(),
   }));
 }
@@ -103,10 +118,30 @@ export async function persistUIMessage({
   chatId,
   organizationId,
   message,
+  assistantMode,
+  promptName,
+  promptVersion,
+  promptHash,
+  modelProvider,
+  modelId,
+  retrievedChunkIds,
+  generatedCitationIds,
+  responseContract,
+  validationWarnings,
 }: {
   chatId: string;
   organizationId: string;
   message: ComplianceUIMessage;
+  assistantMode?: AssistantMode;
+  promptName?: string | null;
+  promptVersion?: string | null;
+  promptHash?: string | null;
+  modelProvider?: string | null;
+  modelId?: string | null;
+  retrievedChunkIds?: string[] | null;
+  generatedCitationIds?: string[] | null;
+  responseContract?: Record<string, unknown> | null;
+  validationWarnings?: string[] | null;
 }) {
   const uiMessageId = message.id.trim() || crypto.randomUUID();
 
@@ -117,6 +152,16 @@ export async function persistUIMessage({
       chatId,
       organizationId,
       role: message.role,
+      assistantMode: assistantMode ?? null,
+      promptName: promptName ?? null,
+      promptVersion: promptVersion ?? null,
+      promptHash: promptHash ?? null,
+      modelProvider: modelProvider ?? null,
+      modelId: modelId ?? null,
+      retrievedChunkIds: retrievedChunkIds ?? null,
+      generatedCitationIds: generatedCitationIds ?? null,
+      responseContract: responseContract ?? null,
+      validationWarnings: validationWarnings ?? null,
       parts: message.parts as Record<string, unknown>[],
       metadata: (message.metadata as Record<string, unknown> | undefined) ?? null,
     })
@@ -125,6 +170,16 @@ export async function persistUIMessage({
       set: {
         parts: message.parts as Record<string, unknown>[],
         metadata: (message.metadata as Record<string, unknown> | undefined) ?? null,
+        assistantMode: assistantMode ?? null,
+        promptName: promptName ?? null,
+        promptVersion: promptVersion ?? null,
+        promptHash: promptHash ?? null,
+        modelProvider: modelProvider ?? null,
+        modelId: modelId ?? null,
+        retrievedChunkIds: retrievedChunkIds ?? null,
+        generatedCitationIds: generatedCitationIds ?? null,
+        responseContract: responseContract ?? null,
+        validationWarnings: validationWarnings ?? null,
       },
     });
 
@@ -138,12 +193,14 @@ export async function retrieveContextForQuestion({
   chatId,
   organizationId,
   providerMode,
+  assistantMode,
   question,
   topK = 6,
 }: {
   chatId: string;
   organizationId: string;
   providerMode: AiProviderMode;
+  assistantMode: AssistantMode;
   question: string;
   topK?: number;
 }): Promise<RetrievedContextChunk[]> {
@@ -153,19 +210,25 @@ export async function retrieveContextForQuestion({
     return [];
   }
 
-  const hasReadyChatDocuments = await db.query.aiDocuments.findFirst({
+  const shouldSearchReferences = assistantMode !== "document_review";
+  const hasReadySearchDocuments = await db.query.aiDocuments.findFirst({
     where: and(
-      eq(aiDocuments.chatId, chatId),
-      eq(aiDocuments.organizationId, organizationId),
-      eq(aiDocuments.scope, "organization"),
       eq(aiDocuments.status, "ready"),
+      or(
+        shouldSearchReferences ? eq(aiDocuments.scope, "reference") : undefined,
+        and(
+          eq(aiDocuments.chatId, chatId),
+          eq(aiDocuments.organizationId, organizationId),
+          eq(aiDocuments.scope, "organization"),
+        ),
+      ),
     ),
     columns: {
       id: true,
     },
   });
 
-  if (!hasReadyChatDocuments) {
+  if (!hasReadySearchDocuments) {
     return [];
   }
 
@@ -525,12 +588,29 @@ function titleFromText(value: string | undefined | null) {
 }
 
 function toUIMessage(message: StoredMessage): ComplianceUIMessage {
+  const metadata = message.metadata
+    ? (message.metadata as ComplianceMessageMetadata)
+    : undefined;
+
   return {
     id: message.uiMessageId.trim() || message.id,
     role: message.role,
     parts: message.parts as ComplianceUIMessage["parts"],
-    metadata: message.metadata
-      ? (message.metadata as ComplianceMessageMetadata)
-      : undefined,
+    metadata: {
+      ...(metadata ?? {}),
+      ...(message.promptName && message.promptVersion && message.promptHash && message.assistantMode
+        ? {
+            prompt: {
+              name: message.promptName,
+              version: message.promptVersion,
+              hash: message.promptHash,
+              mode: message.assistantMode,
+            },
+          }
+        : {}),
+      ...(message.validationWarnings?.length
+        ? { validationWarnings: message.validationWarnings }
+        : {}),
+    },
   };
 }

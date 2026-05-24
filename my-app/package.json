@@ -8,7 +8,9 @@
     "db:push": "drizzle-kit push",
     "db:clear": "tsx scripts/clear-db.ts",
     "db:reset": "npm run db:push && npm run db:clear",
-    "ai:ingest-references": "tsx scripts/ingest-ai-references.ts"
+    "ai:ingest-references": "tsx scripts/ingest-ai-references.ts",
+    "test:ai": "vitest run evals",
+    "test:ai:watch": "vitest evals"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",
@@ -50,6 +52,7 @@
     "tailwindcss": "^4.3.0",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.7"
   }
 }

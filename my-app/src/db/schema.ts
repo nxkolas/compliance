@@ -105,6 +105,17 @@ export const aiDocumentStatusEnum = pgEnum("ai_document_status", [
   "failed",
 ]);
 
+export const aiAssistantModeEnum = pgEnum("ai_assistant_mode", [
+  "general_compliance_qa",
+  "nis2_gap_analysis",
+  "bsig_gap_analysis",
+  "document_review",
+  "policy_drafting",
+  "evidence_mapping",
+  "audit_preparation",
+  "implementation_checklist",
+]);
+
 const vector = customType<{
   data: number[];
   driverData: string;
@@ -569,7 +580,12 @@ export const aiChats = pgTable(
     id: uuid("id").primaryKey(),
     organizationId: uuid("organization_id").notNull(),
     createdByUserId: uuid("created_by_user_id").notNull(),
+    assistantMode: aiAssistantModeEnum("assistant_mode")
+      .default("general_compliance_qa")
+      .notNull(),
+    lastSummaryId: uuid("last_summary_id"),
     title: varchar("title", { length: 255 }).default("Compliance assistant").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -596,6 +612,16 @@ export const aiMessages = pgTable(
     chatId: uuid("chat_id").notNull(),
     organizationId: uuid("organization_id").notNull(),
     role: aiMessageRoleEnum("role").notNull(),
+    assistantMode: aiAssistantModeEnum("assistant_mode"),
+    promptName: varchar("prompt_name", { length: 120 }),
+    promptVersion: varchar("prompt_version", { length: 64 }),
+    promptHash: varchar("prompt_hash", { length: 64 }),
+    modelProvider: varchar("model_provider", { length: 64 }),
+    modelId: varchar("model_id", { length: 255 }),
+    retrievedChunkIds: jsonb("retrieved_chunk_ids").$type<string[]>(),
+    generatedCitationIds: jsonb("generated_citation_ids").$type<string[]>(),
+    responseContract: jsonb("response_contract").$type<Record<string, unknown>>(),
+    validationWarnings: jsonb("validation_warnings").$type<string[]>(),
     parts: jsonb("parts").$type<Record<string, unknown>[]>().notNull(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -706,6 +732,68 @@ export const aiDocumentChunks = pgTable(
     index("ai_document_chunks_chat_idx").on(table.chatId),
     index("ai_document_chunks_ui_message_idx").on(table.uiMessageId),
     index("ai_document_chunks_scope_idx").on(table.scope),
+  ],
+);
+
+export const aiPromptVersions = pgTable(
+  "ai_prompt_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    promptName: varchar("prompt_name", { length: 120 }).notNull(),
+    promptVersion: varchar("prompt_version", { length: 64 }).notNull(),
+    promptHash: varchar("prompt_hash", { length: 64 }).notNull(),
+    assistantMode: aiAssistantModeEnum("assistant_mode").notNull(),
+    template: text("template").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ai_prompt_versions_name_version_unique").on(
+      table.promptName,
+      table.promptVersion,
+    ),
+    index("ai_prompt_versions_mode_idx").on(table.assistantMode),
+    index("ai_prompt_versions_hash_idx").on(table.promptHash),
+  ],
+);
+
+export const aiChatSummaries = pgTable(
+  "ai_chat_summaries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chatId: uuid("chat_id").notNull(),
+    organizationId: uuid("organization_id").notNull(),
+    summary: text("summary").notNull(),
+    coveredMessageCount: integer("covered_message_count").notNull(),
+    lastCoveredMessageId: uuid("last_covered_message_id"),
+    modelProvider: varchar("model_provider", { length: 64 }),
+    modelId: varchar("model_id", { length: 255 }),
+    promptName: varchar("prompt_name", { length: 120 }),
+    promptVersion: varchar("prompt_version", { length: 64 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "ai_chat_summaries_chat_fk",
+      columns: [table.chatId],
+      foreignColumns: [aiChats.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_chat_summaries_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_chat_summaries_last_message_fk",
+      columns: [table.lastCoveredMessageId],
+      foreignColumns: [aiMessages.id],
+    }).onDelete("set null"),
+    index("ai_chat_summaries_chat_idx").on(table.chatId),
+    index("ai_chat_summaries_org_idx").on(table.organizationId),
   ],
 );
 
@@ -878,6 +966,7 @@ export const aiChatsRelations = relations(aiChats, ({ many, one }) => ({
   }),
   messages: many(aiMessages),
   documents: many(aiDocuments),
+  summaries: many(aiChatSummaries),
 }));
 
 export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
@@ -890,6 +979,8 @@ export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
     references: [organizations.id],
   }),
 }));
+
+export const aiPromptVersionsRelations = relations(aiPromptVersions, () => ({}));
 
 export const aiDocumentsRelations = relations(aiDocuments, ({ many, one }) => ({
   organization: one(organizations, {
@@ -917,6 +1008,24 @@ export const aiDocumentChunksRelations = relations(
     chat: one(aiChats, {
       fields: [aiDocumentChunks.chatId],
       references: [aiChats.id],
+    }),
+  }),
+);
+
+export const aiChatSummariesRelations = relations(
+  aiChatSummaries,
+  ({ one }) => ({
+    chat: one(aiChats, {
+      fields: [aiChatSummaries.chatId],
+      references: [aiChats.id],
+    }),
+    organization: one(organizations, {
+      fields: [aiChatSummaries.organizationId],
+      references: [organizations.id],
+    }),
+    lastCoveredMessage: one(aiMessages, {
+      fields: [aiChatSummaries.lastCoveredMessageId],
+      references: [aiMessages.id],
     }),
   }),
 );
