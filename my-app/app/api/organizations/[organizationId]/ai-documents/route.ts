@@ -4,6 +4,7 @@ import {
   ingestAiDocument,
   listChatAiDocuments,
 } from "@/lib/ai/rag";
+import { aiProviderModes } from "@/lib/ai/types";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError, getErrorResponse } from "@/src/server/api/errors";
 import { parseInput } from "@/src/server/api/request";
@@ -83,6 +84,11 @@ export async function POST(request: Request, context: RouteContext) {
       "Invalid chatId",
     );
     const messageId = parseOptionalString(formData.get("messageId"));
+    const selectedProvider = parseInput(
+      z.enum(aiProviderModes),
+      formData.get("selectedProvider"),
+      "Invalid selectedProvider",
+    );
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
@@ -120,6 +126,7 @@ export async function POST(request: Request, context: RouteContext) {
     const document = await ingestAiDocument({
       chatId,
       uiMessageId: messageId,
+      providerMode: selectedProvider,
       organizationId: parsedOrganizationId,
       userId: user.id,
       title: file.name,

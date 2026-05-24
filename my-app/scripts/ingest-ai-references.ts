@@ -6,6 +6,7 @@ import path from "node:path";
 import { db } from "@/src/db";
 import { aiDocuments } from "@/src/db/schema";
 import { ingestAiDocument } from "@/lib/ai/rag";
+import { getDefaultAiProviderMode } from "@/lib/ai/providers";
 
 type ReferenceFile = {
   body: string;
@@ -21,6 +22,7 @@ type ReferenceFile = {
 const referenceDir = path.join(process.cwd(), "docs", "ai-references");
 
 async function main() {
+  const providerMode = getDefaultAiProviderMode();
   const entries = await readdir(referenceDir, { withFileTypes: true });
   const files = entries
     .filter((entry) => entry.isFile())
@@ -40,6 +42,7 @@ async function main() {
       .where(eq(aiDocuments.sourceUrl, parsed.metadata.sourceUrl));
 
     const document = await ingestAiDocument({
+      providerMode,
       title: parsed.metadata.title,
       sourceUrl: parsed.metadata.sourceUrl,
       text: parsed.body,

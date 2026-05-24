@@ -169,6 +169,7 @@ export function AssistantChat({
     formData.append("file", file);
     formData.append("chatId", chatId);
     formData.append("messageId", messageId);
+    formData.append("selectedProvider", selectedProvider);
 
     const response = await fetch(
       `/api/organizations/${organizationId}/ai-documents`,

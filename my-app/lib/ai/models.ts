@@ -1,13 +1,8 @@
-import { customProvider } from "ai";
 import { ApiError } from "@/src/server/api/errors";
 import {
-  getChatModelName,
   getAnthropicProvider,
   getCompanyHostedChatProvider,
-  getEmbeddingModelName,
-  getEmbeddingProvider,
   getOpenAIProvider,
-  getSmallChatModelName,
   getSelfHostedChatProvider,
 } from "./providers";
 import type { AiProviderMode } from "./types";
@@ -30,24 +25,29 @@ export function getComplianceChatModel(providerMode: AiProviderMode) {
   return getCompanyHostedChatProvider()(modelId);
 }
 
-export function getComplianceTitleModel() {
-  return getCompanyHostedChatProvider()(getSmallChatModelName());
-}
+export function getComplianceEmbeddingModel(providerMode: AiProviderMode) {
+  if (providerMode === "openai") {
+    return getOpenAIProvider().embeddingModel(
+      requireModelEnv("OPENAI_EMBEDDING_MODEL"),
+    );
+  }
 
-export function getComplianceEmbeddingModel() {
-  return getEmbeddingProvider().embeddingModel(getEmbeddingModelName());
-}
+  if (providerMode === "anthropic") {
+    throw new ApiError(
+      400,
+      "Anthropic does not provide embeddings in this app. Choose a provider with an embedding model for document RAG.",
+    );
+  }
 
-export function getComplianceProvider() {
-  const chatProvider = getCompanyHostedChatProvider();
+  if (providerMode === "self_hosted") {
+    return getSelfHostedChatProvider().embeddingModel(
+      requireModelEnv("SELF_HOSTED_AI_EMBEDDING_MODEL"),
+    );
+  }
 
-  return customProvider({
-    languageModels: {
-      "chat-model": chatProvider(getChatModelName()),
-      "title-model": chatProvider(getSmallChatModelName()),
-      "artifact-model": chatProvider(getChatModelName()),
-    },
-  });
+  return getCompanyHostedChatProvider().embeddingModel(
+    requireModelEnv("COMPANY_AI_EMBEDDING_MODEL"),
+  );
 }
 
 function getChatModelId(providerMode: AiProviderMode) {

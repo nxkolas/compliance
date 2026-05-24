@@ -38,22 +38,6 @@ function requireAbsoluteUrl(name: string) {
   }
 }
 
-export function getChatModelName() {
-  return requireEnv("AI_CHAT_MODEL");
-}
-
-export function getSmallChatModelName() {
-  return process.env.AI_CHAT_SMALL_MODEL ?? getChatModelName();
-}
-
-export function getEmbeddingModelName() {
-  return requireEnv("AI_EMBEDDING_MODEL");
-}
-
-export function getEmbeddingDimensions() {
-  return Number(process.env.AI_EMBEDDING_DIM ?? 1536);
-}
-
 export function getDefaultAiProviderMode(): AiProviderMode {
   const configuredDefault = optionalEnv("AI_DEFAULT_PROVIDER");
 
@@ -62,14 +46,6 @@ export function getDefaultAiProviderMode(): AiProviderMode {
   }
 
   return "openai";
-}
-
-export function getChatProvider() {
-  return createOpenAICompatible({
-    name: "compliance-chat",
-    baseURL: requireAbsoluteUrl("AI_CHAT_BASE_URL"),
-    apiKey: requireEnv("AI_CHAT_API_KEY"),
-  });
 }
 
 export function getOpenAIProvider() {
@@ -97,14 +73,6 @@ export function getCompanyHostedChatProvider() {
     name: "company-hosted",
     baseURL: requireAbsoluteUrl("COMPANY_AI_BASE_URL"),
     apiKey: requireEnv("COMPANY_AI_API_KEY"),
-  });
-}
-
-export function getEmbeddingProvider() {
-  return createOpenAICompatible({
-    name: "compliance-embeddings",
-    baseURL: requireAbsoluteUrl("AI_EMBEDDING_BASE_URL"),
-    apiKey: requireEnv("AI_EMBEDDING_API_KEY"),
   });
 }
 

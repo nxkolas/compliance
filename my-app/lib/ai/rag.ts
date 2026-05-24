@@ -15,6 +15,7 @@ import { getComplianceEmbeddingModel } from "./models";
 import type {
   AiCitation,
   AiChatListItem,
+  AiProviderMode,
   ComplianceMessageMetadata,
   ComplianceUIMessage,
   RetrievedContextChunk,
@@ -134,11 +135,13 @@ export async function persistUIMessage({
 export async function retrieveContextForQuestion({
   chatId,
   organizationId,
+  providerMode,
   question,
   topK = 6,
 }: {
   chatId: string;
   organizationId: string;
+  providerMode: AiProviderMode;
   question: string;
   topK?: number;
 }): Promise<RetrievedContextChunk[]> {
@@ -164,7 +167,7 @@ export async function retrieveContextForQuestion({
     return [];
   }
 
-  const embedding = await embedText(trimmedQuestion);
+  const embedding = await embedText(trimmedQuestion, providerMode);
   const queryVector = sql.raw(formatVectorLiteral(embedding));
 
   const rows = await db.execute<{
@@ -259,6 +262,7 @@ export async function listChatAiDocuments({
 export async function ingestAiDocument({
   chatId,
   uiMessageId,
+  providerMode,
   organizationId,
   userId,
   title,
@@ -272,6 +276,7 @@ export async function ingestAiDocument({
 }: {
   chatId?: string | null;
   uiMessageId?: string | null;
+  providerMode: AiProviderMode;
   organizationId?: string | null;
   userId?: string | null;
   title: string;
@@ -332,7 +337,7 @@ export async function ingestAiDocument({
         chunkIndex: index,
         content: chunk,
         tokenEstimate: estimateTokens(chunk),
-        embedding: await embedText(chunk),
+        embedding: await embedText(chunk, providerMode),
         metadata: { title, sourceUrl, storagePath },
       });
     }
@@ -387,9 +392,9 @@ export function createUserMessage(text: string): ComplianceUIMessage {
   };
 }
 
-async function embedText(value: string) {
+async function embedText(value: string, providerMode: AiProviderMode) {
   const result = await embed({
-    model: getComplianceEmbeddingModel(),
+    model: getComplianceEmbeddingModel(providerMode),
     value,
   });
 

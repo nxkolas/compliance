@@ -79,6 +79,7 @@ export async function POST(request: Request) {
     const retrievedContext = await retrieveContextForQuestion({
       chatId: body.chatId,
       organizationId,
+      providerMode: body.selectedProvider,
       question: latestQuestion,
     });
     const citations = citationsFromContext(retrievedContext);
