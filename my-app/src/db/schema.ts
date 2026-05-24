@@ -14,6 +14,7 @@ import {
   uniqueIndex,
   uuid,
   varchar,
+  customType,
 } from "drizzle-orm/pg-core";
 
 export const organizationRoleEnum = pgEnum("organization_role", [
@@ -86,6 +87,43 @@ export const taskStatusEnum = pgEnum("task_status", [
   "blocked",
   "not_applicable",
 ]);
+
+export const aiMessageRoleEnum = pgEnum("ai_message_role", [
+  "system",
+  "user",
+  "assistant",
+]);
+
+export const aiDocumentScopeEnum = pgEnum("ai_document_scope", [
+  "organization",
+  "reference",
+]);
+
+export const aiDocumentStatusEnum = pgEnum("ai_document_status", [
+  "processing",
+  "ready",
+  "failed",
+]);
+
+const vector = customType<{
+  data: number[];
+  driverData: string;
+  config: { dimensions: number };
+}>({
+  dataType(config) {
+    return `vector(${config?.dimensions ?? 1536})`;
+  },
+  toDriver(value) {
+    return `[${value.join(",")}]`;
+  },
+  fromDriver(value) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .filter(Boolean)
+      .map(Number);
+  },
+});
 
 export const organizations = pgTable(
   "organizations",
@@ -525,6 +563,134 @@ export const managementTrainings = pgTable(
   ],
 );
 
+export const aiChats = pgTable(
+  "ai_chats",
+  {
+    id: uuid("id").primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    createdByUserId: uuid("created_by_user_id").notNull(),
+    title: varchar("title", { length: 255 }).default("Compliance assistant").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "ai_chats_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    index("ai_chats_org_idx").on(table.organizationId),
+    index("ai_chats_created_by_idx").on(table.createdByUserId),
+  ],
+);
+
+export const aiMessages = pgTable(
+  "ai_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    uiMessageId: varchar("ui_message_id", { length: 128 }).notNull(),
+    chatId: uuid("chat_id").notNull(),
+    organizationId: uuid("organization_id").notNull(),
+    role: aiMessageRoleEnum("role").notNull(),
+    parts: jsonb("parts").$type<Record<string, unknown>[]>().notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "ai_messages_chat_fk",
+      columns: [table.chatId],
+      foreignColumns: [aiChats.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_messages_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    index("ai_messages_chat_idx").on(table.chatId),
+    index("ai_messages_org_idx").on(table.organizationId),
+    uniqueIndex("ai_messages_chat_ui_message_unique").on(
+      table.chatId,
+      table.uiMessageId,
+    ),
+  ],
+);
+
+export const aiDocuments = pgTable(
+  "ai_documents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id"),
+    scope: aiDocumentScopeEnum("scope").notNull(),
+    status: aiDocumentStatusEnum("status").default("processing").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    sourceUrl: text("source_url"),
+    storagePath: text("storage_path"),
+    mimeType: varchar("mime_type", { length: 120 }),
+    checksum: varchar("checksum", { length: 64 }),
+    errorMessage: text("error_message"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdByUserId: uuid("created_by_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "ai_documents_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    index("ai_documents_org_idx").on(table.organizationId),
+    index("ai_documents_scope_idx").on(table.scope),
+    index("ai_documents_status_idx").on(table.status),
+  ],
+);
+
+export const aiDocumentChunks = pgTable(
+  "ai_document_chunks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentId: uuid("document_id").notNull(),
+    organizationId: uuid("organization_id"),
+    scope: aiDocumentScopeEnum("scope").notNull(),
+    chunkIndex: integer("chunk_index").notNull(),
+    content: text("content").notNull(),
+    tokenEstimate: integer("token_estimate").notNull(),
+    embedding: vector("embedding", {
+      dimensions: Number(process.env.AI_EMBEDDING_DIM ?? 1536),
+    }).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "ai_document_chunks_document_fk",
+      columns: [table.documentId],
+      foreignColumns: [aiDocuments.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_document_chunks_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    index("ai_document_chunks_document_idx").on(table.documentId),
+    index("ai_document_chunks_org_idx").on(table.organizationId),
+    index("ai_document_chunks_scope_idx").on(table.scope),
+  ],
+);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   members: many(organizationMembers),
   invitations: many(organizationInvitations),
@@ -535,6 +701,8 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   registrationTasks: many(registrationTasks),
   securityIncidents: many(securityIncidents),
   managementTrainings: many(managementTrainings),
+  aiChats: many(aiChats),
+  aiDocuments: many(aiDocuments),
 }));
 
 export const organizationMembersRelations = relations(
@@ -680,6 +848,47 @@ export const managementTrainingsRelations = relations(
   ({ one }) => ({
     organization: one(organizations, {
       fields: [managementTrainings.organizationId],
+      references: [organizations.id],
+    }),
+  }),
+);
+
+export const aiChatsRelations = relations(aiChats, ({ many, one }) => ({
+  organization: one(organizations, {
+    fields: [aiChats.organizationId],
+    references: [organizations.id],
+  }),
+  messages: many(aiMessages),
+}));
+
+export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
+  chat: one(aiChats, {
+    fields: [aiMessages.chatId],
+    references: [aiChats.id],
+  }),
+  organization: one(organizations, {
+    fields: [aiMessages.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const aiDocumentsRelations = relations(aiDocuments, ({ many, one }) => ({
+  organization: one(organizations, {
+    fields: [aiDocuments.organizationId],
+    references: [organizations.id],
+  }),
+  chunks: many(aiDocumentChunks),
+}));
+
+export const aiDocumentChunksRelations = relations(
+  aiDocumentChunks,
+  ({ one }) => ({
+    document: one(aiDocuments, {
+      fields: [aiDocumentChunks.documentId],
+      references: [aiDocuments.id],
+    }),
+    organization: one(organizations, {
+      fields: [aiDocumentChunks.organizationId],
       references: [organizations.id],
     }),
   }),

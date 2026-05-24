@@ -9,6 +9,7 @@ import {
 import type { Dictionary } from "@/lib/i18n";
 import {
   Building2,
+  Bot,
   ClipboardCheck,
   FileCheck2,
   Inbox,
@@ -61,6 +62,11 @@ export function AppSidebarNav({
           href: `/tool/organizations/${organizationId}/risk-management`,
           label: labels.riskManagement,
           icon: ShieldCheck,
+        },
+        {
+          href: `/tool/organizations/${organizationId}/assistant`,
+          label: labels.assistant,
+          icon: Bot,
         },
         {
           href: `/tool/organizations/${organizationId}/suppliers`,

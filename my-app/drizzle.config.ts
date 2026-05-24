@@ -13,6 +13,10 @@ export default defineConfig({
   dialect: 'postgresql',
   schemaFilter: 'public',
   tablesFilter: [
+    'ai_chats',
+    'ai_document_chunks',
+    'ai_documents',
+    'ai_messages',
     'assessment_lex_specialis_matches',
     'incident_reports',
     'lex_specialis_rules',

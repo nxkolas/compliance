@@ -103,6 +103,7 @@ const dictionaries = {
     },
     sidebar: {
       assessment: "Bewertung",
+      assistant: "Assistent",
       general: "Allgemein",
       inbox: "Postfach",
       organizations: "Organisationen",
@@ -116,6 +117,25 @@ const dictionaries = {
       suppliers: "Lieferanten",
       team: "Team",
       workspace: "Arbeitsbereich",
+    },
+    aiAssistant: {
+      title: "Assistent",
+      assistant: "Assistent",
+      you: "Du",
+      emptyTitle: "NIS2- oder BSIG-Frage stellen",
+      emptyDescription:
+        "Der Assistent nutzt Organisationsdaten, hochgeladene Nachweise und kuratierte Referenzen.",
+      placeholder: "Frage zu Betroffenheit, Pflichten, Nachweisen oder Massnahmen...",
+      retry: "Erneut versuchen",
+      stop: "Stoppen",
+      sources: "Quellen",
+      documents: "Dokumente",
+      upload: "Dokument hochladen",
+      refresh: "Aktualisieren",
+      noDocuments: "Noch keine Dokumente indexiert.",
+      processing: "Wird verarbeitet",
+      ready: "Bereit",
+      failed: "Fehlgeschlagen",
     },
     organizations: {
       createFirst:
@@ -400,6 +420,7 @@ const dictionaries = {
     },
     sidebar: {
       assessment: "Assessment",
+      assistant: "Assistant",
       general: "General",
       inbox: "Inbox",
       organizations: "Organizations",
@@ -413,6 +434,25 @@ const dictionaries = {
       suppliers: "Suppliers",
       team: "Team",
       workspace: "Workspace",
+    },
+    aiAssistant: {
+      title: "Assistant",
+      assistant: "Assistant",
+      you: "You",
+      emptyTitle: "Ask a NIS2 or BSIG question",
+      emptyDescription:
+        "The assistant uses organization data, uploaded evidence, and curated references.",
+      placeholder: "Ask about scope, duties, evidence, or measures...",
+      retry: "Retry",
+      stop: "Stop",
+      sources: "Sources",
+      documents: "Documents",
+      upload: "Upload document",
+      refresh: "Refresh",
+      noDocuments: "No indexed documents yet.",
+      processing: "Processing",
+      ready: "Ready",
+      failed: "Failed",
     },
     organizations: {
       createFirst:
