@@ -27,7 +27,7 @@ const chatRequestSchema = z.object({
   selectedProvider: z.enum(aiProviderModes),
   messages: z.array(
     z.object({
-      id: z.string().min(1),
+      id: z.string(),
       role: z.enum(["system", "user", "assistant"]),
       parts: z.array(z.record(z.string(), z.unknown())),
       metadata: z.record(z.string(), z.unknown()).optional(),
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       throw new ApiError(404, "Organization not found");
     }
 
-    const messages = body.messages as ComplianceUIMessage[];
+    const messages = normalizeMessageIds(body.messages as ComplianceUIMessage[]);
     const latestQuestion = latestUserText(messages as UIMessage[]);
 
     if (!latestQuestion) {
@@ -95,6 +95,7 @@ export async function POST(request: Request) {
 
     return result.toUIMessageStreamResponse<ComplianceUIMessage>({
       originalMessages: messages,
+      generateMessageId: () => crypto.randomUUID(),
       messageMetadata({ part }) {
         if (part.type === "finish" && citations.length > 0) {
           return { citations };
@@ -131,4 +132,15 @@ export async function POST(request: Request) {
     const response = getErrorResponse(error);
     return NextResponse.json(response.body, { status: response.status });
   }
+}
+
+function normalizeMessageIds(messages: ComplianceUIMessage[]) {
+  return messages.map((message) =>
+    message.id.trim()
+      ? message
+      : {
+          ...message,
+          id: crypto.randomUUID(),
+        },
+  );
 }

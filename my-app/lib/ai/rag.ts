@@ -108,10 +108,12 @@ export async function persistUIMessage({
   organizationId: string;
   message: ComplianceUIMessage;
 }) {
+  const uiMessageId = message.id.trim() || crypto.randomUUID();
+
   await db
     .insert(aiMessages)
     .values({
-      uiMessageId: message.id,
+      uiMessageId,
       chatId,
       organizationId,
       role: message.role,
@@ -524,7 +526,7 @@ function titleFromText(value: string | undefined | null) {
 
 function toUIMessage(message: StoredMessage): ComplianceUIMessage {
   return {
-    id: message.uiMessageId,
+    id: message.uiMessageId.trim() || message.id,
     role: message.role,
     parts: message.parts as ComplianceUIMessage["parts"],
     metadata: message.metadata
