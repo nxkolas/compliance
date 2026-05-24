@@ -14,6 +14,7 @@ import {
   retrieveContextForQuestion,
 } from "@/lib/ai/rag";
 import type { ComplianceUIMessage } from "@/lib/ai/types";
+import { aiProviderModes } from "@/lib/ai/types";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError, getErrorResponse } from "@/src/server/api/errors";
 import { parseInput, readJsonBody } from "@/src/server/api/request";
@@ -23,6 +24,7 @@ import { NextResponse } from "next/server";
 const chatRequestSchema = z.object({
   chatId: z.uuid(),
   organizationId: z.uuid(),
+  selectedProvider: z.enum(aiProviderModes).default("company_hosted"),
   messages: z.array(
     z.object({
       id: z.string().min(1),
@@ -80,7 +82,7 @@ export async function POST(request: Request) {
     });
     const citations = citationsFromContext(retrievedContext);
     const result = streamText({
-      model: getComplianceChatModel(),
+      model: getComplianceChatModel(body.selectedProvider),
       system: buildComplianceSystemPrompt({
         organization,
         retrievedContext,

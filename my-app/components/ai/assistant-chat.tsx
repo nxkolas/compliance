@@ -3,8 +3,18 @@
 import { ChatMessage } from "@/components/ai/chat-message";
 import { DocumentUploadPanel } from "@/components/ai/document-upload-panel";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Dictionary, Locale } from "@/lib/i18n";
-import type { ComplianceUIMessage } from "@/lib/ai/types";
+import type {
+  AiProviderMode,
+  ComplianceUIMessage,
+} from "@/lib/ai/types";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Bot, RefreshCw, Send, Square } from "lucide-react";
@@ -27,6 +37,8 @@ export function AssistantChat({
   labels,
 }: AssistantChatProps) {
   const [input, setInput] = useState("");
+  const [selectedProvider, setSelectedProvider] =
+    useState<AiProviderMode>("company_hosted");
   const transport = useMemo(
     () =>
       new DefaultChatTransport<ComplianceUIMessage>({
@@ -36,12 +48,13 @@ export function AssistantChat({
             body: {
               chatId: id,
               organizationId,
+              selectedProvider,
               messages,
             },
           };
         },
       }),
-    [organizationId],
+    [organizationId, selectedProvider],
   );
   const { messages, sendMessage, stop, regenerate, status, error } =
     useChat<ComplianceUIMessage>({
@@ -66,21 +79,46 @@ export function AssistantChat({
   return (
     <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex min-h-[calc(100vh-8rem)] flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
           <div>
             <h1 className="text-3xl font-bold">{labels.title}</h1>
             <p className="text-sm text-muted-foreground">{organizationName}</p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => void regenerate()}
-            disabled={messages.length === 0 || isStreaming}
-            title={labels.retry}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={selectedProvider}
+              onValueChange={(value) =>
+                setSelectedProvider(value as AiProviderMode)
+              }
+              disabled={isStreaming}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue aria-label={labels.provider} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="company_hosted">
+                  {labels.providers.companyHosted}
+                </SelectItem>
+                <SelectItem value="openai">{labels.providers.openai}</SelectItem>
+                <SelectItem value="anthropic">
+                  {labels.providers.anthropic}
+                </SelectItem>
+                <SelectItem value="self_hosted">
+                  {labels.providers.selfHosted}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => void regenerate()}
+              disabled={messages.length === 0 || isStreaming}
+              title={labels.retry}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-1 flex-col gap-4 rounded-lg border bg-muted/20 p-4">

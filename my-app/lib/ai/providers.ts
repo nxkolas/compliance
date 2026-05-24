@@ -1,4 +1,6 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
 import { ApiError } from "@/src/server/api/errors";
 
 function requireEnv(name: string) {
@@ -32,6 +34,34 @@ export function getChatProvider() {
     name: "compliance-chat",
     baseURL: requireEnv("AI_CHAT_BASE_URL"),
     apiKey: requireEnv("AI_CHAT_API_KEY"),
+  });
+}
+
+export function getOpenAIProvider() {
+  return createOpenAI({
+    apiKey: requireEnv("OPENAI_API_KEY"),
+  });
+}
+
+export function getAnthropicProvider() {
+  return createAnthropic({
+    apiKey: requireEnv("ANTHROPIC_API_KEY"),
+  });
+}
+
+export function getSelfHostedChatProvider() {
+  return createOpenAICompatible({
+    name: "self-hosted",
+    baseURL: requireEnv("SELF_HOSTED_AI_BASE_URL"),
+    apiKey: requireEnv("SELF_HOSTED_AI_API_KEY"),
+  });
+}
+
+export function getCompanyHostedChatProvider() {
+  return createOpenAICompatible({
+    name: "company-hosted",
+    baseURL: process.env.COMPANY_AI_BASE_URL ?? requireEnv("AI_CHAT_BASE_URL"),
+    apiKey: process.env.COMPANY_AI_API_KEY ?? requireEnv("AI_CHAT_API_KEY"),
   });
 }
 
