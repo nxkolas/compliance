@@ -4,8 +4,8 @@ import { aiPromptVersions } from "@/src/db/schema";
 import type { BuiltCompliancePrompt } from "./prompt-builder";
 
 /**
- * Upserts the exact prompt template/version used for an answer. This gives
- * saved assistant messages an auditable prompt hash and version target.
+ * Upserts the stable prompt template/version used for an answer. Rendered
+ * tenant data stays on the per-message prompt hash, not in this global row.
  */
 export async function ensurePromptVersion(prompt: BuiltCompliancePrompt) {
   await db
@@ -13,9 +13,9 @@ export async function ensurePromptVersion(prompt: BuiltCompliancePrompt) {
     .values({
       promptName: prompt.promptName,
       promptVersion: prompt.promptVersion,
-      promptHash: prompt.promptHash,
+      promptHash: prompt.promptTemplateHash,
       assistantMode: prompt.mode,
-      template: prompt.system,
+      template: prompt.promptTemplate,
       metadata: {
         temperature: prompt.temperature,
         maxOutputTokens: prompt.maxOutputTokens,
@@ -24,8 +24,8 @@ export async function ensurePromptVersion(prompt: BuiltCompliancePrompt) {
     .onConflictDoUpdate({
       target: [aiPromptVersions.promptName, aiPromptVersions.promptVersion],
       set: {
-        promptHash: prompt.promptHash,
-        template: prompt.system,
+        promptHash: prompt.promptTemplateHash,
+        template: prompt.promptTemplate,
         metadata: {
           temperature: prompt.temperature,
           maxOutputTokens: prompt.maxOutputTokens,

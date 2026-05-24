@@ -229,6 +229,24 @@ export async function retrieveContextForQuestion({
   }
 
   const shouldSearchReferences = assistantMode !== "document_review";
+  const searchScopeSql = shouldSearchReferences
+    ? sql`
+        (
+          ${aiDocumentChunks.scope} = 'reference'
+          or (
+            ${aiDocumentChunks.scope} = 'organization'
+            and ${aiDocumentChunks.organizationId} = ${organizationId}
+            and ${aiDocumentChunks.chatId} = ${chatId}
+          )
+        )
+      `
+    : sql`
+        (
+          ${aiDocumentChunks.scope} = 'organization'
+          and ${aiDocumentChunks.organizationId} = ${organizationId}
+          and ${aiDocumentChunks.chatId} = ${chatId}
+        )
+      `;
   const hasReadySearchDocuments = await db.query.aiDocuments.findFirst({
     where: and(
       eq(aiDocuments.status, "ready"),
@@ -276,14 +294,7 @@ export async function retrieveContextForQuestion({
     inner join ${aiDocuments}
       on ${aiDocuments.id} = ${aiDocumentChunks.documentId}
     where ${aiDocuments.status} = 'ready'
-      and (
-        ${aiDocumentChunks.scope} = 'reference'
-        or (
-          ${aiDocumentChunks.scope} = 'organization'
-          and ${aiDocumentChunks.organizationId} = ${organizationId}
-          and ${aiDocumentChunks.chatId} = ${chatId}
-        )
-      )
+      and ${searchScopeSql}
     order by ${aiDocumentChunks.embedding} <=> ${queryVector}::vector
     limit ${topK}
   `);

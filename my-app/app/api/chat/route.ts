@@ -37,7 +37,7 @@ const chatRequestSchema = z.object({
   messages: z.array(
     z.object({
       id: z.string(),
-      role: z.enum(["system", "user", "assistant"]),
+      role: z.enum(["user", "assistant"]),
       parts: z.array(z.record(z.string(), z.unknown())),
       metadata: z.record(z.string(), z.unknown()).optional(),
     }),

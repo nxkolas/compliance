@@ -1,6 +1,5 @@
 import { ApiError } from "@/src/server/api/errors";
 import {
-  getAnthropicProvider,
   getCompanyHostedChatProvider,
   getOpenAIProvider,
   getSelfHostedChatProvider,
@@ -28,10 +27,6 @@ export function getComplianceChatModelById(
     return getOpenAIProvider()(modelId);
   }
 
-  if (providerMode === "anthropic") {
-    return getAnthropicProvider()(modelId);
-  }
-
   if (providerMode === "self_hosted") {
     return getSelfHostedChatProvider()(modelId);
   }
@@ -47,13 +42,6 @@ export function getComplianceEmbeddingModel(providerMode: AiProviderMode) {
   if (providerMode === "openai") {
     return getOpenAIProvider().embeddingModel(
       requireModelEnv("OPENAI_EMBEDDING_MODEL"),
-    );
-  }
-
-  if (providerMode === "anthropic") {
-    throw new ApiError(
-      400,
-      "Anthropic does not provide embeddings in this app. Choose a provider with an embedding model for document RAG.",
     );
   }
 
@@ -79,10 +67,6 @@ export function getChatModelId(providerMode: AiProviderMode) {
 
   if (providerMode === "openai") {
     return requireModelEnv("OPENAI_MODEL");
-  }
-
-  if (providerMode === "anthropic") {
-    return requireModelEnv("ANTHROPIC_MODEL");
   }
 
   return requireModelEnv("SELF_HOSTED_AI_MODEL");
@@ -123,10 +107,6 @@ function smallModelEnvName(providerMode: AiProviderMode) {
 
   if (providerMode === "openai") {
     return "OPENAI_SMALL_MODEL";
-  }
-
-  if (providerMode === "anthropic") {
-    return "ANTHROPIC_SMALL_MODEL";
   }
 
   return "SELF_HOSTED_AI_SMALL_MODEL";

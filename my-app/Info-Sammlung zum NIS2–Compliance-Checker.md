@@ -104,8 +104,8 @@ Software-Entwickler sollten folgende funktionale Anforderungen in digitale Compl
 
 # Technische Sicht: 
 
-**Option 1: Claude API direkt (empfohlen)**  
-Ihr nutzt einfach die Claude API mit eigenem System-Prompt, der auf NIS2/BSIG zugeschnitten ist. Das ist genau das, was das Legal Plugin intern auch macht — nur eben für Vertragsrecht. Für euer Projekt schreibt ihr einen System-Prompt der z.B. sagt: "Du bist ein NIS2-Compliance-Experte, analysiere das hochgeladene Dokument und prüfe folgende Anforderungen..." Das ist technisch einfacher und vollständig kontrollierbar.
+**Option 1: Modell-API direkt (empfohlen)**  
+Ihr nutzt eine konfigurierte Modell-API mit eigenem System-Prompt, der auf NIS2/BSIG zugeschnitten ist. Das ist genau das, was das Legal Plugin intern auch macht — nur eben für Vertragsrecht. Für euer Projekt schreibt ihr einen System-Prompt der z.B. sagt: "Du bist ein NIS2-Compliance-Experte, analysiere das hochgeladene Dokument und prüfe folgende Anforderungen..." Das ist technisch einfacher und vollständig kontrollierbar.
 
 **Option 2: Die GitHub-Prompts als Inspiration nutzen**  
 Da die Prompts und Workflow-Maps des Legal Plugins öffentlich auf GitHub verfügbar sind Reed Smith, könnt ihr deren Struktur als Vorlage nehmen und auf NIS2 anpassen — ohne das Plugin selbst zu verwenden.

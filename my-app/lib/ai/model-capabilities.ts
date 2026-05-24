@@ -18,14 +18,6 @@ const defaults: Record<AiProviderMode, ModelCapabilityProfile> = {
     recommendedTemperature: 0.2,
     citationReliability: "high",
   },
-  anthropic: {
-    supportsStreaming: true,
-    supportsStructuredOutputs: false,
-    supportsToolCalls: true,
-    maxContextTokens: 200000,
-    recommendedTemperature: 0.2,
-    citationReliability: "high",
-  },
   company_hosted: {
     supportsStreaming: true,
     supportsStructuredOutputs: false,

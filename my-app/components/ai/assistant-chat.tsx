@@ -314,9 +314,6 @@ export function AssistantChat({
                   {labels.providers.companyHosted}
                 </SelectItem>
                 <SelectItem value="openai">{labels.providers.openai}</SelectItem>
-                <SelectItem value="anthropic">
-                  {labels.providers.anthropic}
-                </SelectItem>
                 <SelectItem value="self_hosted">
                   {labels.providers.selfHosted}
                 </SelectItem>

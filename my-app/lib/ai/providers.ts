@@ -1,5 +1,4 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { ApiError } from "@/src/server/api/errors";
 import { aiProviderModes, type AiProviderMode } from "./types";
@@ -68,15 +67,6 @@ export function getDefaultAiProviderMode(): AiProviderMode {
 export function getOpenAIProvider() {
   return createOpenAI({
     apiKey: requireEnv("OPENAI_API_KEY"),
-  });
-}
-
-/**
- * Creates the official Anthropic provider for Claude chat models.
- */
-export function getAnthropicProvider() {
-  return createAnthropic({
-    apiKey: requireEnv("ANTHROPIC_API_KEY"),
   });
 }
 

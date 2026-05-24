@@ -151,7 +151,6 @@ const dictionaries = {
       providers: {
         companyHosted: "Complyx gehostet",
         openai: "OpenAI",
-        anthropic: "Claude",
         selfHosted: "Self-hosted",
       },
       sources: "Quellen",
@@ -494,7 +493,6 @@ const dictionaries = {
       providers: {
         companyHosted: "Complyx hosted",
         openai: "OpenAI",
-        anthropic: "Claude",
         selfHosted: "Self-hosted",
       },
       sources: "Sources",

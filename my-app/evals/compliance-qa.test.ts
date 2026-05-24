@@ -31,4 +31,19 @@ describe("general compliance prompt", () => {
     expect(prompt.system).toContain("Example GmbH");
     expect(prompt.system).toContain("not enough sourced information");
   });
+
+  it("keeps tenant data out of the stored prompt template", () => {
+    const prompt = buildCompliancePrompt({
+      mode: "general_compliance_qa",
+      organization,
+      retrievedChunks: [],
+      chatSummary: null,
+      locale: "de",
+      modelCapabilities: getModelCapabilityProfile("openai"),
+    });
+
+    expect(prompt.promptTemplate).not.toContain("Example GmbH");
+    expect(prompt.promptTemplate).toContain("{{organization.name}}");
+    expect(prompt.promptTemplateHash).not.toBe(prompt.promptHash);
+  });
 });

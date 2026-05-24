@@ -5,11 +5,16 @@ import type {
   RetrievedContextChunk,
 } from "@/lib/ai/types";
 import type { ModelCapabilityProfile } from "@/lib/ai/model-capabilities";
-import { renderComplianceSystemPrompt } from "./compliance-system";
+import {
+  renderComplianceSystemPrompt,
+  renderComplianceSystemPromptTemplate,
+} from "./compliance-system";
 import { getPromptModeConfig } from "./prompt-modes";
 
 export type BuiltCompliancePrompt = {
   system: string;
+  promptTemplate: string;
+  promptTemplateHash: string;
   promptName: string;
   promptVersion: string;
   promptHash: string;
@@ -38,8 +43,6 @@ export function buildCompliancePrompt({
   modelCapabilities: ModelCapabilityProfile;
 }): BuiltCompliancePrompt {
   const modeConfig = getPromptModeConfig(mode);
-  // The stored hash is over the exact rendered prompt so later audits can
-  // identify which instructions produced an answer.
   const system = renderComplianceSystemPrompt({
     organization,
     retrievedContext: limitChunksForModel(
@@ -51,10 +54,18 @@ export function buildCompliancePrompt({
     locale,
     modelCapabilities,
   });
+  const promptTemplate = renderComplianceSystemPromptTemplate({ modeConfig });
+  const promptTemplateHash = createHash("sha256")
+    .update(promptTemplate)
+    .digest("hex");
+  // Message rows keep the exact rendered prompt hash so audits can identify
+  // which organization context and retrieved sources produced an answer.
   const promptHash = createHash("sha256").update(system).digest("hex");
 
   return {
     system,
+    promptTemplate,
+    promptTemplateHash,
     promptName: modeConfig.promptName,
     promptVersion: modeConfig.promptVersion,
     promptHash,

@@ -3,7 +3,6 @@ import type { UIMessage } from "ai";
 export const aiProviderModes = [
   "company_hosted",
   "openai",
-  "anthropic",
   "self_hosted",
 ] as const;
 
