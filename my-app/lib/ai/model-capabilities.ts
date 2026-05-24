@@ -44,6 +44,10 @@ const defaults: Record<AiProviderMode, ModelCapabilityProfile> = {
   },
 };
 
+/**
+ * Returns behavior flags for the selected provider/model family. Env overrides
+ * let deployments tune prompt length and strictness without code changes.
+ */
 export function getModelCapabilityProfile(
   providerMode: AiProviderMode,
 ): ModelCapabilityProfile {
@@ -75,6 +79,9 @@ export function getModelCapabilityProfile(
   };
 }
 
+/**
+ * Converts provider modes to the shared env-var prefix for capability overrides.
+ */
 function providerEnvPrefix(providerMode: AiProviderMode) {
   if (providerMode === "company_hosted") {
     return "COMPANY_AI";
@@ -87,6 +94,10 @@ function providerEnvPrefix(providerMode: AiProviderMode) {
   return providerMode.toUpperCase();
 }
 
+/**
+ * Parses boolean env overrides while preserving the provider default for
+ * unset or malformed values.
+ */
 function readBoolean(name: string, fallback: boolean) {
   const value = process.env[name]?.trim().toLowerCase();
 
@@ -101,11 +112,17 @@ function readBoolean(name: string, fallback: boolean) {
   return fallback;
 }
 
+/**
+ * Parses numeric env overrides for token/temperature settings.
+ */
 function readNumber(name: string, fallback: number) {
   const value = Number(process.env[name]);
   return Number.isFinite(value) ? value : fallback;
 }
 
+/**
+ * Parses the small reliability enum used by prompt guardrails.
+ */
 function readCitationReliability(
   name: string,
   fallback: ModelCapabilityProfile["citationReliability"],

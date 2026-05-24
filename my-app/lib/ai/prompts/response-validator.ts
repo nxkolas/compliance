@@ -14,6 +14,10 @@ export type ResponseValidationResult = {
   generatedCitationIds: string[];
 };
 
+/**
+ * Performs post-generation checks that the model cannot be trusted to enforce
+ * by itself: citation IDs, required source types, and no-context uncertainty.
+ */
 export function validateComplianceResponse({
   answerMarkdown,
   citations,
@@ -28,6 +32,8 @@ export function validateComplianceResponse({
   const warnings: string[] = [];
   const config = getPromptModeConfig(mode);
   const generatedCitationIds = extractSourceIds(answerMarkdown);
+  // Source IDs are prompt-local (`S1`, `S2`, ...), so validate against the
+  // retrieved chunk order used in the prompt rather than database IDs.
   const validSourceIds = new Set(
     retrievedContext.map((_, index) => `S${index + 1}`),
   );
@@ -79,16 +85,25 @@ export function validateComplianceResponse({
   };
 }
 
+/**
+ * Finds inline source markers like `[S1]` in the generated Markdown answer.
+ */
 function extractSourceIds(value: string) {
   return Array.from(value.matchAll(/\[(S\d+)\]/g)).map((match) => match[1]);
 }
 
+/**
+ * Detects whether the answer openly admits that source context is insufficient.
+ */
 function mentionsInsufficientInformation(value: string) {
   return /not enough|insufficient|nicht genug|nicht ausreichend|fehlende|missing/i.test(
     value,
   );
 }
 
+/**
+ * Lightweight heuristic used to decide when citation absence is suspicious.
+ */
 function looksLikeComplianceClaim(value: string) {
   return /nis2|bsig|pflicht|requirement|obligation|compliance|legal|gesetz|regulation|audit/i.test(
     value,

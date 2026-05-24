@@ -8,6 +8,10 @@ import { textFromMessage } from "./rag";
 
 const summarizeAfterMessages = 12;
 
+/**
+ * Loads the newest durable summary for a chat. The chat route injects this
+ * summary into the system prompt so older turns do not need to be resent forever.
+ */
 export async function getLatestChatSummary({
   chatId,
   organizationId,
@@ -24,6 +28,10 @@ export async function getLatestChatSummary({
   });
 }
 
+/**
+ * Creates a durable summary once a chat grows past the configured threshold.
+ * Missing small-model configuration is intentionally non-fatal for normal chat.
+ */
 export async function maybeSummarizeChat({
   chatId,
   organizationId,
@@ -91,10 +99,18 @@ export async function maybeSummarizeChat({
   return summary;
 }
 
+/**
+ * Keeps only recent turns once summarization should be active. This is the
+ * message window sent to the model alongside the durable summary.
+ */
 export function recentMessagesForPrompt(messages: ComplianceUIMessage[]) {
   return messages.length > summarizeAfterMessages ? messages.slice(-8) : messages;
 }
 
+/**
+ * Looks up the database row id for the last summarized UI message so summaries
+ * can be audited back to the transcript range they cover.
+ */
 async function findStoredMessageId({
   chatId,
   uiMessageId,

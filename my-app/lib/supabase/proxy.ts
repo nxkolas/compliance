@@ -2,10 +2,16 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
+/**
+ * Identifies routes that can be visited without an authenticated session.
+ */
 function isPublicRoute(pathname: string) {
   return pathname === "/" || pathname.startsWith("/auth");
 }
 
+/**
+ * Preserves the requested path in `next` while sending unauthenticated users to login.
+ */
 function redirectToLogin(request: NextRequest) {
   const url = request.nextUrl.clone();
   const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
@@ -17,6 +23,9 @@ function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(url);
 }
 
+/**
+ * Middleware helper that refreshes Supabase session cookies and blocks private routes.
+ */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,

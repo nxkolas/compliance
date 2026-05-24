@@ -28,6 +28,10 @@ const chunkOverlapChars = 250;
 type StoredMessage = typeof aiMessages.$inferSelect;
 type DocumentScope = "organization" | "reference";
 
+/**
+ * Creates a chat row on first use or verifies that an existing chat belongs to
+ * the current organization. It also keeps the chat-level assistant mode current.
+ */
 export async function ensureAiChat({
   chatId,
   organizationId,
@@ -77,6 +81,9 @@ export async function ensureAiChat({
   return createdChat;
 }
 
+/**
+ * Loads persisted messages and converts DB rows back into AI SDK UI messages.
+ */
 export async function listMessagesForChat({
   chatId,
   organizationId,
@@ -95,6 +102,9 @@ export async function listMessagesForChat({
   return messages.map(toUIMessage);
 }
 
+/**
+ * Lists recent chats for the organization sidebar.
+ */
 export async function listAiChatsForOrganization({
   organizationId,
 }: {
@@ -114,6 +124,10 @@ export async function listAiChatsForOrganization({
   }));
 }
 
+/**
+ * Persists or updates one UI message. Assistant calls can attach prompt,
+ * model, citation, and validation metadata for auditability.
+ */
 export async function persistUIMessage({
   chatId,
   organizationId,
@@ -189,6 +203,10 @@ export async function persistUIMessage({
     .where(eq(aiChats.id, chatId));
 }
 
+/**
+ * Embeds the latest user question and retrieves the most similar chunks.
+ * Uploaded documents stay chat-scoped; curated references are global.
+ */
 export async function retrieveContextForQuestion({
   chatId,
   organizationId,
@@ -283,6 +301,9 @@ export async function retrieveContextForQuestion({
   }));
 }
 
+/**
+ * Converts retrieved chunks into the citation metadata shape sent to the UI.
+ */
 export function citationsFromContext(
   context: RetrievedContextChunk[],
 ): AiCitation[] {
@@ -307,6 +328,9 @@ export function citationsFromContext(
   );
 }
 
+/**
+ * Lists uploaded organization documents for a single chat.
+ */
 export async function listChatAiDocuments({
   chatId,
   organizationId,
@@ -324,6 +348,10 @@ export async function listChatAiDocuments({
   });
 }
 
+/**
+ * Stores an uploaded or curated document, extracts text, chunks it, embeds
+ * every chunk, and marks the document ready for RAG search.
+ */
 export async function ingestAiDocument({
   chatId,
   uiMessageId,
@@ -429,6 +457,9 @@ export async function ingestAiDocument({
   }
 }
 
+/**
+ * Returns the newest user-authored text in a UI message list.
+ */
 export function latestUserText(messages: UIMessage[]) {
   const lastUserMessage = [...messages]
     .reverse()
@@ -441,6 +472,9 @@ export function latestUserText(messages: UIMessage[]) {
   return textFromMessage(lastUserMessage);
 }
 
+/**
+ * Extracts plain text from AI SDK UI message parts.
+ */
 export function textFromMessage(message: UIMessage) {
   return message.parts
     .filter((part) => part.type === "text")
@@ -449,6 +483,9 @@ export function textFromMessage(message: UIMessage) {
     .trim();
 }
 
+/**
+ * Convenience helper for tests/scripts that need a user UI message shape.
+ */
 export function createUserMessage(text: string): ComplianceUIMessage {
   return {
     id: crypto.randomUUID(),
@@ -457,6 +494,9 @@ export function createUserMessage(text: string): ComplianceUIMessage {
   };
 }
 
+/**
+ * Runs provider-bound embedding generation for document chunks and questions.
+ */
 async function embedText(value: string, providerMode: AiProviderMode) {
   const result = await embed({
     model: getComplianceEmbeddingModel(providerMode),
@@ -466,6 +506,10 @@ async function embedText(value: string, providerMode: AiProviderMode) {
   return result.embedding;
 }
 
+/**
+ * Extracts text from supported file types. Docling may replace or augment this
+ * later for scanned/layout-heavy documents.
+ */
 async function extractTextFromDocument(
   buffer: Buffer | undefined,
   title: string,
@@ -508,6 +552,9 @@ async function extractTextFromDocument(
   throw new ApiError(400, "Supported file types are PDF, DOCX, TXT, and MD");
 }
 
+/**
+ * Splits text on paragraph boundaries first, with a fallback for long blocks.
+ */
 function chunkText(text: string) {
   const normalized = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 
@@ -548,6 +595,9 @@ function chunkText(text: string) {
   return chunks.map((chunk) => chunk.trim()).filter(Boolean);
 }
 
+/**
+ * Splits very long paragraphs into overlapping fixed-size chunks.
+ */
 function splitLongText(text: string) {
   const chunks: string[] = [];
   let cursor = 0;
@@ -561,6 +611,10 @@ function splitLongText(text: string) {
   return chunks;
 }
 
+/**
+ * Carries a small tail of the previous chunk into the next chunk to reduce
+ * context loss at boundaries.
+ */
 function withOverlap(previous: string | undefined, next: string) {
   if (!previous) {
     return next;
@@ -569,24 +623,39 @@ function withOverlap(previous: string | undefined, next: string) {
   return `${previous.slice(-chunkOverlapChars)}\n\n${next}`;
 }
 
+/**
+ * Cheap token estimate used for metadata and future context budgeting.
+ */
 function estimateTokens(text: string) {
   return Math.ceil(text.length / 4);
 }
 
+/**
+ * Formats a vector literal for pgvector cosine-distance SQL.
+ */
 function formatVectorLiteral(embedding: number[]) {
   return `'[${embedding.map((value) => Number(value).toFixed(8)).join(",")}]'`;
 }
 
+/**
+ * Builds a short source preview for citation chips.
+ */
 function createExcerpt(content: string) {
   const trimmed = content.replace(/\s+/g, " ").trim();
   return trimmed.length > 240 ? `${trimmed.slice(0, 237)}...` : trimmed;
 }
 
+/**
+ * Normalizes DB-safe titles for chats and documents.
+ */
 function titleFromText(value: string | undefined | null) {
   const normalized = value?.replace(/\s+/g, " ").trim();
   return normalized ? normalized.slice(0, 255) : null;
 }
 
+/**
+ * Rehydrates one stored message, including prompt and validation metadata.
+ */
 function toUIMessage(message: StoredMessage): ComplianceUIMessage {
   const metadata = message.metadata
     ? (message.metadata as ComplianceMessageMetadata)

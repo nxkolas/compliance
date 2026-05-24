@@ -7,6 +7,10 @@ export type CitationPolicy = {
   noSourceInstruction: string;
 };
 
+/**
+ * Converts a mode's citation settings into prompt instructions and validator
+ * expectations.
+ */
 export function getCitationPolicy(mode: AssistantMode): CitationPolicy {
   const config = getPromptModeConfig(mode);
 
@@ -18,6 +22,9 @@ export function getCitationPolicy(mode: AssistantMode): CitationPolicy {
   };
 }
 
+/**
+ * Checks whether retrieval included at least one source from a given scope.
+ */
 export function contextHasScope(
   context: RetrievedContextChunk[],
   scope: "reference" | "organization",
@@ -25,6 +32,9 @@ export function contextHasScope(
   return context.some((chunk) => chunk.scope === scope);
 }
 
+/**
+ * Creates prompt-local source IDs from retrieved chunks.
+ */
 export function sourceIdsForContext(context: RetrievedContextChunk[]) {
   return context.map((chunk, index) => ({
     sourceId: `S${index + 1}`,

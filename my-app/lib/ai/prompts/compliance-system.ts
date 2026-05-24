@@ -5,6 +5,10 @@ import type { PromptModeConfig } from "./prompt-modes";
 import { getCitationPolicy, sourceIdsForContext } from "./citation-rules";
 import { outputContractInstruction } from "./output-contracts";
 
+/**
+ * Renders the final system prompt text from mode settings, org profile,
+ * conversation memory, model capabilities, and retrieved RAG chunks.
+ */
 export function renderComplianceSystemPrompt({
   organization,
   retrievedContext,
@@ -22,6 +26,8 @@ export function renderComplianceSystemPrompt({
 }) {
   const citationPolicy = getCitationPolicy(modeConfig.mode);
   const sources = sourceIdsForContext(retrievedContext);
+  // Retrieved chunks are assigned stable prompt-local IDs so citations can be
+  // validated later against the exact context that was provided to the model.
   const context = retrievedContext.length
     ? retrievedContext
         .map(

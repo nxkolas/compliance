@@ -17,6 +17,10 @@ export type PromptModeConfig = {
   maxOutputTokens: number;
 };
 
+/**
+ * Declarative prompt settings per assistant mode. The prompt builder and
+ * validator both read from this registry so behavior stays consistent.
+ */
 export const promptModeConfigs: Record<AssistantMode, PromptModeConfig> = {
   general_compliance_qa: {
     mode: "general_compliance_qa",
@@ -140,6 +144,9 @@ export const promptModeConfigs: Record<AssistantMode, PromptModeConfig> = {
   },
 };
 
+/**
+ * Returns the mode configuration used for prompt construction and validation.
+ */
 export function getPromptModeConfig(mode: AssistantMode) {
   return promptModeConfigs[mode];
 }

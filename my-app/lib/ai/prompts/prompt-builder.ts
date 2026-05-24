@@ -18,6 +18,10 @@ export type BuiltCompliancePrompt = {
   maxOutputTokens: number;
 };
 
+/**
+ * Builds the complete system prompt and audit metadata for a chat request.
+ * This is the single prompt assembly entrypoint used by the chat API.
+ */
 export function buildCompliancePrompt({
   mode,
   organization,
@@ -34,6 +38,8 @@ export function buildCompliancePrompt({
   modelCapabilities: ModelCapabilityProfile;
 }): BuiltCompliancePrompt {
   const modeConfig = getPromptModeConfig(mode);
+  // The stored hash is over the exact rendered prompt so later audits can
+  // identify which instructions produced an answer.
   const system = renderComplianceSystemPrompt({
     organization,
     retrievedContext: limitChunksForModel(
@@ -61,6 +67,10 @@ export function buildCompliancePrompt({
   };
 }
 
+/**
+ * Caps retrieved chunks according to the current model profile so weaker/local
+ * models receive less context and a simpler task.
+ */
 function limitChunksForModel(
   chunks: RetrievedContextChunk[],
   maxContextTokens: number,

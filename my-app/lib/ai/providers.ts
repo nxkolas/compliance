@@ -4,11 +4,18 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { ApiError } from "@/src/server/api/errors";
 import { aiProviderModes, type AiProviderMode } from "./types";
 
+/**
+ * Reads an env var as an optional configured value. Empty strings are treated as
+ * missing so `.env` placeholders do not get passed into provider constructors.
+ */
 function optionalEnv(name: string) {
   const value = process.env[name]?.trim();
   return value || undefined;
 }
 
+/**
+ * Reads a required env var and raises a clear API error when it is missing.
+ */
 function requireEnv(name: string) {
   const value = optionalEnv(name);
 
@@ -19,6 +26,9 @@ function requireEnv(name: string) {
   return value;
 }
 
+/**
+ * Validates provider base URLs before the AI SDK tries to build request URLs.
+ */
 function requireAbsoluteUrl(name: string) {
   const value = requireEnv(name);
 
@@ -38,6 +48,10 @@ function requireAbsoluteUrl(name: string) {
   }
 }
 
+/**
+ * Provides the initial UI provider selection. This is only a UI default; the
+ * chat API still requires the selected provider on every request.
+ */
 export function getDefaultAiProviderMode(): AiProviderMode {
   const configuredDefault = optionalEnv("AI_DEFAULT_PROVIDER");
 
@@ -48,18 +62,27 @@ export function getDefaultAiProviderMode(): AiProviderMode {
   return "openai";
 }
 
+/**
+ * Creates the official OpenAI provider, used for OpenAI chat and embeddings.
+ */
 export function getOpenAIProvider() {
   return createOpenAI({
     apiKey: requireEnv("OPENAI_API_KEY"),
   });
 }
 
+/**
+ * Creates the official Anthropic provider for Claude chat models.
+ */
 export function getAnthropicProvider() {
   return createAnthropic({
     apiKey: requireEnv("ANTHROPIC_API_KEY"),
   });
 }
 
+/**
+ * Creates an OpenAI-compatible provider for a customer/local inference service.
+ */
 export function getSelfHostedChatProvider() {
   return createOpenAICompatible({
     name: "self-hosted",
@@ -68,6 +91,9 @@ export function getSelfHostedChatProvider() {
   });
 }
 
+/**
+ * Creates an OpenAI-compatible provider for the centrally hosted app service.
+ */
 export function getCompanyHostedChatProvider() {
   return createOpenAICompatible({
     name: "company-hosted",
@@ -76,6 +102,10 @@ export function getCompanyHostedChatProvider() {
   });
 }
 
+/**
+ * Runtime guard for `AI_DEFAULT_PROVIDER`, keeping env configuration aligned
+ * with the provider mode union.
+ */
 function isAiProviderMode(value: unknown): value is AiProviderMode {
   return (
     typeof value === "string" &&
