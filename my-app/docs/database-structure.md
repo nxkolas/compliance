@@ -5,9 +5,9 @@ Compliance Checker. The schema is defined in `src/db/schema.ts`, the database
 client is exported from `src/db/index.ts`. Schema changes are applied directly
 with `drizzle-kit push`.
 
-The model is organization-centric. Almost every operational table has an
-`organization_id` so future row level security policies can restrict data to the
-organizations where the current Supabase Auth user is a member.
+The model is organization-centric. Operational tables are protected with row
+level security policies that restrict data to organizations where the current
+Supabase Auth user is a member.
 
 ## Query Setup
 
@@ -797,9 +797,10 @@ await db
 10. Incidents are stored in `security_incidents`, with deadlines in `incident_reports`.
 11. Management training proof is stored in `management_trainings`.
 
-## Notes for Future RLS Policies
+## Row Level Security
 
-The key access rule should be:
+All Drizzle-managed app tables have RLS enabled in `src/db/schema.ts`. The key
+access rule is:
 
 ```sql
 exists (
@@ -811,8 +812,8 @@ exists (
 ```
 
 Tables without `organization_id`, such as `nis2_sectors`, `lex_specialis_rules`,
-and `tom_areas`, are reference tables and can usually be read by authenticated
-users. Writes to those tables should be admin-only or migration-only.
+`tom_areas`, and `ai_prompt_versions`, are reference tables. They are readable
+by authenticated users and writable only through trusted server/database flows.
 
 ## Seeding Reference Data
 

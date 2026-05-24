@@ -13,6 +13,12 @@ export default defineConfig({
   dialect: 'postgresql',
   schemaFilter: 'public',
   tablesFilter: [
+    'ai_chats',
+    'ai_document_chunks',
+    'ai_documents',
+    'ai_chat_summaries',
+    'ai_messages',
+    'ai_prompt_versions',
     'assessment_lex_specialis_matches',
     'incident_reports',
     'lex_specialis_rules',
@@ -31,6 +37,11 @@ export default defineConfig({
     'suppliers',
     'tom_areas',
   ],
+  entities: {
+    roles: {
+      provider: 'supabase',
+    },
+  },
   dbCredentials: {
     url: databaseUrl,
   },

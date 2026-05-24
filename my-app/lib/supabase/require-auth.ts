@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "./server";
 
+/**
+ * Server-component guard that returns the Supabase user or redirects to login.
+ */
 export async function requireAuth() {
   const supabase = await createClient();
   const {
