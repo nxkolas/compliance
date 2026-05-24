@@ -24,7 +24,7 @@ import { NextResponse } from "next/server";
 const chatRequestSchema = z.object({
   chatId: z.uuid(),
   organizationId: z.uuid(),
-  selectedProvider: z.enum(aiProviderModes).default("company_hosted"),
+  selectedProvider: z.enum(aiProviderModes),
   messages: z.array(
     z.object({
       id: z.string().min(1),
@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     }
 
     const retrievedContext = await retrieveContextForQuestion({
+      chatId: body.chatId,
       organizationId,
       question: latestQuestion,
     });

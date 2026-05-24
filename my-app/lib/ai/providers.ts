@@ -2,15 +2,40 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { ApiError } from "@/src/server/api/errors";
+import { aiProviderModes, type AiProviderMode } from "./types";
+
+function optionalEnv(name: string) {
+  const value = process.env[name]?.trim();
+  return value || undefined;
+}
 
 function requireEnv(name: string) {
-  const value = process.env[name];
+  const value = optionalEnv(name);
 
   if (!value) {
     throw new ApiError(500, `${name} is not configured`);
   }
 
   return value;
+}
+
+function requireAbsoluteUrl(name: string) {
+  const value = requireEnv(name);
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("URL must use http or https");
+    }
+
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    throw new ApiError(
+      500,
+      `${name} must be an absolute URL, for example https://api.example.com/v1`,
+    );
+  }
 }
 
 export function getChatModelName() {
@@ -29,10 +54,20 @@ export function getEmbeddingDimensions() {
   return Number(process.env.AI_EMBEDDING_DIM ?? 1536);
 }
 
+export function getDefaultAiProviderMode(): AiProviderMode {
+  const configuredDefault = optionalEnv("AI_DEFAULT_PROVIDER");
+
+  if (isAiProviderMode(configuredDefault)) {
+    return configuredDefault;
+  }
+
+  return "openai";
+}
+
 export function getChatProvider() {
   return createOpenAICompatible({
     name: "compliance-chat",
-    baseURL: requireEnv("AI_CHAT_BASE_URL"),
+    baseURL: requireAbsoluteUrl("AI_CHAT_BASE_URL"),
     apiKey: requireEnv("AI_CHAT_API_KEY"),
   });
 }
@@ -52,7 +87,7 @@ export function getAnthropicProvider() {
 export function getSelfHostedChatProvider() {
   return createOpenAICompatible({
     name: "self-hosted",
-    baseURL: requireEnv("SELF_HOSTED_AI_BASE_URL"),
+    baseURL: requireAbsoluteUrl("SELF_HOSTED_AI_BASE_URL"),
     apiKey: requireEnv("SELF_HOSTED_AI_API_KEY"),
   });
 }
@@ -60,15 +95,22 @@ export function getSelfHostedChatProvider() {
 export function getCompanyHostedChatProvider() {
   return createOpenAICompatible({
     name: "company-hosted",
-    baseURL: process.env.COMPANY_AI_BASE_URL ?? requireEnv("AI_CHAT_BASE_URL"),
-    apiKey: process.env.COMPANY_AI_API_KEY ?? requireEnv("AI_CHAT_API_KEY"),
+    baseURL: requireAbsoluteUrl("COMPANY_AI_BASE_URL"),
+    apiKey: requireEnv("COMPANY_AI_API_KEY"),
   });
 }
 
 export function getEmbeddingProvider() {
   return createOpenAICompatible({
     name: "compliance-embeddings",
-    baseURL: requireEnv("AI_EMBEDDING_BASE_URL"),
+    baseURL: requireAbsoluteUrl("AI_EMBEDDING_BASE_URL"),
     apiKey: requireEnv("AI_EMBEDDING_API_KEY"),
   });
+}
+
+function isAiProviderMode(value: unknown): value is AiProviderMode {
+  return (
+    typeof value === "string" &&
+    aiProviderModes.includes(value as AiProviderMode)
+  );
 }

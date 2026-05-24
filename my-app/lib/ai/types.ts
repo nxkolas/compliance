@@ -19,7 +19,20 @@ export type AiCitation = {
   excerpt: string;
 };
 
+export type AiAttachment = {
+  documentId: string;
+  title: string;
+  status: "processing" | "ready" | "failed";
+};
+
+export type AiChatListItem = {
+  id: string;
+  title: string;
+  updatedAt: string;
+};
+
 export type ComplianceMessageMetadata = {
+  attachments?: AiAttachment[];
   citations?: AiCitation[];
 };
 

@@ -627,6 +627,8 @@ export const aiDocuments = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     organizationId: uuid("organization_id"),
+    chatId: uuid("chat_id"),
+    uiMessageId: varchar("ui_message_id", { length: 128 }),
     scope: aiDocumentScopeEnum("scope").notNull(),
     status: aiDocumentStatusEnum("status").default("processing").notNull(),
     title: varchar("title", { length: 255 }).notNull(),
@@ -650,7 +652,14 @@ export const aiDocuments = pgTable(
       columns: [table.organizationId],
       foreignColumns: [organizations.id],
     }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_documents_chat_fk",
+      columns: [table.chatId],
+      foreignColumns: [aiChats.id],
+    }).onDelete("cascade"),
     index("ai_documents_org_idx").on(table.organizationId),
+    index("ai_documents_chat_idx").on(table.chatId),
+    index("ai_documents_ui_message_idx").on(table.uiMessageId),
     index("ai_documents_scope_idx").on(table.scope),
     index("ai_documents_status_idx").on(table.status),
   ],
@@ -662,6 +671,8 @@ export const aiDocumentChunks = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     documentId: uuid("document_id").notNull(),
     organizationId: uuid("organization_id"),
+    chatId: uuid("chat_id"),
+    uiMessageId: varchar("ui_message_id", { length: 128 }),
     scope: aiDocumentScopeEnum("scope").notNull(),
     chunkIndex: integer("chunk_index").notNull(),
     content: text("content").notNull(),
@@ -685,8 +696,15 @@ export const aiDocumentChunks = pgTable(
       columns: [table.organizationId],
       foreignColumns: [organizations.id],
     }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_document_chunks_chat_fk",
+      columns: [table.chatId],
+      foreignColumns: [aiChats.id],
+    }).onDelete("cascade"),
     index("ai_document_chunks_document_idx").on(table.documentId),
     index("ai_document_chunks_org_idx").on(table.organizationId),
+    index("ai_document_chunks_chat_idx").on(table.chatId),
+    index("ai_document_chunks_ui_message_idx").on(table.uiMessageId),
     index("ai_document_chunks_scope_idx").on(table.scope),
   ],
 );
@@ -859,6 +877,7 @@ export const aiChatsRelations = relations(aiChats, ({ many, one }) => ({
     references: [organizations.id],
   }),
   messages: many(aiMessages),
+  documents: many(aiDocuments),
 }));
 
 export const aiMessagesRelations = relations(aiMessages, ({ one }) => ({
@@ -877,6 +896,10 @@ export const aiDocumentsRelations = relations(aiDocuments, ({ many, one }) => ({
     fields: [aiDocuments.organizationId],
     references: [organizations.id],
   }),
+  chat: one(aiChats, {
+    fields: [aiDocuments.chatId],
+    references: [aiChats.id],
+  }),
   chunks: many(aiDocumentChunks),
 }));
 
@@ -890,6 +913,10 @@ export const aiDocumentChunksRelations = relations(
     organization: one(organizations, {
       fields: [aiDocumentChunks.organizationId],
       references: [organizations.id],
+    }),
+    chat: one(aiChats, {
+      fields: [aiDocumentChunks.chatId],
+      references: [aiChats.id],
     }),
   }),
 );

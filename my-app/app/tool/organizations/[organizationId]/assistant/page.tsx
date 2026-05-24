@@ -1,6 +1,7 @@
 import { AssistantChat } from "@/components/ai/assistant-chat";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { listMessagesForChat } from "@/lib/ai/rag";
+import { getDefaultAiProviderMode } from "@/lib/ai/providers";
+import { getDictionary } from "@/lib/i18n";
+import { listAiChatsForOrganization, listMessagesForChat } from "@/lib/ai/rag";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { randomUUID } from "node:crypto";
@@ -34,7 +35,6 @@ async function AssistantPageContent({
   const { organizationId } = await params;
   const { chatId: requestedChatId } = await searchParams;
   const dictionary = await getDictionary();
-  const locale = await getLocale();
   const organization = await getOrganizationForUser(user.id, organizationId);
 
   if (!organization) {
@@ -42,6 +42,9 @@ async function AssistantPageContent({
   }
 
   const chatId = isUuid(requestedChatId) ? requestedChatId : randomUUID();
+  const chats = await listAiChatsForOrganization({
+    organizationId: organization.id,
+  });
   const initialMessages = isUuid(requestedChatId)
     ? await listMessagesForChat({ chatId, organizationId: organization.id })
     : [];
@@ -51,9 +54,10 @@ async function AssistantPageContent({
       chatId={chatId}
       organizationId={organization.id}
       organizationName={organization.name}
+      chats={chats}
+      defaultProvider={getDefaultAiProviderMode()}
       initialMessages={initialMessages}
       labels={dictionary.aiAssistant}
-      locale={locale}
     />
   );
 }

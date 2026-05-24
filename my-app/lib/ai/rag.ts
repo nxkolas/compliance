@@ -14,6 +14,7 @@ import { ApiError } from "@/src/server/api/errors";
 import { getComplianceEmbeddingModel } from "./models";
 import type {
   AiCitation,
+  AiChatListItem,
   ComplianceMessageMetadata,
   ComplianceUIMessage,
   RetrievedContextChunk,
@@ -37,10 +38,14 @@ export async function ensureAiChat({
   title?: string;
 }) {
   const existingChat = await db.query.aiChats.findFirst({
-    where: and(eq(aiChats.id, chatId), eq(aiChats.organizationId, organizationId)),
+    where: eq(aiChats.id, chatId),
   });
 
   if (existingChat) {
+    if (existingChat.organizationId !== organizationId) {
+      throw new ApiError(404, "Chat not found");
+    }
+
     return existingChat;
   }
 
@@ -73,6 +78,24 @@ export async function listMessagesForChat({
   });
 
   return messages.map(toUIMessage);
+}
+
+export async function listAiChatsForOrganization({
+  organizationId,
+}: {
+  organizationId: string;
+}): Promise<AiChatListItem[]> {
+  const chats = await db.query.aiChats.findMany({
+    where: eq(aiChats.organizationId, organizationId),
+    orderBy: [desc(aiChats.updatedAt)],
+    limit: 50,
+  });
+
+  return chats.map((chat) => ({
+    id: chat.id,
+    title: chat.title,
+    updatedAt: chat.updatedAt.toISOString(),
+  }));
 }
 
 export async function persistUIMessage({
@@ -109,10 +132,12 @@ export async function persistUIMessage({
 }
 
 export async function retrieveContextForQuestion({
+  chatId,
   organizationId,
   question,
   topK = 6,
 }: {
+  chatId: string;
   organizationId: string;
   question: string;
   topK?: number;
@@ -120,6 +145,22 @@ export async function retrieveContextForQuestion({
   const trimmedQuestion = question.trim();
 
   if (!trimmedQuestion) {
+    return [];
+  }
+
+  const hasReadyChatDocuments = await db.query.aiDocuments.findFirst({
+    where: and(
+      eq(aiDocuments.chatId, chatId),
+      eq(aiDocuments.organizationId, organizationId),
+      eq(aiDocuments.scope, "organization"),
+      eq(aiDocuments.status, "ready"),
+    ),
+    columns: {
+      id: true,
+    },
+  });
+
+  if (!hasReadyChatDocuments) {
     return [];
   }
 
@@ -154,6 +195,7 @@ export async function retrieveContextForQuestion({
         or (
           ${aiDocumentChunks.scope} = 'organization'
           and ${aiDocumentChunks.organizationId} = ${organizationId}
+          and ${aiDocumentChunks.chatId} = ${chatId}
         )
       )
     order by ${aiDocumentChunks.embedding} <=> ${queryVector}::vector
@@ -197,10 +239,17 @@ export function citationsFromContext(
   );
 }
 
-export async function listOrganizationAiDocuments(organizationId: string) {
+export async function listChatAiDocuments({
+  chatId,
+  organizationId,
+}: {
+  chatId: string;
+  organizationId: string;
+}) {
   return db.query.aiDocuments.findMany({
     where: and(
       eq(aiDocuments.organizationId, organizationId),
+      eq(aiDocuments.chatId, chatId),
       eq(aiDocuments.scope, "organization"),
     ),
     orderBy: [desc(aiDocuments.createdAt)],
@@ -208,6 +257,8 @@ export async function listOrganizationAiDocuments(organizationId: string) {
 }
 
 export async function ingestAiDocument({
+  chatId,
+  uiMessageId,
   organizationId,
   userId,
   title,
@@ -219,6 +270,8 @@ export async function ingestAiDocument({
   scope,
   metadata,
 }: {
+  chatId?: string | null;
+  uiMessageId?: string | null;
   organizationId?: string | null;
   userId?: string | null;
   title: string;
@@ -234,6 +287,10 @@ export async function ingestAiDocument({
     throw new ApiError(400, "organizationId is required for organization documents");
   }
 
+  if (scope === "organization" && !chatId) {
+    throw new ApiError(400, "chatId is required for chat documents");
+  }
+
   const checksum = buffer
     ? createHash("sha256").update(buffer).digest("hex")
     : createHash("sha256").update(text ?? "").digest("hex");
@@ -242,6 +299,8 @@ export async function ingestAiDocument({
     .insert(aiDocuments)
     .values({
       organizationId: organizationId ?? null,
+      chatId: chatId ?? null,
+      uiMessageId: uiMessageId ?? null,
       scope,
       status: "processing",
       title: titleFromText(title) ?? "Untitled document",
@@ -267,6 +326,8 @@ export async function ingestAiDocument({
       await db.insert(aiDocumentChunks).values({
         documentId: document.id,
         organizationId: organizationId ?? null,
+        chatId: chatId ?? null,
+        uiMessageId: uiMessageId ?? null,
         scope,
         chunkIndex: index,
         content: chunk,
@@ -461,6 +522,8 @@ function toUIMessage(message: StoredMessage): ComplianceUIMessage {
     id: message.uiMessageId,
     role: message.role,
     parts: message.parts as ComplianceUIMessage["parts"],
-    metadata: message.metadata as ComplianceMessageMetadata | undefined,
+    metadata: message.metadata
+      ? (message.metadata as ComplianceMessageMetadata)
+      : undefined,
   };
 }

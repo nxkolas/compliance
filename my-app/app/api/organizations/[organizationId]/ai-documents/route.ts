@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import {
+  ensureAiChat,
   ingestAiDocument,
-  listOrganizationAiDocuments,
+  listChatAiDocuments,
 } from "@/lib/ai/rag";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError, getErrorResponse } from "@/src/server/api/errors";
@@ -19,7 +20,7 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const user = await requireApiUser();
     const { organizationId } = await context.params;
@@ -34,7 +35,15 @@ export async function GET(_request: Request, context: RouteContext) {
       throw new ApiError(404, "Organization not found");
     }
 
-    const documents = await listOrganizationAiDocuments(parsedOrganizationId);
+    const chatId = parseInput(
+      z.uuid(),
+      new URL(request.url).searchParams.get("chatId"),
+      "Invalid chatId",
+    );
+    const documents = await listChatAiDocuments({
+      chatId,
+      organizationId: parsedOrganizationId,
+    });
 
     return NextResponse.json({
       documents: documents.map((document) => ({
@@ -68,6 +77,12 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const formData = await request.formData();
+    const chatId = parseInput(
+      z.uuid(),
+      formData.get("chatId"),
+      "Invalid chatId",
+    );
+    const messageId = parseOptionalString(formData.get("messageId"));
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
@@ -77,6 +92,13 @@ export async function POST(request: Request, context: RouteContext) {
     if (file.size > 20 * 1024 * 1024) {
       throw new ApiError(400, "Files must be 20 MB or smaller");
     }
+
+    await ensureAiChat({
+      chatId,
+      organizationId: parsedOrganizationId,
+      userId: user.id,
+      title: "Compliance assistant",
+    });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const documentId = crypto.randomUUID();
@@ -96,6 +118,8 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const document = await ingestAiDocument({
+      chatId,
+      uiMessageId: messageId,
       organizationId: parsedOrganizationId,
       userId: user.id,
       title: file.name,
@@ -118,4 +142,8 @@ export async function POST(request: Request, context: RouteContext) {
 
 function sanitizeFileName(fileName: string) {
   return fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 160);
+}
+
+function parseOptionalString(value: FormDataEntryValue | null) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
