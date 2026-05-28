@@ -1,9 +1,6 @@
-import { relations, type SQL, sql } from "drizzle-orm";
-import { authenticatedRole, authUid } from "drizzle-orm/supabase";
+import { relations } from "drizzle-orm";
 import {
-  type AnyPgColumn,
   boolean,
-  customType,
   date,
   foreignKey,
   index,
@@ -11,13 +8,13 @@ import {
   jsonb,
   numeric,
   pgEnum,
-  pgPolicy,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
   uuid,
   varchar,
+  customType,
 } from "drizzle-orm/pg-core";
 
 export const organizationRoleEnum = pgEnum("organization_role", [
@@ -139,77 +136,6 @@ const vector = customType<{
   },
 });
 
-function isOrganizationMember(organizationId: AnyPgColumn): SQL {
-  return sql`exists (
-    select 1
-    from ${organizationMembers}
-    where ${organizationMembers.organizationId} = ${organizationId}
-      and ${organizationMembers.userId} = ${authUid}
-  )`;
-}
-
-function authenticatedOrgPolicies(organizationId: AnyPgColumn) {
-  const member = isOrganizationMember(organizationId);
-
-  return [
-    pgPolicy("authenticated_org_select", {
-      for: "select",
-      to: authenticatedRole,
-      using: member,
-    }),
-    pgPolicy("authenticated_org_insert", {
-      for: "insert",
-      to: authenticatedRole,
-      withCheck: member,
-    }),
-    pgPolicy("authenticated_org_update", {
-      for: "update",
-      to: authenticatedRole,
-      using: member,
-      withCheck: member,
-    }),
-    pgPolicy("authenticated_org_delete", {
-      for: "delete",
-      to: authenticatedRole,
-      using: member,
-    }),
-  ];
-}
-
-function authenticatedScopedPolicies(scope: SQL) {
-  return [
-    pgPolicy("authenticated_org_select", {
-      for: "select",
-      to: authenticatedRole,
-      using: scope,
-    }),
-    pgPolicy("authenticated_org_insert", {
-      for: "insert",
-      to: authenticatedRole,
-      withCheck: scope,
-    }),
-    pgPolicy("authenticated_org_update", {
-      for: "update",
-      to: authenticatedRole,
-      using: scope,
-      withCheck: scope,
-    }),
-    pgPolicy("authenticated_org_delete", {
-      for: "delete",
-      to: authenticatedRole,
-      using: scope,
-    }),
-  ];
-}
-
-function authenticatedReferenceReadPolicy() {
-  return pgPolicy("authenticated_reference_select", {
-    for: "select",
-    to: authenticatedRole,
-    using: sql`true`,
-  });
-}
-
 export const organizations = pgTable(
   "organizations",
   {
@@ -235,11 +161,8 @@ export const organizations = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
-    index("organizations_name_idx").on(table.name),
-    ...authenticatedOrgPolicies(table.id),
-  ],
-).enableRLS();
+  (table) => [index("organizations_name_idx").on(table.name)],
+);
 
 export const organizationMembers = pgTable(
   "organization_members",
@@ -263,13 +186,8 @@ export const organizationMembers = pgTable(
       table.userId,
     ),
     index("organization_members_user_idx").on(table.userId),
-    pgPolicy("authenticated_own_membership_select", {
-      for: "select",
-      to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
-    }),
   ],
-).enableRLS();
+);
 
 export const organizationInvitations = pgTable(
   "organization_invitations",
@@ -305,9 +223,8 @@ export const organizationInvitations = pgTable(
     index("organization_invitations_org_idx").on(table.organizationId),
     index("organization_invitations_email_idx").on(table.email),
     index("organization_invitations_status_idx").on(table.status),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const nis2Sectors = pgTable(
   "nis2_sectors",
@@ -321,11 +238,8 @@ export const nis2Sectors = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
-    uniqueIndex("nis2_sectors_code_unique").on(table.code),
-    authenticatedReferenceReadPolicy(),
-  ],
-).enableRLS();
+  (table) => [uniqueIndex("nis2_sectors_code_unique").on(table.code)],
+);
 
 export const organizationSectors = pgTable(
   "organization_sectors",
@@ -351,9 +265,8 @@ export const organizationSectors = pgTable(
       table.organizationId,
       table.sectorId,
     ),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const lexSpecialisRules = pgTable(
   "lex_specialis_rules",
@@ -366,11 +279,8 @@ export const lexSpecialisRules = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
-    uniqueIndex("lex_specialis_rules_code_unique").on(table.code),
-    authenticatedReferenceReadPolicy(),
-  ],
-).enableRLS();
+  (table) => [uniqueIndex("lex_specialis_rules_code_unique").on(table.code)],
+);
 
 export const selfCheckAssessments = pgTable(
   "self_check_assessments",
@@ -401,9 +311,8 @@ export const selfCheckAssessments = pgTable(
     }).onDelete("cascade"),
     index("self_check_assessments_org_idx").on(table.organizationId),
     index("self_check_assessments_status_idx").on(table.status),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const assessmentLexSpecialisMatches = pgTable(
   "assessment_lex_specialis_matches",
@@ -428,14 +337,8 @@ export const assessmentLexSpecialisMatches = pgTable(
       table.assessmentId,
       table.ruleId,
     ),
-    ...authenticatedScopedPolicies(sql`exists (
-      select 1
-      from ${selfCheckAssessments}
-      where ${selfCheckAssessments.id} = ${table.assessmentId}
-        and ${isOrganizationMember(selfCheckAssessments.organizationId)}
-    )`),
   ],
-).enableRLS();
+);
 
 export const tomAreas = pgTable(
   "tom_areas",
@@ -445,11 +348,8 @@ export const tomAreas = pgTable(
     title: varchar("title", { length: 255 }).notNull(),
     description: text("description"),
   },
-  (table) => [
-    uniqueIndex("tom_areas_bsig_number_unique").on(table.bsigNumber),
-    authenticatedReferenceReadPolicy(),
-  ],
-).enableRLS();
+  (table) => [uniqueIndex("tom_areas_bsig_number_unique").on(table.bsigNumber)],
+);
 
 export const organizationRequirements = pgTable(
   "organization_requirements",
@@ -487,9 +387,8 @@ export const organizationRequirements = pgTable(
       table.tomAreaId,
     ),
     index("organization_requirements_status_idx").on(table.status),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const requirementEvidence = pgTable(
   "requirement_evidence",
@@ -512,14 +411,8 @@ export const requirementEvidence = pgTable(
       foreignColumns: [organizationRequirements.id],
     }).onDelete("cascade"),
     index("requirement_evidence_requirement_idx").on(table.requirementId),
-    ...authenticatedScopedPolicies(sql`exists (
-      select 1
-      from ${organizationRequirements}
-      where ${organizationRequirements.id} = ${table.requirementId}
-        and ${isOrganizationMember(organizationRequirements.organizationId)}
-    )`),
   ],
-).enableRLS();
+);
 
 export const suppliers = pgTable(
   "suppliers",
@@ -547,9 +440,8 @@ export const suppliers = pgTable(
     }).onDelete("cascade"),
     index("suppliers_org_idx").on(table.organizationId),
     index("suppliers_risk_level_idx").on(table.riskLevel),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const supplierAssessments = pgTable(
   "supplier_assessments",
@@ -573,14 +465,8 @@ export const supplierAssessments = pgTable(
       foreignColumns: [suppliers.id],
     }).onDelete("cascade"),
     index("supplier_assessments_supplier_idx").on(table.supplierId),
-    ...authenticatedScopedPolicies(sql`exists (
-      select 1
-      from ${suppliers}
-      where ${suppliers.id} = ${table.supplierId}
-        and ${isOrganizationMember(suppliers.organizationId)}
-    )`),
   ],
-).enableRLS();
+);
 
 export const registrationTasks = pgTable(
   "registration_tasks",
@@ -605,9 +491,8 @@ export const registrationTasks = pgTable(
     }).onDelete("cascade"),
     index("registration_tasks_org_idx").on(table.organizationId),
     index("registration_tasks_status_idx").on(table.status),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const securityIncidents = pgTable(
   "security_incidents",
@@ -634,9 +519,8 @@ export const securityIncidents = pgTable(
     }).onDelete("cascade"),
     index("security_incidents_org_idx").on(table.organizationId),
     index("security_incidents_severity_idx").on(table.severity),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const incidentReports = pgTable(
   "incident_reports",
@@ -662,14 +546,8 @@ export const incidentReports = pgTable(
       table.incidentId,
       table.stage,
     ),
-    ...authenticatedScopedPolicies(sql`exists (
-      select 1
-      from ${securityIncidents}
-      where ${securityIncidents.id} = ${table.incidentId}
-        and ${isOrganizationMember(securityIncidents.organizationId)}
-    )`),
   ],
-).enableRLS();
+);
 
 export const managementTrainings = pgTable(
   "management_trainings",
@@ -693,9 +571,8 @@ export const managementTrainings = pgTable(
       foreignColumns: [organizations.id],
     }).onDelete("cascade"),
     index("management_trainings_org_idx").on(table.organizationId),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const aiChats = pgTable(
   "ai_chats",
@@ -724,9 +601,8 @@ export const aiChats = pgTable(
     }).onDelete("cascade"),
     index("ai_chats_org_idx").on(table.organizationId),
     index("ai_chats_created_by_idx").on(table.createdByUserId),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const aiMessages = pgTable(
   "ai_messages",
@@ -769,9 +645,8 @@ export const aiMessages = pgTable(
       table.chatId,
       table.uiMessageId,
     ),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const aiDocuments = pgTable(
   "ai_documents",
@@ -813,40 +688,8 @@ export const aiDocuments = pgTable(
     index("ai_documents_ui_message_idx").on(table.uiMessageId),
     index("ai_documents_scope_idx").on(table.scope),
     index("ai_documents_status_idx").on(table.status),
-    pgPolicy("authenticated_ai_documents_select", {
-      for: "select",
-      to: authenticatedRole,
-      using: sql`(
-        (${table.scope} = 'reference' and ${table.organizationId} is null)
-        or ${isOrganizationMember(table.organizationId)}
-      )`,
-    }),
-    pgPolicy("authenticated_ai_documents_insert", {
-      for: "insert",
-      to: authenticatedRole,
-      withCheck: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-    }),
-    pgPolicy("authenticated_ai_documents_update", {
-      for: "update",
-      to: authenticatedRole,
-      using: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-      withCheck: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-    }),
-    pgPolicy("authenticated_ai_documents_delete", {
-      for: "delete",
-      to: authenticatedRole,
-      using: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-    }),
   ],
-).enableRLS();
+);
 
 export const aiDocumentChunks = pgTable(
   "ai_document_chunks",
@@ -889,40 +732,8 @@ export const aiDocumentChunks = pgTable(
     index("ai_document_chunks_chat_idx").on(table.chatId),
     index("ai_document_chunks_ui_message_idx").on(table.uiMessageId),
     index("ai_document_chunks_scope_idx").on(table.scope),
-    pgPolicy("authenticated_ai_document_chunks_select", {
-      for: "select",
-      to: authenticatedRole,
-      using: sql`(
-        (${table.scope} = 'reference' and ${table.organizationId} is null)
-        or ${isOrganizationMember(table.organizationId)}
-      )`,
-    }),
-    pgPolicy("authenticated_ai_document_chunks_insert", {
-      for: "insert",
-      to: authenticatedRole,
-      withCheck: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-    }),
-    pgPolicy("authenticated_ai_document_chunks_update", {
-      for: "update",
-      to: authenticatedRole,
-      using: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-      withCheck: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-    }),
-    pgPolicy("authenticated_ai_document_chunks_delete", {
-      for: "delete",
-      to: authenticatedRole,
-      using: sql`${table.scope} = 'organization'
-        and ${table.organizationId} is not null
-        and ${isOrganizationMember(table.organizationId)}`,
-    }),
   ],
-).enableRLS();
+);
 
 export const aiPromptVersions = pgTable(
   "ai_prompt_versions",
@@ -945,9 +756,8 @@ export const aiPromptVersions = pgTable(
     ),
     index("ai_prompt_versions_mode_idx").on(table.assistantMode),
     index("ai_prompt_versions_hash_idx").on(table.promptHash),
-    authenticatedReferenceReadPolicy(),
   ],
-).enableRLS();
+);
 
 export const aiChatSummaries = pgTable(
   "ai_chat_summaries",
@@ -984,9 +794,8 @@ export const aiChatSummaries = pgTable(
     }).onDelete("set null"),
     index("ai_chat_summaries_chat_idx").on(table.chatId),
     index("ai_chat_summaries_org_idx").on(table.organizationId),
-    ...authenticatedOrgPolicies(table.organizationId),
   ],
-).enableRLS();
+);
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   members: many(organizationMembers),

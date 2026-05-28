@@ -37,11 +37,6 @@ export default defineConfig({
     'suppliers',
     'tom_areas',
   ],
-  entities: {
-    roles: {
-      provider: 'supabase',
-    },
-  },
   dbCredentials: {
     url: databaseUrl,
   },
