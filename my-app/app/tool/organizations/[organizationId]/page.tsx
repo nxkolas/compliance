@@ -1,21 +1,10 @@
-import { OrganizationAssessmentWorkspace } from "@/components/organizations/organization-assessment-workspace";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { ProductModuleContent } from "@/components/product-module-content";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import {
-  getOrganizationForUser,
-  listSelfCheckAssessmentsForOrganization,
-} from "@/src/server/organizations/service";
-import { Building2 } from "lucide-react";
+import { getOrganizationForUser } from "@/src/server/organizations/service";
+import { PieChart } from "lucide-react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getDictionary, getLocale } from "@/lib/i18n";
 
 type OrganizationPageProps = {
   params: Promise<{
@@ -36,8 +25,6 @@ export default async function OrganizationPage({
 async function OrganizationPageContent({ params }: OrganizationPageProps) {
   await connection();
   const user = await requireAuth();
-  const dictionary = await getDictionary();
-  const locale = await getLocale();
   const { organizationId } = await params;
   const organization = await getOrganizationForUser(user.id, organizationId);
 
@@ -45,88 +32,71 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
     notFound();
   }
 
-  const assessments = await listSelfCheckAssessmentsForOrganization(
-    user.id,
-    organization.id,
-  );
-
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8">
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">{organization.name}</h1>
-          <p className="max-w-2xl text-muted-foreground">
-            {dictionary.organizations.workspaceDescription}
-          </p>
-        </div>
-      </section>
-
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-background">
-              <Building2 className="h-4 w-4" />
-            </span>
-            <div>
-              <CardTitle>{dictionary.organizations.details}</CardTitle>
-              <CardDescription>
-                {organization.legalName ||
-                  dictionary.organizations.legalNameEmpty}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-          <span className="rounded-md border px-2.5 py-1">
-            {organization.size ?? dictionary.common.sizeUnknown}
-          </span>
-          <span className="rounded-md border px-2.5 py-1">
-            {organization.countryCode ?? "DE"}
-          </span>
-          {organization.employeeCount !== null && (
-            <span className="rounded-md border px-2.5 py-1">
-              {organization.employeeCount} {dictionary.common.employees}
-            </span>
-          )}
-        </CardContent>
-      </Card>
-
-      <OrganizationAssessmentWorkspace
-        organizationId={organization.id}
-        initialAssessments={serializeForClient(assessments)}
-        labels={{
-          assessment: dictionary.assessment,
-          common: dictionary.common,
-        }}
-        locale={locale}
-      />
-    </div>
+    <ProductModuleContent
+      eyebrow={organization.name}
+      title="Dashboard"
+      description="Zentrale Uebersicht ueber den aktuellen NIS2-Status der Organisation."
+      icon={PieChart}
+      metrics={[
+        { label: "Betroffenheitsstatus", value: "Offen" },
+        { label: "Analysefortschritt", value: "0%" },
+        { label: "Naechste Schritte", value: "Noch nicht erstellt" },
+      ]}
+      cards={[
+        {
+          title: "Statusbereiche",
+          description: "Die wichtigsten Informationen fuer den ersten Blick.",
+          items: [
+            "Betroffenheitsstatus",
+            "Sicherheitsmassnahmen",
+            "Analysefortschritt",
+            "Kritische Bereiche",
+            "Dokumentenstatus",
+          ],
+        },
+        {
+          title: "Naechste Schritte",
+          description: "Aufgaben werden spaeter aus Analyse und Dokumentenpruefung abgeleitet.",
+          items: [
+            "Betroffenheitscheck starten",
+            "Gap-Analyse ausfuellen",
+            "Dokumente fuer KI-Pruefung hochladen",
+            "Massnahmen priorisieren",
+          ],
+        },
+        {
+          title: "Kritische Bereiche",
+          description: "Bereiche mit hohem Handlungsbedarf werden hier hervorgehoben.",
+          items: [
+            "Zugriffskontrolle",
+            "Backup & Recovery",
+            "Incident Response",
+            "Lieferkettensicherheit",
+          ],
+        },
+        {
+          title: "Berichtsstatus",
+          description: "PDF-Berichte werden spaeter aus dem aktuellen Arbeitsstand erzeugt.",
+          items: [
+            "Management-Zusammenfassung",
+            "Kritische Bereiche",
+            "Massnahmenliste",
+            "Dokumentenpruefung",
+          ],
+        },
+      ]}
+    />
   );
 }
 
 function OrganizationPageFallback() {
   return (
     <section className="flex flex-col gap-2">
-      <h1 className="text-3xl font-bold">Organization</h1>
+      <h1 className="text-3xl font-bold">Dashboard</h1>
       <p className="max-w-2xl text-muted-foreground">
-        Loading organization workspace...
+        Dashboard wird geladen...
       </p>
     </section>
   );
 }
-
-function serializeForClient<T>(value: T): JSONValue<T> {
-  return JSON.parse(JSON.stringify(value)) as JSONValue<T>;
-}
-
-type JSONValue<T> = T extends null
-  ? null
-  : T extends Date
-    ? string
-    : T extends Date | null
-      ? string | null
-      : T extends Array<infer U>
-        ? Array<JSONValue<U>>
-        : T extends object
-          ? { [K in keyof T]: JSONValue<T[K]> }
-          : T;
