@@ -1,24 +1,24 @@
-import { LoginForm } from "@/components/login-form";
+import { LoginForm } from "../../../components/login-form"; // Mit geschweiften Klammern!
 import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
+import Image from "next/image";
 
 export default function Page() {
   return (
-    <main
-      className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-background px-6 py-12 md:px-10"
-      style={{
-        background:
-          "linear-gradient(135deg, var(--color-background) 0%, color-mix(in oklch, var(--color-primary) 10%, var(--color-background)) 100%)",
-      }}
-    >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-40 -top-40 size-115 rounded-full bg-primary/20 blur-[120px]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-44 -left-40 size-130 rounded-full bg-primary/15 blur-[130px]"
-      />
+    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
+      
+{/* HINTERGRUND: Der Pfad zeigt jetzt genau in den images-Ordner */}
+<div className="absolute inset-0 z-0 pointer-events-none">
+  <Image 
+    src="/images/Startseite.svg" // <-- Hier "/images/" davor packen und das große "S" beachten!
+    alt="Hintergrund" 
+    fill
+    className="object-cover"
+    priority
+  />
+</div>
+
+      {/* VORDERGRUND: Die Maske schwebt darüber */}
       <div className="relative z-10 w-full max-w-md">
         <Suspense fallback={null}>
           <LoginFormLoader />
