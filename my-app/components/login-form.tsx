@@ -10,6 +10,7 @@ import { Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 
 function getNextPath() {
   const next = new URLSearchParams(window.location.search).get("next");
@@ -51,12 +52,18 @@ export function LoginForm({
   };
 
   return (
-    // Max-Breite auf 442px begrenzt für perfekte Symmetrie zu Anhs Design
-    <div className={cn("w-full max-w-[442px] px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
+    <div className={cn("w-full max-w-110.5px px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
       
-      {/* LOGO-BEREICH */}
-      <div className="h-16 flex items-center justify-start text-white text-3xl font-semibold tracking-tight">
-        comply<span className="text-[#002AFF]">X</span>
+      {/* 1. HIER REIN: Ersetze den alten Logo-Text mit diesem Block */}
+      <div className="h-16 flex items-center justify-start">
+        <Image 
+          src="/images/Logo-weiß.svg"
+          alt="complyX Logo"
+          width={180}
+          height={48}
+          priority 
+          className="object-contain"
+        />
       </div>
 
       {/* TITEL & SUBTITEL */}
