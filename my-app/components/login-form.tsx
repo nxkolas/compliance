@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Dictionary } from "@/lib/i18n";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff } from "lucide-react"; // Auge-Icons importiert
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 
 function getNextPath() {
+  if (typeof window === "undefined") return "/tool/organizations";
   const next = new URLSearchParams(window.location.search).get("next");
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
     return "/tool/organizations";
@@ -29,6 +30,7 @@ export function LoginForm({
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // State für Passwortsichtbarkeit
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -40,21 +42,21 @@ export function LoginForm({
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginError) throw loginError;
       router.replace(getNextPath());
       router.refresh();
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : labels.errorFallback);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : labels.errorFallback);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={cn("w-full max-w-442px px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
+    <div className={cn("w-full max-w-[442px] px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
       
-      {/* 1. HIER REIN: Ersetze den alten Logo-Text mit diesem Block */}
+      {/* LOGO-BEREICH */}
       <div className="h-16 flex items-center justify-start">
         <Image 
           src="/images/Logo-weiß.svg"
@@ -116,13 +118,20 @@ export function LoginForm({
               <Lock className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"} // Schaltet Typ dynamisch um
                 placeholder="••••••••"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                className="w-full h-12 pl-12 pr-12 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#002AFF] transition-colors focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+              </button>
             </div>
           </div>
 
