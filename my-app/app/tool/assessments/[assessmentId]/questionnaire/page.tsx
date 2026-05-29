@@ -1,5 +1,4 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
-import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type AssessmentQuestionnairePageProps = {
@@ -22,14 +21,30 @@ async function AssessmentQuestionnairePageContent({
   params,
 }: AssessmentQuestionnairePageProps) {
   const { assessmentId } = await params;
-  const dictionary = await getDictionary();
 
   return (
     <AssessmentModulePage
       assessmentId={assessmentId}
-      title={dictionary.assessment.questionnaireTitle}
+      title="Fragebogen"
     >
-      <p>{dictionary.assessment.questionnaireDescription}</p>
+      <div className="grid gap-4 md:grid-cols-2">
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold text-foreground">Eingaben</h2>
+          <ul className="flex flex-col gap-1">
+            <li>Branchenauswahl</li>
+            <li>Mitarbeiteranzahl</li>
+            <li>Umsatz/Bilanzsumme</li>
+            <li>Kritische Dienstleistungen</li>
+          </ul>
+        </section>
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold text-foreground">Erklaerung</h2>
+          <p>
+            Die spaetere Auswertung beantwortet: Warum ist mein Unternehmen
+            betroffen?
+          </p>
+        </section>
+      </div>
     </AssessmentModulePage>
   );
 }

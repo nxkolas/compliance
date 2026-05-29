@@ -8,15 +8,17 @@ import {
 } from "@/components/ui/sidebar";
 import type { Dictionary } from "@/lib/i18n";
 import {
+  BookOpen,
   Building2,
   Bot,
   ClipboardCheck,
-  FileCheck2,
+  FileSearch,
   Inbox,
   ListChecks,
+  PieChart,
+  ReceiptText,
   Settings,
   ShieldCheck,
-  Truck,
   UserRoundCheck,
   Users,
 } from "lucide-react";
@@ -50,38 +52,48 @@ export function AppSidebarNav({
     ? [
         {
           href: `/tool/organizations/${organizationId}`,
-          label: labels.overview,
+          label: labels.dashboard,
+          icon: PieChart,
+        },
+        {
+          href: `/tool/organizations/${organizationId}/applicability-check`,
+          label: labels.applicabilityCheck,
           icon: ClipboardCheck,
         },
         {
-          href: `/tool/organizations/${organizationId}/requirements`,
-          label: labels.requirements,
-          icon: ListChecks,
-        },
-        {
-          href: `/tool/organizations/${organizationId}/risk-management`,
-          label: labels.riskManagement,
+          href: `/tool/organizations/${organizationId}/gap-analysis`,
+          label: labels.gapAnalysis,
           icon: ShieldCheck,
         },
         {
-          href: `/tool/organizations/${organizationId}/assistant`,
-          label: labels.assistant,
-          icon: Bot,
+          href: `/tool/organizations/${organizationId}/document-review`,
+          label: labels.documentReview,
+          icon: FileSearch,
         },
         {
-          href: `/tool/organizations/${organizationId}/suppliers`,
-          label: labels.suppliers,
-          icon: Truck,
+          href: `/tool/organizations/${organizationId}/action-plan`,
+          label: labels.actionPlan,
+          icon: ListChecks,
         },
         {
-          href: `/tool/organizations/${organizationId}/registration`,
-          label: labels.registration,
-          icon: FileCheck2,
+          href: `/tool/organizations/${organizationId}/pdf-export`,
+          label: labels.pdfExport,
+          icon: ReceiptText,
+        },
+        {
+          href: `/tool/organizations/${organizationId}/help`,
+          label: labels.helpGlossary,
+          icon: BookOpen,
         },
         {
           href: `/tool/organizations/${organizationId}/settings`,
           label: labels.settings,
           icon: Settings,
+        },
+        {
+          href: `/tool/organizations/${organizationId}/assistant`,
+          label: labels.assistant,
+          icon: Bot,
         },
       ]
     : [];
