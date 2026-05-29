@@ -52,7 +52,7 @@ export function LoginForm({
   };
 
   return (
-    <div className={cn("w-full max-w-110.5px px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
+    <div className={cn("w-full max-w-442px px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
       
       {/* 1. HIER REIN: Ersetze den alten Logo-Text mit diesem Block */}
       <div className="h-16 flex items-center justify-start">
