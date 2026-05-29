@@ -88,6 +88,59 @@ export const taskStatusEnum = pgEnum("task_status", [
   "not_applicable",
 ]);
 
+export const questionnaireTypeEnum = pgEnum("questionnaire_type", [
+  "applicability_check",
+  "gap_analysis",
+]);
+
+export const questionnaireQuestionTypeEnum = pgEnum(
+  "questionnaire_question_type",
+  ["single_choice", "multi_choice", "number", "money", "boolean", "text", "date"],
+);
+
+export const questionnaireResultEnum = pgEnum("questionnaire_result", [
+  "unknown",
+  "affected",
+  "possibly_affected",
+  "not_affected",
+  "action_required",
+  "partially_implemented",
+  "baseline_fulfilled",
+]);
+
+export const documentReviewStatusEnum = pgEnum("document_review_status", [
+  "queued",
+  "in_progress",
+  "completed",
+  "failed",
+]);
+
+export const documentFindingStatusEnum = pgEnum("document_finding_status", [
+  "present",
+  "incomplete",
+  "missing",
+]);
+
+export const reportExportStatusEnum = pgEnum("report_export_status", [
+  "queued",
+  "generating",
+  "ready",
+  "failed",
+]);
+
+export const reportExportTypeEnum = pgEnum("report_export_type", [
+  "nis2_status_report",
+  "management_summary",
+  "advisor_package",
+  "internal_documentation",
+]);
+
+export const reportAudienceEnum = pgEnum("report_audience", [
+  "management",
+  "external_consultant",
+  "internal_documentation",
+]);
+
 export const aiMessageRoleEnum = pgEnum("ai_message_role", [
   "system",
   "user",
@@ -268,6 +321,60 @@ export const organizationSectors = pgTable(
   ],
 );
 
+export const nis2CriticalServices = pgTable(
+  "nis2_critical_services",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sectorId: uuid("sector_id"),
+    code: varchar("code", { length: 64 }).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "nis2_critical_services_sector_fk",
+      columns: [table.sectorId],
+      foreignColumns: [nis2Sectors.id],
+    }).onDelete("set null"),
+    uniqueIndex("nis2_critical_services_code_unique").on(table.code),
+    index("nis2_critical_services_sector_idx").on(table.sectorId),
+  ],
+);
+
+export const organizationCriticalServices = pgTable(
+  "organization_critical_services",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    criticalServiceId: uuid("critical_service_id").notNull(),
+    isCritical: boolean("is_critical").default(true).notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "org_critical_services_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "org_critical_services_service_fk",
+      columns: [table.criticalServiceId],
+      foreignColumns: [nis2CriticalServices.id],
+    }).onDelete("restrict"),
+    uniqueIndex("org_critical_services_org_service_unique").on(
+      table.organizationId,
+      table.criticalServiceId,
+    ),
+    index("org_critical_services_org_idx").on(table.organizationId),
+  ],
+);
+
 export const lexSpecialisRules = pgTable(
   "lex_specialis_rules",
   {
@@ -337,6 +444,169 @@ export const assessmentLexSpecialisMatches = pgTable(
       table.assessmentId,
       table.ruleId,
     ),
+  ],
+);
+
+export const questionnaireTemplates = pgTable(
+  "questionnaire_templates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 64 }).notNull(),
+    type: questionnaireTypeEnum("type").notNull(),
+    version: varchar("version", { length: 32 }).default("1").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("questionnaire_templates_code_version_unique").on(
+      table.code,
+      table.version,
+    ),
+    index("questionnaire_templates_type_idx").on(table.type),
+    index("questionnaire_templates_active_idx").on(table.isActive),
+  ],
+);
+
+export const questionnaireSections = pgTable(
+  "questionnaire_sections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    templateId: uuid("template_id").notNull(),
+    code: varchar("code", { length: 64 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    sortOrder: integer("sort_order").default(0).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "questionnaire_sections_template_fk",
+      columns: [table.templateId],
+      foreignColumns: [questionnaireTemplates.id],
+    }).onDelete("cascade"),
+    uniqueIndex("questionnaire_sections_template_code_unique").on(
+      table.templateId,
+      table.code,
+    ),
+    index("questionnaire_sections_template_idx").on(table.templateId),
+  ],
+);
+
+export const questionnaireQuestions = pgTable(
+  "questionnaire_questions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sectionId: uuid("section_id").notNull(),
+    code: varchar("code", { length: 96 }).notNull(),
+    prompt: text("prompt").notNull(),
+    helpText: text("help_text"),
+    questionType: questionnaireQuestionTypeEnum("question_type").notNull(),
+    isRequired: boolean("is_required").default(true).notNull(),
+    options: jsonb("options").$type<Record<string, unknown>[]>(),
+    scoring: jsonb("scoring").$type<Record<string, unknown>>(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "questionnaire_questions_section_fk",
+      columns: [table.sectionId],
+      foreignColumns: [questionnaireSections.id],
+    }).onDelete("cascade"),
+    uniqueIndex("questionnaire_questions_section_code_unique").on(
+      table.sectionId,
+      table.code,
+    ),
+    index("questionnaire_questions_section_idx").on(table.sectionId),
+  ],
+);
+
+export const questionnaireRuns = pgTable(
+  "questionnaire_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    templateId: uuid("template_id").notNull(),
+    selfCheckAssessmentId: uuid("self_check_assessment_id"),
+    performedByUserId: uuid("performed_by_user_id"),
+    status: assessmentStatusEnum("status").default("draft").notNull(),
+    result: questionnaireResultEnum("result").default("unknown").notNull(),
+    progress: integer("progress").default(0).notNull(),
+    score: numeric("score", { precision: 6, scale: 2 }),
+    summary: text("summary"),
+    reasoning: text("reasoning"),
+    answersSnapshot: jsonb("answers_snapshot").$type<Record<string, unknown>>(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "questionnaire_runs_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "questionnaire_runs_template_fk",
+      columns: [table.templateId],
+      foreignColumns: [questionnaireTemplates.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "questionnaire_runs_self_check_fk",
+      columns: [table.selfCheckAssessmentId],
+      foreignColumns: [selfCheckAssessments.id],
+    }).onDelete("set null"),
+    index("questionnaire_runs_org_idx").on(table.organizationId),
+    index("questionnaire_runs_template_idx").on(table.templateId),
+    index("questionnaire_runs_status_idx").on(table.status),
+    index("questionnaire_runs_result_idx").on(table.result),
+  ],
+);
+
+export const questionnaireAnswers = pgTable(
+  "questionnaire_answers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id").notNull(),
+    questionId: uuid("question_id").notNull(),
+    value: jsonb("value").$type<Record<string, unknown> | unknown[]>(),
+    notes: text("notes"),
+    answeredByUserId: uuid("answered_by_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "questionnaire_answers_run_fk",
+      columns: [table.runId],
+      foreignColumns: [questionnaireRuns.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "questionnaire_answers_question_fk",
+      columns: [table.questionId],
+      foreignColumns: [questionnaireQuestions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("questionnaire_answers_run_question_unique").on(
+      table.runId,
+      table.questionId,
+    ),
+    index("questionnaire_answers_run_idx").on(table.runId),
   ],
 );
 
@@ -735,6 +1005,265 @@ export const aiDocumentChunks = pgTable(
   ],
 );
 
+export const documentRequirementTypes = pgTable(
+  "document_requirement_types",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 64 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    category: varchar("category", { length: 120 }),
+    isRequired: boolean("is_required").default(true).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("document_requirement_types_code_unique").on(table.code),
+    index("document_requirement_types_active_idx").on(table.isActive),
+  ],
+);
+
+export const documentReviewRuns = pgTable(
+  "document_review_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    documentId: uuid("document_id"),
+    chatId: uuid("chat_id"),
+    performedByUserId: uuid("performed_by_user_id"),
+    status: documentReviewStatusEnum("status").default("queued").notNull(),
+    summary: text("summary"),
+    modelProvider: varchar("model_provider", { length: 64 }),
+    modelId: varchar("model_id", { length: 255 }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "document_review_runs_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "document_review_runs_document_fk",
+      columns: [table.documentId],
+      foreignColumns: [aiDocuments.id],
+    }).onDelete("set null"),
+    foreignKey({
+      name: "document_review_runs_chat_fk",
+      columns: [table.chatId],
+      foreignColumns: [aiChats.id],
+    }).onDelete("set null"),
+    index("document_review_runs_org_idx").on(table.organizationId),
+    index("document_review_runs_document_idx").on(table.documentId),
+    index("document_review_runs_status_idx").on(table.status),
+  ],
+);
+
+export const documentReviewFindings = pgTable(
+  "document_review_findings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    reviewRunId: uuid("review_run_id").notNull(),
+    requirementTypeId: uuid("requirement_type_id").notNull(),
+    documentId: uuid("document_id"),
+    status: documentFindingStatusEnum("status").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    evidenceSummary: text("evidence_summary"),
+    recommendation: text("recommendation"),
+    confidence: numeric("confidence", { precision: 4, scale: 3 }),
+    citedChunkIds: jsonb("cited_chunk_ids").$type<string[]>(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "document_review_findings_run_fk",
+      columns: [table.reviewRunId],
+      foreignColumns: [documentReviewRuns.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "document_review_findings_requirement_fk",
+      columns: [table.requirementTypeId],
+      foreignColumns: [documentRequirementTypes.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "document_review_findings_document_fk",
+      columns: [table.documentId],
+      foreignColumns: [aiDocuments.id],
+    }).onDelete("set null"),
+    index("document_review_findings_run_idx").on(table.reviewRunId),
+    index("document_review_findings_requirement_idx").on(
+      table.requirementTypeId,
+    ),
+    index("document_review_findings_status_idx").on(table.status),
+  ],
+);
+
+export const actionPlanItems = pgTable(
+  "action_plan_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    requirementId: uuid("requirement_id"),
+    questionnaireRunId: uuid("questionnaire_run_id"),
+    documentReviewFindingId: uuid("document_review_finding_id"),
+    documentId: uuid("document_id"),
+    ownerUserId: uuid("owner_user_id"),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description"),
+    priority: riskLevelEnum("priority").default("medium").notNull(),
+    status: taskStatusEnum("status").default("open").notNull(),
+    progress: integer("progress").default(0).notNull(),
+    source: varchar("source", { length: 120 }),
+    dueDate: date("due_date"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "action_plan_items_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "action_plan_items_requirement_fk",
+      columns: [table.requirementId],
+      foreignColumns: [organizationRequirements.id],
+    }).onDelete("set null"),
+    foreignKey({
+      name: "action_plan_items_questionnaire_run_fk",
+      columns: [table.questionnaireRunId],
+      foreignColumns: [questionnaireRuns.id],
+    }).onDelete("set null"),
+    foreignKey({
+      name: "action_plan_items_document_finding_fk",
+      columns: [table.documentReviewFindingId],
+      foreignColumns: [documentReviewFindings.id],
+    }).onDelete("set null"),
+    foreignKey({
+      name: "action_plan_items_document_fk",
+      columns: [table.documentId],
+      foreignColumns: [aiDocuments.id],
+    }).onDelete("set null"),
+    index("action_plan_items_org_idx").on(table.organizationId),
+    index("action_plan_items_status_idx").on(table.status),
+    index("action_plan_items_priority_idx").on(table.priority),
+    index("action_plan_items_due_date_idx").on(table.dueDate),
+  ],
+);
+
+export const reportExports = pgTable(
+  "report_exports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    generatedByUserId: uuid("generated_by_user_id"),
+    exportType: reportExportTypeEnum("export_type")
+      .default("nis2_status_report")
+      .notNull(),
+    audience: reportAudienceEnum("audience").notNull(),
+    status: reportExportStatusEnum("status").default("queued").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    storagePath: text("storage_path"),
+    includedSections: jsonb("included_sections").$type<string[]>(),
+    summarySnapshot: jsonb("summary_snapshot").$type<Record<string, unknown>>(),
+    errorMessage: text("error_message"),
+    generatedAt: timestamp("generated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "report_exports_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    index("report_exports_org_idx").on(table.organizationId),
+    index("report_exports_status_idx").on(table.status),
+    index("report_exports_audience_idx").on(table.audience),
+  ],
+);
+
+export const userPreferences = pgTable(
+  "user_preferences",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    language: varchar("language", { length: 12 }).default("de").notNull(),
+    notificationSettings: jsonb("notification_settings").$type<
+      Record<string, unknown>
+    >(),
+    privacySettings: jsonb("privacy_settings").$type<Record<string, unknown>>(),
+    uiSettings: jsonb("ui_settings").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("user_preferences_user_unique").on(table.userId),
+    index("user_preferences_language_idx").on(table.language),
+  ],
+);
+
+export const organizationSettings = pgTable(
+  "organization_settings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    notificationSettings: jsonb("notification_settings").$type<
+      Record<string, unknown>
+    >(),
+    privacySettings: jsonb("privacy_settings").$type<Record<string, unknown>>(),
+    complianceSettings: jsonb("compliance_settings").$type<
+      Record<string, unknown>
+    >(),
+    dataRetentionDays: integer("data_retention_days"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "organization_settings_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    uniqueIndex("organization_settings_org_unique").on(table.organizationId),
+  ],
+);
+
 export const aiPromptVersions = pgTable(
   "ai_prompt_versions",
   {
@@ -797,11 +1326,13 @@ export const aiChatSummaries = pgTable(
   ],
 );
 
-export const organizationsRelations = relations(organizations, ({ many }) => ({
+export const organizationsRelations = relations(organizations, ({ many, one }) => ({
   members: many(organizationMembers),
   invitations: many(organizationInvitations),
   sectors: many(organizationSectors),
+  criticalServices: many(organizationCriticalServices),
   selfCheckAssessments: many(selfCheckAssessments),
+  questionnaireRuns: many(questionnaireRuns),
   requirements: many(organizationRequirements),
   suppliers: many(suppliers),
   registrationTasks: many(registrationTasks),
@@ -809,6 +1340,10 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   managementTrainings: many(managementTrainings),
   aiChats: many(aiChats),
   aiDocuments: many(aiDocuments),
+  documentReviewRuns: many(documentReviewRuns),
+  actionPlanItems: many(actionPlanItems),
+  reportExports: many(reportExports),
+  settings: one(organizationSettings),
 }));
 
 export const organizationMembersRelations = relations(
@@ -833,6 +1368,7 @@ export const organizationInvitationsRelations = relations(
 
 export const nis2SectorsRelations = relations(nis2Sectors, ({ many }) => ({
   organizations: many(organizationSectors),
+  criticalServices: many(nis2CriticalServices),
 }));
 
 export const organizationSectorsRelations = relations(
@@ -849,6 +1385,31 @@ export const organizationSectorsRelations = relations(
   }),
 );
 
+export const nis2CriticalServicesRelations = relations(
+  nis2CriticalServices,
+  ({ many, one }) => ({
+    sector: one(nis2Sectors, {
+      fields: [nis2CriticalServices.sectorId],
+      references: [nis2Sectors.id],
+    }),
+    organizations: many(organizationCriticalServices),
+  }),
+);
+
+export const organizationCriticalServicesRelations = relations(
+  organizationCriticalServices,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationCriticalServices.organizationId],
+      references: [organizations.id],
+    }),
+    criticalService: one(nis2CriticalServices, {
+      fields: [organizationCriticalServices.criticalServiceId],
+      references: [nis2CriticalServices.id],
+    }),
+  }),
+);
+
 export const selfCheckAssessmentsRelations = relations(
   selfCheckAssessments,
   ({ many, one }) => ({
@@ -857,6 +1418,7 @@ export const selfCheckAssessmentsRelations = relations(
       references: [organizations.id],
     }),
     lexSpecialisMatches: many(assessmentLexSpecialisMatches),
+    questionnaireRuns: many(questionnaireRuns),
   }),
 );
 
@@ -870,6 +1432,70 @@ export const assessmentLexSpecialisMatchesRelations = relations(
     rule: one(lexSpecialisRules, {
       fields: [assessmentLexSpecialisMatches.ruleId],
       references: [lexSpecialisRules.id],
+    }),
+  }),
+);
+
+export const questionnaireTemplatesRelations = relations(
+  questionnaireTemplates,
+  ({ many }) => ({
+    sections: many(questionnaireSections),
+    runs: many(questionnaireRuns),
+  }),
+);
+
+export const questionnaireSectionsRelations = relations(
+  questionnaireSections,
+  ({ many, one }) => ({
+    template: one(questionnaireTemplates, {
+      fields: [questionnaireSections.templateId],
+      references: [questionnaireTemplates.id],
+    }),
+    questions: many(questionnaireQuestions),
+  }),
+);
+
+export const questionnaireQuestionsRelations = relations(
+  questionnaireQuestions,
+  ({ many, one }) => ({
+    section: one(questionnaireSections, {
+      fields: [questionnaireQuestions.sectionId],
+      references: [questionnaireSections.id],
+    }),
+    answers: many(questionnaireAnswers),
+  }),
+);
+
+export const questionnaireRunsRelations = relations(
+  questionnaireRuns,
+  ({ many, one }) => ({
+    organization: one(organizations, {
+      fields: [questionnaireRuns.organizationId],
+      references: [organizations.id],
+    }),
+    template: one(questionnaireTemplates, {
+      fields: [questionnaireRuns.templateId],
+      references: [questionnaireTemplates.id],
+    }),
+    selfCheckAssessment: one(selfCheckAssessments, {
+      fields: [questionnaireRuns.selfCheckAssessmentId],
+      references: [selfCheckAssessments.id],
+    }),
+    answers: many(questionnaireAnswers),
+    actionPlanItems: many(actionPlanItems),
+  }),
+);
+
+export const questionnaireAnswersRelations = relations(
+  questionnaireAnswers,
+  ({ one }) => ({
+    run: one(questionnaireRuns, {
+      fields: [questionnaireAnswers.runId],
+      references: [questionnaireRuns.id],
+    }),
+    question: one(questionnaireQuestions, {
+      fields: [questionnaireAnswers.questionId],
+      references: [questionnaireQuestions.id],
     }),
   }),
 );
@@ -890,6 +1516,7 @@ export const organizationRequirementsRelations = relations(
       references: [tomAreas.id],
     }),
     evidence: many(requirementEvidence),
+    actionPlanItems: many(actionPlanItems),
   }),
 );
 
@@ -966,6 +1593,7 @@ export const aiChatsRelations = relations(aiChats, ({ many, one }) => ({
   }),
   messages: many(aiMessages),
   documents: many(aiDocuments),
+  documentReviewRuns: many(documentReviewRuns),
   summaries: many(aiChatSummaries),
 }));
 
@@ -992,6 +1620,9 @@ export const aiDocumentsRelations = relations(aiDocuments, ({ many, one }) => ({
     references: [aiChats.id],
   }),
   chunks: many(aiDocumentChunks),
+  documentReviewRuns: many(documentReviewRuns),
+  documentReviewFindings: many(documentReviewFindings),
+  actionPlanItems: many(actionPlanItems),
 }));
 
 export const aiDocumentChunksRelations = relations(
@@ -1008,6 +1639,96 @@ export const aiDocumentChunksRelations = relations(
     chat: one(aiChats, {
       fields: [aiDocumentChunks.chatId],
       references: [aiChats.id],
+    }),
+  }),
+);
+
+export const documentRequirementTypesRelations = relations(
+  documentRequirementTypes,
+  ({ many }) => ({
+    findings: many(documentReviewFindings),
+  }),
+);
+
+export const documentReviewRunsRelations = relations(
+  documentReviewRuns,
+  ({ many, one }) => ({
+    organization: one(organizations, {
+      fields: [documentReviewRuns.organizationId],
+      references: [organizations.id],
+    }),
+    document: one(aiDocuments, {
+      fields: [documentReviewRuns.documentId],
+      references: [aiDocuments.id],
+    }),
+    chat: one(aiChats, {
+      fields: [documentReviewRuns.chatId],
+      references: [aiChats.id],
+    }),
+    findings: many(documentReviewFindings),
+  }),
+);
+
+export const documentReviewFindingsRelations = relations(
+  documentReviewFindings,
+  ({ many, one }) => ({
+    reviewRun: one(documentReviewRuns, {
+      fields: [documentReviewFindings.reviewRunId],
+      references: [documentReviewRuns.id],
+    }),
+    requirementType: one(documentRequirementTypes, {
+      fields: [documentReviewFindings.requirementTypeId],
+      references: [documentRequirementTypes.id],
+    }),
+    document: one(aiDocuments, {
+      fields: [documentReviewFindings.documentId],
+      references: [aiDocuments.id],
+    }),
+    actionPlanItems: many(actionPlanItems),
+  }),
+);
+
+export const actionPlanItemsRelations = relations(
+  actionPlanItems,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [actionPlanItems.organizationId],
+      references: [organizations.id],
+    }),
+    requirement: one(organizationRequirements, {
+      fields: [actionPlanItems.requirementId],
+      references: [organizationRequirements.id],
+    }),
+    questionnaireRun: one(questionnaireRuns, {
+      fields: [actionPlanItems.questionnaireRunId],
+      references: [questionnaireRuns.id],
+    }),
+    documentReviewFinding: one(documentReviewFindings, {
+      fields: [actionPlanItems.documentReviewFindingId],
+      references: [documentReviewFindings.id],
+    }),
+    document: one(aiDocuments, {
+      fields: [actionPlanItems.documentId],
+      references: [aiDocuments.id],
+    }),
+  }),
+);
+
+export const reportExportsRelations = relations(reportExports, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [reportExports.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+export const userPreferencesRelations = relations(userPreferences, () => ({}));
+
+export const organizationSettingsRelations = relations(
+  organizationSettings,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationSettings.organizationId],
+      references: [organizations.id],
     }),
   }),
 );

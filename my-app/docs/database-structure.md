@@ -34,11 +34,28 @@ const client = postgres(process.env.DATABASE_URL!, {
 
 ## Development Reset
 
-Schema changes are applied with `drizzle-kit push`:
+## Drizzle Schema Workflow
+
+This project uses Drizzle's codebase-first push workflow, matching Option 2 in
+the Drizzle migrations documentation: the TypeScript schema is the source of
+truth and Drizzle pushes the diff directly to the database.
+
+Always apply schema changes with `drizzle-kit push` through the project script:
 
 ```bash
 npm run db:push
 ```
+
+For Supabase, the app can use the transaction pooler at port `6543`, but
+Drizzle Kit schema introspection must use the session pooler at port `5432`.
+`drizzle.config.ts` converts a Supabase pooler `DATABASE_URL` from `6543` to
+`5432` automatically for `db:push`. This avoids the known Drizzle Kit crash while
+pulling CHECK constraints through the transaction pooler.
+
+Do not run `drizzle-kit generate`, `drizzle-kit migrate`, or any workflow that
+creates SQL migration files/snapshots under `drizzle/`. This repository does not
+track generated Drizzle migration files; keep `drizzle/meta/_journal.json` empty
+unless the project explicitly switches away from the push workflow.
 
 To clear Drizzle-managed app tables in a development database, run:
 
@@ -65,6 +82,14 @@ Enums keep frequently filtered status/category values consistent.
 | `risk_level` | `low`, `medium`, `high`, `critical` | Shared severity/risk scale. |
 | `incident_report_stage` | `early_warning_24h`, `notification_72h`, `final_report_1_month`, `progress_report` | NIS2 incident reporting stages. |
 | `task_status` | `open`, `in_progress`, `done`, `blocked`, `not_applicable` | Registration/task workflow state. |
+| `questionnaire_type` | `applicability_check`, `gap_analysis` | Separates Betroffenheitscheck and Gap-Analyse questionnaires. |
+| `questionnaire_question_type` | `single_choice`, `multi_choice`, `number`, `money`, `boolean`, `text`, `date` | Input type for structured questionnaire questions. |
+| `questionnaire_result` | `unknown`, `affected`, `possibly_affected`, `not_affected`, `action_required`, `partially_implemented`, `baseline_fulfilled` | Result labels for Betroffenheitscheck and Gap-Analyse runs. |
+| `document_review_status` | `queued`, `in_progress`, `completed`, `failed` | Lifecycle for AI document review jobs. |
+| `document_finding_status` | `present`, `incomplete`, `missing` | Finding result for required document content. |
+| `report_export_status` | `queued`, `generating`, `ready`, `failed` | PDF export lifecycle. |
+| `report_export_type` | `nis2_status_report`, `management_summary`, `advisor_package`, `internal_documentation` | Report package type. |
+| `report_audience` | `management`, `external_consultant`, `internal_documentation` | Intended PDF report audience. |
 
 ## Tables
 
@@ -213,6 +238,35 @@ await db.insert(organizationSectors).values({
 });
 ```
 
+### `nis2_critical_services`
+
+Reference table for critical services that can affect NIS2 applicability, such
+as energy supply, healthcare services, managed IT services, or digital
+infrastructure.
+
+Important columns:
+- `code`: Stable internal identifier.
+- `sector_id`: Optional link to the matching NIS2 sector.
+- `name`, `description`: Human-readable content for the self-check UI.
+
+Typical use:
+- Seed once with critical service options.
+- Use in Betroffenheitscheck alongside sector, size, revenue, and balance sheet
+  inputs.
+
+### `organization_critical_services`
+
+Join table between organizations and selected critical services.
+
+Important columns:
+- `organization_id`: Organization being assessed.
+- `critical_service_id`: Selected reference service.
+- `is_critical`: Whether the organization considers this service critical.
+- `notes`: Optional explanation.
+
+Constraints:
+- One critical service can only be assigned once per organization.
+
 ### `lex_specialis_rules`
 
 Reference table for rules that may override or modify NIS2 applicability, such
@@ -289,6 +343,44 @@ await db.insert(assessmentLexSpecialisMatches).values({
   assessmentId,
   ruleId,
   notes: "Financial entity, DORA should be checked before final NIS2 classification.",
+});
+```
+
+### Questionnaire Tables
+
+Structured questionnaires power Betroffenheitscheck and Gap-Analyse without
+hiding answers inside one opaque JSON blob.
+
+Tables:
+- `questionnaire_templates`: Versioned questionnaire definition with type
+  `applicability_check` or `gap_analysis`.
+- `questionnaire_sections`: Ordered section groups such as Zugriffskontrolle,
+  Backup & Recovery, Incident Response, or Lieferkettensicherheit.
+- `questionnaire_questions`: Ordered reusable questions with input type,
+  options, help text, and optional scoring metadata.
+- `questionnaire_runs`: One organization's questionnaire execution, including
+  status, progress, score, result, summary, reasoning, and optional link to a
+  `self_check_assessments` row.
+- `questionnaire_answers`: One answer per run/question pair.
+
+Typical use:
+- Store Betroffenheitscheck answers in `questionnaire_answers`, then write the
+  derived NIS2 category and explanation to `self_check_assessments`.
+- Store Gap-Analyse answers and result in `questionnaire_runs`.
+- Derive dashboard progress from `questionnaire_runs.progress` and answer
+  counts.
+
+```ts
+const run = await db.query.questionnaireRuns.findFirst({
+  where: (questionnaireRun, { eq }) => eq(questionnaireRun.id, runId),
+  with: {
+    template: true,
+    answers: {
+      with: {
+        question: true,
+      },
+    },
+  },
 });
 ```
 
@@ -557,6 +649,76 @@ await db.insert(managementTrainings).values({
 });
 ```
 
+### Document Review Tables
+
+AI document review builds on the existing `ai_documents` and
+`ai_document_chunks` RAG tables.
+
+Tables:
+- `document_requirement_types`: Seeded reference list of expected document
+  types/content, for example password policy, MFA policy, incident-response
+  document, and backup concept.
+- `document_review_runs`: One review job for an organization and optionally one
+  uploaded document/chat.
+- `document_review_findings`: Requirement-level findings with status
+  `present`, `incomplete`, or `missing`, evidence summary, recommendation,
+  confidence, and cited chunk IDs.
+
+Typical use:
+- Upload a document through `ai_documents`.
+- Create a `document_review_runs` row.
+- Store one `document_review_findings` row per required document type or
+  detected gap.
+- Generate action-plan items from missing or incomplete findings.
+
+### `action_plan_items`
+
+Stores concrete next steps for the Maßnahmenplan and dashboard reminders.
+
+Important columns:
+- `organization_id`: Tenant key.
+- `requirement_id`, `questionnaire_run_id`, `document_review_finding_id`,
+  `document_id`: Optional links to the source that created the action.
+- `title`, `description`: User-facing task text.
+- `priority`: Uses the shared `risk_level` enum.
+- `status`: Uses the shared `task_status` enum.
+- `progress`, `due_date`, `owner_user_id`, `completed_at`: Planning and
+  tracking fields.
+
+Typical use:
+- List open tasks by priority for "Was muss ich jetzt konkret tun?"
+- Create tasks from Gap-Analyse results or document review findings.
+
+### `report_exports`
+
+Stores PDF export history and metadata.
+
+Important columns:
+- `organization_id`: Organization the report belongs to.
+- `generated_by_user_id`: Supabase Auth user UUID.
+- `export_type`: Status report, management summary, advisor package, or
+  internal documentation.
+- `audience`: Management, external consultant, or internal documentation.
+- `status`, `storage_path`, `included_sections`, `summary_snapshot`,
+  `error_message`, `generated_at`: Export lifecycle and audit data.
+
+Typical use:
+- Generate the PDF from current database state.
+- Persist the resulting file path and a lightweight snapshot for audit history.
+
+### Settings Tables
+
+Company profile fields stay on `organizations`. Additional preferences are kept
+in small settings tables.
+
+Tables:
+- `user_preferences`: Per-user language, notification, privacy, and UI settings.
+- `organization_settings`: Organization-wide notification defaults, privacy
+  choices, compliance settings, and optional retention period.
+
+Hilfe & Glossar intentionally has no database tables. Glossary, FAQ, help text,
+and tooltip content should stay static HTML/content or React components.
+
 ## Common Query Patterns
 
 ### Get Organizations for the Current User
@@ -594,16 +756,37 @@ const organizationDashboard = await db.query.organizations.findFirst({
         sector: true,
       },
     },
+    criticalServices: {
+      with: {
+        criticalService: true,
+      },
+    },
     selfCheckAssessments: {
       orderBy: (assessment, { desc }) => [desc(assessment.createdAt)],
       limit: 1,
+    },
+    questionnaireRuns: {
+      orderBy: (run, { desc }) => [desc(run.createdAt)],
     },
     requirements: {
       with: {
         tomArea: true,
         evidence: true,
+        actionPlanItems: true,
       },
     },
+    documentReviewRuns: {
+      with: {
+        findings: {
+          with: {
+            requirementType: true,
+          },
+        },
+      },
+    },
+    actionPlanItems: true,
+    reportExports: true,
+    settings: true,
     suppliers: true,
     registrationTasks: true,
     securityIncidents: {
@@ -788,14 +971,24 @@ await db
 1. User signs up through Supabase Auth.
 2. App creates an `organizations` row and an `organization_members` row with role `owner`.
 3. User completes the self-check.
-4. App stores one `self_check_assessments` row with raw answers and final classification.
-5. App links sectors through `organization_sectors`.
+4. App stores structured answers in `questionnaire_answers` and the final
+   classification in `self_check_assessments`.
+5. App links sectors through `organization_sectors` and critical services
+   through `organization_critical_services`.
 6. App creates one `organization_requirements` row per `tom_areas` row.
-7. User adds evidence in `requirement_evidence`.
-8. User documents suppliers in `suppliers` and reviews them through `supplier_assessments`.
-9. Registration progress is tracked in `registration_tasks`.
-10. Incidents are stored in `security_incidents`, with deadlines in `incident_reports`.
-11. Management training proof is stored in `management_trainings`.
+7. User completes the Gap-Analyse in `questionnaire_runs`.
+8. User adds evidence in `requirement_evidence` and uploads documents through
+   `ai_documents`.
+9. App stores document review results in `document_review_runs` and
+   `document_review_findings`.
+10. App creates concrete next steps in `action_plan_items`.
+11. PDF exports are tracked in `report_exports`.
+12. User and organization preferences are stored in `user_preferences` and
+   `organization_settings`.
+13. User documents suppliers in `suppliers` and reviews them through `supplier_assessments`.
+14. Registration progress is tracked in `registration_tasks`.
+15. Incidents are stored in `security_incidents`, with deadlines in `incident_reports`.
+16. Management training proof is stored in `management_trainings`.
 
 ## Notes for Future RLS Policies
 
@@ -819,8 +1012,11 @@ users. Writes to those tables should be admin-only or migration-only.
 The following tables should be seeded before the app is used:
 
 - `nis2_sectors`: NIS2 sectors from Annex 1 and Annex 2.
+- `nis2_critical_services`: Critical services used by Betroffenheitscheck.
 - `lex_specialis_rules`: Rules such as DORA or telecom-specific regulation.
 - `tom_areas`: The 12 BSIG/NIS2 risk-management measure areas.
+- `questionnaire_templates`, `questionnaire_sections`, `questionnaire_questions`: Betroffenheitscheck and Gap-Analyse definitions.
+- `document_requirement_types`: Required policy/concept/document checks.
 
 Keep seed data deterministic by using stable `code` or `bsig_number` values and
 upserts instead of blind inserts.
