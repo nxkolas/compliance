@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Dictionary } from "@/lib/i18n";
-import { Lock, Mail, Eye, EyeOff } from "lucide-react"; // Auge-Icons importiert
+import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -30,7 +30,7 @@ export function LoginForm({
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // State für Passwortsichtbarkeit
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -54,7 +54,7 @@ export function LoginForm({
   };
 
   return (
-    <div className={cn("w-full max-w-[442px] px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
+    <div className={cn("w-full max-w-110.5 px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
       
       {/* LOGO-BEREICH */}
       <div className="h-16 flex items-center justify-start">
@@ -78,8 +78,8 @@ export function LoginForm({
         </p>
       </div>
 
-      {/* DIE WEISSE LOGIN-CARD */}
-      <div className="self-stretch p-9 bg-[#FAFAFA] rounded-2xl shadow-[0px_8px_32px_-4px_rgba(0,0,0,0.10)] flex flex-col justify-start items-start gap-6">
+      {/* DIE WEISSE LOGIN-CARD - ERZWUNGEN OHNE SCHATTEN */}
+      <div className="self-stretch p-9 bg-[#FAFAFA] rounded-2xl shadow-none flex flex-col justify-start items-start gap-6 border-0">
         <form onSubmit={handleLogin} className="w-full flex flex-col gap-6">
           
           {/* E-MAIL FELD */}
@@ -96,7 +96,7 @@ export function LoginForm({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
               />
             </div>
           </div>
@@ -118,12 +118,12 @@ export function LoginForm({
               <Lock className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
               <Input
                 id="password"
-                type={showPassword ? "text" : "password"} // Schaltet Typ dynamisch um
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 pl-12 pr-12 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                className="w-full h-12 pl-12 pr-12 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
               />
               <button
                 type="button"
@@ -140,7 +140,7 @@ export function LoginForm({
             <input 
               type="checkbox" 
               id="remember"
-              className="size-5 bg-white rounded-sm border border-gray-200 accent-[#002AFF] cursor-pointer" 
+              className="size-5 bg-white rounded-sm border border-gray-200 accent-[#002AFF] cursor-pointer shadow-none" 
             />
             <label htmlFor="remember" className="text-gray-950 text-base font-medium cursor-pointer select-none">
               {labels.keepSignedIn}
@@ -154,7 +154,7 @@ export function LoginForm({
           <Button 
             type="submit" 
             disabled={isLoading}
-            className="w-full h-12 bg-[#002AFF] hover:bg-[#0022cc] text-white text-base font-medium rounded-lg transition-colors"
+            className="w-full h-12 bg-[#002AFF] hover:bg-[#0022cc] text-white text-base font-medium rounded-lg transition-colors shadow-none"
           >
             {isLoading ? labels.signingIn : labels.login}
           </Button>

@@ -87,7 +87,7 @@ export function SignUpForm({
       </div>
 
       {/* FORMULAR-CONTAINER: z-10 sorgt dafür, dass die Karte über dem SVG liegt */}
-      <div className={cn("relative z-10 w-full max-w-[442px] flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
+      <div className={cn("relative z-10 w-full max-w-110.5 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
         
         {/* LOGO-BEREICH (Behebt die automatische Höhenwarnung in der Konsole) */}
         <div className="h-16 flex items-center justify-start">
@@ -113,7 +113,7 @@ export function SignUpForm({
         </div>
 
         {/* DIE WEISSE CARD */}
-        <div className="self-stretch p-8 bg-[#FAFAFA] rounded-2xl shadow-[0px_8px_32px_-4px_rgba(0,0,0,0.10)] flex flex-col justify-start items-start gap-6">
+        <div className="self-stretch p-8 bg-[#FAFAFA] rounded-2xl shadow-none flex flex-col justify-start items-start gap-6">
           <form onSubmit={handleSignUp} className="w-full flex flex-col gap-5">
             
             {/* NAME FELD */}
@@ -130,7 +130,7 @@ export function SignUpForm({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal shadow-none rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
               </div>
             </div>
@@ -149,7 +149,7 @@ export function SignUpForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="w-full h-12 pl-12 pr-4 bg-white text-black shadow-none text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
               </div>
             </div>
@@ -168,7 +168,7 @@ export function SignUpForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-12 pl-12 pr-12 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="w-full h-12 pl-12 pr-12 bg-white text-black shadow-none text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
                 <button
                   type="button"
@@ -194,7 +194,7 @@ export function SignUpForm({
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full h-12 pl-12 pr-12 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="w-full h-12 pl-12 pr-12 bg-white text-black shadow-none text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
                 <button
                   type="button"
@@ -230,7 +230,7 @@ export function SignUpForm({
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="w-full h-12 bg-[#002AFF] hover:bg-[#0022cc] text-white text-base font-medium rounded-lg transition-colors mt-2"
+              className="w-full h-12 bg-[#002AFF] hover:bg-[#0022cc] text-white text-base shadow-none font-medium rounded-lg transition-colors mt-2"
             >
               {isLoading ? "Wird erstellt..." : "Konto erstellen"}
             </Button>
