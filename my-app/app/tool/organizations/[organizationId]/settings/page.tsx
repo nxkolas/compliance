@@ -1,6 +1,4 @@
 import { OrganizationSettingsForm } from "@/components/organizations/organization-settings-form";
-import { OrganizationSettingsLoading } from "@/components/organizations/organization-settings-loading";
-import { RouteTabs } from "@/components/route-tabs";
 import {
   Card,
   CardContent,
@@ -25,7 +23,7 @@ export default function OrganizationSettingsPage({
   params,
 }: OrganizationSettingsPageProps) {
   return (
-    <Suspense fallback={<OrganizationSettingsPageFallback />}>
+    <Suspense fallback={null}>
       <OrganizationSettingsPageContent params={params} />
     </Suspense>
   );
@@ -46,18 +44,6 @@ async function OrganizationSettingsPageContent({
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <RouteTabs
-        tabs={[
-          {
-            href: `/tool/organizations/${organizationId}/settings`,
-            label: dictionary.sidebar.general,
-          },
-          {
-            href: `/tool/organizations/${organizationId}/settings/team`,
-            label: dictionary.sidebar.team,
-          },
-        ]}
-      />
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">
           {dictionary.organizations.settingsTitle}
@@ -113,10 +99,6 @@ async function OrganizationSettingsPageContent({
       </section>
     </div>
   );
-}
-
-function OrganizationSettingsPageFallback() {
-  return <OrganizationSettingsLoading />;
 }
 
 function serializeForClient<T>(value: T): JSONValue<T> {
