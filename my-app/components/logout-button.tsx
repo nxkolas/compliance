@@ -1,11 +1,11 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { Button, type ButtonProps } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import type { MouseEventHandler } from "react";
+import type { ComponentProps, MouseEventHandler } from "react";
 
-type LogoutButtonProps = Omit<ButtonProps, "type">;
+type LogoutButtonProps = Omit<ComponentProps<typeof Button>, "type">;
 
 export function LogoutButton({
   children = "Log out",

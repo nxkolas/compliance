@@ -11,7 +11,7 @@ import {
   locales,
   type Locale,
 } from "@/lib/i18n-config";
-import { Check } from "lucide-react";
+import { Check, Languages } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type LanguageSwitcherProps = {
@@ -34,7 +34,10 @@ export function LanguageSwitcher({
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>{label}</DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger>
+        <Languages className="size-4" />
+        {label}
+      </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         {locales.map((availableLocale) => (
           <DropdownMenuItem

@@ -37,7 +37,6 @@ async function NewAssessmentPageContent({ params }: NewAssessmentPageProps) {
   return (
     <AppShell
       organizationId={organization.id}
-      organizationName={organization.name}
       dictionary={dictionary}
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-8">

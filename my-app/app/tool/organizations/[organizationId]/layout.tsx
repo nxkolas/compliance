@@ -38,7 +38,6 @@ async function OrganizationLayoutContent({
   return (
     <AppShell
       organizationId={organization.id}
-      organizationName={organization.name}
       dictionary={dictionary}
     >
       {children}

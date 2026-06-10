@@ -1,4 +1,5 @@
 import { OrganizationSettingsForm } from "@/components/organizations/organization-settings-form";
+import { RouteTabs } from "@/components/route-tabs";
 import {
   Card,
   CardContent,
@@ -44,6 +45,18 @@ async function OrganizationSettingsPageContent({
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
+      <RouteTabs
+        tabs={[
+          {
+            href: `/tool/organizations/${organizationId}/settings`,
+            label: dictionary.sidebar.general,
+          },
+          {
+            href: `/tool/organizations/${organizationId}/settings/team`,
+            label: dictionary.sidebar.team,
+          },
+        ]}
+      />
       <section className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">
           {dictionary.organizations.settingsTitle}

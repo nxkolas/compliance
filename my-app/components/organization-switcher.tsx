@@ -1,20 +1,23 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
 import type { OrganizationDto } from "@/src/server/organizations/types";
-import { ChevronsUpDown } from "lucide-react";
+import { Building2, Check, ChevronsUpDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 type OrganizationSwitcherProps = {
   organizations: Pick<OrganizationDto, "id" | "name">[];
-  organizationId: string;
+  organizationId?: string;
   placeholder: string;
 };
 
@@ -29,22 +32,51 @@ export function OrganizationSwitcher({
     return null;
   }
 
+  const selectedOrganization = organizations.find(
+    (organization) => organization.id === organizationId,
+  );
+
   return (
-    <Select
-      value={organizationId}
-      onValueChange={(value) => router.push(`/tool/organizations/${value}`)}
-    >
-      <SelectTrigger className="h-9 w-[220px]">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {organizations.map((organization) => (
-          <SelectItem key={organization.id} value={organization.id}>
-            {organization.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <Building2 className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1 text-left leading-none">
+                <span className="block truncate font-medium">
+                  {selectedOrganization?.name ?? placeholder}
+                </span>
+              </div>
+              <ChevronsUpDown className="ml-auto" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-(--radix-dropdown-menu-trigger-width)"
+            align="start"
+          >
+            {organizations.map((organization) => (
+              <DropdownMenuItem
+                key={organization.id}
+                onSelect={() =>
+                  router.push(`/tool/organizations/${organization.id}`)
+                }
+              >
+                <span className="truncate">{organization.name}</span>
+                {organization.id === organizationId && (
+                  <Check className="ml-auto" />
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }
 
@@ -54,9 +86,16 @@ export function OrganizationSwitcherFallback({
   label: string;
 }) {
   return (
-    <Button variant="outline" className="max-w-[220px] justify-between" disabled>
-      <span className="truncate">{label}</span>
-      <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-    </Button>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton size="lg" disabled>
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <Building2 className="size-4" />
+          </div>
+          <span className="truncate">{label}</span>
+          <ChevronsUpDown className="ml-auto" />
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }

@@ -1,4 +1,5 @@
 import { OrganizationInvitePanel } from "@/components/organizations/organization-invite-panel";
+import { RouteTabs } from "@/components/route-tabs";
 import {
   Card,
   CardContent,
@@ -51,6 +52,18 @@ async function OrganizationTeamPageContent({
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8">
+      <RouteTabs
+        tabs={[
+          {
+            href: `/tool/organizations/${organizationId}/settings`,
+            label: dictionary.sidebar.general,
+          },
+          {
+            href: `/tool/organizations/${organizationId}/settings/team`,
+            label: dictionary.sidebar.team,
+          },
+        ]}
+      />
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">
