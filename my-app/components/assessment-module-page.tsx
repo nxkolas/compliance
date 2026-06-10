@@ -33,7 +33,7 @@ export async function AssessmentModulePage({
       organizationId={assessment.organization.id}
       dictionary={dictionary}
     >
-      <section className="mx-auto flex max-w-5xl flex-col gap-6">
+      <section className="flex w-full flex-col gap-6">
         <RouteTabs
           tabs={[
             {

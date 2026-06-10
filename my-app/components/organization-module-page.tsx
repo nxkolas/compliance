@@ -25,7 +25,7 @@ export async function OrganizationModulePage({
   }
 
   return (
-    <section className="mx-auto flex max-w-5xl flex-col gap-6">
+    <section className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">{title}</h1>
         <p className="text-muted-foreground">{organization.name}</p>

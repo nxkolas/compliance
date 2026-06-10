@@ -36,7 +36,7 @@ export function ProductModuleContent({
   icon: Icon,
 }: ProductModuleContentProps) {
   return (
-    <section className="mx-auto flex max-w-6xl flex-col gap-8">
+    <section className="flex w-full flex-col gap-8">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           {Icon && (

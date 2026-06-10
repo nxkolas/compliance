@@ -35,7 +35,7 @@ async function OrganizationsPageContent() {
 
   return (
     <AppShell dictionary={dictionary}>
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
+      <div className="flex w-full flex-col gap-8">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">{dictionary.organizations.title}</h1>

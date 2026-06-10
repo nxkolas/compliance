@@ -21,7 +21,7 @@ export function AppShell({
         dictionary={dictionary}
       />
       <SidebarInset className="bg-transparent">
-        <div className="flex-1 px-6 py-6 md:px-8 md:py-8">{children}</div>
+        <div className="flex-1 px-[53px] pt-[54px] pb-8">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

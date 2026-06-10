@@ -44,7 +44,7 @@ async function OrganizationSettingsPageContent({
   }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <RouteTabs
         tabs={[
           {

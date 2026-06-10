@@ -51,7 +51,7 @@ async function OrganizationTeamPageContent({
   const invitations = await listOrganizationInvitations(user.id, organization.id);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8">
+    <div className="flex w-full flex-col gap-8">
       <RouteTabs
         tabs={[
           {
