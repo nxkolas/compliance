@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const SidebarProvider = ({ className, ...props }: React.ComponentProps<"div">) => (
   <div
     className={cn(
-      "min-h-screen w-full bg-background",
+      "min-h-screen w-full bg-transparent",
       className,
     )}
     {...props}
@@ -19,7 +19,7 @@ const Sidebar = React.forwardRef<HTMLElement, React.ComponentProps<"aside">>(
     <aside
       ref={ref}
       className={cn(
-        "z-20 border-b bg-background md:w-64 md:border-b-0 md:border-r",
+        "z-20 border-b bg-white/10 md:w-64 md:border-b-0 md:border-r",
         className,
       )}
       {...props}
@@ -93,7 +93,7 @@ const SidebarMenuButton = React.forwardRef<
     <Comp
       ref={ref}
       className={cn(
-        "flex min-h-9 items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground data-[active=true]:bg-accent data-[active=true]:font-medium data-[active=true]:text-accent-foreground",
+        "flex min-h-9 items-center gap-2 rounded-lg px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-[#252A36] hover:text-accent-foreground hover:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)] data-[active=true]:bg-[#FBFBFB] data-[active=true]:font-medium data-[active=true]:text-[#002BFF] data-[active=true]:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)] data-[active=true]:[&_svg]:text-[#002BFF]",
         className,
       )}
       {...props}

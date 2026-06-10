@@ -23,20 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="de" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-try {
-  var theme = window.localStorage.getItem("complyx-theme");
-  var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  document.documentElement.classList.toggle("dark", theme === "dark" || (!theme && prefersDark));
-} catch (_) {}
-            `.trim(),
-          }}
-        />
-      </head>
+    <html lang="de" className="dark">
       <body className={`${spaceGrotesk.className} antialiased`}>
         {children}
       </body>

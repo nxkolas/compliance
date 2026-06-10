@@ -28,7 +28,7 @@ export function AppTopbar(props: AppTopbarProps) {
   const dictionary = props.dictionary ?? getDefaultDictionary();
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background px-6 md:px-8">
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b bg-background/80 px-6 md:px-8">
       <div className="flex min-w-0 items-center gap-4">
         <Link href="/tool/organizations" className="text-sm font-semibold">
           {dictionary.common.complyx}

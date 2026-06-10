@@ -32,8 +32,8 @@ async function HomeContent() {
   ];
 
   return (
-    <main className="min-h-screen bg-background">
-      <header className="border-b bg-background/95">
+    <main className="min-h-screen bg-transparent">
+      <header className="border-b bg-background/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <Link href="/" className="text-sm font-semibold">
             {dictionary.home.brand}
@@ -166,5 +166,5 @@ async function HomeContent() {
 }
 
 function HomeFallback() {
-  return <main className="min-h-screen bg-background" />;
+  return <main className="min-h-screen bg-transparent" />;
 }
