@@ -1,4 +1,5 @@
 import { OrganizationInvitePanel } from "@/components/organizations/organization-invite-panel";
+import { OrganizationSettingsLoading } from "@/components/organizations/organization-settings-loading";
 import { RouteTabs } from "@/components/route-tabs";
 import {
   Card,
@@ -116,12 +117,7 @@ async function OrganizationTeamPageContent({
 }
 
 function OrganizationTeamPageFallback() {
-  return (
-    <section className="flex flex-col gap-2">
-      <h1 className="text-3xl font-bold">Organization team</h1>
-      <p className="max-w-2xl text-muted-foreground">Loading team...</p>
-    </section>
-  );
+  return <OrganizationSettingsLoading />;
 }
 
 function serializeForClient<T>(value: T): JSONValue<T> {

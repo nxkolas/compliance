@@ -312,6 +312,54 @@ const dictionaries = {
       dashboardTitle: "Dashboard",
       dashboardDescription:
         "Uebersicht für den NIS2 Compliance Checker. Von hier aus führen die ersten Schritte zur Betroffenheitsprüfung, Requirements-Erfassung, Risikomanagement, Lieferkettenbewertung und Registrierung.",
+      documentReview: {
+        title: "Dokumentenprüfung",
+        description:
+          "Laden Sie Ihre Sicherheitskonzepte und Richtlinien hoch. Unsere KI prüft diese automatisch auf Vollständigkeit und Konformität mit den NIS2-Anforderungen.",
+        metrics: [
+          { label: "Upload-Arten", value: "4" },
+          { label: "Prüfstatus", value: "3" },
+          { label: "Beispiele", value: "4" },
+        ],
+        cards: [
+          {
+            title: "Upload von",
+            description: "Dokumente, die für die KI-Prüfung vorgesehen sind.",
+            items: [
+              "Richtlinien",
+              "Policies",
+              "Sicherheitskonzepte",
+              "Notfallpläne",
+            ],
+          },
+          {
+            title: "KI erkennt",
+            description:
+              "Die spätere Analyse ordnet jedes erwartete Dokument ein.",
+            items: ["Vorhanden", "Unvollständig", "Nicht gefunden"],
+          },
+          {
+            title: "Beispiele",
+            description: "Typische Dokumente im NIS2-Kontext.",
+            items: [
+              "Passwort-Richtlinie",
+              "MFA-Richtlinie",
+              "Incident-Response-Dokument",
+              "Backup-Konzept",
+            ],
+          },
+          {
+            title: "Folgeaufgaben",
+            description:
+              "Fehlende oder unvollständige Inhalte werden später in den Maßnahmenplan übertragen.",
+            items: [
+              "Fehlendes Dokument erstellen",
+              "Unvollständige Policy überarbeiten",
+              "Nachweis einem Sicherheitsbereich zuordnen",
+            ],
+          },
+        ],
+      },
       requirementsDescription:
         "Platzhalter für Requirements Engineering aus Recherche, Interview-Leitfäden und Unternehmensinterviews.",
       riskManagementDescription:
@@ -664,6 +712,53 @@ const dictionaries = {
       dashboardTitle: "Dashboard",
       dashboardDescription:
         "Overview for the NIS2 Compliance Checker. From here, the first steps lead to scope checks, requirements collection, risk management, supplier review, and registration.",
+      documentReview: {
+        title: "Document review",
+        description:
+          "Upload your security concepts and policies. Our AI automatically reviews them for completeness and conformity with NIS2 requirements.",
+        metrics: [
+          { label: "Upload types", value: "4" },
+          { label: "Review statuses", value: "3" },
+          { label: "Examples", value: "4" },
+        ],
+        cards: [
+          {
+            title: "Upload",
+            description: "Documents intended for AI review.",
+            items: [
+              "Guidelines",
+              "Policies",
+              "Security concepts",
+              "Emergency plans",
+            ],
+          },
+          {
+            title: "AI classification",
+            description: "The analysis classifies each expected document.",
+            items: ["Available", "Incomplete", "Not found"],
+          },
+          {
+            title: "Examples",
+            description: "Typical documents in the NIS2 context.",
+            items: [
+              "Password policy",
+              "MFA policy",
+              "Incident response document",
+              "Backup concept",
+            ],
+          },
+          {
+            title: "Follow-up tasks",
+            description:
+              "Missing or incomplete content is transferred to the action plan.",
+            items: [
+              "Create a missing document",
+              "Revise an incomplete policy",
+              "Assign evidence to a security area",
+            ],
+          },
+        ],
+      },
       requirementsDescription:
         "Placeholder for requirements engineering from research, interview guides, and company interviews.",
       riskManagementDescription:

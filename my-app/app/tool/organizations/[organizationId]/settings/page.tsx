@@ -1,4 +1,5 @@
 import { OrganizationSettingsForm } from "@/components/organizations/organization-settings-form";
+import { OrganizationSettingsLoading } from "@/components/organizations/organization-settings-loading";
 import { RouteTabs } from "@/components/route-tabs";
 import {
   Card,
@@ -115,14 +116,7 @@ async function OrganizationSettingsPageContent({
 }
 
 function OrganizationSettingsPageFallback() {
-  return (
-    <section className="flex flex-col gap-2">
-      <h1 className="text-3xl font-bold">Organization settings</h1>
-      <p className="max-w-2xl text-muted-foreground">
-        Loading organization settings...
-      </p>
-    </section>
-  );
+  return <OrganizationSettingsLoading />;
 }
 
 function serializeForClient<T>(value: T): JSONValue<T> {

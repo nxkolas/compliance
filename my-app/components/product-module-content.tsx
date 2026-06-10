@@ -10,7 +10,7 @@ import {
 export type ProductModuleCard = {
   title: string;
   description?: string;
-  items: string[];
+  items: readonly string[];
 };
 
 export type ProductModuleMetric = {
@@ -21,8 +21,8 @@ export type ProductModuleMetric = {
 type ProductModuleContentProps = {
   title: string;
   description: string;
-  metrics?: ProductModuleMetric[];
-  cards: ProductModuleCard[];
+  metrics?: readonly ProductModuleMetric[];
+  cards: readonly ProductModuleCard[];
 };
 
 export function ProductModuleContent({
