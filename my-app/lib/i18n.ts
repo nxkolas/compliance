@@ -96,6 +96,22 @@ const dictionaries = {
         "Prüfe dein E-Mail-Postfach, um deinen Account zu bestätigen.",
       signupSuccessBody:
         "Du hast dich erfolgreich für den NIS2 Compliance Checker registriert. Bitte bestätige deinen Account, bevor du dich anmeldest.",
+      signInDescription: "Melden Sie sich an, um fortzufahren.",
+      createAccountTitle: "Konto erstellen",
+      createAccountSubtitle: "Erstellen Sie Ihr Konto, um zu beginnen.",
+      name: "Name",
+      namePlaceholder: "Max Mustermann",
+      emailPlaceholder: "ihre@email.com",
+      passwordPlaceholder: "Min. 10 Zeichen, mind. 1 Zahl",
+      confirmPassword: "Passwort bestätigen",
+      acceptTermsPrefix: "Ich akzeptiere die",
+      terms: "Nutzungsbedingungen",
+      termsConnector: "und die",
+      privacyPolicy: "Datenschutzerklärung",
+      termsRequired: "Bitte akzeptieren Sie die Nutzungsbedingungen.",
+      showPassword: "Passwort anzeigen",
+      hidePassword: "Passwort ausblenden",
+      backgroundAlt: "Hintergrund",
     },
     languages: {
       de: "Deutsch",
@@ -233,6 +249,20 @@ const dictionaries = {
         large: "Gross",
       },
     },
+    organizationSettings: {
+      accountTitle: "Benutzerkonto",
+      accountItems: ["E-Mail-Adresse", "Passwort", "Account-Sicherheit"],
+      languageTitle: "Sprache",
+      languageItems: ["Deutsch", "Englisch", "Persönliche Präferenz"],
+      notificationsTitle: "Benachrichtigungen",
+      notificationItems: ["Offene Maßnahmen", "Dokumentenstatus", "Fristen"],
+      privacyTitle: "Datenschutz",
+      privacyItems: [
+        "Datenaufbewahrung",
+        "Dokumentenverarbeitung",
+        "Organisationsrichtlinien",
+      ],
+    },
     assessment: {
       newTitle: "Neue NIS2-Bewertung",
       newDescription: "Erstelle eine Entwurfsbewertung für",
@@ -312,6 +342,66 @@ const dictionaries = {
       dashboardTitle: "Dashboard",
       dashboardDescription:
         "Uebersicht für den NIS2 Compliance Checker. Von hier aus führen die ersten Schritte zur Betroffenheitsprüfung, Requirements-Erfassung, Risikomanagement, Lieferkettenbewertung und Registrierung.",
+      dashboard: {
+        title: "NIS2 COMPLIANCE DASHBOARD",
+        description:
+          "Übersicht über Ihren aktuellen NIS2-Compliance-Status, dringende nächste Schritte sowie den Fortschritt Ihrer laufenden Analysen auf einen Blick.",
+        metrics: [
+          { label: "Betroffenheitsstatus", value: "Offen" },
+          { label: "Analysefortschritt", value: "0%" },
+          { label: "Nächste Schritte", value: "Noch nicht erstellt" },
+        ],
+      },
+      applicabilityCheck: {
+        title: "Betroffenheitscheck",
+        description:
+          "Prüfen Sie, ob Ihr Unternehmen unter die NIS2-Richtlinie fällt.",
+        metrics: [
+          { label: "Ergebnisoptionen", value: "3" },
+          { label: "Eingabebereiche", value: "4" },
+          { label: "Erklärung", value: "Kurzbegründung" },
+        ],
+      },
+      actionPlan: {
+        title: "Maßnahmenplan",
+        description:
+          "Setzen Sie offene Anforderungen gezielt um: Hier finden Sie Ihre priorisierte Aufgabenliste mit konkreten To-Dos, Status-Tracking und Zuständigkeiten.",
+        metrics: [
+          { label: "Aufgabentyp", value: "Priorisiert" },
+          { label: "Status", value: "Nachverfolgbar" },
+          { label: "Fortschritt", value: "Pro Aufgabe" },
+        ],
+      },
+      gapAnalysis: {
+        title: "Gap-Analyse",
+        description:
+          "Identifizieren Sie Sicherheitslücken durch unseren gezielten Fragebogen zu Kernbereichen wie Backup, Incident Response und Zugriffskontrolle, um Ihren Handlungsbedarf zu ermitteln.",
+        metrics: [
+          { label: "Fragebogenbereiche", value: "7" },
+          { label: "Ergebnisstufen", value: "3" },
+          { label: "Maßnahmen", value: "Priorisiert" },
+        ],
+      },
+      helpGlossary: {
+        title: "Hilfe & Glossar",
+        description:
+          "Hilfe, Glossar, FAQ und Tooltips bleiben statische Inhalte ohne Datenbankinteraktion.",
+        metrics: [
+          { label: "Datenbank", value: "Keine" },
+          { label: "Inhalt", value: "Statisch" },
+          { label: "Nutzung", value: "Erklärungen" },
+        ],
+      },
+      pdfExport: {
+        title: "PDF-Export",
+        description:
+          "Generieren und exportieren Sie Ihren offiziellen Statusbericht mit allen kritischen Bereichen und Maßnahmen als druckoptimiertes PDF für die Geschäftsführung und externe Prüfer.",
+        metrics: [
+          { label: "Zielgruppen", value: "3" },
+          { label: "Berichtsbereiche", value: "5" },
+          { label: "Historie", value: "Vorgesehen" },
+        ],
+      },
       documentReview: {
         title: "Dokumentenprüfung",
         description:
@@ -496,6 +586,22 @@ const dictionaries = {
         "Check your email to confirm your checker account.",
       signupSuccessBody:
         "You've successfully signed up for the NIS2 Compliance Checker. Please confirm your account before signing in.",
+      signInDescription: "Sign in to continue.",
+      createAccountTitle: "Create account",
+      createAccountSubtitle: "Create your account to get started.",
+      name: "Name",
+      namePlaceholder: "Jane Smith",
+      emailPlaceholder: "you@example.com",
+      passwordPlaceholder: "Min. 10 characters, including 1 number",
+      confirmPassword: "Confirm password",
+      acceptTermsPrefix: "I accept the",
+      terms: "Terms of use",
+      termsConnector: "and the",
+      privacyPolicy: "Privacy policy",
+      termsRequired: "Please accept the terms of use.",
+      showPassword: "Show password",
+      hidePassword: "Hide password",
+      backgroundAlt: "Background",
     },
     languages: {
       de: "German",
@@ -633,6 +739,20 @@ const dictionaries = {
         large: "Large",
       },
     },
+    organizationSettings: {
+      accountTitle: "User account",
+      accountItems: ["Email address", "Password", "Account security"],
+      languageTitle: "Language",
+      languageItems: ["German", "English", "Personal preference"],
+      notificationsTitle: "Notifications",
+      notificationItems: ["Open actions", "Document status", "Deadlines"],
+      privacyTitle: "Privacy",
+      privacyItems: [
+        "Data retention",
+        "Document processing",
+        "Organization policies",
+      ],
+    },
     assessment: {
       newTitle: "New NIS2 assessment",
       newDescription: "Create a draft assessment for",
@@ -712,6 +832,66 @@ const dictionaries = {
       dashboardTitle: "Dashboard",
       dashboardDescription:
         "Overview for the NIS2 Compliance Checker. From here, the first steps lead to scope checks, requirements collection, risk management, supplier review, and registration.",
+      dashboard: {
+        title: "NIS2 COMPLIANCE DASHBOARD",
+        description:
+          "See your current NIS2 compliance status, urgent next steps, and the progress of ongoing analyses at a glance.",
+        metrics: [
+          { label: "Applicability status", value: "Pending" },
+          { label: "Analysis progress", value: "0%" },
+          { label: "Next steps", value: "Not created yet" },
+        ],
+      },
+      applicabilityCheck: {
+        title: "Applicability check",
+        description:
+          "Check whether your organization falls under the NIS2 Directive.",
+        metrics: [
+          { label: "Result options", value: "3" },
+          { label: "Input areas", value: "4" },
+          { label: "Explanation", value: "Short rationale" },
+        ],
+      },
+      actionPlan: {
+        title: "Action plan",
+        description:
+          "Implement open requirements with a prioritized task list, status tracking, and clear responsibilities.",
+        metrics: [
+          { label: "Task type", value: "Prioritized" },
+          { label: "Status", value: "Trackable" },
+          { label: "Progress", value: "Per task" },
+        ],
+      },
+      gapAnalysis: {
+        title: "Gap analysis",
+        description:
+          "Identify security gaps with a focused questionnaire covering backups, incident response, access control, and other core areas.",
+        metrics: [
+          { label: "Questionnaire areas", value: "7" },
+          { label: "Result levels", value: "3" },
+          { label: "Actions", value: "Prioritized" },
+        ],
+      },
+      helpGlossary: {
+        title: "Help & glossary",
+        description:
+          "Help, glossary, FAQ, and tooltip content is available without database interaction.",
+        metrics: [
+          { label: "Database", value: "None" },
+          { label: "Content", value: "Static" },
+          { label: "Use", value: "Explanations" },
+        ],
+      },
+      pdfExport: {
+        title: "PDF export",
+        description:
+          "Generate a print-ready status report covering critical areas and actions for management and external reviewers.",
+        metrics: [
+          { label: "Audiences", value: "3" },
+          { label: "Report areas", value: "5" },
+          { label: "History", value: "Planned" },
+        ],
+      },
       documentReview: {
         title: "Document review",
         description:

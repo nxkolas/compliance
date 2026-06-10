@@ -59,24 +59,24 @@ async function OrganizationSettingsPageContent({
       <section className="grid gap-4 md:grid-cols-2">
         {[
           {
-            title: "Benutzerkonto",
+            title: dictionary.organizationSettings.accountTitle,
             description: "Login, E-Mail und Kontoangaben bleiben in Supabase Auth.",
-            items: ["E-Mail-Adresse", "Passwort", "Account-Sicherheit"],
+            items: dictionary.organizationSettings.accountItems,
           },
           {
-            title: "Sprache",
+            title: dictionary.organizationSettings.languageTitle,
             description: "Die Spracheinstellung wird spaeter pro Nutzer gespeichert.",
-            items: ["Deutsch", "Englisch", "Persoenliche Praeferenz"],
+            items: dictionary.organizationSettings.languageItems,
           },
           {
-            title: "Benachrichtigungen",
+            title: dictionary.organizationSettings.notificationsTitle,
             description: "Organisationweite und persoenliche Hinweise sind vorgesehen.",
-            items: ["Offene Massnahmen", "Dokumentenstatus", "Fristen"],
+            items: dictionary.organizationSettings.notificationItems,
           },
           {
-            title: "Datenschutz",
+            title: dictionary.organizationSettings.privacyTitle,
             description: "Datenschutz- und Aufbewahrungseinstellungen werden separat abgebildet.",
-            items: ["Datenaufbewahrung", "Dokumentenverarbeitung", "Organisationsrichtlinien"],
+            items: dictionary.organizationSettings.privacyItems,
           },
         ].map((section) => (
           <Card key={section.title} className="rounded-lg shadow-sm">

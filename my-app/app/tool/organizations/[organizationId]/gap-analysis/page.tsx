@@ -1,15 +1,14 @@
 import { ProductModuleContent } from "@/components/product-module-content";
+import { getDictionary } from "@/lib/i18n";
 
-export default function GapAnalysisPage() {
+export default async function GapAnalysisPage() {
+  const dictionary = await getDictionary();
+
   return (
     <ProductModuleContent
-      title="Gap-Analyse"
-      description="Identifizieren Sie Sicherheitslücken durch unseren gezielten Fragebogen zu Kernbereichen wie Backup, Incident Response und Zugriffskontrolle, um Ihren Handlungsbedarf zu ermitteln."
-      metrics={[
-        { label: "Fragebogenbereiche", value: "7" },
-        { label: "Ergebnisstufen", value: "3" },
-        { label: "Massnahmen", value: "Priorisiert" },
-      ]}
+      title={dictionary.modules.gapAnalysis.title}
+      description={dictionary.modules.gapAnalysis.description}
+      metrics={dictionary.modules.gapAnalysis.metrics}
       cards={[
         {
           title: "Fragebogen",

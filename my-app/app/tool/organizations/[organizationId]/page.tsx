@@ -1,4 +1,5 @@
 import { ProductModuleContent } from "@/components/product-module-content";
+import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
@@ -24,6 +25,7 @@ export default async function OrganizationPage({
 async function OrganizationPageContent({ params }: OrganizationPageProps) {
   await connection();
   const user = await requireAuth();
+  const dictionary = await getDictionary();
   const { organizationId } = await params;
   const organization = await getOrganizationForUser(user.id, organizationId);
 
@@ -33,13 +35,9 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
 
   return (
     <ProductModuleContent
-      title="NIS2 COMPLIANCE DASHBOARD"
-      description="Übersicht über Ihren aktuellen NIS2-Compliance-Status, dringende nächste Schritte sowie den Fortschritt Ihrer laufenden Analysen auf einen Blick."
-      metrics={[
-        { label: "Betroffenheitsstatus", value: "Offen" },
-        { label: "Analysefortschritt", value: "0%" },
-        { label: "Naechste Schritte", value: "Noch nicht erstellt" },
-      ]}
+      title={dictionary.modules.dashboard.title}
+      description={dictionary.modules.dashboard.description}
+      metrics={dictionary.modules.dashboard.metrics}
       cards={[
         {
           title: "Statusbereiche",
@@ -88,10 +86,12 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
 }
 
 function OrganizationPageFallback() {
+  const dictionary = getDefaultDictionary();
+
   return (
     <ProductModuleContent
-      title="NIS2 COMPLIANCE DASHBOARD"
-      description="Übersicht über Ihren aktuellen NIS2-Compliance-Status, dringende nächste Schritte sowie den Fortschritt Ihrer laufenden Analysen auf einen Blick."
+      title={dictionary.modules.dashboard.title}
+      description={dictionary.modules.dashboard.description}
       cards={[]}
     />
   );

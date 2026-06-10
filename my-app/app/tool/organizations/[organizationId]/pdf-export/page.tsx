@@ -1,15 +1,14 @@
 import { ProductModuleContent } from "@/components/product-module-content";
+import { getDictionary } from "@/lib/i18n";
 
-export default function PdfExportPage() {
+export default async function PdfExportPage() {
+  const dictionary = await getDictionary();
+
   return (
     <ProductModuleContent
-      title="PDF-Export"
-      description="Generieren und exportieren Sie Ihren offiziellen Statusbericht mit allen kritischen Bereichen und Maßnahmen als druckoptimiertes PDF für die Geschäftsführung und externe Prüfer."
-      metrics={[
-        { label: "Zielgruppen", value: "3" },
-        { label: "Berichtsbereiche", value: "5" },
-        { label: "Historie", value: "Vorgesehen" },
-      ]}
+      title={dictionary.modules.pdfExport.title}
+      description={dictionary.modules.pdfExport.description}
+      metrics={dictionary.modules.pdfExport.metrics}
       cards={[
         {
           title: "Inhalt",

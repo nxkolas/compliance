@@ -1,4 +1,5 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
+import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type AssessmentQuestionnairePageProps = {
@@ -10,8 +11,10 @@ type AssessmentQuestionnairePageProps = {
 export default function AssessmentQuestionnairePage({
   params,
 }: AssessmentQuestionnairePageProps) {
+  const dictionary = getDefaultDictionary();
+
   return (
-    <Suspense fallback={<main className="p-8">Loading...</main>}>
+    <Suspense fallback={<main className="p-8">{dictionary.common.loading}</main>}>
       <AssessmentQuestionnairePageContent params={params} />
     </Suspense>
   );
@@ -20,12 +23,13 @@ export default function AssessmentQuestionnairePage({
 async function AssessmentQuestionnairePageContent({
   params,
 }: AssessmentQuestionnairePageProps) {
+  const dictionary = await getDictionary();
   const { assessmentId } = await params;
 
   return (
     <AssessmentModulePage
       assessmentId={assessmentId}
-      title="Fragebogen"
+      title={dictionary.sidebar.questionnaire}
     >
       <div className="grid gap-4 md:grid-cols-2">
         <section className="flex flex-col gap-2">

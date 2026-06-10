@@ -1,15 +1,14 @@
 import { ProductModuleContent } from "@/components/product-module-content";
+import { getDictionary } from "@/lib/i18n";
 
-export default function ActionPlanPage() {
+export default async function ActionPlanPage() {
+  const dictionary = await getDictionary();
+
   return (
     <ProductModuleContent
-      title="Maßnahmenplan"
-      description="Setzen Sie offene Anforderungen gezielt um: Hier finden Sie Ihre priorisierte Aufgabenliste mit konkreten To-Dos, Status-Tracking und Zuständigkeiten."
-      metrics={[
-        { label: "Aufgabentyp", value: "Priorisiert" },
-        { label: "Status", value: "Nachverfolgbar" },
-        { label: "Fortschritt", value: "Pro Aufgabe" },
-      ]}
+      title={dictionary.modules.actionPlan.title}
+      description={dictionary.modules.actionPlan.description}
+      metrics={dictionary.modules.actionPlan.metrics}
       cards={[
         {
           title: "Priorisierte Aufgaben",

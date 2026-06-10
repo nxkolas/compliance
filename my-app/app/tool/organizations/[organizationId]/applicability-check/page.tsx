@@ -1,15 +1,14 @@
 import { ProductModuleContent } from "@/components/product-module-content";
+import { getDictionary } from "@/lib/i18n";
 
-export default function ApplicabilityCheckPage() {
+export default async function ApplicabilityCheckPage() {
+  const dictionary = await getDictionary();
+
   return (
     <ProductModuleContent
-      title="Betroffenheitscheck"
-      description="Prüfen Sie, ob Ihr Unternehmen unter die NIS2-Richtlinie fällt."
-      metrics={[
-        { label: "Ergebnisoptionen", value: "3" },
-        { label: "Eingabebereiche", value: "4" },
-        { label: "Erklaerung", value: "Kurzbegruendung" },
-      ]}
+      title={dictionary.modules.applicabilityCheck.title}
+      description={dictionary.modules.applicabilityCheck.description}
+      metrics={dictionary.modules.applicabilityCheck.metrics}
       cards={[
         {
           title: "Eingaben",

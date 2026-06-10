@@ -74,7 +74,7 @@ export function LoginForm({
           {labels.welcomeBack}
         </h1>
         <p className="text-neutral-50/80 text-base font-normal">
-          Melden Sie sich an, um fortzufahren.
+          {labels.signInDescription}
         </p>
       </div>
 
@@ -127,6 +127,7 @@ export function LoginForm({
               />
               <button
                 type="button"
+                aria-label={showPassword ? labels.hidePassword : labels.showPassword}
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#002AFF] transition-colors focus:outline-none"
               >

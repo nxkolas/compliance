@@ -1,4 +1,5 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
+import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type AssessmentPageProps = {
@@ -8,20 +9,23 @@ type AssessmentPageProps = {
 };
 
 export default function AssessmentPage({ params }: AssessmentPageProps) {
+  const dictionary = getDefaultDictionary();
+
   return (
-    <Suspense fallback={<main className="p-8">Loading...</main>}>
+    <Suspense fallback={<main className="p-8">{dictionary.common.loading}</main>}>
       <AssessmentPageContent params={params} />
     </Suspense>
   );
 }
 
 async function AssessmentPageContent({ params }: AssessmentPageProps) {
+  const dictionary = await getDictionary();
   const { assessmentId } = await params;
 
   return (
     <AssessmentModulePage
       assessmentId={assessmentId}
-      title="Betroffenheitscheck"
+      title={dictionary.sidebar.applicabilityCheck}
     >
       <div className="grid gap-4 md:grid-cols-2">
         <section className="flex flex-col gap-2">

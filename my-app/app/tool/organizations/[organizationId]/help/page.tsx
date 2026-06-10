@@ -1,15 +1,14 @@
 import { ProductModuleContent } from "@/components/product-module-content";
+import { getDictionary } from "@/lib/i18n";
 
-export default function HelpGlossaryPage() {
+export default async function HelpGlossaryPage() {
+  const dictionary = await getDictionary();
+
   return (
     <ProductModuleContent
-      title="Hilfe & Glossar"
-      description="Hilfe, Glossar, FAQ und Tooltips bleiben statische Inhalte ohne Datenbankinteraktion."
-      metrics={[
-        { label: "Datenbank", value: "Keine" },
-        { label: "Inhalt", value: "Statisch" },
-        { label: "Nutzung", value: "Erklaerungen" },
-      ]}
+      title={dictionary.modules.helpGlossary.title}
+      description={dictionary.modules.helpGlossary.description}
+      metrics={dictionary.modules.helpGlossary.metrics}
       cards={[
         {
           title: "Glossarbegriffe",
