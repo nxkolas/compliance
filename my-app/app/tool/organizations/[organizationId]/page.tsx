@@ -1,7 +1,6 @@
 import { ProductModuleContent } from "@/components/product-module-content";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
-import { PieChart } from "lucide-react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -34,10 +33,8 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
 
   return (
     <ProductModuleContent
-      eyebrow={organization.name}
-      title="Dashboard"
-      description="Zentrale Uebersicht ueber den aktuellen NIS2-Status der Organisation."
-      icon={PieChart}
+      title="NIS2 COMPLIANCE DASHBOARD"
+      description="Übersicht über Ihren aktuellen NIS2-Compliance-Status, dringende nächste Schritte sowie den Fortschritt Ihrer laufenden Analysen auf einen Blick."
       metrics={[
         { label: "Betroffenheitsstatus", value: "Offen" },
         { label: "Analysefortschritt", value: "0%" },
@@ -92,11 +89,10 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
 
 function OrganizationPageFallback() {
   return (
-    <section className="flex flex-col gap-2">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
-      <p className="max-w-2xl text-muted-foreground">
-        Dashboard wird geladen...
-      </p>
-    </section>
+    <ProductModuleContent
+      title="NIS2 COMPLIANCE DASHBOARD"
+      description="Übersicht über Ihren aktuellen NIS2-Compliance-Status, dringende nächste Schritte sowie den Fortschritt Ihrer laufenden Analysen auf einen Blick."
+      cards={[]}
+    />
   );
 }

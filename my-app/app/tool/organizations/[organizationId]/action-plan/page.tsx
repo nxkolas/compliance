@@ -1,13 +1,10 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { ListChecks } from "lucide-react";
 
 export default function ActionPlanPage() {
   return (
     <ProductModuleContent
-      eyebrow="Massnahmenplan"
-      title="Konkrete naechste Schritte anzeigen"
-      description="Der Massnahmenplan beantwortet die Frage, was jetzt konkret zu tun ist. In dieser Version werden Struktur und erwartete Inhalte statisch dargestellt."
-      icon={ListChecks}
+      title="Maßnahmenplan"
+      description="Setzen Sie offene Anforderungen gezielt um: Hier finden Sie Ihre priorisierte Aufgabenliste mit konkreten To-Dos, Status-Tracking und Zuständigkeiten."
       metrics={[
         { label: "Aufgabentyp", value: "Priorisiert" },
         { label: "Status", value: "Nachverfolgbar" },

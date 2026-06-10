@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import {
   Card,
   CardContent,
@@ -5,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ComponentType } from "react";
 
 export type ProductModuleCard = {
   title: string;
@@ -19,42 +19,21 @@ export type ProductModuleMetric = {
 };
 
 type ProductModuleContentProps = {
-  eyebrow?: string;
   title: string;
   description: string;
   metrics?: ProductModuleMetric[];
   cards: ProductModuleCard[];
-  icon?: ComponentType<{ className?: string }>;
 };
 
 export function ProductModuleContent({
-  eyebrow,
   title,
   description,
   metrics = [],
   cards,
-  icon: Icon,
 }: ProductModuleContentProps) {
   return (
     <section className="flex w-full flex-col gap-8">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          {Icon && (
-            <span className="flex h-10 w-10 items-center justify-center rounded-md border bg-background">
-              <Icon className="h-5 w-5" />
-            </span>
-          )}
-          <div className="flex flex-col gap-1">
-            {eyebrow && (
-              <p className="text-sm font-medium text-muted-foreground">
-                {eyebrow}
-              </p>
-            )}
-            <h1 className="text-3xl font-bold">{title}</h1>
-          </div>
-        </div>
-        <p className="max-w-3xl text-muted-foreground">{description}</p>
-      </div>
+      <PageHeader title={title} subtitle={description} />
 
       {metrics.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

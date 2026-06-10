@@ -1,13 +1,10 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { FileSearch } from "lucide-react";
 
 export default function DocumentReviewPage() {
   return (
     <ProductModuleContent
-      eyebrow="Dokumentenpruefung"
-      title="KI-Pruefung hochgeladener Dokumente"
-      description="Diese Seite beschreibt den spaeteren Dokumentenpruefungs-Workflow. Upload, KI-Auswertung und Speicherung werden hier noch nicht ausgeliefert."
-      icon={FileSearch}
+      title="Dokumentenprüfung"
+      description="Laden Sie Ihre Sicherheitskonzepte und Richtlinien hoch. Unsere KI prüft diese automatisch auf Vollständigkeit und Konformität mit den NIS2-Anforderungen."
       metrics={[
         { label: "Upload-Arten", value: "4" },
         { label: "Pruefstatus", value: "3" },

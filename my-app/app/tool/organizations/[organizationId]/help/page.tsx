@@ -1,13 +1,10 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { BookOpen } from "lucide-react";
 
 export default function HelpGlossaryPage() {
   return (
     <ProductModuleContent
-      eyebrow="Hilfe & Glossar"
-      title="NIS2 verstaendlich erklaeren"
+      title="Hilfe & Glossar"
       description="Hilfe, Glossar, FAQ und Tooltips bleiben statische Inhalte ohne Datenbankinteraktion."
-      icon={BookOpen}
       metrics={[
         { label: "Datenbank", value: "Keine" },
         { label: "Inhalt", value: "Statisch" },

@@ -1,13 +1,10 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { ReceiptText } from "lucide-react";
 
 export default function PdfExportPage() {
   return (
     <ProductModuleContent
-      eyebrow="PDF-Export"
-      title="Bericht exportieren"
-      description="Der PDF-Export fasst den aktuellen Compliance-Stand fuer Management, Beratung oder interne Dokumentation zusammen. Die eigentliche Generierung ist noch nicht aktiv."
-      icon={ReceiptText}
+      title="PDF-Export"
+      description="Generieren und exportieren Sie Ihren offiziellen Statusbericht mit allen kritischen Bereichen und Maßnahmen als druckoptimiertes PDF für die Geschäftsführung und externe Prüfer."
       metrics={[
         { label: "Zielgruppen", value: "3" },
         { label: "Berichtsbereiche", value: "5" },

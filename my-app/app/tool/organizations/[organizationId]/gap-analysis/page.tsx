@@ -1,13 +1,10 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { ShieldCheck } from "lucide-react";
 
 export default function GapAnalysisPage() {
   return (
     <ProductModuleContent
-      eyebrow="Gap-Analyse"
-      title="Aktuelle Sicherheitsmassnahmen pruefen"
-      description="Die Gap-Analyse bildet die vorhandenen Massnahmen gegen die erwarteten NIS2- und BSIG-Bereiche ab. Sie bleibt hier bewusst statisch; Auswertung und Speicherung kommen spaeter."
-      icon={ShieldCheck}
+      title="Gap-Analyse"
+      description="Identifizieren Sie Sicherheitslücken durch unseren gezielten Fragebogen zu Kernbereichen wie Backup, Incident Response und Zugriffskontrolle, um Ihren Handlungsbedarf zu ermitteln."
       metrics={[
         { label: "Fragebogenbereiche", value: "7" },
         { label: "Ergebnisstufen", value: "3" },

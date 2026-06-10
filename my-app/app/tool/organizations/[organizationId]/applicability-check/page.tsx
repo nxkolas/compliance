@@ -1,13 +1,10 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { ClipboardCheck } from "lucide-react";
 
 export default function ApplicabilityCheckPage() {
   return (
     <ProductModuleContent
-      eyebrow="Betroffenheitscheck"
-      title="Pruefen, ob das Unternehmen unter NIS2 faellt"
-      description="Der Check fuehrt durch Branche, Groesse, Umsatz, Bilanzsumme und kritische Dienstleistungen. Die spaetere Auswertung erklaert kurz, warum ein Unternehmen betroffen ist."
-      icon={ClipboardCheck}
+      title="Betroffenheitscheck"
+      description="Prüfen Sie, ob Ihr Unternehmen unter die NIS2-Richtlinie fällt."
       metrics={[
         { label: "Ergebnisoptionen", value: "3" },
         { label: "Eingabebereiche", value: "4" },
