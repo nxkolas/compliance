@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  SidebarMenuButton,
-} from "@/components/ui/sidebar";
+import { SidebarMenuButton } from "@/components/ui/sidebar";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { Inbox, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
@@ -66,18 +65,20 @@ export function ProfileMenu({
     <>
       {variant === "sidebar" ? (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              aria-label={labels.profile.openMenu}
-              className="h-auto gap-3 px-3 pt-[14.5px] pb-[13.5px] data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <UserRound className="size-5 shrink-0" />
-              <span className="truncate">
-                {labels.sidebar?.profile ?? labels.common.account}
-              </span>
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <SidebarMenuButton
+                size="lg"
+                aria-label={labels.profile.openMenu}
+                className="h-auto gap-3 px-3 pt-[14.5px] pb-[13.5px] data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
+              >
+                <UserRound className="size-5 shrink-0" />
+                <span className="truncate">
+                  {labels.sidebar?.profile ?? labels.common.account}
+                </span>
+              </SidebarMenuButton>
+            }
+          />
           <ProfileMenuContent
             email={email}
             locale={locale}
@@ -87,16 +88,18 @@ export function ProfileMenu({
         </DropdownMenu>
       ) : (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full"
-              aria-label={labels.profile.openMenu}
-            >
-              <UserRound className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+                aria-label={labels.profile.openMenu}
+              >
+                <UserRound className="h-4 w-4" />
+              </Button>
+            }
+          />
           <ProfileMenuContent
             email={email}
             locale={locale}
@@ -123,26 +126,33 @@ function ProfileMenuContent({
       side={variant === "sidebar" ? "right" : "bottom"}
       className="w-56"
     >
-      <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
+      <DropdownMenuGroup>
+        <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          render={
+            <Link href="/tool/organizations/inbox">
+              <Inbox className="size-4" />
+              {labels.sidebar?.inbox ?? labels.common.inbox}
+            </Link>
+          }
+        />
+        <LanguageSwitcher
+          locale={locale}
+          label={labels.common.language}
+          languageNames={labels.languages}
+        />
+      </DropdownMenuGroup>
       <DropdownMenuSeparator />
-      <DropdownMenuItem asChild>
-        <Link href="/tool/organizations/inbox">
-          <Inbox className="size-4" />
-          {labels.sidebar?.inbox ?? labels.common.inbox}
-        </Link>
-      </DropdownMenuItem>
-      <LanguageSwitcher
-        locale={locale}
-        label={labels.common.language}
-        languageNames={labels.languages}
+      <DropdownMenuItem
+        nativeButton
+        render={
+          <LogoutButton variant="ghost" className="w-full justify-start">
+            <LogOut className="size-4" />
+            {labels.common.logout}
+          </LogoutButton>
+        }
       />
-      <DropdownMenuSeparator />
-      <DropdownMenuItem asChild>
-        <LogoutButton variant="ghost" className="w-full justify-start">
-          <LogOut className="size-4" />
-          {labels.common.logout}
-        </LogoutButton>
-      </DropdownMenuItem>
     </DropdownMenuContent>
   );
 }
