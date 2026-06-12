@@ -57,6 +57,12 @@ export const assessmentStatusEnum = pgEnum("assessment_status", [
   "archived",
 ]);
 
+export const guestAssessmentStatusEnum = pgEnum("guest_assessment_status", [
+  "active",
+  "claimed",
+  "expired",
+]);
+
 export const requirementStatusEnum = pgEnum("requirement_status", [
   "not_started",
   "planned",
@@ -444,6 +450,48 @@ export const assessmentLexSpecialisMatches = pgTable(
       table.assessmentId,
       table.ruleId,
     ),
+  ],
+);
+
+export const guestAssessmentSessions = pgTable(
+  "guest_assessment_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    assessmentId: uuid("assessment_id").notNull(),
+    anonymousUserId: uuid("anonymous_user_id").notNull(),
+    status: guestAssessmentStatusEnum("status").default("active").notNull(),
+    claimTokenHash: text("claim_token_hash").notNull(),
+    claimedByUserId: uuid("claimed_by_user_id"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "guest_assessment_sessions_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "guest_assessment_sessions_assessment_fk",
+      columns: [table.assessmentId],
+      foreignColumns: [selfCheckAssessments.id],
+    }).onDelete("cascade"),
+    uniqueIndex("guest_assessment_sessions_assessment_unique").on(
+      table.assessmentId,
+    ),
+    uniqueIndex("guest_assessment_sessions_token_unique").on(
+      table.claimTokenHash,
+    ),
+    index("guest_assessment_sessions_user_idx").on(table.anonymousUserId),
+    index("guest_assessment_sessions_expiry_idx").on(table.expiresAt),
+    index("guest_assessment_sessions_status_idx").on(table.status),
   ],
 );
 
@@ -1343,6 +1391,7 @@ export const organizationsRelations = relations(organizations, ({ many, one }) =
   documentReviewRuns: many(documentReviewRuns),
   actionPlanItems: many(actionPlanItems),
   reportExports: many(reportExports),
+  guestAssessmentSessions: many(guestAssessmentSessions),
   settings: one(organizationSettings),
 }));
 
@@ -1419,6 +1468,21 @@ export const selfCheckAssessmentsRelations = relations(
     }),
     lexSpecialisMatches: many(assessmentLexSpecialisMatches),
     questionnaireRuns: many(questionnaireRuns),
+    guestSession: one(guestAssessmentSessions),
+  }),
+);
+
+export const guestAssessmentSessionsRelations = relations(
+  guestAssessmentSessions,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [guestAssessmentSessions.organizationId],
+      references: [organizations.id],
+    }),
+    assessment: one(selfCheckAssessments, {
+      fields: [guestAssessmentSessions.assessmentId],
+      references: [selfCheckAssessments.id],
+    }),
   }),
 );
 
