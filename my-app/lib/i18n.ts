@@ -103,6 +103,8 @@ const dictionaries = {
       namePlaceholder: "Max Mustermann",
       emailPlaceholder: "ihre@email.com",
       passwordPlaceholder: "Min. 10 Zeichen, mind. 1 Zahl",
+      passwordRequirements:
+        "Das Passwort muss mindestens 10 Zeichen und eine Zahl enthalten.",
       confirmPassword: "Passwort bestätigen",
       acceptTermsPrefix: "Ich akzeptiere die",
       terms: "Nutzungsbedingungen",
@@ -593,6 +595,8 @@ const dictionaries = {
       namePlaceholder: "Jane Smith",
       emailPlaceholder: "you@example.com",
       passwordPlaceholder: "Min. 10 characters, including 1 number",
+      passwordRequirements:
+        "The password must contain at least 10 characters and one number.",
       confirmPassword: "Confirm password",
       acceptTermsPrefix: "I accept the",
       terms: "Terms of use",

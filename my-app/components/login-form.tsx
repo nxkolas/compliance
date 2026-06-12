@@ -1,16 +1,15 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
+import { AccountEmailField } from "@/components/auth/account-email-field";
+import { AccountPasswordField } from "@/components/auth/account-password-field";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { Dictionary } from "@/lib/i18n";
-import { Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Image from "next/image";
 
 function getNextPath() {
   if (typeof window === "undefined") return "/tool/organizations";
@@ -23,153 +22,155 @@ function getNextPath() {
 
 export function LoginForm({
   labels,
+  guestAssessmentId,
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & {
   labels: Dictionary["auth"];
+  guestAssessmentId?: string;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleLogin(event: React.FormEvent) {
+    event.preventDefault();
     const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
     try {
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (loginError) throw loginError;
+
+      if (guestAssessmentId) {
+        const response = await fetch(
+          `/api/guest-assessments/${guestAssessmentId}/claim`,
+          { method: "POST" },
+        );
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Übernahme fehlgeschlagen");
+        }
+        router.replace(`/tool/assessments/${guestAssessmentId}/result`);
+        router.refresh();
+        return;
+      }
+
       router.replace(getNextPath());
       router.refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : labels.errorFallback);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : labels.errorFallback);
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <div className={cn("w-full max-w-110.5 px-4 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
-      
-      {/* LOGO-BEREICH */}
-      <div className="h-16 flex items-center justify-start">
-        <Image 
+    <div
+      className={cn(
+        "flex w-full max-w-110.5 flex-col items-start gap-4 px-4 font-['Space_Grotesk']",
+        className,
+      )}
+      {...props}
+    >
+      <div className="flex h-16 items-center justify-start">
+        <Image
           src="/images/Logo-weiß.svg"
           alt="complyX Logo"
           width={180}
           height={48}
-          priority 
+          priority
           className="object-contain"
         />
       </div>
 
-      {/* TITEL & SUBTITEL */}
-      <div className="self-stretch pb-4 flex flex-col justify-start items-start gap-2">
-        <h1 className="text-neutral-50 text-4xl font-medium tracking-tight">
-          {labels.welcomeBack}
+      <div className="flex self-stretch flex-col items-start gap-2 pb-4">
+        <h1 className="text-4xl font-medium tracking-tight text-neutral-50">
+          {guestAssessmentId
+            ? "Mit bestehendem Konto übernehmen"
+            : labels.welcomeBack}
         </h1>
-        <p className="text-neutral-50/80 text-base font-normal">
-          {labels.signInDescription}
+        <p className="text-base font-normal text-neutral-50/80">
+          {guestAssessmentId
+            ? "Melden Sie sich an, um den Schnellcheck mit Ihrem Konto zu verknüpfen."
+            : labels.signInDescription}
         </p>
       </div>
 
-      {/* DIE WEISSE LOGIN-CARD - ERZWUNGEN OHNE SCHATTEN */}
-      <div className="self-stretch p-9 bg-[#FAFAFA] rounded-2xl shadow-none flex flex-col justify-start items-start gap-6 border-0">
-        <form onSubmit={handleLogin} className="w-full flex flex-col gap-6">
-          
-          {/* E-MAIL FELD */}
-          <div className="self-stretch flex flex-col justify-start items-start gap-2">
-            <Label htmlFor="email" className="text-black text-base font-medium">
-              {labels.email}
-            </Label>
-            <div className="relative w-full">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="ihre@email.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
-              />
-            </div>
-          </div>
+      <div className="flex self-stretch flex-col items-start gap-6 rounded-2xl border-0 bg-[#FAFAFA] p-9 shadow-none">
+        <form onSubmit={handleLogin} className="flex w-full flex-col gap-6">
+          <AccountEmailField
+            labels={labels}
+            value={email}
+            onChange={setEmail}
+          />
 
-          {/* PASSWORT FELD */}
-          <div className="self-stretch flex flex-col justify-start items-start gap-2">
-            <div className="self-stretch flex justify-between items-center">
-              <Label htmlFor="password" className="text-black text-base font-medium">
-                {labels.password}
-              </Label>
-              <Link 
-                href="/auth/forgot-password" 
-                className="text-[#002AFF] text-sm font-medium hover:underline"
+          <AccountPasswordField
+            labels={labels}
+            value={password}
+            onChange={setPassword}
+            placeholder="••••••••"
+            labelAction={
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm font-medium text-[#002AFF] hover:underline"
               >
                 {labels.forgotPassword}
               </Link>
-            </div>
-            <div className="relative w-full">
-              <Lock className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="auth-input w-full h-12 pl-12 pr-12 text-black text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
-              />
-              <button
-                type="button"
-                aria-label={showPassword ? labels.hidePassword : labels.showPassword}
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#002AFF] transition-colors focus:outline-none"
-              >
-                {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-              </button>
-            </div>
-          </div>
+            }
+          />
 
-          {/* ANGEMELDET BLEIBEN */}
-          <div className="self-stretch flex justify-start items-center gap-2">
-            <input 
-              type="checkbox" 
+          <div className="flex items-center gap-2 self-stretch">
+            <input
+              type="checkbox"
               id="remember"
               className="auth-checkbox size-5 cursor-pointer shadow-none"
             />
-            <label htmlFor="remember" className="text-gray-950 text-base font-medium cursor-pointer select-none">
+            <label
+              htmlFor="remember"
+              className="cursor-pointer select-none text-base font-medium text-gray-950"
+            >
               {labels.keepSignedIn}
             </label>
           </div>
 
-          {/* FEHLERMELDUNG */}
-          {error && <p className="text-sm text-destructive font-medium">{error}</p>}
+          {error ? (
+            <p className="text-sm font-medium text-destructive">{error}</p>
+          ) : null}
 
-          {/* BUTTON */}
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isLoading}
-            className="w-full h-12 bg-[#002AFF] hover:bg-[#0022cc] text-white text-base font-medium rounded-lg transition-colors shadow-none"
+            className="h-12 w-full rounded-lg bg-[#002AFF] text-base font-medium text-white shadow-none transition-colors hover:bg-[#0022cc]"
           >
-            {isLoading ? labels.signingIn : labels.login}
+            {isLoading
+              ? labels.signingIn
+              : guestAssessmentId
+                ? "Anmelden und übernehmen"
+                : labels.login}
           </Button>
         </form>
       </div>
 
-      {/* FOOTER */}
-      <div className="self-stretch flex justify-center items-center gap-1 mt-2 text-white text-base">
+      <div className="mt-2 flex items-center justify-center gap-1 self-stretch text-base text-white">
         <span className="font-normal">{labels.noAccount}</span>
-        <Link href="/auth/sign-up" className="font-bold hover:underline decoration-2">
+        <Link
+          href={
+            guestAssessmentId
+              ? `/check/${guestAssessmentId}/create-account`
+              : "/auth/sign-up"
+          }
+          className="font-bold decoration-2 hover:underline"
+        >
           {labels.signUp}
         </Link>
       </div>
-
     </div>
   );
 }

@@ -1,5 +1,6 @@
-import { GuestClaimForm } from "@/components/guest/guest-claim-form";
-import { GuestShell } from "@/components/guest/guest-shell";
+import { LoginForm } from "@/components/login-form";
+import { getDictionary } from "@/lib/i18n";
+import Image from "next/image";
 import { Suspense } from "react";
 
 type PageProps = {
@@ -8,22 +9,33 @@ type PageProps = {
 
 export default function GuestClaimPage({ params }: PageProps) {
   return (
-    <Suspense fallback={<main className="min-h-screen p-8">Laden...</main>}>
-      <GuestClaimContent params={params} />
-    </Suspense>
+    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <Image
+          src="/images/Startseite.svg"
+          alt="Hintergrund"
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
+      <div className="relative z-10 w-full max-w-md">
+        <Suspense fallback={null}>
+          <GuestClaimContent params={params} />
+        </Suspense>
+      </div>
+    </main>
   );
 }
 
-async function GuestClaimContent({
-  params,
-}: PageProps) {
+async function GuestClaimContent({ params }: PageProps) {
   const { assessmentId } = await params;
+  const dictionary = await getDictionary();
+
   return (
-    <GuestShell
-      title="Mit bestehendem Konto übernehmen"
-      description="Melden Sie sich an. Der Gast-Schnellcheck wird anschließend als eigene Organisation in Ihr Konto übernommen."
-    >
-      <GuestClaimForm assessmentId={assessmentId} />
-    </GuestShell>
+    <LoginForm
+      labels={dictionary.auth}
+      guestAssessmentId={assessmentId}
+    />
   );
 }

@@ -1,5 +1,5 @@
-import { GuestCreateAccountForm } from "@/components/guest/guest-create-account-form";
-import { GuestShell } from "@/components/guest/guest-shell";
+import { SignUpForm } from "@/components/sign-up-form";
+import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type PageProps = {
@@ -8,22 +8,20 @@ type PageProps = {
 
 export default function GuestCreateAccountPage({ params }: PageProps) {
   return (
-    <Suspense fallback={<main className="min-h-screen p-8">Laden...</main>}>
+    <Suspense fallback={null}>
       <GuestCreateAccountContent params={params} />
     </Suspense>
   );
 }
 
-async function GuestCreateAccountContent({
-  params,
-}: PageProps) {
+async function GuestCreateAccountContent({ params }: PageProps) {
   const { assessmentId } = await params;
+  const dictionary = await getDictionary();
+
   return (
-    <GuestShell
-      title="Ergebnis dauerhaft sichern"
-      description="Bestätigen Sie Ihre E-Mail-Adresse und legen Sie anschließend ein Passwort fest. Ihr Schnellcheck bleibt dabei unverändert erhalten."
-    >
-      <GuestCreateAccountForm assessmentId={assessmentId} />
-    </GuestShell>
+    <SignUpForm
+      labels={dictionary.auth}
+      guestAssessmentId={assessmentId}
+    />
   );
 }

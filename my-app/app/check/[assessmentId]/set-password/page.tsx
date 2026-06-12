@@ -1,29 +1,33 @@
-import { GuestSetPasswordForm } from "@/components/guest/guest-set-password-form";
-import { GuestShell } from "@/components/guest/guest-shell";
+import { GuestAccountFinalizer } from "@/components/guest/guest-account-finalizer";
+import Image from "next/image";
 import { Suspense } from "react";
 
 type PageProps = {
   params: Promise<{ assessmentId: string }>;
 };
 
-export default function GuestSetPasswordPage({ params }: PageProps) {
+export default function GuestAccountFinalizerPage({ params }: PageProps) {
   return (
-    <Suspense fallback={<main className="min-h-screen p-8">Laden...</main>}>
-      <GuestSetPasswordContent params={params} />
-    </Suspense>
+    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <Image
+          src="/images/Startseite.svg"
+          alt="Hintergrund"
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
+      <div className="relative z-10 w-full max-w-md">
+        <Suspense fallback={null}>
+          <GuestAccountFinalizerContent params={params} />
+        </Suspense>
+      </div>
+    </main>
   );
 }
 
-async function GuestSetPasswordContent({
-  params,
-}: PageProps) {
+async function GuestAccountFinalizerContent({ params }: PageProps) {
   const { assessmentId } = await params;
-  return (
-    <GuestShell
-      title="Passwort festlegen"
-      description="Nach diesem Schritt gehört der Schnellcheck dauerhaft zu Ihrem Konto."
-    >
-      <GuestSetPasswordForm assessmentId={assessmentId} />
-    </GuestShell>
-  );
+  return <GuestAccountFinalizer assessmentId={assessmentId} />;
 }
