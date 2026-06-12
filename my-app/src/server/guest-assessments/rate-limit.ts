@@ -1,19 +1,42 @@
+import { createHash } from "node:crypto";
+import { db } from "@/src/db";
+import { guestCreationRateLimits } from "@/src/db/schema";
+import { sql } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 
 const windowMs = 60 * 60 * 1000;
 const maxRequests = 5;
-const requests = new Map<string, number[]>();
 
-export function enforceGuestCreationRateLimit(ip: string) {
+export async function enforceGuestCreationRateLimit(ip: string) {
   const now = Date.now();
-  const recent = (requests.get(ip) ?? []).filter(
-    (timestamp) => timestamp > now - windowMs,
-  );
-  if (recent.length >= maxRequests) {
+  const windowStart = new Date(Math.floor(now / windowMs) * windowMs);
+  const expiresAt = new Date(windowStart.getTime() + windowMs);
+  const identifierHash = createHash("sha256").update(ip).digest("hex");
+
+  const result = await db.execute<{ requestCount: number }>(sql`
+    WITH expired AS (
+      DELETE FROM ${guestCreationRateLimits}
+      WHERE expires_at <= now()
+    ),
+    incremented AS (
+      INSERT INTO ${guestCreationRateLimits} (
+        identifier_hash,
+        window_start,
+        request_count,
+        expires_at
+      )
+      VALUES (${identifierHash}, ${windowStart}, 1, ${expiresAt})
+      ON CONFLICT (identifier_hash, window_start)
+      DO UPDATE SET request_count =
+        ${guestCreationRateLimits.requestCount} + 1
+      RETURNING request_count AS "requestCount"
+    )
+    SELECT "requestCount" FROM incremented
+  `);
+
+  if ((result[0]?.requestCount ?? maxRequests + 1) > maxRequests) {
     throw new ApiError(429, "Too many guest assessments. Please try again later.");
   }
-  recent.push(now);
-  requests.set(ip, recent);
 }
 
 export function requireGuestCaptchaToken(token?: string) {

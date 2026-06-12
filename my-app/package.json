@@ -11,7 +11,7 @@
     "db:seed:questionnaire": "tsx scripts/seed-guest-questionnaire.ts",
     "db:cleanup:guests": "tsx scripts/cleanup-guest-assessments.ts",
     "ai:ingest-references": "tsx scripts/ingest-ai-references.ts",
-    "test:guest": "vitest run tests/guest-assessment.test.ts",
+    "test:guest": "vitest run tests/guest-assessment.test.ts tests/guest-rate-limit.test.ts",
     "test:ai": "vitest run evals",
     "test:ai:watch": "vitest evals"
   },

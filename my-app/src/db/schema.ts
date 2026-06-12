@@ -495,6 +495,23 @@ export const guestAssessmentSessions = pgTable(
   ],
 );
 
+export const guestCreationRateLimits = pgTable(
+  "guest_creation_rate_limits",
+  {
+    identifierHash: varchar("identifier_hash", { length: 64 }).notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    requestCount: integer("request_count").default(1).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("guest_creation_rate_limits_window_unique").on(
+      table.identifierHash,
+      table.windowStart,
+    ),
+    index("guest_creation_rate_limits_expiry_idx").on(table.expiresAt),
+  ],
+);
+
 export const questionnaireTemplates = pgTable(
   "questionnaire_templates",
   {
