@@ -1,6 +1,7 @@
 import { requireApiUser } from "@/src/server/api/auth";
 import { getErrorResponse } from "@/src/server/api/errors";
 import { parseInput } from "@/src/server/api/request";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { GuestAssessmentPdf } from "@/src/server/guest-assessments/pdf";
 import {
   getGuestAssessment,
@@ -20,6 +21,10 @@ export async function GET(_request: Request, context: RouteContext) {
     const user = await requireApiUser();
     const { assessmentId } = await context.params;
     const cookieStore = await cookies();
+    const [dictionary, locale] = await Promise.all([
+      getDictionary(),
+      getLocale(),
+    ]);
     const assessment = await getGuestAssessment(
       user,
       parseInput(guestAssessmentIdSchema, assessmentId, "Invalid assessmentId"),
@@ -33,12 +38,16 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const buffer = await renderToBuffer(
-      GuestAssessmentPdf({ assessment }),
+      GuestAssessmentPdf({
+        assessment,
+        labels: dictionary.guestCheck,
+        locale,
+      }),
     );
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="nis2-schnellcheck-${assessmentId}.pdf"`,
+        "Content-Disposition": `attachment; filename="${dictionary.guestCheck.pdf.fileName}-${assessmentId}.pdf"`,
         "Cache-Control": "private, no-store",
       },
     });

@@ -9,22 +9,9 @@ type PageProps = {
 
 export default function GuestClaimPage({ params }: PageProps) {
   return (
-    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <Image
-          src="/images/Startseite.svg"
-          alt="Hintergrund"
-          fill
-          className="object-cover"
-          priority
-        />
-      </div>
-      <div className="relative z-10 w-full max-w-md">
-        <Suspense fallback={null}>
-          <GuestClaimContent params={params} />
-        </Suspense>
-      </div>
-    </main>
+    <Suspense fallback={null}>
+      <GuestClaimContent params={params} />
+    </Suspense>
   );
 }
 
@@ -33,9 +20,22 @@ async function GuestClaimContent({ params }: PageProps) {
   const dictionary = await getDictionary();
 
   return (
-    <LoginForm
-      labels={dictionary.auth}
-      guestAssessmentId={assessmentId}
-    />
+    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <Image
+          src="/images/Startseite.svg"
+          alt={dictionary.auth.backgroundAlt}
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
+      <div className="relative z-10 w-full max-w-md">
+        <LoginForm
+          labels={dictionary.auth}
+          guestAssessmentId={assessmentId}
+        />
+      </div>
+    </main>
   );
 }

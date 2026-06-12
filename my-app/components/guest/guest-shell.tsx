@@ -1,13 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { Dictionary } from "@/lib/i18n";
 
 export function GuestShell({
   title,
   description,
+  labels,
   children,
 }: {
   title: string;
   description: string;
+  labels: Dictionary["guestCheck"]["shell"];
   children: ReactNode;
 }) {
   return (
@@ -18,7 +21,7 @@ export function GuestShell({
             complyX
           </Link>
           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/70">
-            Ohne Konto
+            {labels.noAccount}
           </span>
         </header>
         <section className="flex flex-col gap-3">

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import type { Dictionary } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -36,8 +37,10 @@ type GuestAssessmentPayload = {
 
 export function GuestQuestionnaire({
   assessmentId,
+  labels,
 }: {
   assessmentId: string;
+  labels: Dictionary["guestCheck"]["questionnaire"];
 }) {
   const router = useRouter();
   const [assessment, setAssessment] = useState<GuestAssessmentPayload>();
@@ -53,7 +56,7 @@ export function GuestQuestionnaire({
       cache: "no-store",
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error ?? "Schnellcheck nicht gefunden");
+    if (!response.ok) throw new Error(labels.notFound);
     setAssessment(payload.assessment);
     setValues(
       Object.fromEntries(
@@ -65,13 +68,13 @@ export function GuestQuestionnaire({
         ),
       ),
     );
-  }, [assessmentId]);
+  }, [assessmentId, labels.notFound]);
 
   useEffect(() => {
     load().catch((caught) =>
-      setError(caught instanceof Error ? caught.message : "Laden fehlgeschlagen"),
+      setError(caught instanceof Error ? caught.message : labels.loadFailed),
     );
-  }, [load]);
+  }, [labels.loadFailed, load]);
 
   const questions = useMemo(
     () =>
@@ -112,14 +115,14 @@ export function GuestQuestionnaire({
         );
         const payload = await response.json();
         if (!response.ok) {
-          throw new Error(payload.error ?? "Speichern fehlgeschlagen");
+          throw new Error(labels.saveFailed);
         }
         setAssessment(payload.assessment);
         return true;
       })
       .catch((caught) => {
         setError(
-          caught instanceof Error ? caught.message : "Speichern fehlgeschlagen",
+          caught instanceof Error ? caught.message : labels.saveFailed,
         );
         return false;
       })
@@ -148,7 +151,7 @@ export function GuestQuestionnaire({
         if (notesQuestion && typeof values[notesQuestion.id] === "string") {
           const saved = await save(notesQuestion.id, values[notesQuestion.id]);
           if (!saved) {
-            throw new Error("Speichern fehlgeschlagen");
+            throw new Error(labels.saveFailed);
           }
         }
       }
@@ -157,11 +160,12 @@ export function GuestQuestionnaire({
         `/api/guest-assessments/${assessmentId}/complete`,
         { method: "POST" },
       );
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Auswertung fehlgeschlagen");
+      if (!response.ok) throw new Error(labels.evaluationFailed);
       router.push(`/check/${assessmentId}/result`);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Auswertung fehlgeschlagen");
+      setError(
+        caught instanceof Error ? caught.message : labels.evaluationFailed,
+      );
       setCompleting(false);
     }
   }
@@ -169,7 +173,7 @@ export function GuestQuestionnaire({
   if (!assessment) {
     return (
       <div className="rounded-2xl border border-white/15 bg-[#111522]/95 p-8 text-white/70">
-        {error ?? "Fragebogen wird geladen..."}
+        {error ?? labels.loading}
       </div>
     );
   }
@@ -189,59 +193,66 @@ export function GuestQuestionnaire({
           key={section.id}
           className="rounded-2xl border border-white/15 bg-[#111522]/95 p-6 sm:p-8"
         >
-          <h2 className="text-xl font-semibold">{section.title}</h2>
-          {section.description ? (
-            <p className="mt-2 text-sm text-white/60">{section.description}</p>
-          ) : null}
+          <h2 className="text-xl font-semibold">{labels.sectionTitle}</h2>
+          <p className="mt-2 text-sm text-white/60">
+            {labels.sectionDescription}
+          </p>
           <div className="mt-7 flex flex-col gap-8">
-            {section.questions.map((question, index) => (
-              <div key={question.id} className="flex flex-col gap-3">
-                <div>
-                  <p className="font-medium">
-                    {index + 1}. {question.prompt}
-                    {question.isRequired ? (
-                      <span className="ml-1 text-primary">*</span>
-                    ) : null}
-                  </p>
-                  {question.helpText ? (
-                    <p className="mt-1 text-sm leading-6 text-white/60">
-                      {question.helpText}
+            {section.questions.map((question, index) => {
+              const questionLabels = getQuestionLabels(labels, question.code);
+              const helpText =
+                questionLabels?.helpText ?? question.helpText;
+
+              return (
+                <div key={question.id} className="flex flex-col gap-3">
+                  <div>
+                    <p className="font-medium">
+                      {index + 1}. {questionLabels?.prompt ?? question.prompt}
+                      {question.isRequired ? (
+                        <span className="ml-1 text-primary">*</span>
+                      ) : null}
                     </p>
-                  ) : null}
-                </div>
-                {question.questionType === "text" ? (
-                  <Input
-                    value={String(values[question.id] ?? "")}
-                    onChange={(event) =>
-                      saveNotes(question.id, event.target.value)
-                    }
-                    placeholder="Optionale Anmerkungen"
-                    className="h-11"
-                  />
-                ) : (
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {(question.options ?? []).map((option) => {
-                      const value = String(option.value ?? "");
-                      const selected = values[question.id] === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => void save(question.id, value)}
-                          className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
-                            selected
-                              ? "border-primary bg-primary/15 text-white"
-                              : "border-white/15 bg-white/5 text-white/75 hover:bg-white/10"
-                          }`}
-                        >
-                          {String(option.label ?? value)}
-                        </button>
-                      );
-                    })}
+                    {helpText ? (
+                      <p className="mt-1 text-sm leading-6 text-white/60">
+                        {helpText}
+                      </p>
+                    ) : null}
                   </div>
-                )}
-              </div>
-            ))}
+                  {question.questionType === "text" ? (
+                    <Input
+                      value={String(values[question.id] ?? "")}
+                      onChange={(event) =>
+                        saveNotes(question.id, event.target.value)
+                      }
+                      placeholder={labels.notesPlaceholder}
+                      className="h-11"
+                    />
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {(question.options ?? []).map((option) => {
+                        const value = String(option.value ?? "");
+                        const selected = values[question.id] === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => void save(question.id, value)}
+                            className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                              selected
+                                ? "border-primary bg-primary/15 text-white"
+                                : "border-white/15 bg-white/5 text-white/75 hover:bg-white/10"
+                            }`}
+                          >
+                            {questionLabels?.options[value] ??
+                              String(option.label ?? value)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       ))}
@@ -252,12 +263,22 @@ export function GuestQuestionnaire({
         onClick={complete}
         disabled={!requiredComplete || pendingSaves > 0 || completing}
       >
-        {completing ? "Ergebnis wird berechnet..." : "Ergebnis anzeigen"}
+        {completing ? labels.calculating : labels.showResult}
       </Button>
       <p className="text-center text-xs leading-5 text-white/50">
-        Der Schnellcheck ist eine unverbindliche Erstorientierung und ersetzt
-        keine rechtliche Beratung.
+        {labels.disclaimer}
       </p>
     </div>
   );
+}
+
+function getQuestionLabels(
+  labels: Dictionary["guestCheck"]["questionnaire"],
+  code: string,
+) {
+  const questions = labels.questions as Record<
+    string,
+    { prompt: string; helpText: string; options: Record<string, string> }
+  >;
+  return questions[code];
 }

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { Dictionary } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
@@ -26,9 +27,11 @@ declare global {
 export function GuestStartForm({
   turnstileSiteKey,
   supabaseAuthSettingsUrl,
+  labels,
 }: {
   turnstileSiteKey?: string;
   supabaseAuthSettingsUrl?: string;
+  labels: Dictionary["guestCheck"]["start"];
 }) {
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
@@ -72,9 +75,7 @@ export function GuestStartForm({
         if (authError) {
           if (isAnonymousAuthDisabledError(authError)) {
             setAnonymousAuthDisabled(true);
-            throw new Error(
-              "Anonyme Anmeldungen sind für dieses Supabase-Projekt noch nicht aktiviert.",
-            );
+            throw new Error(labels.anonymousAuthDisabled);
           }
           throw authError;
         }
@@ -86,14 +87,14 @@ export function GuestStartForm({
         body: JSON.stringify({ companyName, captchaToken }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Start fehlgeschlagen");
+      if (!response.ok) throw new Error(labels.startFailed);
 
       router.push(`/check/${payload.assessmentId}/questionnaire`);
     } catch (caught) {
       setError(
         caught instanceof Error
           ? caught.message
-          : "Der Schnellcheck konnte nicht gestartet werden.",
+          : labels.startFailed,
       );
     } finally {
       setLoading(false);
@@ -113,18 +114,18 @@ export function GuestStartForm({
         className="rounded-2xl border border-white/15 bg-[#111522]/95 p-6 sm:p-8"
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="companyName">Unternehmensname</Label>
+          <Label htmlFor="companyName">{labels.companyName}</Label>
           <Input
             id="companyName"
             required
             maxLength={255}
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
-            placeholder="Beispiel GmbH"
+            placeholder={labels.companyNamePlaceholder}
             className="h-11"
           />
           <p className="text-sm text-white/60">
-            Ihre Eingaben werden für 30 Tage in diesem Browser gespeichert.
+            {labels.retentionNotice}
           </p>
         </div>
         {turnstileSiteKey ? (
@@ -140,8 +141,7 @@ export function GuestStartForm({
             <p>{error}</p>
             {anonymousAuthDisabled ? (
               <p className="mt-2 leading-6">
-                Aktivieren Sie in Supabase unter Authentication → Providers →
-                Anonymous Sign-Ins die Option „Allow anonymous sign-ins“.
+                {labels.anonymousAuthInstructions}
                 {supabaseAuthSettingsUrl ? (
                   <>
                     {" "}
@@ -151,7 +151,7 @@ export function GuestStartForm({
                       rel="noreferrer"
                       className="font-medium underline underline-offset-2"
                     >
-                      Auth-Einstellungen öffnen
+                      {labels.openAuthSettings}
                     </a>
                   </>
                 ) : null}
@@ -169,7 +169,7 @@ export function GuestStartForm({
             Boolean(turnstileSiteKey && (!captchaReady || !captchaToken))
           }
         >
-          {loading ? "Schnellcheck wird gestartet..." : "Schnellcheck starten"}
+          {loading ? labels.starting : labels.start}
         </Button>
       </form>
     </>

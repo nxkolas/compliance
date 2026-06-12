@@ -3,12 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import type { Dictionary } from "@/lib/i18n";
 import { Download, LogIn, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type ResultPayload = {
+  assessment: { category: string };
   organization: { name: string };
   run: {
     status: string;
@@ -19,7 +21,13 @@ type ResultPayload = {
   };
 };
 
-export function GuestResult({ assessmentId }: { assessmentId: string }) {
+export function GuestResult({
+  assessmentId,
+  labels,
+}: {
+  assessmentId: string;
+  labels: Dictionary["guestCheck"]["result"];
+}) {
   const router = useRouter();
   const [assessment, setAssessment] = useState<ResultPayload>();
   const [error, setError] = useState<string>();
@@ -30,35 +38,34 @@ export function GuestResult({ assessmentId }: { assessmentId: string }) {
       cache: "no-store",
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error ?? "Ergebnis nicht gefunden");
+    if (!response.ok) throw new Error(labels.notFound);
     if (payload.assessment.run.status !== "completed") {
       router.replace(`/check/${assessmentId}/questionnaire`);
       return;
     }
     setAssessment(payload.assessment);
-  }, [assessmentId, router]);
+  }, [assessmentId, labels.notFound, router]);
 
   useEffect(() => {
     load().catch((caught) =>
-      setError(caught instanceof Error ? caught.message : "Laden fehlgeschlagen"),
+      setError(caught instanceof Error ? caught.message : labels.loadFailed),
     );
-  }, [load]);
+  }, [labels.loadFailed, load]);
 
   async function remove() {
-    if (!window.confirm("Möchten Sie dieses Ergebnis endgültig löschen?")) return;
+    if (!window.confirm(labels.confirmDelete)) return;
     setDeleting(true);
     setError(undefined);
     try {
       const response = await fetch(`/api/guest-assessments/${assessmentId}`, {
         method: "DELETE",
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Löschen fehlgeschlagen");
+      if (!response.ok) throw new Error(labels.deleteFailed);
       await createClient().auth.signOut();
       router.replace("/");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Löschen fehlgeschlagen");
+      setError(caught instanceof Error ? caught.message : labels.deleteFailed);
       setDeleting(false);
     }
   }
@@ -66,12 +73,13 @@ export function GuestResult({ assessmentId }: { assessmentId: string }) {
   if (!assessment) {
     return (
       <div className="rounded-2xl border border-white/15 bg-[#111522]/95 p-8 text-white/70">
-        {error ?? "Ergebnis wird geladen..."}
+        {error ?? labels.loading}
       </div>
     );
   }
 
-  const presentation = resultPresentation(assessment.run.result);
+  const presentation = resultPresentation(assessment.run.result, labels);
+  const details = resultDetails(assessment.assessment.category, labels);
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,12 +90,10 @@ export function GuestResult({ assessmentId }: { assessmentId: string }) {
           <CardTitle className="text-2xl">{presentation.title}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p className="text-lg">{assessment.run.summary}</p>
-          <p className="leading-7 text-white/65">{assessment.run.reasoning}</p>
+          <p className="text-lg">{details.summary}</p>
+          <p className="leading-7 text-white/65">{details.reasoning}</p>
           <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/60">
-            Diese Einschätzung ist eine unverbindliche Erstorientierung und
-            keine Rechtsberatung. Für eine abschließende Bewertung müssen Ihre
-            konkreten Tätigkeiten und Unternehmensdaten geprüft werden.
+            {labels.disclaimer}
           </div>
         </CardContent>
       </Card>
@@ -96,19 +102,19 @@ export function GuestResult({ assessmentId }: { assessmentId: string }) {
         <Button asChild size="lg">
           <Link href={`/check/${assessmentId}/create-account`}>
             <UserPlus />
-            Konto erstellen und Ergebnis sichern
+            {labels.createAccount}
           </Link>
         </Button>
         <Button asChild size="lg" variant="secondary">
           <Link href={`/check/${assessmentId}/claim`}>
             <LogIn />
-            Mit bestehendem Konto übernehmen
+            {labels.claim}
           </Link>
         </Button>
         <Button asChild size="lg" variant="outline">
           <a href={`/api/guest-assessments/${assessmentId}/export`}>
             <Download />
-            PDF herunterladen
+            {labels.downloadPdf}
           </a>
         </Button>
         <Button
@@ -118,7 +124,7 @@ export function GuestResult({ assessmentId }: { assessmentId: string }) {
           disabled={deleting}
         >
           <Trash2 />
-          {deleting ? "Wird gelöscht..." : "Ergebnis löschen"}
+          {deleting ? labels.deleting : labels.delete}
         </Button>
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
@@ -126,21 +132,34 @@ export function GuestResult({ assessmentId }: { assessmentId: string }) {
   );
 }
 
-function resultPresentation(result: string) {
+function resultPresentation(
+  result: string,
+  labels: Dictionary["guestCheck"]["result"],
+) {
   if (result === "affected") {
     return {
-      title: "Voraussichtlich betroffen",
+      title: labels.presentations.affected,
       barClass: "bg-amber-400",
     };
   }
   if (result === "not_affected") {
     return {
-      title: "Aktuell nicht erkennbar betroffen",
+      title: labels.presentations.notAffected,
       barClass: "bg-emerald-400",
     };
   }
   return {
-    title: "Individuelle Prüfung erforderlich",
+    title: labels.presentations.possiblyAffected,
     barClass: "bg-blue-400",
   };
+}
+
+function resultDetails(
+  category: string,
+  labels: Dictionary["guestCheck"]["result"],
+) {
+  if (category === "important") return labels.details.important;
+  if (category === "special_case") return labels.details.specialCase;
+  if (category === "not_affected") return labels.details.notAffected;
+  return labels.details.unknown;
 }

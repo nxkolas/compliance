@@ -1,5 +1,6 @@
 import { GuestResult } from "@/components/guest/guest-result";
 import { GuestShell } from "@/components/guest/guest-shell";
+import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 
 type PageProps = {
@@ -7,8 +8,15 @@ type PageProps = {
 };
 
 export default function GuestResultPage({ params }: PageProps) {
+  const fallback = getDefaultDictionary();
   return (
-    <Suspense fallback={<main className="min-h-screen p-8">Laden...</main>}>
+    <Suspense
+      fallback={
+        <main className="min-h-screen p-8">
+          {fallback.guestCheck.result.loading}
+        </main>
+      }
+    >
       <GuestResultContent params={params} />
     </Suspense>
   );
@@ -17,13 +25,16 @@ export default function GuestResultPage({ params }: PageProps) {
 async function GuestResultContent({
   params,
 }: PageProps) {
+  const dictionary = await getDictionary();
+  const labels = dictionary.guestCheck;
   const { assessmentId } = await params;
   return (
     <GuestShell
-      title="Ihre erste Einschätzung"
-      description="Sie können das Ergebnis jetzt exportieren, löschen oder durch ein Konto dauerhaft sichern."
+      title={labels.result.title}
+      description={labels.result.description}
+      labels={labels.shell}
     >
-      <GuestResult assessmentId={assessmentId} />
+      <GuestResult assessmentId={assessmentId} labels={labels.result} />
     </GuestShell>
   );
 }
