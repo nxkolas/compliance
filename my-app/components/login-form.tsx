@@ -96,7 +96,7 @@ export function LoginForm({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
+                className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
               />
             </div>
           </div>
@@ -123,7 +123,7 @@ export function LoginForm({
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-12 pl-12 pr-12 bg-white text-black text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
+                className="auth-input w-full h-12 pl-12 pr-12 text-black text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565] shadow-none"
               />
               <button
                 type="button"
@@ -141,7 +141,7 @@ export function LoginForm({
             <input 
               type="checkbox" 
               id="remember"
-              className="size-5 bg-white rounded-sm border border-gray-200 accent-[#002AFF] cursor-pointer shadow-none" 
+              className="auth-checkbox size-5 cursor-pointer shadow-none"
             />
             <label htmlFor="remember" className="text-gray-950 text-base font-medium cursor-pointer select-none">
               {labels.keepSignedIn}

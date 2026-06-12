@@ -120,7 +120,7 @@ export function SignUpForm({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full h-12 pl-12 pr-4 bg-white text-black text-base font-normal shadow-none rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal shadow-none focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
               </div>
             </div>
@@ -138,7 +138,7 @@ export function SignUpForm({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-12 pl-12 pr-4 bg-white text-black shadow-none text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="auth-input w-full h-12 pl-12 pr-4 text-black shadow-none text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
               </div>
             </div>
@@ -156,7 +156,7 @@ export function SignUpForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-12 pl-12 pr-12 bg-white text-black shadow-none text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="auth-input w-full h-12 pl-12 pr-12 text-black shadow-none text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
                 <button
                   type="button"
@@ -182,7 +182,7 @@ export function SignUpForm({
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full h-12 pl-12 pr-12 bg-white text-black shadow-none text-base font-normal rounded-lg border border-gray-200 focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="auth-input w-full h-12 pl-12 pr-12 text-black shadow-none text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
                 />
                 <button
                   type="button"
@@ -201,7 +201,7 @@ export function SignUpForm({
                 id="terms"
                 checked={acceptTerms}
                 onChange={(e) => setAcceptTerms(e.target.checked)}
-                className="size-5 mt-0.5 bg-white rounded-sm border border-gray-200 accent-[#002AFF] cursor-pointer shrink-0" 
+                className="auth-checkbox size-5 mt-0.5 cursor-pointer shrink-0"
               />
               <label htmlFor="terms" className="text-[#4A5565] text-sm font-normal cursor-pointer select-none leading-tight">
                 {labels.acceptTermsPrefix}{" "}
