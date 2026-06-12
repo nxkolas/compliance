@@ -19,7 +19,7 @@ export function RouteTabs({ tabs }: { tabs: RouteTab[] }) {
           <TabsTrigger
             key={tab.href}
             value={tab.href}
-            className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30"
+            className="data-[state=active]:border-input data-[state=active]:bg-input/30 data-[state=active]:text-foreground data-[state=active]:shadow-sm"
           >
             {tab.label}
           </TabsTrigger>
