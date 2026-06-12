@@ -41,10 +41,11 @@ export function GuestQuestionnaire({
   const router = useRouter();
   const [assessment, setAssessment] = useState<GuestAssessmentPayload>();
   const [values, setValues] = useState<Record<string, unknown>>({});
-  const [saving, setSaving] = useState(false);
+  const [pendingSaves, setPendingSaves] = useState(0);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string>();
   const noteTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/guest-assessments/${assessmentId}`, {
@@ -81,27 +82,40 @@ export function GuestQuestionnaire({
     .filter((question) => question.isRequired)
     .every((question) => values[question.id] !== undefined && values[question.id] !== "");
 
-  async function save(questionId: string, value: unknown) {
+  function save(questionId: string, value: unknown) {
     setValues((current) => ({ ...current, [questionId]: value }));
-    setSaving(true);
+    setPendingSaves((current) => current + 1);
     setError(undefined);
-    try {
-      const response = await fetch(
-        `/api/guest-assessments/${assessmentId}/answers`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers: [{ questionId, value }] }),
-        },
-      );
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Speichern fehlgeschlagen");
-      setAssessment(payload.assessment);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Speichern fehlgeschlagen");
-    } finally {
-      setSaving(false);
-    }
+
+    const queuedSave = saveQueue.current
+      .then(async () => {
+        const response = await fetch(
+          `/api/guest-assessments/${assessmentId}/answers`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ answers: [{ questionId, value }] }),
+          },
+        );
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Speichern fehlgeschlagen");
+        }
+        setAssessment(payload.assessment);
+        return true;
+      })
+      .catch((caught) => {
+        setError(
+          caught instanceof Error ? caught.message : "Speichern fehlgeschlagen",
+        );
+        return false;
+      })
+      .finally(() => {
+        setPendingSaves((current) => current - 1);
+      });
+
+    saveQueue.current = queuedSave.then(() => undefined);
+    return queuedSave;
   }
 
   function saveNotes(questionId: string, value: string) {
@@ -116,11 +130,16 @@ export function GuestQuestionnaire({
     try {
       if (noteTimer.current) {
         clearTimeout(noteTimer.current);
+        noteTimer.current = undefined;
         const notesQuestion = questions.find((question) => question.code === "notes");
         if (notesQuestion && typeof values[notesQuestion.id] === "string") {
-          await save(notesQuestion.id, values[notesQuestion.id]);
+          const saved = await save(notesQuestion.id, values[notesQuestion.id]);
+          if (!saved) {
+            throw new Error("Speichern fehlgeschlagen");
+          }
         }
       }
+      await saveQueue.current;
       const response = await fetch(
         `/api/guest-assessments/${assessmentId}/complete`,
         { method: "POST" },
@@ -148,7 +167,9 @@ export function GuestQuestionnaire({
         <div className="mb-2 flex items-center justify-between text-sm">
           <span>{assessment.organization.name}</span>
           <span className="text-white/60">
-            {saving ? "Wird gespeichert..." : `${assessment.run.progress}%`}
+            {pendingSaves > 0
+              ? "Wird gespeichert..."
+              : `${assessment.run.progress}%`}
           </span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-white/10">
@@ -225,7 +246,7 @@ export function GuestQuestionnaire({
       <Button
         size="lg"
         onClick={complete}
-        disabled={!requiredComplete || saving || completing}
+        disabled={!requiredComplete || pendingSaves > 0 || completing}
       >
         {completing ? "Ergebnis wird berechnet..." : "Ergebnis anzeigen"}
       </Button>
