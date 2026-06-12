@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -78,9 +79,21 @@ export function GuestQuestionnaire({
       [],
     [assessment],
   );
-  const requiredComplete = questions
-    .filter((question) => question.isRequired)
-    .every((question) => values[question.id] !== undefined && values[question.id] !== "");
+  const requiredQuestions = questions.filter(
+    (question) => question.isRequired,
+  );
+  const completedRequiredQuestions = requiredQuestions.filter(
+    (question) =>
+      values[question.id] !== undefined && values[question.id] !== "",
+  ).length;
+  const progress =
+    requiredQuestions.length === 0
+      ? 100
+      : Math.round(
+          (completedRequiredQuestions / requiredQuestions.length) * 100,
+        );
+  const requiredComplete =
+    completedRequiredQuestions === requiredQuestions.length;
 
   function save(questionId: string, value: unknown) {
     setValues((current) => ({ ...current, [questionId]: value }));
@@ -166,18 +179,9 @@ export function GuestQuestionnaire({
       <div className="rounded-xl border border-white/15 bg-white/5 p-4">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span>{assessment.organization.name}</span>
-          <span className="text-white/60">
-            {pendingSaves > 0
-              ? "Wird gespeichert..."
-              : `${assessment.run.progress}%`}
-          </span>
+          <span className="text-white/60">{progress}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${assessment.run.progress}%` }}
-          />
-        </div>
+        <Progress value={progress} className="h-2 bg-white/10" />
       </div>
 
       {assessment.template.sections.map((section) => (

@@ -11,6 +11,8 @@ export async function enforceGuestCreationRateLimit(ip: string) {
   const now = Date.now();
   const windowStart = new Date(Math.floor(now / windowMs) * windowMs);
   const expiresAt = new Date(windowStart.getTime() + windowMs);
+  const windowStartIso = windowStart.toISOString();
+  const expiresAtIso = expiresAt.toISOString();
   const identifierHash = createHash("sha256").update(ip).digest("hex");
 
   const result = await db.execute<{ requestCount: number }>(sql`
@@ -25,7 +27,12 @@ export async function enforceGuestCreationRateLimit(ip: string) {
         request_count,
         expires_at
       )
-      VALUES (${identifierHash}, ${windowStart}, 1, ${expiresAt})
+      VALUES (
+        ${identifierHash},
+        ${windowStartIso}::timestamptz,
+        1,
+        ${expiresAtIso}::timestamptz
+      )
       ON CONFLICT (identifier_hash, window_start)
       DO UPDATE SET request_count =
         ${guestCreationRateLimits.requestCount} + 1

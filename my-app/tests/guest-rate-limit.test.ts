@@ -21,6 +21,9 @@ describe("guest creation rate limit", () => {
     await expect(
       enforceGuestCreationRateLimit("203.0.113.10"),
     ).resolves.toBeUndefined();
+
+    const query = execute.mock.calls[0][0];
+    expect(containsDate(query)).toBe(false);
   });
 
   it("rejects requests over the shared window limit", async () => {
@@ -42,3 +45,13 @@ describe("guest creation rate limit", () => {
     ).rejects.toMatchObject({ status: 429 });
   });
 });
+
+function containsDate(value: unknown, seen = new Set<object>()): boolean {
+  if (value instanceof Date) return true;
+  if (typeof value !== "object" || value === null || seen.has(value)) {
+    return false;
+  }
+
+  seen.add(value);
+  return Object.values(value).some((nested) => containsDate(nested, seen));
+}
