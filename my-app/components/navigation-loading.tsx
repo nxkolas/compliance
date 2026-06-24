@@ -32,7 +32,7 @@ export function AppSidebarSkeleton() {
   return (
     <Sidebar
       collapsible="none"
-      className="min-h-svh w-[401px] shrink-0 border-r bg-[rgba(255,255,255,0.10)]"
+      className="sticky top-0 h-svh max-h-svh w-[401px] shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
     >
       <AppSidebarContentSkeleton />
     </Sidebar>
