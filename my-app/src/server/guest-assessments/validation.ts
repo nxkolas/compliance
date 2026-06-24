@@ -2,6 +2,10 @@ import * as z from "zod";
 
 export const guestAssessmentIdSchema = z.uuid();
 
+export const claimGuestAssessmentSchema = z.object({
+  organizationId: z.uuid(),
+});
+
 export const createGuestAssessmentSchema = z.object({
   companyName: z.string().trim().min(1).max(255),
   captchaToken: z.string().trim().min(1).optional(),
@@ -23,3 +27,6 @@ export type CreateGuestAssessmentInput = z.infer<
   typeof createGuestAssessmentSchema
 >;
 export type SaveGuestAnswersInput = z.infer<typeof saveGuestAnswersSchema>;
+export type ClaimGuestAssessmentInput = z.infer<
+  typeof claimGuestAssessmentSchema
+>;

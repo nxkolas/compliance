@@ -70,7 +70,7 @@ export function SignUpForm({
           throw new Error("Die anonyme Sitzung ist nicht mehr verfügbar.");
         }
 
-        const next = `/check/${guestAssessmentId}/set-password`;
+        const next = `/tool/organizations/claim-assessment/${guestAssessmentId}`;
         const { error: updateError } = await supabase.auth.updateUser(
           { email, password },
           {
@@ -93,19 +93,8 @@ export function SignUpForm({
             throw new Error(labels.errorFallback);
           }
 
-          const response = await fetch(
-            `/api/guest-assessments/${guestAssessmentId}/claim`,
-            { method: "POST" },
-          );
-          const payload = await response.json();
-          if (!response.ok) {
-            throw new Error(payload.error ?? "Übernahme fehlgeschlagen");
-          }
-          if (!payload.organizationId || !payload.assessmentId) {
-            throw new Error(payload.error ?? "Übernahme fehlgeschlagen");
-          }
           router.replace(
-            `/tool/organizations/${payload.organizationId}/applicability-check/${payload.assessmentId}/result`,
+            `/tool/organizations/claim-assessment/${guestAssessmentId}`,
           );
           router.refresh();
           return;
@@ -168,7 +157,7 @@ export function SignUpForm({
           <div className="self-stretch rounded-2xl bg-[#FAFAFA] p-8 text-black">
             Wir haben einen Bestätigungslink an{" "}
             <strong>{confirmationEmail}</strong> gesendet. Danach wird Ihr
-            Schnellcheck automatisch mit dem Konto verknüpft.
+            Schnellcheck mit einer Organisation Ihrer Wahl verknüpft.
           </div>
         </div>
       </div>

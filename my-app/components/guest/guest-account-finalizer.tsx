@@ -1,11 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import type { Dictionary } from "@/lib/i18n";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export function GuestAccountFinalizer({
   assessmentId,
@@ -16,40 +14,14 @@ export function GuestAccountFinalizer({
 }) {
   const router = useRouter();
   const started = useRef(false);
-  const [error, setError] = useState<string>();
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
 
-    async function claimAssessment() {
-      try {
-        const response = await fetch(
-          `/api/guest-assessments/${assessmentId}/claim`,
-          { method: "POST" },
-        );
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload.error ?? labels.claimFailed);
-        }
-        if (!payload.organizationId || !payload.assessmentId) {
-          throw new Error(labels.claimFailed);
-        }
-        router.replace(
-          `/tool/organizations/${payload.organizationId}/applicability-check/${payload.assessmentId}/result`,
-        );
-        router.refresh();
-      } catch (caught) {
-        setError(
-          caught instanceof Error
-            ? caught.message
-            : labels.claimFailed,
-        );
-      }
-    }
-
-    void claimAssessment();
-  }, [assessmentId, labels.claimFailed, router]);
+    router.replace(`/tool/organizations/claim-assessment/${assessmentId}`);
+    router.refresh();
+  }, [assessmentId, router]);
 
   return (
     <div className="flex w-full max-w-110.5 flex-col items-start gap-4 px-4 font-['Space_Grotesk']">
@@ -72,18 +44,7 @@ export function GuestAccountFinalizer({
         </p>
       </div>
       <div className="self-stretch rounded-2xl bg-[#FAFAFA] p-9 text-black">
-        {error ? (
-          <div className="flex flex-col gap-5">
-            <p className="text-sm font-medium text-destructive">{error}</p>
-            <Button asChild className="h-12 bg-[#002AFF] text-white">
-              <Link href={`/check/${assessmentId}/claim`}>
-                {labels.signIn}
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <p>{labels.claiming}</p>
-        )}
+        <p>{labels.claiming}</p>
       </div>
     </div>
   );

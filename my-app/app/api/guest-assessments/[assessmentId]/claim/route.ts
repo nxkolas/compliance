@@ -1,32 +1,43 @@
 import { requireApiUser } from "@/src/server/api/auth";
 import { getErrorResponse } from "@/src/server/api/errors";
-import { parseInput } from "@/src/server/api/request";
+import { parseInput, readJsonBody } from "@/src/server/api/request";
 import {
   claimGuestAssessment,
   guestClaimCookieName,
 } from "@/src/server/guest-assessments/service";
-import { guestAssessmentIdSchema } from "@/src/server/guest-assessments/validation";
+import {
+  claimGuestAssessmentSchema,
+  guestAssessmentIdSchema,
+} from "@/src/server/guest-assessments/validation";
 import { deleteAuthUserIfConfigured } from "@/src/server/supabase-admin";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 type RouteContext = {
   params: Promise<{ assessmentId: string }>;
 };
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   try {
     const user = await requireApiUser();
     const { assessmentId } = await context.params;
+    const input = await readJsonBody(request, claimGuestAssessmentSchema);
     const cookieStore = await cookies();
     const claimed = await claimGuestAssessment(
       user,
       parseInput(guestAssessmentIdSchema, assessmentId, "Invalid assessmentId"),
+      input,
       cookieStore.get(guestClaimCookieName)?.value,
     );
     if (claimed.previousAnonymousUserId !== user.id) {
       await deleteAuthUserIfConfigured(claimed.previousAnonymousUserId);
     }
+    revalidatePath(`/tool/organizations/${claimed.organizationId}`);
+    revalidatePath(
+      `/tool/organizations/${claimed.organizationId}/applicability-check`,
+    );
+    revalidatePath("/tool/organizations");
     const response = NextResponse.json({
       organizationId: claimed.organizationId,
       assessmentId: claimed.assessmentId,

@@ -21,6 +21,7 @@ import {
   type QuickCheckAnswerMap,
 } from "./rules";
 import type {
+  ClaimGuestAssessmentInput,
   CreateGuestAssessmentInput,
   SaveGuestAnswersInput,
 } from "./validation";
@@ -370,18 +371,24 @@ export async function deleteGuestAssessment(
 export async function claimGuestAssessment(
   user: User,
   assessmentId: string,
+  input: ClaimGuestAssessmentInput,
   claimToken?: string,
 ) {
   if (user.is_anonymous) {
     throw new ApiError(401, "Create an account or sign in before claiming");
   }
 
+  await assertCanAccessTargetOrganization(user.id, input.organizationId);
+
   const session = await db.query.guestAssessmentSessions.findFirst({
     where: eq(guestAssessmentSessions.assessmentId, assessmentId),
   });
   if (!session) throw new ApiError(404, "Guest assessment not found");
   if (session.status === "claimed") {
-    if (session.claimedByUserId === user.id) {
+    if (
+      session.claimedByUserId === user.id &&
+      session.organizationId === input.organizationId
+    ) {
       return {
         ...session,
         previousAnonymousUserId: session.anonymousUserId,
@@ -397,6 +404,11 @@ export async function claimGuestAssessment(
   }
 
   const claimedAt = new Date();
+  const sourceOrganizationId = session.organizationId;
+  const targetOrganizationId = input.organizationId;
+  const shouldDeleteSourceOrganization =
+    sourceOrganizationId !== targetOrganizationId;
+
   return db.transaction(async (tx) => {
     if (!sameUser) {
       await tx
@@ -407,38 +419,39 @@ export async function claimGuestAssessment(
             eq(organizationMembers.userId, session.anonymousUserId),
           ),
         );
+    }
+
+    await tx
+      .update(selfCheckAssessments)
+      .set({
+        organizationId: targetOrganizationId,
+        performedByUserId: user.id,
+        updatedAt: claimedAt,
+      })
+      .where(eq(selfCheckAssessments.id, assessmentId));
+    await tx
+      .update(questionnaireRuns)
+      .set({
+        organizationId: targetOrganizationId,
+        performedByUserId: user.id,
+        updatedAt: claimedAt,
+      })
+      .where(eq(questionnaireRuns.selfCheckAssessmentId, assessmentId));
+
+    const run = await tx.query.questionnaireRuns.findFirst({
+      where: eq(questionnaireRuns.selfCheckAssessmentId, assessmentId),
+    });
+    if (run) {
       await tx
-        .insert(organizationMembers)
-        .values({
-          organizationId: session.organizationId,
-          userId: user.id,
-          role: "owner",
-        })
-        .onConflictDoNothing({
-          target: [organizationMembers.organizationId, organizationMembers.userId],
-        });
-      await tx
-        .update(selfCheckAssessments)
-        .set({ performedByUserId: user.id, updatedAt: claimedAt })
-        .where(eq(selfCheckAssessments.id, assessmentId));
-      await tx
-        .update(questionnaireRuns)
-        .set({ performedByUserId: user.id, updatedAt: claimedAt })
-        .where(eq(questionnaireRuns.selfCheckAssessmentId, assessmentId));
-      const run = await tx.query.questionnaireRuns.findFirst({
-        where: eq(questionnaireRuns.selfCheckAssessmentId, assessmentId),
-      });
-      if (run) {
-        await tx
-          .update(questionnaireAnswers)
-          .set({ answeredByUserId: user.id, updatedAt: claimedAt })
-          .where(eq(questionnaireAnswers.runId, run.id));
-      }
+        .update(questionnaireAnswers)
+        .set({ answeredByUserId: user.id, updatedAt: claimedAt })
+        .where(eq(questionnaireAnswers.runId, run.id));
     }
 
     const [claimed] = await tx
       .update(guestAssessmentSessions)
       .set({
+        organizationId: targetOrganizationId,
         status: "claimed",
         claimedByUserId: user.id,
         claimedAt,
@@ -447,6 +460,13 @@ export async function claimGuestAssessment(
       })
       .where(eq(guestAssessmentSessions.id, session.id))
       .returning();
+
+    if (shouldDeleteSourceOrganization) {
+      await tx
+        .delete(organizations)
+        .where(eq(organizations.id, sourceOrganizationId));
+    }
+
     return { ...claimed, previousAnonymousUserId: session.anonymousUserId };
   });
 }
@@ -476,6 +496,24 @@ async function getRun(assessmentId: string) {
   });
   if (!run) throw new ApiError(404, "Questionnaire run not found");
   return run;
+}
+
+async function assertCanAccessTargetOrganization(
+  userId: string,
+  organizationId: string,
+) {
+  const membership = await db.query.organizationMembers.findFirst({
+    where: and(
+      eq(organizationMembers.userId, userId),
+      eq(organizationMembers.organizationId, organizationId),
+    ),
+  });
+
+  if (!membership) {
+    throw new ApiError(404, "Organization not found");
+  }
+
+  return membership;
 }
 
 async function getActiveTemplate() {

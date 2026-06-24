@@ -49,19 +49,8 @@ export function LoginForm({
       if (loginError) throw loginError;
 
       if (guestAssessmentId) {
-        const response = await fetch(
-          `/api/guest-assessments/${guestAssessmentId}/claim`,
-          { method: "POST" },
-        );
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(payload.error ?? "Übernahme fehlgeschlagen");
-        }
-        if (!payload.organizationId || !payload.assessmentId) {
-          throw new Error(payload.error ?? "Übernahme fehlgeschlagen");
-        }
         router.replace(
-          `/tool/organizations/${payload.organizationId}/applicability-check/${payload.assessmentId}/result`,
+          `/tool/organizations/claim-assessment/${guestAssessmentId}`,
         );
         router.refresh();
         return;

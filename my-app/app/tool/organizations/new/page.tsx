@@ -6,6 +6,7 @@ import { connection } from "next/server";
 
 type NewOrganizationPageProps = {
   searchParams?: Promise<{
+    claimAssessmentId?: string | string[];
     next?: string | string[];
   }>;
 };
@@ -18,6 +19,9 @@ export default async function NewOrganizationPage({
   const dictionary = await getDictionary();
   const params = searchParams ? await searchParams : {};
   const nextParam = Array.isArray(params.next) ? params.next[0] : params.next;
+  const claimAssessmentParam = Array.isArray(params.claimAssessmentId)
+    ? params.claimAssessmentId[0]
+    : params.claimAssessmentId;
   const redirectAfterCreate =
     nextParam === "assessment" ? "assessment" : "organization";
 
@@ -37,6 +41,7 @@ export default async function NewOrganizationPage({
       <OrganizationCreateForm
         labels={dictionary.organizationForm}
         redirectAfterCreate={redirectAfterCreate}
+        claimAssessmentId={claimAssessmentParam}
       />
       </div>
     </AppShell>

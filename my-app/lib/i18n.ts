@@ -299,6 +299,12 @@ const dictionaries = {
       resultTitle: "Bewertungsergebnis",
       resultDescription:
         "Bewertungsspezifische NIS2-Klassifizierung, Begründung und Prüfergebnis für diese Organisation.",
+      claimTitle: "Schnellcheck übernehmen",
+      claimDescription:
+        "Wähle eine Organisation, in die der abgeschlossene Schnellcheck übernommen werden soll.",
+      addAssessment: "Bewertung hier hinzufügen",
+      addingAssessment: "Bewertung wird hinzugefügt...",
+      claimError: "Bewertung konnte nicht übernommen werden",
       statuses: {
         draft: "Entwurf",
         in_review: "In Prüfung",
@@ -615,10 +621,10 @@ const dictionaries = {
       },
       finalizer: {
         title: "Konto wird erstellt",
-        description: "Ihr Schnellcheck wird jetzt mit dem Konto verknüpft.",
+        description: "Sie wählen gleich die passende Organisation aus.",
         claimFailed: "Der Schnellcheck konnte nicht übernommen werden.",
         signIn: "Mit bestehendem Konto anmelden",
-        claiming: "Ergebnis wird übernommen...",
+        claiming: "Organisationen werden geöffnet...",
         backgroundAlt: "Hintergrund",
       },
       pdf: {
@@ -963,6 +969,12 @@ const dictionaries = {
       resultTitle: "Assessment result",
       resultDescription:
         "Assessment-specific NIS2 classification, reasoning, and review output for this organization.",
+      claimTitle: "Add quick check",
+      claimDescription:
+        "Choose the organization where this completed quick check should be saved.",
+      addAssessment: "Add assessment here",
+      addingAssessment: "Adding assessment...",
+      claimError: "Assessment could not be added",
       statuses: {
         draft: "Draft",
         in_review: "In review",
@@ -1277,10 +1289,10 @@ const dictionaries = {
       },
       finalizer: {
         title: "Creating your account",
-        description: "Your quick check is now being linked to the account.",
+        description: "You will choose the destination organization next.",
         claimFailed: "The quick check could not be transferred.",
         signIn: "Sign in with an existing account",
-        claiming: "Transferring result...",
+        claiming: "Opening organizations...",
         backgroundAlt: "Background",
       },
       pdf: {
