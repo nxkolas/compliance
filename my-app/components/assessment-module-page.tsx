@@ -14,24 +14,19 @@ type AssessmentModulePageProps = {
   children: ReactNode;
 };
 
-export async function AssessmentModulePage({
+type AssessmentModuleLayoutProps = {
+  organizationId: string;
+  assessmentId: string;
+  children: ReactNode;
+};
+
+export async function AssessmentModuleLayout({
   organizationId,
   assessmentId,
-  title,
   children,
-}: AssessmentModulePageProps) {
-  await connection();
-  const user = await requireAuth();
+}: AssessmentModuleLayoutProps) {
   const dictionary = await getDictionary();
-  const assessment = await getSelfCheckAssessmentForUser(user.id, assessmentId);
-
-  if (!assessment) {
-    notFound();
-  }
-
-  if (assessment.organization.id !== organizationId) {
-    notFound();
-  }
+  const assessment = await getAssessment(organizationId, assessmentId);
 
   const baseHref = `/tool/organizations/${organizationId}/applicability-check/${assessment.id}`;
 
@@ -53,6 +48,21 @@ export async function AssessmentModulePage({
           },
         ]}
       />
+      {children}
+    </section>
+  );
+}
+
+export async function AssessmentModulePage({
+  organizationId,
+  assessmentId,
+  title,
+  children,
+}: AssessmentModulePageProps) {
+  const assessment = await getAssessment(organizationId, assessmentId);
+
+  return (
+    <>
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">{title}</h1>
         <p className="text-muted-foreground">{assessment.title}</p>
@@ -62,6 +72,22 @@ export async function AssessmentModulePage({
           {children}
         </CardContent>
       </Card>
-    </section>
+    </>
   );
+}
+
+async function getAssessment(organizationId: string, assessmentId: string) {
+  await connection();
+  const user = await requireAuth();
+  const assessment = await getSelfCheckAssessmentForUser(user.id, assessmentId);
+
+  if (!assessment) {
+    notFound();
+  }
+
+  if (assessment.organization.id !== organizationId) {
+    notFound();
+  }
+
+  return assessment;
 }

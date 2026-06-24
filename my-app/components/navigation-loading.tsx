@@ -93,10 +93,14 @@ export function AssessmentModulePageSkeleton() {
   );
 }
 
-export function AssessmentModuleContentSkeleton() {
+export function AssessmentModuleContentSkeleton({
+  showTabs = true,
+}: {
+  showTabs?: boolean;
+} = {}) {
   return (
     <section className="flex w-full flex-col gap-6">
-      <TabSkeleton count={3} />
+      {showTabs ? <TabSkeleton count={3} /> : null}
       <HeaderSkeleton />
       <Card className="rounded-lg shadow-sm">
         <CardContent className="grid gap-6 p-6 md:grid-cols-2">
