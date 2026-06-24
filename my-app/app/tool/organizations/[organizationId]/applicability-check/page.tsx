@@ -1,54 +1,65 @@
-import { ProductModuleContent } from "@/components/product-module-content";
-import { getDictionary } from "@/lib/i18n";
+import { OrganizationAssessmentWorkspace } from "@/components/organizations/organization-assessment-workspace";
+import { getDictionary, getLocale } from "@/lib/i18n";
+import { requireAuth } from "@/lib/supabase/require-auth";
+import { listSelfCheckAssessmentsForOrganization } from "@/src/server/organizations/service";
+import { connection } from "next/server";
 
-export default async function ApplicabilityCheckPage() {
+type ApplicabilityCheckPageProps = {
+  params: Promise<{
+    organizationId: string;
+  }>;
+};
+
+export default async function ApplicabilityCheckPage({
+  params,
+}: ApplicabilityCheckPageProps) {
+  await connection();
+  const user = await requireAuth();
   const dictionary = await getDictionary();
+  const locale = await getLocale();
+  const { organizationId } = await params;
+  const assessments = await listSelfCheckAssessmentsForOrganization(
+    user.id,
+    organizationId,
+  );
 
   return (
-    <ProductModuleContent
-      title={dictionary.modules.applicabilityCheck.title}
-      description={dictionary.modules.applicabilityCheck.description}
-      metrics={dictionary.modules.applicabilityCheck.metrics}
-      cards={[
-        {
-          title: "Eingaben",
-          description: "Die fachlichen Felder fuer die NIS2-Betroffenheit.",
-          items: [
-            "Branchenauswahl",
-            "Mitarbeiteranzahl",
-            "Umsatz und Bilanzsumme",
-            "Kritische Dienstleistungen",
-          ],
-        },
-        {
-          title: "Ergebnis",
-          description: "Die UI zeigt genau eine dieser Klassifizierungen.",
-          items: [
-            "Betroffen",
-            "Moeglicherweise betroffen",
-            "Aktuell nicht betroffen",
-          ],
-        },
-        {
-          title: "Erklaerung",
-          description: "Kurze, verstaendliche Antwort auf die Kernfrage.",
-          items: [
-            "Warum ist mein Unternehmen betroffen?",
-            "Welche Eingaben waren ausschlaggebend?",
-            "Welche Unsicherheiten muessen noch geprueft werden?",
-          ],
-        },
-        {
-          title: "Datenmodell",
-          description: "Bestehende Tabellen fuer die spaetere Umsetzung.",
-          items: [
-            "organizations",
-            "nis2_sectors und organization_sectors",
-            "nis2_critical_services und organization_critical_services",
-            "questionnaire_runs und self_check_assessments",
-          ],
-        },
-      ]}
-    />
+    <div className="flex w-full flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold">
+            {dictionary.modules.applicabilityCheck.title}
+          </h1>
+          <p className="max-w-2xl text-muted-foreground">
+            {dictionary.modules.applicabilityCheck.description}
+          </p>
+        </div>
+      </section>
+      <OrganizationAssessmentWorkspace
+        organizationId={organizationId}
+        initialAssessments={serializeForClient(assessments)}
+        labels={{
+          assessment: dictionary.assessment,
+          common: dictionary.common,
+        }}
+        locale={locale}
+      />
+    </div>
   );
 }
+
+function serializeForClient<T>(value: T): JSONValue<T> {
+  return JSON.parse(JSON.stringify(value)) as JSONValue<T>;
+}
+
+type JSONValue<T> = T extends null
+  ? null
+  : T extends Date
+    ? string
+    : T extends Date | null
+      ? string | null
+      : T extends Array<infer U>
+        ? Array<JSONValue<U>>
+        : T extends object
+          ? { [K in keyof T]: JSONValue<T[K]> }
+          : T;

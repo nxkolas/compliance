@@ -3,16 +3,18 @@ import { getDictionary } from "@/lib/i18n";
 
 type AssessmentPageProps = {
   params: Promise<{
+    organizationId: string;
     assessmentId: string;
   }>;
 };
 
 export default async function AssessmentPage({ params }: AssessmentPageProps) {
   const dictionary = await getDictionary();
-  const { assessmentId } = await params;
+  const { organizationId, assessmentId } = await params;
 
   return (
     <AssessmentModulePage
+      organizationId={organizationId}
       assessmentId={assessmentId}
       title={dictionary.sidebar.applicabilityCheck}
     >

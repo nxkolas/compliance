@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/supabase/require-auth";
 import { listMailboxInvitationsForUser } from "@/src/server/organizations/service";
 import { connection } from "next/server";
 
-export default async function OrganizationInboxPage() {
+export default async function InboxPage() {
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
@@ -15,20 +15,20 @@ export default async function OrganizationInboxPage() {
   return (
     <AppShell dictionary={dictionary}>
       <div className="flex w-full flex-col gap-8">
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">{dictionary.inbox.title}</h1>
-          <p className="max-w-2xl text-muted-foreground">
-            {dictionary.inbox.description}
-          </p>
-        </div>
-      </section>
-      <OrganizationInbox
-        initialInvitations={serializeForClient(invitations)}
-        userEmail={user.email ?? null}
-        labels={dictionary.inbox}
-        locale={locale}
-      />
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold">{dictionary.inbox.title}</h1>
+            <p className="max-w-2xl text-muted-foreground">
+              {dictionary.inbox.description}
+            </p>
+          </div>
+        </section>
+        <OrganizationInbox
+          initialInvitations={serializeForClient(invitations)}
+          userEmail={user.email ?? null}
+          labels={dictionary.inbox}
+          locale={locale}
+        />
       </div>
     </AppShell>
   );

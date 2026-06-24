@@ -57,7 +57,12 @@ export function LoginForm({
         if (!response.ok) {
           throw new Error(payload.error ?? "Übernahme fehlgeschlagen");
         }
-        router.replace(`/tool/assessments/${guestAssessmentId}/result`);
+        if (!payload.organizationId || !payload.assessmentId) {
+          throw new Error(payload.error ?? "Übernahme fehlgeschlagen");
+        }
+        router.replace(
+          `/tool/organizations/${payload.organizationId}/applicability-check/${payload.assessmentId}/result`,
+        );
         router.refresh();
         return;
       }

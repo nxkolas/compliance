@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 
 type AssessmentResultPageProps = {
   params: Promise<{
+    organizationId: string;
     assessmentId: string;
   }>;
 };
@@ -14,11 +15,11 @@ export default async function AssessmentResultPage({
   params,
 }: AssessmentResultPageProps) {
   const dictionary = await getDictionary();
-  const { assessmentId } = await params;
+  const { organizationId, assessmentId } = await params;
   const user = await requireAuth();
   const assessment = await getSelfCheckAssessmentForUser(user.id, assessmentId);
 
-  if (!assessment) {
+  if (!assessment || assessment.organization.id !== organizationId) {
     notFound();
   }
 
@@ -26,11 +27,12 @@ export default async function AssessmentResultPage({
     assessment.category === "not_affected"
       ? "Aktuell nicht erkennbar betroffen"
       : assessment.category === "unknown"
-        ? "Individuelle Prüfung erforderlich"
+        ? "Individuelle Pruefung erforderlich"
         : "Voraussichtlich betroffen";
 
   return (
     <AssessmentModulePage
+      organizationId={organizationId}
       assessmentId={assessmentId}
       title={dictionary.sidebar.result}
     >
@@ -41,7 +43,7 @@ export default async function AssessmentResultPage({
         </section>
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-semibold text-foreground">Begruendung</h2>
-          <p>{assessment.reasoning ?? "Noch keine Begründung vorhanden."}</p>
+          <p>{assessment.reasoning ?? "Noch keine Begruendung vorhanden."}</p>
         </section>
       </div>
     </AssessmentModulePage>

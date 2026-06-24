@@ -88,17 +88,23 @@ export function AppSidebarContentSkeleton() {
 export function AssessmentModulePageSkeleton() {
   return (
     <AppShellSkeleton>
-      <section className="flex w-full flex-col gap-6">
-        <TabSkeleton count={3} />
-        <HeaderSkeleton />
-        <Card className="rounded-lg shadow-sm">
-          <CardContent className="grid gap-6 p-6 md:grid-cols-2">
-            <ContentBlockSkeleton />
-            <ContentBlockSkeleton />
-          </CardContent>
-        </Card>
-      </section>
+      <AssessmentModuleContentSkeleton />
     </AppShellSkeleton>
+  );
+}
+
+export function AssessmentModuleContentSkeleton() {
+  return (
+    <section className="flex w-full flex-col gap-6">
+      <TabSkeleton count={3} />
+      <HeaderSkeleton />
+      <Card className="rounded-lg shadow-sm">
+        <CardContent className="grid gap-6 p-6 md:grid-cols-2">
+          <ContentBlockSkeleton />
+          <ContentBlockSkeleton />
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -194,19 +200,25 @@ export function OrganizationsPageSkeleton() {
 export function AppFormPageSkeleton() {
   return (
     <AppShellSkeleton>
-      <div className="flex w-full flex-col gap-8">
-        <HeaderSkeleton />
-        <Card className="rounded-lg shadow-sm">
-          <CardContent className="grid gap-5 p-6">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-11 w-full rounded-md" />
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-11 w-full rounded-md" />
-            <Skeleton className="h-10 w-36 rounded-md" />
-          </CardContent>
-        </Card>
-      </div>
+      <AppFormContentSkeleton />
     </AppShellSkeleton>
+  );
+}
+
+export function AppFormContentSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-8">
+      <HeaderSkeleton />
+      <Card className="rounded-lg shadow-sm">
+        <CardContent className="grid gap-5 p-6">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-11 w-full rounded-md" />
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-11 w-full rounded-md" />
+          <Skeleton className="h-10 w-36 rounded-md" />
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

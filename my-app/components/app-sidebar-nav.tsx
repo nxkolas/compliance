@@ -97,13 +97,20 @@ export function AppSidebarNav({
           match: "prefix" as const,
         },
         {
-          href: `/tool/organizations/${organizationId}/help`,
+          href: "/tool/help",
           label: labels.startTutorial,
           icon: BookOpen,
           match: "prefix" as const,
         },
       ]
-    : [];
+    : [
+        {
+          href: "/tool/help",
+          label: labels.startTutorial,
+          icon: BookOpen,
+          match: "prefix" as const,
+        },
+      ];
 
   return (
     <>

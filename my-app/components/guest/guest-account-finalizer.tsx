@@ -28,10 +28,16 @@ export function GuestAccountFinalizer({
           `/api/guest-assessments/${assessmentId}/claim`,
           { method: "POST" },
         );
+        const payload = await response.json();
         if (!response.ok) {
+          throw new Error(payload.error ?? labels.claimFailed);
+        }
+        if (!payload.organizationId || !payload.assessmentId) {
           throw new Error(labels.claimFailed);
         }
-        router.replace(`/tool/assessments/${assessmentId}/result`);
+        router.replace(
+          `/tool/organizations/${payload.organizationId}/applicability-check/${payload.assessmentId}/result`,
+        );
         router.refresh();
       } catch (caught) {
         setError(
