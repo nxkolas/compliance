@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import type { Dictionary } from "@/lib/i18n";
-import { Download, LogIn, Trash2, UserPlus } from "lucide-react";
+import { ArrowLeft, Download, LogIn, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -83,6 +83,15 @@ export function GuestResult({
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex justify-start">
+        <Button asChild size="sm" variant="outline">
+          <Link href={`/check/${assessmentId}/questionnaire`}>
+            <ArrowLeft />
+            {labels.backToAnswers}
+          </Link>
+        </Button>
+      </div>
+
       <Card className="overflow-hidden">
         <div className={`h-2 ${presentation.barClass}`} />
         <CardHeader>

@@ -151,6 +151,7 @@ export async function getGuestAssessment(
       score: run.score,
       summary: run.summary,
       reasoning: run.reasoning,
+      answersSnapshot: run.answersSnapshot,
       completedAt: run.completedAt,
     },
     template: {
@@ -171,9 +172,6 @@ export async function saveGuestAnswers(
 ) {
   await authorizeGuestAssessment(user, assessmentId, claimToken);
   const run = await getRun(assessmentId);
-  if (run.status === "completed") {
-    throw new ApiError(409, "Completed assessments cannot be changed");
-  }
 
   const requestedIds = input.answers.map((answer) => answer.questionId);
   const validQuestions = await db
@@ -252,7 +250,6 @@ export async function completeGuestAssessment(
 ) {
   await authorizeGuestAssessment(user, assessmentId, claimToken);
   const existing = await getGuestAssessment(user, assessmentId, claimToken);
-  if (existing.run.status === "completed") return existing;
 
   const questions = existing.template.sections.flatMap(
     (section) => section.questions,

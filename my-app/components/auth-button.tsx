@@ -12,10 +12,11 @@ export async function AuthButton() {
   const { data } = await supabase.auth.getClaims();
 
   const user = data?.claims;
+  const email = typeof user?.email === "string" ? user.email : null;
 
-  return user ? (
+  return email ? (
     <div className="flex items-center gap-4">
-      {dictionary.common.signedInAs} {user.email}
+      {dictionary.common.signedInAs} {email}
       <LogoutButton>{dictionary.common.logout}</LogoutButton>
     </div>
   ) : (

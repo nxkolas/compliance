@@ -493,6 +493,8 @@ const dictionaries = {
         evaluationFailed: "Ergebnis konnte nicht berechnet werden.",
         notesPlaceholder: "Optionale Anmerkungen",
         showResult: "Ergebnis anzeigen",
+        recalculateResult: "Ergebnis neu berechnen",
+        backToPreviousResult: "Zurück zum vorherigen Ergebnis",
         calculating: "Ergebnis wird berechnet...",
         disclaimer:
           "Der Schnellcheck ist eine unverbindliche Erstorientierung und ersetzt keine rechtliche Beratung.",
@@ -557,6 +559,7 @@ const dictionaries = {
           "Diese Einschätzung ist eine unverbindliche Erstorientierung und keine Rechtsberatung. Für eine abschließende Bewertung müssen Ihre konkreten Tätigkeiten und Unternehmensdaten geprüft werden.",
         createAccount: "Konto erstellen und Ergebnis sichern",
         claim: "Mit bestehendem Konto übernehmen",
+        backToAnswers: "Zurück zu den Antworten",
         downloadPdf: "PDF herunterladen",
         delete: "Ergebnis löschen",
         deleting: "Wird gelöscht...",
@@ -1133,6 +1136,8 @@ const dictionaries = {
         evaluationFailed: "The result could not be calculated.",
         notesPlaceholder: "Optional notes",
         showResult: "Show result",
+        recalculateResult: "Recalculate result",
+        backToPreviousResult: "Back to previous result",
         calculating: "Calculating result...",
         disclaimer:
           "The quick check provides non-binding initial guidance and does not replace legal advice.",
@@ -1197,6 +1202,7 @@ const dictionaries = {
           "This assessment provides non-binding initial guidance and is not legal advice. A final assessment requires a review of your specific activities and company data.",
         createAccount: "Create an account and save the result",
         claim: "Transfer to an existing account",
+        backToAnswers: "Back to answers",
         downloadPdf: "Download PDF",
         delete: "Delete result",
         deleting: "Deleting...",

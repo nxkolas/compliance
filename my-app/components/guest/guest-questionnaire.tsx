@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import type { Dictionary } from "@/lib/i18n";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -19,7 +21,11 @@ type Question = {
 
 type GuestAssessmentPayload = {
   organization: { name: string };
-  run: { progress: number; status: string };
+  run: {
+    progress: number;
+    status: string;
+    answersSnapshot: Record<string, unknown> | null;
+  };
   template: {
     title: string;
     sections: Array<{
@@ -45,7 +51,6 @@ export function GuestQuestionnaire({
   const router = useRouter();
   const [assessment, setAssessment] = useState<GuestAssessmentPayload>();
   const [values, setValues] = useState<Record<string, unknown>>({});
-  const [pendingSaves, setPendingSaves] = useState(0);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string>();
   const noteTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -58,16 +63,7 @@ export function GuestQuestionnaire({
     const payload = await response.json();
     if (!response.ok) throw new Error(labels.notFound);
     setAssessment(payload.assessment);
-    setValues(
-      Object.fromEntries(
-        payload.assessment.answers.map(
-          (answer: GuestAssessmentPayload["answers"][number]) => [
-            answer.questionId,
-            answer.value?.value ?? "",
-          ],
-        ),
-      ),
-    );
+    setValues(getInitialValues(payload.assessment));
   }, [assessmentId, labels.notFound]);
 
   useEffect(() => {
@@ -97,37 +93,50 @@ export function GuestQuestionnaire({
         );
   const requiredComplete =
     completedRequiredQuestions === requiredQuestions.length;
+  const hasPreviousResult = assessment?.run.status === "completed";
+  const resultHasChanged =
+    !hasPreviousResult ||
+    (assessment ? !sameValues(values, getInitialValues(assessment)) : false);
+
+  async function saveAnswers(
+    answers: Array<{ questionId: string; value: unknown }>,
+  ) {
+    const response = await fetch(
+      `/api/guest-assessments/${assessmentId}/answers`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers }),
+      },
+    );
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(labels.saveFailed);
+    }
+    setAssessment(payload.assessment);
+    return true;
+  }
+
+  function changeAnswer(questionId: string, value: unknown) {
+    if (hasPreviousResult) {
+      setValues((current) => ({ ...current, [questionId]: value }));
+      setError(undefined);
+      return Promise.resolve(true);
+    }
+    return save(questionId, value);
+  }
 
   function save(questionId: string, value: unknown) {
     setValues((current) => ({ ...current, [questionId]: value }));
-    setPendingSaves((current) => current + 1);
     setError(undefined);
 
     const queuedSave = saveQueue.current
-      .then(async () => {
-        const response = await fetch(
-          `/api/guest-assessments/${assessmentId}/answers`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ answers: [{ questionId, value }] }),
-          },
-        );
-        const payload = await response.json();
-        if (!response.ok) {
-          throw new Error(labels.saveFailed);
-        }
-        setAssessment(payload.assessment);
-        return true;
-      })
+      .then(() => saveAnswers([{ questionId, value }]))
       .catch((caught) => {
         setError(
           caught instanceof Error ? caught.message : labels.saveFailed,
         );
         return false;
-      })
-      .finally(() => {
-        setPendingSaves((current) => current - 1);
       });
 
     saveQueue.current = queuedSave.then(() => undefined);
@@ -136,8 +145,22 @@ export function GuestQuestionnaire({
 
   function saveNotes(questionId: string, value: string) {
     setValues((current) => ({ ...current, [questionId]: value }));
+    if (hasPreviousResult) {
+      clearTimeout(noteTimer.current);
+      noteTimer.current = undefined;
+      setError(undefined);
+      return;
+    }
     clearTimeout(noteTimer.current);
     noteTimer.current = setTimeout(() => void save(questionId, value), 500);
+  }
+
+  function discardLocalChanges() {
+    if (!assessment) return;
+    clearTimeout(noteTimer.current);
+    noteTimer.current = undefined;
+    setValues(getInitialValues(assessment));
+    setError(undefined);
   }
 
   async function complete() {
@@ -156,11 +179,22 @@ export function GuestQuestionnaire({
         }
       }
       await saveQueue.current;
+      if (hasPreviousResult) {
+        await saveAnswers(
+          questions
+            .filter((question) => values[question.id] !== undefined)
+            .map((question) => ({
+              questionId: question.id,
+              value: values[question.id],
+            })),
+        );
+      }
       const response = await fetch(
         `/api/guest-assessments/${assessmentId}/complete`,
         { method: "POST" },
       );
       if (!response.ok) throw new Error(labels.evaluationFailed);
+      setCompleting(false);
       router.push(`/check/${assessmentId}/result`);
     } catch (caught) {
       setError(
@@ -180,6 +214,20 @@ export function GuestQuestionnaire({
 
   return (
     <div className="flex flex-col gap-6">
+      {hasPreviousResult ? (
+        <div className="flex justify-end">
+          <Button asChild size="sm" variant="outline">
+            <Link
+              href={`/check/${assessmentId}/result`}
+              onClick={discardLocalChanges}
+            >
+              {labels.backToPreviousResult}
+              <ArrowRight />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-white/15 bg-white/5 p-4">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span>{assessment.organization.name}</span>
@@ -236,7 +284,9 @@ export function GuestQuestionnaire({
                           <button
                             key={value}
                             type="button"
-                            onClick={() => void save(question.id, value)}
+                            onClick={() =>
+                              void changeAnswer(question.id, value)
+                            }
                             className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
                               selected
                                 ? "border-primary bg-primary/15 text-white"
@@ -258,13 +308,21 @@ export function GuestQuestionnaire({
       ))}
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      <Button
-        size="lg"
-        onClick={complete}
-        disabled={!requiredComplete || pendingSaves > 0 || completing}
-      >
-        {completing ? labels.calculating : labels.showResult}
-      </Button>
+      <div className="flex justify-end">
+        <Button
+          size="lg"
+          onClick={complete}
+          disabled={!requiredComplete || completing || !resultHasChanged}
+          className="w-full sm:w-auto"
+        >
+          {completing
+            ? labels.calculating
+            : hasPreviousResult
+              ? labels.recalculateResult
+              : labels.showResult}
+          <ArrowRight />
+        </Button>
+      </div>
       <p className="text-center text-xs leading-5 text-white/50">
         {labels.disclaimer}
       </p>
@@ -281,4 +339,45 @@ function getQuestionLabels(
     { prompt: string; helpText: string; options: Record<string, string> }
   >;
   return questions[code];
+}
+
+function getInitialValues(assessment: GuestAssessmentPayload) {
+  if (assessment.run.status === "completed" && assessment.run.answersSnapshot) {
+    const questions = assessment.template.sections.flatMap(
+      (section) => section.questions,
+    );
+    return Object.fromEntries(
+      questions
+        .filter((question) =>
+          Object.prototype.hasOwnProperty.call(
+            assessment.run.answersSnapshot,
+            question.code,
+          ),
+        )
+        .map((question) => [
+          question.id,
+          assessment.run.answersSnapshot?.[question.code] ?? "",
+        ]),
+    );
+  }
+
+  return Object.fromEntries(
+    assessment.answers.map((answer) => [
+      answer.questionId,
+      answer.value?.value ?? "",
+    ]),
+  );
+}
+
+function sameValues(
+  current: Record<string, unknown>,
+  baseline: Record<string, unknown>,
+) {
+  const keys = new Set([...Object.keys(current), ...Object.keys(baseline)]);
+  for (const key of keys) {
+    if ((current[key] ?? "") !== (baseline[key] ?? "")) {
+      return false;
+    }
+  }
+  return true;
 }
