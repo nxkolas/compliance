@@ -8,7 +8,10 @@
     "db:push": "drizzle-kit push",
     "db:clear": "tsx scripts/clear-db.ts",
     "db:reset": "npm run db:push && npm run db:clear",
+    "db:seed:questionnaire": "tsx scripts/seed-guest-questionnaire.ts",
+    "db:cleanup:guests": "tsx scripts/cleanup-guest-assessments.ts",
     "ai:ingest-references": "tsx scripts/ingest-ai-references.ts",
+    "test:guest": "vitest run tests/guest-assessment.test.ts tests/guest-rate-limit.test.ts",
     "test:ai": "vitest run evals",
     "test:ai:watch": "vitest evals"
   },
@@ -21,6 +24,7 @@
     "@radix-ui/react-label": "^2.1.6",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.2",
+    "@react-pdf/renderer": "^4.5.1",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "@tailwindcss/postcss": "^4.3.0",

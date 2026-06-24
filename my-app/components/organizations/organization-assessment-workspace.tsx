@@ -66,7 +66,7 @@ export function OrganizationAssessmentWorkspace({
                 </CardDescription>
               </div>
               <Button asChild>
-                <Link href={`/tool/new/${organizationId}`}>
+                <Link href={`/tool/organizations/${organizationId}/applicability-check/new`}>
                   <Plus />
                   {labels.assessment.newAssessment}
                 </Link>
@@ -138,7 +138,9 @@ export function OrganizationAssessmentWorkspace({
                     </span>
                   )}
                   <Button asChild size="sm" variant="outline" className="ml-auto">
-                    <Link href={`/tool/assessments/${assessment.id}`}>
+                    <Link
+                      href={`/tool/organizations/${organizationId}/applicability-check/${assessment.id}`}
+                    >
                       {labels.common.open}
                     </Link>
                   </Button>

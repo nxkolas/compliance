@@ -24,6 +24,8 @@ export default defineConfig({
     'document_requirement_types',
     'document_review_findings',
     'document_review_runs',
+    'guest_creation_rate_limits',
+    'guest_assessment_sessions',
     'incident_reports',
     'lex_specialis_rules',
     'management_trainings',

@@ -2,11 +2,15 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { AccountEmailField } from "@/components/auth/account-email-field";
+import { AccountPasswordField } from "@/components/auth/account-password-field";
+import { TermsAcceptance } from "@/components/auth/terms-acceptance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isValidAccountPassword } from "@/lib/auth/password-policy";
 import type { Dictionary } from "@/lib/i18n";
-import { Lock, Mail, User, Eye, EyeOff } from "lucide-react";
+import { User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,22 +18,22 @@ import Image from "next/image";
 
 export function SignUpForm({
   labels,
+  guestAssessmentId,
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & {
   labels: Dictionary["auth"];
+  guestAssessmentId?: string;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string>();
   const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -44,6 +48,12 @@ export function SignUpForm({
       return;
     }
 
+    if (!isValidAccountPassword(password)) {
+      setError(labels.passwordRequirements);
+      setIsLoading(false);
+      return;
+    }
+
     if (!acceptTerms) {
       setError(labels.termsRequired);
       setIsLoading(false);
@@ -51,6 +61,49 @@ export function SignUpForm({
     }
 
     try {
+      if (guestAssessmentId) {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+        if (userError || !user?.is_anonymous) {
+          throw new Error("Die anonyme Sitzung ist nicht mehr verfügbar.");
+        }
+
+        const next = `/tool/organizations/claim-assessment/${guestAssessmentId}`;
+        const { error: updateError } = await supabase.auth.updateUser(
+          { email, password },
+          {
+            emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+          },
+        );
+        if (updateError) throw updateError;
+
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (!signInError) {
+          const {
+            data: { user: signedInUser },
+            error: signedInUserError,
+          } = await supabase.auth.getUser();
+          if (signedInUserError || !signedInUser || signedInUser.is_anonymous) {
+            throw new Error(labels.errorFallback);
+          }
+
+          router.replace(
+            `/tool/organizations/claim-assessment/${guestAssessmentId}`,
+          );
+          router.refresh();
+          return;
+        }
+
+        setConfirmationEmail(email);
+        return;
+      }
+
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -69,6 +122,47 @@ export function SignUpForm({
       setIsLoading(false);
     }
   };
+
+  if (confirmationEmail) {
+    return (
+      <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#02040E] p-4 md:p-10">
+        <div className="pointer-events-none absolute inset-0 z-0 size-full">
+          <Image
+            src="/images/Startseite.svg"
+            alt={labels.backgroundAlt}
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+        <div className="relative z-10 flex w-full max-w-110.5 flex-col items-start gap-4 font-['Space_Grotesk']">
+          <div className="flex h-16 items-center">
+            <Image
+              src="/images/Logo-weiß.svg"
+              alt="complyX Logo"
+              width={180}
+              height={48}
+              priority
+              className="object-contain"
+            />
+          </div>
+          <div className="flex self-stretch flex-col gap-2 pb-4">
+            <h1 className="text-4xl font-medium tracking-tight text-white">
+              E-Mail bestätigen
+            </h1>
+            <p className="text-base text-white/80">
+              Öffnen Sie den Bestätigungslink in diesem Browser.
+            </p>
+          </div>
+          <div className="self-stretch rounded-2xl bg-[#FAFAFA] p-8 text-black">
+            Wir haben einen Bestätigungslink an{" "}
+            <strong>{confirmationEmail}</strong> gesendet. Danach wird Ihr
+            Schnellcheck mit einer Organisation Ihrer Wahl verknüpft.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full bg-[#02040E] flex items-center justify-center overflow-hidden p-4 md:p-10">
@@ -107,109 +201,57 @@ export function SignUpForm({
         <div className="self-stretch p-8 bg-[#FAFAFA] rounded-2xl shadow-none flex flex-col justify-start items-start gap-6">
           <form onSubmit={handleSignUp} className="w-full flex flex-col gap-5">
             
-            <div className="self-stretch flex flex-col justify-start items-start gap-2">
-              <Label htmlFor="name" className="text-black text-base font-medium">
-                {labels.name}
-              </Label>
-              <div className="relative w-full">
-                <User className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder={labels.namePlaceholder}
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal shadow-none focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
-                />
+            {!guestAssessmentId ? (
+              <div className="self-stretch flex flex-col justify-start items-start gap-2">
+                <Label htmlFor="name" className="text-black text-base font-medium">
+                  {labels.name}
+                </Label>
+                <div className="relative w-full">
+                  <User className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder={labels.namePlaceholder}
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal shadow-none focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  />
+                </div>
               </div>
-            </div>
+            ) : null}
 
-            <div className="self-stretch flex flex-col justify-start items-start gap-2">
-              <Label htmlFor="email" className="text-black text-base font-medium">
-                {labels.email}
-              </Label>
-              <div className="relative w-full">
-                <Mail className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder={labels.emailPlaceholder}
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="auth-input w-full h-12 pl-12 pr-4 text-black shadow-none text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
-                />
-              </div>
-            </div>
+            <AccountEmailField
+              labels={labels}
+              value={email}
+              onChange={setEmail}
+            />
 
-            <div className="self-stretch flex flex-col justify-start items-start gap-2">
-              <Label htmlFor="password" className="text-black text-base font-medium">
-                {labels.password}
-              </Label>
-              <div className="relative w-full">
-                <Lock className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder={labels.passwordPlaceholder}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="auth-input w-full h-12 pl-12 pr-12 text-black shadow-none text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
-                />
-                <button
-                  type="button"
-                  aria-label={showPassword ? labels.hidePassword : labels.showPassword}
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#002AFF] transition-colors focus:outline-none"
-                >
-                  {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                </button>
-              </div>
-            </div>
+            <AccountPasswordField
+              labels={labels}
+              value={password}
+              onChange={setPassword}
+              placeholder={labels.passwordPlaceholder}
+              autoComplete="new-password"
+              enforceAccountPolicy
+            />
 
-            <div className="self-stretch flex flex-col justify-start items-start gap-2">
-              <Label htmlFor="confirmPassword" className="text-black text-base font-medium">
-                {labels.confirmPassword}
-              </Label>
-              <div className="relative w-full">
-                <Lock className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder={labels.repeatPassword}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="auth-input w-full h-12 pl-12 pr-12 text-black shadow-none text-base font-normal focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
-                />
-                <button
-                  type="button"
-                  aria-label={showConfirmPassword ? labels.hidePassword : labels.showPassword}
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#002AFF] transition-colors focus:outline-none"
-                >
-                  {showConfirmPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                </button>
-              </div>
-            </div>
+            <AccountPasswordField
+              labels={labels}
+              id="confirmPassword"
+              label={labels.confirmPassword}
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              placeholder={labels.repeatPassword}
+              autoComplete="new-password"
+              enforceAccountPolicy
+            />
 
-            <div className="self-stretch flex justify-start items-start gap-2 pt-1">
-              <input 
-                type="checkbox" 
-                id="terms"
-                checked={acceptTerms}
-                onChange={(e) => setAcceptTerms(e.target.checked)}
-                className="auth-checkbox size-5 mt-0.5 cursor-pointer shrink-0"
-              />
-              <label htmlFor="terms" className="text-[#4A5565] text-sm font-normal cursor-pointer select-none leading-tight">
-                {labels.acceptTermsPrefix}{" "}
-                <Link href="/terms" className="text-[#002AFF] hover:underline">{labels.terms}</Link>
-                {" "}{labels.termsConnector}{" "}
-                <Link href="/privacy" className="text-[#002AFF] hover:underline">{labels.privacyPolicy}</Link>.
-              </label>
-            </div>
+            <TermsAcceptance
+              labels={labels}
+              checked={acceptTerms}
+              onChange={setAcceptTerms}
+            />
 
             {error && <p className="text-sm text-destructive font-medium">{error}</p>}
 
@@ -225,7 +267,14 @@ export function SignUpForm({
 
         <div className="self-stretch flex justify-center items-center gap-1 mt-2 text-white text-base">
           <span className="font-normal">{labels.alreadyHaveAnAccount}</span>
-          <Link href="/auth/login" className="font-semibold hover:underline decoration-2 text-white">
+          <Link
+            href={
+              guestAssessmentId
+                ? `/check/${guestAssessmentId}/claim`
+                : "/auth/login"
+            }
+            className="font-semibold hover:underline decoration-2 text-white"
+          >
             {labels.login}
           </Link>
         </div>

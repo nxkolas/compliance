@@ -23,6 +23,7 @@ import type { OrganizationDto } from "@/src/server/organizations/types";
 import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { claimGuestAssessmentForOrganization } from "./claim-guest-assessment";
 
 type CreateOrganizationState = {
   name: string;
@@ -42,6 +43,8 @@ type CreateOrganizationResponse = {
   error?: string;
 };
 
+type RedirectAfterCreate = "organization" | "assessment";
+
 const defaultOrganizationForm: CreateOrganizationState = {
   name: "",
   legalName: "",
@@ -52,8 +55,12 @@ const defaultOrganizationForm: CreateOrganizationState = {
 
 export function OrganizationCreateForm({
   labels,
+  redirectAfterCreate = "organization",
+  claimAssessmentId,
 }: {
   labels: Dictionary["organizationForm"];
+  redirectAfterCreate?: RedirectAfterCreate;
+  claimAssessmentId?: string;
 }) {
   const router = useRouter();
   const [organizationForm, setOrganizationForm] = useState(
@@ -93,7 +100,26 @@ export function OrganizationCreateForm({
         throw new Error(body.error ?? labels.createError);
       }
 
-      router.push(`/tool/organizations/${body.organization.id}`);
+      const organizationHref = `/tool/organizations/${body.organization.id}`;
+      if (claimAssessmentId) {
+        const claimed = await claimGuestAssessmentForOrganization({
+          assessmentId: claimAssessmentId,
+          organizationId: body.organization.id,
+          fallbackError: labels.createErrorFallback,
+        });
+
+        router.push(
+          `/tool/organizations/${claimed.organizationId}/applicability-check/${claimed.assessmentId}/result`,
+        );
+        router.refresh();
+        return;
+      }
+
+      router.push(
+        redirectAfterCreate === "assessment"
+          ? `${organizationHref}/applicability-check/new`
+          : organizationHref,
+      );
       router.refresh();
     } catch (error) {
       setNotice({

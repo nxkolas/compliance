@@ -15,7 +15,6 @@ import {
 import { Building2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { Suspense } from "react";
 
 type OrganizationTeamPageProps = {
   params: Promise<{
@@ -24,16 +23,6 @@ type OrganizationTeamPageProps = {
 };
 
 export default async function OrganizationTeamPage({
-  params,
-}: OrganizationTeamPageProps) {
-  return (
-    <Suspense fallback={null}>
-      <OrganizationTeamPageContent params={params} />
-    </Suspense>
-  );
-}
-
-async function OrganizationTeamPageContent({
   params,
 }: OrganizationTeamPageProps) {
   await connection();

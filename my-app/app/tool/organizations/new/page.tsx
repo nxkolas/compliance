@@ -1,22 +1,29 @@
 import { AppShell } from "@/components/app-shell";
 import { OrganizationCreateForm } from "@/components/organizations/organization-create-form";
-import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { connection } from "next/server";
-import { Suspense } from "react";
 
-export default function NewOrganizationPage() {
-  return (
-    <Suspense fallback={<NewOrganizationPageFallback />}>
-      <NewOrganizationPageContent />
-    </Suspense>
-  );
-}
+type NewOrganizationPageProps = {
+  searchParams?: Promise<{
+    claimAssessmentId?: string | string[];
+    next?: string | string[];
+  }>;
+};
 
-async function NewOrganizationPageContent() {
+export default async function NewOrganizationPage({
+  searchParams,
+}: NewOrganizationPageProps) {
   await connection();
   await requireAuth();
   const dictionary = await getDictionary();
+  const params = searchParams ? await searchParams : {};
+  const nextParam = Array.isArray(params.next) ? params.next[0] : params.next;
+  const claimAssessmentParam = Array.isArray(params.claimAssessmentId)
+    ? params.claimAssessmentId[0]
+    : params.claimAssessmentId;
+  const redirectAfterCreate =
+    nextParam === "assessment" ? "assessment" : "organization";
 
   return (
     <AppShell dictionary={dictionary}>
@@ -31,25 +38,12 @@ async function NewOrganizationPageContent() {
           </p>
         </div>
       </section>
-      <OrganizationCreateForm labels={dictionary.organizationForm} />
+      <OrganizationCreateForm
+        labels={dictionary.organizationForm}
+        redirectAfterCreate={redirectAfterCreate}
+        claimAssessmentId={claimAssessmentParam}
+      />
       </div>
-    </AppShell>
-  );
-}
-
-function NewOrganizationPageFallback() {
-  const dictionary = getDefaultDictionary();
-
-  return (
-    <AppShell>
-      <section className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">
-          {dictionary.organizations.newOrganization}
-        </h1>
-        <p className="max-w-2xl text-muted-foreground">
-          {dictionary.organizations.loadingForm}
-        </p>
-      </section>
     </AppShell>
   );
 }

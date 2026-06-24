@@ -11,7 +11,6 @@ import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { Suspense } from "react";
 
 type OrganizationSettingsPageProps = {
   params: Promise<{
@@ -19,17 +18,7 @@ type OrganizationSettingsPageProps = {
   }>;
 };
 
-export default function OrganizationSettingsPage({
-  params,
-}: OrganizationSettingsPageProps) {
-  return (
-    <Suspense fallback={null}>
-      <OrganizationSettingsPageContent params={params} />
-    </Suspense>
-  );
-}
-
-async function OrganizationSettingsPageContent({
+export default async function OrganizationSettingsPage({
   params,
 }: OrganizationSettingsPageProps) {
   await connection();

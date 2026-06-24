@@ -13,17 +13,8 @@ import { listOrganizationsForUser } from "@/src/server/organizations/service";
 import { Building2, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
 
-export default function OrganizationsPage() {
-  return (
-    <Suspense fallback={<OrganizationsPageFallback />}>
-      <OrganizationsPageContent />
-    </Suspense>
-  );
-}
-
-async function OrganizationsPageContent() {
+export default async function OrganizationsPage() {
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
@@ -128,19 +119,6 @@ async function OrganizationsPageContent() {
         )}
       </section>
       </div>
-    </AppShell>
-  );
-}
-
-function OrganizationsPageFallback() {
-  return (
-    <AppShell>
-      <section className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Organizations</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Loading your organizations...
-        </p>
-      </section>
     </AppShell>
   );
 }

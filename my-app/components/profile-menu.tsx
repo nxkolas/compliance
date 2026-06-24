@@ -131,7 +131,7 @@ function ProfileMenuContent({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={
-            <Link href="/tool/organizations/inbox">
+            <Link href="/tool/inbox">
               <Inbox className="size-4" />
               {labels.sidebar?.inbox ?? labels.common.inbox}
             </Link>

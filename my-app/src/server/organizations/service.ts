@@ -3,12 +3,24 @@ import {
   organizationInvitations,
   organizationMembers,
   organizations,
+  questionnaireAnswers,
+  questionnaireQuestions,
+  questionnaireRuns,
+  questionnaireSections,
+  questionnaireTemplates,
   selfCheckAssessments,
 } from "@/src/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { ApiError } from "../api/errors";
+import {
+  calculateProgress,
+  evaluateQuickCheck,
+  isMeaningfulAnswerValue,
+  type QuickCheckAnswerMap,
+} from "../guest-assessments/rules";
+import type { SaveGuestAnswersInput } from "../guest-assessments/validation";
 import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
@@ -26,6 +38,8 @@ import type {
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
 const organizationManagerRoles: OrganizationRole[] = ["owner", "admin"];
+const applicabilityTemplateCode = "nis2_guest_quick_check";
+const applicabilityTemplateVersion = "1";
 
 export async function listOrganizationsForUser(
   userId: string,
@@ -135,17 +149,32 @@ export async function createSelfCheckAssessmentForOrganization(
   input: CreateSelfCheckAssessmentInput,
 ): Promise<SelfCheckAssessmentDto> {
   await assertCanAccessOrganization(userId, organizationId);
+  const template = await getActiveApplicabilityTemplate();
 
-  const [assessment] = await db
-    .insert(selfCheckAssessments)
-    .values({
+  const assessment = await db.transaction(async (tx) => {
+    const [createdAssessment] = await tx
+      .insert(selfCheckAssessments)
+      .values({
+        organizationId,
+        performedByUserId: userId,
+        title: normalizeRequiredString(input.title, "title"),
+        status: "draft",
+        category: "unknown",
+      })
+      .returning();
+
+    await tx.insert(questionnaireRuns).values({
       organizationId,
+      templateId: template.id,
+      selfCheckAssessmentId: createdAssessment.id,
       performedByUserId: userId,
-      title: normalizeRequiredString(input.title, "title"),
       status: "draft",
-      category: "unknown",
-    })
-    .returning();
+      result: "unknown",
+      progress: 0,
+    });
+
+    return createdAssessment;
+  });
 
   return assessment;
 }
@@ -171,6 +200,238 @@ export async function getSelfCheckAssessmentForUser(
     ...assessment,
     organization: assessment.organization,
   };
+}
+
+export async function getSelfCheckQuestionnaireForUser(
+  userId: string,
+  assessmentId: string,
+) {
+  const assessment = await getSelfCheckAssessmentForUser(userId, assessmentId);
+
+  if (!assessment) {
+    throw new ApiError(404, "Assessment not found");
+  }
+
+  const run = await ensureSelfCheckQuestionnaireRun(
+    userId,
+    assessment.organizationId,
+    assessment.id,
+  );
+
+  const sections = [...run.template.sections]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((section) => ({
+      ...section,
+      questions: [...section.questions].sort(
+        (a, b) => a.sortOrder - b.sortOrder,
+      ),
+    }));
+
+  return {
+    assessment,
+    organization: assessment.organization,
+    run: {
+      id: run.id,
+      status: run.status,
+      result: run.result,
+      progress: run.progress,
+      score: run.score,
+      summary: run.summary,
+      reasoning: run.reasoning,
+      answersSnapshot: run.answersSnapshot,
+      completedAt: run.completedAt,
+    },
+    template: {
+      id: run.template.id,
+      title: run.template.title,
+      description: run.template.description,
+      sections,
+    },
+    answers: run.answers,
+  };
+}
+
+export async function saveSelfCheckQuestionnaireAnswers(
+  userId: string,
+  assessmentId: string,
+  input: SaveGuestAnswersInput,
+) {
+  const existing = await getSelfCheckQuestionnaireForUser(userId, assessmentId);
+  const requestedIds = input.answers.map((answer) => answer.questionId);
+  const validQuestions = await db
+    .select({
+      id: questionnaireQuestions.id,
+      isRequired: questionnaireQuestions.isRequired,
+      questionType: questionnaireQuestions.questionType,
+    })
+    .from(questionnaireQuestions)
+    .innerJoin(
+      questionnaireSections,
+      eq(questionnaireQuestions.sectionId, questionnaireSections.id),
+    )
+    .where(
+      and(
+        eq(questionnaireSections.templateId, existing.template.id),
+        inArray(questionnaireQuestions.id, requestedIds),
+      ),
+    );
+
+  if (validQuestions.length !== new Set(requestedIds).size) {
+    throw new ApiError(400, "One or more questions do not belong to this questionnaire");
+  }
+
+  const questionById = new Map(
+    validQuestions.map((question) => [question.id, question]),
+  );
+  const invalidRequiredAnswers = input.answers
+    .filter((answer) => {
+      const question = questionById.get(answer.questionId);
+      return (
+        question?.isRequired &&
+        !isMeaningfulAnswerValue(answer.value, question.questionType)
+      );
+    })
+    .map((answer) => answer.questionId);
+
+  if (invalidRequiredAnswers.length > 0) {
+    throw new ApiError(400, "Please answer all required questions", {
+      missingQuestionIds: invalidRequiredAnswers,
+    });
+  }
+
+  await db.transaction(async (tx) => {
+    for (const answer of input.answers) {
+      await tx
+        .insert(questionnaireAnswers)
+        .values({
+          runId: existing.run.id,
+          questionId: answer.questionId,
+          value: { value: answer.value },
+          answeredByUserId: userId,
+        })
+        .onConflictDoUpdate({
+          target: [questionnaireAnswers.runId, questionnaireAnswers.questionId],
+          set: {
+            value: { value: answer.value },
+            answeredByUserId: userId,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
+    const requiredQuestions = await tx
+      .select({
+        id: questionnaireQuestions.id,
+        questionType: questionnaireQuestions.questionType,
+      })
+      .from(questionnaireQuestions)
+      .innerJoin(
+        questionnaireSections,
+        eq(questionnaireQuestions.sectionId, questionnaireSections.id),
+      )
+      .where(
+        and(
+          eq(questionnaireSections.templateId, existing.template.id),
+          eq(questionnaireQuestions.isRequired, true),
+        ),
+      );
+    const savedAnswers = await tx
+      .select({
+        questionId: questionnaireAnswers.questionId,
+        value: questionnaireAnswers.value,
+      })
+      .from(questionnaireAnswers)
+      .where(eq(questionnaireAnswers.runId, existing.run.id));
+    const savedAnswerByQuestionId = new Map(
+      savedAnswers.map((answer) => [answer.questionId, answer.value]),
+    );
+    const progress = calculateProgress(
+      requiredQuestions.map((question) => question.id),
+      requiredQuestions
+        .filter((question) =>
+          isMeaningfulAnswerValue(
+            getStoredAnswerValue(savedAnswerByQuestionId.get(question.id)),
+            question.questionType,
+          ),
+        )
+        .map((question) => question.id),
+    );
+
+    await tx
+      .update(questionnaireRuns)
+      .set({ progress, updatedAt: new Date() })
+      .where(eq(questionnaireRuns.id, existing.run.id));
+  });
+
+  return getSelfCheckQuestionnaireForUser(userId, assessmentId);
+}
+
+export async function completeSelfCheckQuestionnaire(
+  userId: string,
+  assessmentId: string,
+) {
+  const existing = await getSelfCheckQuestionnaireForUser(userId, assessmentId);
+  const questions = existing.template.sections.flatMap(
+    (section) => section.questions,
+  );
+  const answerByQuestionId = new Map(
+    existing.answers.map((answer) => [answer.questionId, answer.value]),
+  );
+  const missing = questions.filter(
+    (question) =>
+      question.isRequired &&
+      !isMeaningfulAnswerValue(
+        getStoredAnswerValue(answerByQuestionId.get(question.id)),
+        question.questionType,
+      ),
+  );
+
+  if (missing.length > 0) {
+    throw new ApiError(400, "Please answer all required questions", {
+      missingQuestionIds: missing.map((question) => question.id),
+    });
+  }
+
+  const answersByCode: QuickCheckAnswerMap = {};
+  for (const question of questions) {
+    const stored = answerByQuestionId.get(question.id);
+    if (stored && typeof stored === "object" && "value" in stored) {
+      answersByCode[question.code] = stored.value;
+    }
+  }
+
+  const result = evaluateQuickCheck(answersByCode);
+  const completedAt = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(questionnaireRuns)
+      .set({
+        status: "completed",
+        result: result.result,
+        progress: 100,
+        summary: result.summary,
+        reasoning: result.reasoning,
+        answersSnapshot: answersByCode,
+        completedAt,
+        updatedAt: completedAt,
+      })
+      .where(eq(questionnaireRuns.id, existing.run.id));
+    await tx
+      .update(selfCheckAssessments)
+      .set({
+        status: "completed",
+        category: result.category,
+        reasoning: result.reasoning,
+        answers: answersByCode,
+        lexSpecialisApplies: answersByCode.lex_specialis === "yes",
+        completedAt,
+        updatedAt: completedAt,
+      })
+      .where(eq(selfCheckAssessments.id, assessmentId));
+  });
+
+  return getSelfCheckQuestionnaireForUser(userId, assessmentId);
 }
 
 export async function listOrganizationInvitations(
@@ -312,6 +573,101 @@ async function assertCanManageOrganization(
   }
 
   return membership;
+}
+
+async function ensureSelfCheckQuestionnaireRun(
+  userId: string,
+  organizationId: string,
+  assessmentId: string,
+) {
+  const existingRun = await db.query.questionnaireRuns.findFirst({
+    where: eq(questionnaireRuns.selfCheckAssessmentId, assessmentId),
+    with: {
+      template: {
+        with: {
+          sections: {
+            with: { questions: true },
+          },
+        },
+      },
+      answers: true,
+    },
+  });
+
+  if (existingRun) {
+    return existingRun;
+  }
+
+  const template = await getActiveApplicabilityTemplate();
+  const [createdRun] = await db
+    .insert(questionnaireRuns)
+    .values({
+      organizationId,
+      templateId: template.id,
+      selfCheckAssessmentId: assessmentId,
+      performedByUserId: userId,
+      status: "draft",
+      result: "unknown",
+      progress: 0,
+    })
+    .onConflictDoNothing({
+      target: questionnaireRuns.selfCheckAssessmentId,
+    })
+    .returning();
+
+  const run = await db.query.questionnaireRuns.findFirst({
+    where: createdRun
+      ? eq(questionnaireRuns.id, createdRun.id)
+      : eq(questionnaireRuns.selfCheckAssessmentId, assessmentId),
+    with: {
+      template: {
+        with: {
+          sections: {
+            with: { questions: true },
+          },
+        },
+      },
+      answers: true,
+    },
+  });
+
+  if (!run) {
+    throw new ApiError(404, "Questionnaire run not found");
+  }
+
+  return run;
+}
+
+async function getActiveApplicabilityTemplate() {
+  const template = await db.query.questionnaireTemplates.findFirst({
+    where: and(
+      eq(questionnaireTemplates.code, applicabilityTemplateCode),
+      eq(questionnaireTemplates.version, applicabilityTemplateVersion),
+      eq(questionnaireTemplates.isActive, true),
+    ),
+  });
+
+  if (!template) {
+    throw new ApiError(
+      503,
+      "Applicability questionnaire is not seeded. Run npm run db:seed:questionnaire.",
+    );
+  }
+
+  return template;
+}
+
+function getStoredAnswerValue(stored: unknown) {
+  if (
+    stored &&
+    typeof stored === "object" &&
+    !Array.isArray(stored) &&
+    "value" in stored
+  ) {
+    return stored.value;
+  }
+
+  return undefined;
 }
 
 async function assertCanAccessOrganization(userId: string, organizationId: string) {

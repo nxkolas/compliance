@@ -1,4 +1,5 @@
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
+import { AppSidebarContentSkeleton } from "@/components/navigation-loading";
 import {
   OrganizationSwitcher,
   OrganizationSwitcherFallback,
@@ -28,9 +29,9 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="none"
-      className="min-h-svh w-[401px] shrink-0 border-r bg-[rgba(255,255,255,0.10)]"
+      className="sticky top-0 h-svh max-h-svh w-[401px] shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppSidebarContentSkeleton />}>
         <AppSidebarNav
           organizationId={organizationId}
           labels={dictionary.sidebar}
@@ -98,8 +99,10 @@ async function ProfileMenuLoader() {
   const locale = await getLocale();
   const labels = await getDictionary();
   const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  const email = data?.claims?.email;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const email = user?.email;
 
   return (
     <ProfileMenu

@@ -79,7 +79,9 @@ export function AssessmentCreateForm({
         throw new Error(body.error ?? labels.createError);
       }
 
-      router.push(`/tool/assessments/${body.assessment.id}`);
+      router.push(
+        `/tool/organizations/${organizationId}/applicability-check/${body.assessment.id}/questionnaire`,
+      );
       router.refresh();
     } catch (error) {
       setNotice({

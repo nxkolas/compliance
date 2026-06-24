@@ -6,7 +6,12 @@ import { hasEnvVars } from "../utils";
  * Identifies routes that can be visited without an authenticated session.
  */
 function isPublicRoute(pathname: string) {
-  return pathname === "/" || pathname.startsWith("/auth");
+  return (
+    pathname === "/" ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/check") ||
+    pathname.startsWith("/api/guest-assessments")
+  );
 }
 
 /**
@@ -73,6 +78,13 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !isPublicRoute(request.nextUrl.pathname)) {
     return redirectToLogin(request);
+  }
+
+  if (user?.is_anonymous && request.nextUrl.pathname.startsWith("/tool")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/check";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
