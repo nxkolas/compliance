@@ -71,16 +71,28 @@ export function SignUpForm({
         }
 
         const next = `/check/${guestAssessmentId}/set-password`;
-        const { data: updated, error: updateError } =
-          await supabase.auth.updateUser(
-            { email, password },
-            {
-              emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
-            },
-          );
+        const { error: updateError } = await supabase.auth.updateUser(
+          { email, password },
+          {
+            emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+          },
+        );
         if (updateError) throw updateError;
 
-        if (updated.user && !updated.user.is_anonymous) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (!signInError) {
+          const {
+            data: { user: signedInUser },
+            error: signedInUserError,
+          } = await supabase.auth.getUser();
+          if (signedInUserError || !signedInUser || signedInUser.is_anonymous) {
+            throw new Error(labels.errorFallback);
+          }
+
           const response = await fetch(
             `/api/guest-assessments/${guestAssessmentId}/claim`,
             { method: "POST" },

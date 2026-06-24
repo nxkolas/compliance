@@ -99,8 +99,10 @@ async function ProfileMenuLoader() {
   const locale = await getLocale();
   const labels = await getDictionary();
   const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  const email = data?.claims?.email;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const email = user?.email;
 
   return (
     <ProfileMenu

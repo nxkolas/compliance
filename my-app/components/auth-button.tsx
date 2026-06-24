@@ -8,10 +8,10 @@ export async function AuthButton() {
   const dictionary = await getDictionary();
   const supabase = await createClient();
 
-  // You can also use getUser() which will be slower.
-  const { data } = await supabase.auth.getClaims();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const user = data?.claims;
   const email = typeof user?.email === "string" ? user.email : null;
 
   return email ? (
