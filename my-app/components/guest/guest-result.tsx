@@ -23,28 +23,38 @@ type ResultPayload = {
 
 export function GuestResult({
   assessmentId,
+  apiBasePath,
+  questionnaireHref,
+  showGuestActions = true,
   labels,
 }: {
-  assessmentId: string;
+  assessmentId?: string;
+  apiBasePath?: string;
+  questionnaireHref?: string;
+  showGuestActions?: boolean;
   labels: Dictionary["guestCheck"]["result"];
 }) {
   const router = useRouter();
+  const resolvedApiBasePath =
+    apiBasePath ?? `/api/guest-assessments/${assessmentId}`;
+  const resolvedQuestionnaireHref =
+    questionnaireHref ?? `/check/${assessmentId}/questionnaire`;
   const [assessment, setAssessment] = useState<ResultPayload>();
   const [error, setError] = useState<string>();
   const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
-    const response = await fetch(`/api/guest-assessments/${assessmentId}`, {
+    const response = await fetch(resolvedApiBasePath, {
       cache: "no-store",
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(labels.notFound);
     if (payload.assessment.run.status !== "completed") {
-      router.replace(`/check/${assessmentId}/questionnaire`);
+      router.replace(resolvedQuestionnaireHref);
       return;
     }
     setAssessment(payload.assessment);
-  }, [assessmentId, labels.notFound, router]);
+  }, [labels.notFound, resolvedApiBasePath, resolvedQuestionnaireHref, router]);
 
   useEffect(() => {
     load().catch((caught) =>
@@ -53,6 +63,7 @@ export function GuestResult({
   }, [labels.loadFailed, load]);
 
   async function remove() {
+    if (!assessmentId) return;
     if (!window.confirm(labels.confirmDelete)) return;
     setDeleting(true);
     setError(undefined);
@@ -85,7 +96,7 @@ export function GuestResult({
     <div className="flex flex-col gap-6">
       <div className="flex justify-start">
         <Button asChild size="sm" variant="outline">
-          <Link href={`/check/${assessmentId}/questionnaire`}>
+          <Link href={resolvedQuestionnaireHref}>
             <ArrowLeft />
             {labels.backToAnswers}
           </Link>
@@ -107,35 +118,37 @@ export function GuestResult({
         </CardContent>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Button asChild size="lg">
-          <Link href={`/check/${assessmentId}/create-account`}>
-            <UserPlus />
-            {labels.createAccount}
-          </Link>
-        </Button>
-        <Button asChild size="lg" variant="secondary">
-          <Link href={`/check/${assessmentId}/claim`}>
-            <LogIn />
-            {labels.claim}
-          </Link>
-        </Button>
-        <Button asChild size="lg" variant="outline">
-          <a href={`/api/guest-assessments/${assessmentId}/export`}>
-            <Download />
-            {labels.downloadPdf}
-          </a>
-        </Button>
-        <Button
-          size="lg"
-          variant="destructive"
-          onClick={remove}
-          disabled={deleting}
-        >
-          <Trash2 />
-          {deleting ? labels.deleting : labels.delete}
-        </Button>
-      </div>
+      {showGuestActions && assessmentId ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button asChild size="lg">
+            <Link href={`/check/${assessmentId}/create-account`}>
+              <UserPlus />
+              {labels.createAccount}
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="secondary">
+            <Link href={`/check/${assessmentId}/claim`}>
+              <LogIn />
+              {labels.claim}
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <a href={`/api/guest-assessments/${assessmentId}/export`}>
+              <Download />
+              {labels.downloadPdf}
+            </a>
+          </Button>
+          <Button
+            size="lg"
+            variant="destructive"
+            onClick={remove}
+            disabled={deleting}
+          >
+            <Trash2 />
+            {deleting ? labels.deleting : labels.delete}
+          </Button>
+        </div>
+      ) : null}
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
     </div>
   );

@@ -80,7 +80,7 @@ export function AssessmentCreateForm({
       }
 
       router.push(
-        `/tool/organizations/${organizationId}/applicability-check/${body.assessment.id}`,
+        `/tool/organizations/${organizationId}/applicability-check/${body.assessment.id}/questionnaire`,
       );
       router.refresh();
     } catch (error) {

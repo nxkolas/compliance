@@ -41,14 +41,25 @@ type GuestAssessmentPayload = {
   }>;
 };
 
+type GuestQuestionnaireProps = {
+  assessmentId?: string;
+  apiBasePath?: string;
+  resultHref?: string;
+  refreshOnComplete?: boolean;
+  labels: Dictionary["guestCheck"]["questionnaire"];
+};
+
 export function GuestQuestionnaire({
   assessmentId,
+  apiBasePath,
+  resultHref,
+  refreshOnComplete = false,
   labels,
-}: {
-  assessmentId: string;
-  labels: Dictionary["guestCheck"]["questionnaire"];
-}) {
+}: GuestQuestionnaireProps) {
   const router = useRouter();
+  const resolvedApiBasePath =
+    apiBasePath ?? `/api/guest-assessments/${assessmentId}`;
+  const resolvedResultHref = resultHref ?? `/check/${assessmentId}/result`;
   const [assessment, setAssessment] = useState<GuestAssessmentPayload>();
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [completing, setCompleting] = useState(false);
@@ -57,14 +68,14 @@ export function GuestQuestionnaire({
   const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
 
   const load = useCallback(async () => {
-    const response = await fetch(`/api/guest-assessments/${assessmentId}`, {
+    const response = await fetch(resolvedApiBasePath, {
       cache: "no-store",
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(labels.notFound);
     setAssessment(payload.assessment);
     setValues(getInitialValues(payload.assessment));
-  }, [assessmentId, labels.notFound]);
+  }, [labels.notFound, resolvedApiBasePath]);
 
   useEffect(() => {
     load().catch((caught) =>
@@ -102,7 +113,7 @@ export function GuestQuestionnaire({
     answers: Array<{ questionId: string; value: unknown }>,
   ) {
     const response = await fetch(
-      `/api/guest-assessments/${assessmentId}/answers`,
+      `${resolvedApiBasePath}/answers`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -177,12 +188,15 @@ export function GuestQuestionnaire({
         await saveAnswers(currentAnswers);
       }
       const response = await fetch(
-        `/api/guest-assessments/${assessmentId}/complete`,
+        `${resolvedApiBasePath}/complete`,
         { method: "POST" },
       );
       if (!response.ok) throw new Error(labels.evaluationFailed);
       setCompleting(false);
-      router.push(`/check/${assessmentId}/result`);
+      router.push(resolvedResultHref);
+      if (refreshOnComplete) {
+        router.refresh();
+      }
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : labels.evaluationFailed,
@@ -205,7 +219,7 @@ export function GuestQuestionnaire({
         <div className="flex justify-end">
           <Button asChild size="sm" variant="outline">
             <Link
-              href={`/check/${assessmentId}/result`}
+              href={resolvedResultHref}
               onClick={discardLocalChanges}
             >
               {labels.backToResult}
