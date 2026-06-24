@@ -1,10 +1,9 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { Suspense } from "react";
 
 type OrganizationPageProps = {
   params: Promise<{
@@ -12,17 +11,7 @@ type OrganizationPageProps = {
   }>;
 };
 
-export default async function OrganizationPage({
-  params,
-}: OrganizationPageProps) {
-  return (
-    <Suspense fallback={<OrganizationPageFallback />}>
-      <OrganizationPageContent params={params} />
-    </Suspense>
-  );
-}
-
-async function OrganizationPageContent({ params }: OrganizationPageProps) {
+export default async function OrganizationPage({ params }: OrganizationPageProps) {
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
@@ -81,18 +70,6 @@ async function OrganizationPageContent({ params }: OrganizationPageProps) {
           ],
         },
       ]}
-    />
-  );
-}
-
-function OrganizationPageFallback() {
-  const dictionary = getDefaultDictionary();
-
-  return (
-    <ProductModuleContent
-      title={dictionary.modules.dashboard.title}
-      description={dictionary.modules.dashboard.description}
-      cards={[]}
     />
   );
 }

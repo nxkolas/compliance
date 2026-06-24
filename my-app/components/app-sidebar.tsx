@@ -1,4 +1,5 @@
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
+import { AppSidebarContentSkeleton } from "@/components/navigation-loading";
 import {
   OrganizationSwitcher,
   OrganizationSwitcherFallback,
@@ -30,7 +31,7 @@ export function AppSidebar({
       collapsible="none"
       className="min-h-svh w-[401px] shrink-0 border-r bg-[rgba(255,255,255,0.10)]"
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppSidebarContentSkeleton />}>
         <AppSidebarNav
           organizationId={organizationId}
           labels={dictionary.sidebar}

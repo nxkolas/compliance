@@ -1,28 +1,12 @@
 import { GuestQuestionnaire } from "@/components/guest/guest-questionnaire";
 import { GuestShell } from "@/components/guest/guest-shell";
-import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
-import { Suspense } from "react";
+import { getDictionary } from "@/lib/i18n";
 
 type PageProps = {
   params: Promise<{ assessmentId: string }>;
 };
 
-export default function GuestQuestionnairePage({ params }: PageProps) {
-  const fallback = getDefaultDictionary();
-  return (
-    <Suspense
-      fallback={
-        <main className="min-h-screen p-8">
-          {fallback.guestCheck.questionnaire.loading}
-        </main>
-      }
-    >
-      <GuestQuestionnaireContent params={params} />
-    </Suspense>
-  );
-}
-
-async function GuestQuestionnaireContent({
+export default async function GuestQuestionnairePage({
   params,
 }: PageProps) {
   const dictionary = await getDictionary();

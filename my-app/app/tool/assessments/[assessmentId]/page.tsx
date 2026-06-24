@@ -1,6 +1,5 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
-import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
-import { Suspense } from "react";
+import { getDictionary } from "@/lib/i18n";
 
 type AssessmentPageProps = {
   params: Promise<{
@@ -8,17 +7,7 @@ type AssessmentPageProps = {
   }>;
 };
 
-export default function AssessmentPage({ params }: AssessmentPageProps) {
-  const dictionary = getDefaultDictionary();
-
-  return (
-    <Suspense fallback={<main className="p-8">{dictionary.common.loading}</main>}>
-      <AssessmentPageContent params={params} />
-    </Suspense>
-  );
-}
-
-async function AssessmentPageContent({ params }: AssessmentPageProps) {
+export default async function AssessmentPage({ params }: AssessmentPageProps) {
   const dictionary = await getDictionary();
   const { assessmentId } = await params;
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type RouteTab = {
   href: string;
@@ -10,18 +11,18 @@ type RouteTab = {
 
 export function RouteTabs({ tabs }: { tabs: RouteTab[] }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
-    <Tabs value={pathname} onValueChange={(href) => router.push(href)}>
+    <Tabs value={pathname}>
       <TabsList className="max-w-full overflow-x-auto">
         {tabs.map((tab) => (
           <TabsTrigger
             key={tab.href}
             value={tab.href}
+            asChild
             className="data-[state=active]:border-input data-[state=active]:bg-input/30 data-[state=active]:text-foreground data-[state=active]:shadow-sm"
           >
-            {tab.label}
+            <Link href={tab.href}>{tab.label}</Link>
           </TabsTrigger>
         ))}
       </TabsList>

@@ -1,5 +1,9 @@
 import { AppShell } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
+import {
+  AppSidebarSkeleton,
+  OrganizationModulePageSkeleton,
+} from "@/components/navigation-loading";
 import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
@@ -21,12 +25,12 @@ export default function OrganizationLayout({
   return (
     <AppShell
       sidebar={
-        <Suspense fallback={null}>
+        <Suspense fallback={<AppSidebarSkeleton />}>
           <OrganizationSidebar params={params} />
         </Suspense>
       }
     >
-      <Suspense fallback={null}>
+      <Suspense fallback={<OrganizationModulePageSkeleton />}>
         <OrganizationLayoutContent params={params}>
           {children}
         </OrganizationLayoutContent>

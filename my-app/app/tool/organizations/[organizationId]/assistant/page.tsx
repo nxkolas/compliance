@@ -7,7 +7,6 @@ import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { Suspense } from "react";
 
 type AssistantPageProps = {
   params: Promise<{
@@ -18,15 +17,7 @@ type AssistantPageProps = {
   }>;
 };
 
-export default function AssistantPage(props: AssistantPageProps) {
-  return (
-    <Suspense fallback={<main className="p-8">Loading...</main>}>
-      <AssistantPageContent {...props} />
-    </Suspense>
-  );
-}
-
-async function AssistantPageContent({
+export default async function AssistantPage({
   params,
   searchParams,
 }: AssistantPageProps) {

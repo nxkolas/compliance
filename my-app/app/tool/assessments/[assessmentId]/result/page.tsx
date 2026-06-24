@@ -1,9 +1,8 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
-import { getDefaultDictionary, getDictionary } from "@/lib/i18n";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getSelfCheckAssessmentForUser } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 
 type AssessmentResultPageProps = {
   params: Promise<{
@@ -11,19 +10,7 @@ type AssessmentResultPageProps = {
   }>;
 };
 
-export default function AssessmentResultPage({
-  params,
-}: AssessmentResultPageProps) {
-  const dictionary = getDefaultDictionary();
-
-  return (
-    <Suspense fallback={<main className="p-8">{dictionary.common.loading}</main>}>
-      <AssessmentResultPageContent params={params} />
-    </Suspense>
-  );
-}
-
-async function AssessmentResultPageContent({
+export default async function AssessmentResultPage({
   params,
 }: AssessmentResultPageProps) {
   const dictionary = await getDictionary();
