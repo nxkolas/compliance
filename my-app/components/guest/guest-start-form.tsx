@@ -7,7 +7,7 @@ import type { Dictionary } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 declare global {
   interface Window {
@@ -40,6 +40,28 @@ export function GuestStartForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [anonymousAuthDisabled, setAnonymousAuthDisabled] = useState(false);
+  const [isSignedInUser, setIsSignedInUser] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadUser() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (isMounted) {
+        setIsSignedInUser(Boolean(user && !user.is_anonymous));
+      }
+    }
+
+    loadUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   function renderCaptcha() {
     if (!turnstileSiteKey || !window.turnstile) return;
@@ -64,7 +86,7 @@ export function GuestStartForm({
       } = await supabase.auth.getUser();
 
       if (existingUser && !existingUser.is_anonymous) {
-        router.push("/tool/organizations");
+        router.push("/tool/organizations/start-assessment");
         return;
       }
 
@@ -117,7 +139,7 @@ export function GuestStartForm({
           <Label htmlFor="companyName">{labels.companyName}</Label>
           <Input
             id="companyName"
-            required
+            required={!isSignedInUser}
             maxLength={255}
             value={companyName}
             onChange={(event) => setCompanyName(event.target.value)}
@@ -165,8 +187,12 @@ export function GuestStartForm({
           className="mt-6 w-full"
           disabled={
             loading ||
-            !companyName.trim() ||
-            Boolean(turnstileSiteKey && (!captchaReady || !captchaToken))
+            (!isSignedInUser && !companyName.trim()) ||
+            Boolean(
+              !isSignedInUser &&
+                turnstileSiteKey &&
+                (!captchaReady || !captchaToken),
+            )
           }
         >
           {loading ? labels.starting : labels.start}

@@ -4,10 +4,22 @@ import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { connection } from "next/server";
 
-export default async function NewOrganizationPage() {
+type NewOrganizationPageProps = {
+  searchParams?: Promise<{
+    next?: string | string[];
+  }>;
+};
+
+export default async function NewOrganizationPage({
+  searchParams,
+}: NewOrganizationPageProps) {
   await connection();
   await requireAuth();
   const dictionary = await getDictionary();
+  const params = searchParams ? await searchParams : {};
+  const nextParam = Array.isArray(params.next) ? params.next[0] : params.next;
+  const redirectAfterCreate =
+    nextParam === "assessment" ? "assessment" : "organization";
 
   return (
     <AppShell dictionary={dictionary}>
@@ -22,7 +34,10 @@ export default async function NewOrganizationPage() {
           </p>
         </div>
       </section>
-      <OrganizationCreateForm labels={dictionary.organizationForm} />
+      <OrganizationCreateForm
+        labels={dictionary.organizationForm}
+        redirectAfterCreate={redirectAfterCreate}
+      />
       </div>
     </AppShell>
   );

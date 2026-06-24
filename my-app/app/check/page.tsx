@@ -1,6 +1,8 @@
 import { GuestShell } from "@/components/guest/guest-shell";
 import { GuestStartForm } from "@/components/guest/guest-start-form";
 import { getDictionary } from "@/lib/i18n";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 export default function GuestCheckPage() {
@@ -12,6 +14,15 @@ export default function GuestCheckPage() {
 }
 
 async function GuestCheckContent() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user && !user.is_anonymous) {
+    redirect("/tool/organizations/start-assessment");
+  }
+
   const dictionary = await getDictionary();
   const labels = dictionary.guestCheck;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

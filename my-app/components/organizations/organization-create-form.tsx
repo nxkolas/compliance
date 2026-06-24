@@ -42,6 +42,8 @@ type CreateOrganizationResponse = {
   error?: string;
 };
 
+type RedirectAfterCreate = "organization" | "assessment";
+
 const defaultOrganizationForm: CreateOrganizationState = {
   name: "",
   legalName: "",
@@ -52,8 +54,10 @@ const defaultOrganizationForm: CreateOrganizationState = {
 
 export function OrganizationCreateForm({
   labels,
+  redirectAfterCreate = "organization",
 }: {
   labels: Dictionary["organizationForm"];
+  redirectAfterCreate?: RedirectAfterCreate;
 }) {
   const router = useRouter();
   const [organizationForm, setOrganizationForm] = useState(
@@ -93,7 +97,12 @@ export function OrganizationCreateForm({
         throw new Error(body.error ?? labels.createError);
       }
 
-      router.push(`/tool/organizations/${body.organization.id}`);
+      const organizationHref = `/tool/organizations/${body.organization.id}`;
+      router.push(
+        redirectAfterCreate === "assessment"
+          ? `${organizationHref}/applicability-check/new`
+          : organizationHref,
+      );
       router.refresh();
     } catch (error) {
       setNotice({
