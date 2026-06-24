@@ -17,6 +17,7 @@ import { ApiError } from "../api/errors";
 import {
   calculateProgress,
   evaluateQuickCheck,
+  isMeaningfulAnswerValue,
   type QuickCheckAnswerMap,
 } from "./rules";
 import type {
@@ -175,7 +176,11 @@ export async function saveGuestAnswers(
 
   const requestedIds = input.answers.map((answer) => answer.questionId);
   const validQuestions = await db
-    .select({ id: questionnaireQuestions.id })
+    .select({
+      id: questionnaireQuestions.id,
+      isRequired: questionnaireQuestions.isRequired,
+      questionType: questionnaireQuestions.questionType,
+    })
     .from(questionnaireQuestions)
     .innerJoin(
       questionnaireSections,
@@ -190,6 +195,25 @@ export async function saveGuestAnswers(
 
   if (validQuestions.length !== new Set(requestedIds).size) {
     throw new ApiError(400, "One or more questions do not belong to this questionnaire");
+  }
+
+  const questionById = new Map(
+    validQuestions.map((question) => [question.id, question]),
+  );
+  const invalidRequiredAnswers = input.answers
+    .filter((answer) => {
+      const question = questionById.get(answer.questionId);
+      return (
+        question?.isRequired &&
+        !isMeaningfulAnswerValue(answer.value, question.questionType)
+      );
+    })
+    .map((answer) => answer.questionId);
+
+  if (invalidRequiredAnswers.length > 0) {
+    throw new ApiError(400, "Please answer all required questions", {
+      missingQuestionIds: invalidRequiredAnswers,
+    });
   }
 
   await db.transaction(async (tx) => {
@@ -213,7 +237,10 @@ export async function saveGuestAnswers(
     }
 
     const requiredQuestions = await tx
-      .select({ id: questionnaireQuestions.id })
+      .select({
+        id: questionnaireQuestions.id,
+        questionType: questionnaireQuestions.questionType,
+      })
       .from(questionnaireQuestions)
       .innerJoin(
         questionnaireSections,
@@ -226,12 +253,25 @@ export async function saveGuestAnswers(
         ),
       );
     const savedAnswers = await tx
-      .select({ questionId: questionnaireAnswers.questionId })
+      .select({
+        questionId: questionnaireAnswers.questionId,
+        value: questionnaireAnswers.value,
+      })
       .from(questionnaireAnswers)
       .where(eq(questionnaireAnswers.runId, run.id));
+    const savedAnswerByQuestionId = new Map(
+      savedAnswers.map((answer) => [answer.questionId, answer.value]),
+    );
     const progress = calculateProgress(
       requiredQuestions.map((question) => question.id),
-      savedAnswers.map((answer) => answer.questionId),
+      requiredQuestions
+        .filter((question) =>
+          isMeaningfulAnswerValue(
+            getStoredAnswerValue(savedAnswerByQuestionId.get(question.id)),
+            question.questionType,
+          ),
+        )
+        .map((question) => question.id),
     );
 
     await tx
@@ -259,7 +299,11 @@ export async function completeGuestAssessment(
   );
   const missing = questions.filter(
     (question) =>
-      question.isRequired && !answerByQuestionId.has(question.id),
+      question.isRequired &&
+      !isMeaningfulAnswerValue(
+        getStoredAnswerValue(answerByQuestionId.get(question.id)),
+        question.questionType,
+      ),
   );
   if (missing.length > 0) {
     throw new ApiError(400, "Please answer all required questions", {
@@ -459,6 +503,19 @@ function assertActive(session: typeof guestAssessmentSessions.$inferSelect) {
 
 function matchesToken(expectedHash: string, token?: string) {
   return Boolean(token && hashToken(token) === expectedHash);
+}
+
+function getStoredAnswerValue(stored: unknown) {
+  if (
+    stored &&
+    typeof stored === "object" &&
+    !Array.isArray(stored) &&
+    "value" in stored
+  ) {
+    return stored.value;
+  }
+
+  return undefined;
 }
 
 function hashToken(token: string) {

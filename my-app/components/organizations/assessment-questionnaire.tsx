@@ -19,7 +19,7 @@ type Question = {
   options: Array<{ value?: unknown; label?: unknown }> | null;
 };
 
-type GuestAssessmentPayload = {
+type AssessmentPayload = {
   organization: { name: string };
   run: {
     progress: number;
@@ -41,15 +41,20 @@ type GuestAssessmentPayload = {
   }>;
 };
 
-export function GuestQuestionnaire({
-  assessmentId,
-  labels,
-}: {
-  assessmentId: string;
+type AssessmentQuestionnaireProps = {
+  apiBasePath: string;
+  questionnaireHref: string;
+  resultHref: string;
   labels: Dictionary["guestCheck"]["questionnaire"];
-}) {
+};
+
+export function AssessmentQuestionnaire({
+  apiBasePath,
+  resultHref,
+  labels,
+}: AssessmentQuestionnaireProps) {
   const router = useRouter();
-  const [assessment, setAssessment] = useState<GuestAssessmentPayload>();
+  const [assessment, setAssessment] = useState<AssessmentPayload>();
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string>();
@@ -57,14 +62,12 @@ export function GuestQuestionnaire({
   const saveQueue = useRef<Promise<boolean>>(Promise.resolve(true));
 
   const load = useCallback(async () => {
-    const response = await fetch(`/api/guest-assessments/${assessmentId}`, {
-      cache: "no-store",
-    });
+    const response = await fetch(apiBasePath, { cache: "no-store" });
     const payload = await response.json();
     if (!response.ok) throw new Error(labels.notFound);
     setAssessment(payload.assessment);
     setValues(getInitialValues(payload.assessment));
-  }, [assessmentId, labels.notFound]);
+  }, [apiBasePath, labels.notFound]);
 
   useEffect(() => {
     load().catch((caught) =>
@@ -78,9 +81,7 @@ export function GuestQuestionnaire({
       [],
     [assessment],
   );
-  const requiredQuestions = questions.filter(
-    (question) => question.isRequired,
-  );
+  const requiredQuestions = questions.filter((question) => question.isRequired);
   const completedRequiredQuestions = requiredQuestions.filter(
     (question) =>
       values[question.id] !== undefined && values[question.id] !== "",
@@ -101,14 +102,11 @@ export function GuestQuestionnaire({
   async function saveAnswers(
     answers: Array<{ questionId: string; value: unknown }>,
   ) {
-    const response = await fetch(
-      `/api/guest-assessments/${assessmentId}/answers`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
-      },
-    );
+    const response = await fetch(`${apiBasePath}/answers`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers }),
+    });
     const payload = await response.json();
     if (!response.ok) {
       throw new Error(labels.saveFailed);
@@ -176,13 +174,13 @@ export function GuestQuestionnaire({
       if (currentAnswers.length > 0) {
         await saveAnswers(currentAnswers);
       }
-      const response = await fetch(
-        `/api/guest-assessments/${assessmentId}/complete`,
-        { method: "POST" },
-      );
+      const response = await fetch(`${apiBasePath}/complete`, {
+        method: "POST",
+      });
       if (!response.ok) throw new Error(labels.evaluationFailed);
       setCompleting(false);
-      router.push(`/check/${assessmentId}/result`);
+      router.push(resultHref);
+      router.refresh();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : labels.evaluationFailed,
@@ -193,21 +191,18 @@ export function GuestQuestionnaire({
 
   if (!assessment) {
     return (
-      <div className="rounded-2xl border border-white/15 bg-[#111522]/95 p-8 text-white/70">
+      <div className="rounded-lg border bg-muted/30 p-6 text-muted-foreground">
         {error ?? labels.loading}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 text-foreground">
       {hasPreviousResult ? (
         <div className="flex justify-end">
           <Button asChild size="sm" variant="outline">
-            <Link
-              href={`/check/${assessmentId}/result`}
-              onClick={discardLocalChanges}
-            >
+            <Link href={resultHref} onClick={discardLocalChanges}>
               {labels.backToResult}
               <ArrowRight />
             </Link>
@@ -215,28 +210,24 @@ export function GuestQuestionnaire({
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+      <div className="rounded-lg border bg-muted/25 p-4">
         <div className="mb-2 flex items-center justify-between text-sm">
           <span>{assessment.organization.name}</span>
-          <span className="text-white/60">{progress}%</span>
+          <span className="text-muted-foreground">{progress}%</span>
         </div>
-        <Progress value={progress} className="h-2 bg-white/10" />
+        <Progress value={progress} className="h-2" />
       </div>
 
       {assessment.template.sections.map((section) => (
-        <section
-          key={section.id}
-          className="rounded-2xl border border-white/15 bg-[#111522]/95 p-6 sm:p-8"
-        >
+        <section key={section.id} className="rounded-lg border p-5 sm:p-6">
           <h2 className="text-xl font-semibold">{labels.sectionTitle}</h2>
-          <p className="mt-2 text-sm text-white/60">
+          <p className="mt-2 text-sm text-muted-foreground">
             {labels.sectionDescription}
           </p>
           <div className="mt-7 flex flex-col gap-8">
             {section.questions.map((question, index) => {
               const questionLabels = getQuestionLabels(labels, question.code);
-              const helpText =
-                questionLabels?.helpText ?? question.helpText;
+              const helpText = questionLabels?.helpText ?? question.helpText;
 
               return (
                 <div key={question.id} className="flex flex-col gap-3">
@@ -248,7 +239,7 @@ export function GuestQuestionnaire({
                       ) : null}
                     </p>
                     {helpText ? (
-                      <p className="mt-1 text-sm leading-6 text-white/60">
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
                         {helpText}
                       </p>
                     ) : null}
@@ -271,13 +262,11 @@ export function GuestQuestionnaire({
                           <button
                             key={value}
                             type="button"
-                            onClick={() =>
-                              void changeAnswer(question.id, value)
-                            }
-                            className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                            onClick={() => void changeAnswer(question.id, value)}
+                            className={`rounded-md border px-4 py-3 text-left text-sm transition-colors ${
                               selected
-                                ? "border-primary bg-primary/15 text-white"
-                                : "border-white/15 bg-white/5 text-white/75 hover:bg-white/10"
+                                ? "border-primary bg-primary/10 text-foreground"
+                                : "bg-background text-muted-foreground hover:bg-muted"
                             }`}
                           >
                             {questionLabels?.options[value] ??
@@ -294,7 +283,7 @@ export function GuestQuestionnaire({
         </section>
       ))}
 
-      {error ? <p className="text-sm text-red-300">{error}</p> : null}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex justify-end">
         <Button
           size="lg"
@@ -310,7 +299,7 @@ export function GuestQuestionnaire({
           <ArrowRight />
         </Button>
       </div>
-      <p className="text-center text-xs leading-5 text-white/50">
+      <p className="text-center text-xs leading-5 text-muted-foreground">
         {labels.disclaimer}
       </p>
     </div>
@@ -328,7 +317,7 @@ function getQuestionLabels(
   return questions[code];
 }
 
-function getInitialValues(assessment: GuestAssessmentPayload) {
+function getInitialValues(assessment: AssessmentPayload) {
   if (assessment.run.status === "completed" && assessment.run.answersSnapshot) {
     const questions = assessment.template.sections.flatMap(
       (section) => section.questions,

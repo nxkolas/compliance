@@ -637,6 +637,9 @@ export const questionnaireRuns = pgTable(
     index("questionnaire_runs_template_idx").on(table.templateId),
     index("questionnaire_runs_status_idx").on(table.status),
     index("questionnaire_runs_result_idx").on(table.result),
+    uniqueIndex("questionnaire_runs_self_check_unique").on(
+      table.selfCheckAssessmentId,
+    ),
   ],
 );
 

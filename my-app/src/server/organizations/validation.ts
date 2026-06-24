@@ -6,6 +6,7 @@ const moneySchema = z
   .regex(/^\d+(\.\d{1,2})?$/, "Expected a decimal string with up to 2 decimals");
 
 export const organizationIdSchema = z.uuid();
+export const selfCheckAssessmentIdSchema = z.uuid();
 export const invitationIdSchema = z.uuid();
 
 export const organizationRoleSchema = z.enum([

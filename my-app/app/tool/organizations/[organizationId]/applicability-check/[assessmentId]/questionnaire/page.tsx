@@ -1,4 +1,5 @@
 import { AssessmentModulePage } from "@/components/assessment-module-page";
+import { AssessmentQuestionnaire } from "@/components/organizations/assessment-questionnaire";
 import { getDictionary } from "@/lib/i18n";
 
 type AssessmentQuestionnairePageProps = {
@@ -13,6 +14,7 @@ export default async function AssessmentQuestionnairePage({
 }: AssessmentQuestionnairePageProps) {
   const dictionary = await getDictionary();
   const { organizationId, assessmentId } = await params;
+  const baseHref = `/tool/organizations/${organizationId}/applicability-check/${assessmentId}`;
 
   return (
     <AssessmentModulePage
@@ -20,24 +22,12 @@ export default async function AssessmentQuestionnairePage({
       assessmentId={assessmentId}
       title={dictionary.sidebar.questionnaire}
     >
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-foreground">Eingaben</h2>
-          <ul className="flex flex-col gap-1">
-            <li>Branchenauswahl</li>
-            <li>Mitarbeiteranzahl</li>
-            <li>Umsatz/Bilanzsumme</li>
-            <li>Kritische Dienstleistungen</li>
-          </ul>
-        </section>
-        <section className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold text-foreground">Erklaerung</h2>
-          <p>
-            Die spaetere Auswertung beantwortet: Warum ist mein Unternehmen
-            betroffen?
-          </p>
-        </section>
-      </div>
+      <AssessmentQuestionnaire
+        apiBasePath={`/api/organizations/${organizationId}/assessments/${assessmentId}`}
+        questionnaireHref={`${baseHref}/questionnaire`}
+        resultHref={`${baseHref}/result`}
+        labels={dictionary.guestCheck.questionnaire}
+      />
     </AssessmentModulePage>
   );
 }

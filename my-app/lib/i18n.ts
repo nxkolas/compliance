@@ -155,12 +155,12 @@ const dictionaries = {
       noChats: "Noch keine Chats.",
       emptyTitle: "NIS2- oder BSIG-Frage stellen",
       emptyDescription:
-        "Der Assistent nutzt Organisationsdaten und optional angehÃ¤ngte Dokumente in diesem Chat.",
-      placeholder: "Frage zu Betroffenheit, Pflichten, Nachweisen oder Massnahmen...",
-      attach: "Dokument anhÃ¤ngen",
-      attachments: "AnhÃ¤nge",
+        "Der Assistent nutzt Organisationsdaten und optional angehängte Dokumente in diesem Chat.",
+      placeholder: "Frage zu Betroffenheit, Pflichten, Nachweisen oder Maßnahmen...",
+      attach: "Dokument anhängen",
+      attachments: "Anhänge",
       removeAttachment: "Anhang entfernen",
-      uploadedFileMessage: "Bitte analysiere die angehÃ¤ngten Dokumente",
+      uploadedFileMessage: "Bitte analysiere die angehängten Dokumente",
       uploading: "Dokumente werden hochgeladen",
       retry: "Erneut versuchen",
       stop: "Stoppen",
@@ -343,7 +343,7 @@ const dictionaries = {
     modules: {
       dashboardTitle: "Dashboard",
       dashboardDescription:
-        "Uebersicht für den NIS2 Compliance Checker. Von hier aus führen die ersten Schritte zur Betroffenheitsprüfung, Requirements-Erfassung, Risikomanagement, Lieferkettenbewertung und Registrierung.",
+        "Übersicht für den NIS2 Compliance Checker. Von hier aus führen die ersten Schritte zur Betroffenheitsprüfung, Requirements-Erfassung, Risikomanagement, Lieferkettenbewertung und Registrierung.",
       dashboard: {
         title: "NIS2 COMPLIANCE DASHBOARD",
         description:
@@ -363,6 +363,26 @@ const dictionaries = {
           { label: "Eingabebereiche", value: "4" },
           { label: "Erklärung", value: "Kurzbegründung" },
         ],
+        workflow: {
+          purposeTitle: "Zweck",
+          purposeDescription:
+            "Prüfen, ob das Unternehmen unter NIS2 fällt.",
+          inputsTitle: "Eingaben",
+          inputs: [
+            "Branchenauswahl",
+            "Mitarbeiteranzahl",
+            "Umsatz/Bilanzsumme",
+            "Kritische Dienstleistungen",
+          ],
+          openQuestionnaire: "Fragebogen öffnen",
+          resultTitle: "Ergebnis",
+          results: [
+            "Betroffen",
+            "Möglicherweise betroffen",
+            "Aktuell nicht betroffen",
+          ],
+          viewResult: "Ergebnis ansehen",
+        },
       },
       actionPlan: {
         title: "Maßnahmenplan",
@@ -455,7 +475,7 @@ const dictionaries = {
       requirementsDescription:
         "Platzhalter für Requirements Engineering aus Recherche, Interview-Leitfäden und Unternehmensinterviews.",
       riskManagementDescription:
-        "Platzhalter für die Dokumentation technischer und organisatorischer Massnahmen aus den Risikomanagementbereichen des BSIG.",
+        "Platzhalter für die Dokumentation technischer und organisatorischer Maßnahmen aus den Risikomanagementbereichen des BSIG.",
       suppliersDescription:
         "Platzhalter für Supply-Chain-Risk-Mapping und die spätere Erfassung direkter Zulieferer und Dienstleister.",
       registrationDescription:
@@ -494,7 +514,7 @@ const dictionaries = {
         notesPlaceholder: "Optionale Anmerkungen",
         showResult: "Ergebnis anzeigen",
         recalculateResult: "Ergebnis neu berechnen",
-        backToPreviousResult: "Zurück zum vorherigen Ergebnis",
+        backToResult: "Zurück zum Ergebnis",
         calculating: "Ergebnis wird berechnet...",
         disclaimer:
           "Der Schnellcheck ist eine unverbindliche Erstorientierung und ersetzt keine rechtliche Beratung.",
@@ -652,7 +672,7 @@ const dictionaries = {
         {
           label: "Risk management",
           description:
-            "Dokumentieren Sie Massnahmen für Governance, Technik und Organisation.",
+            "Dokumentieren Sie Maßnahmen für Governance, Technik und Organisation.",
           tag: "Kontrolle",
         },
         {
@@ -1007,6 +1027,26 @@ const dictionaries = {
           { label: "Input areas", value: "4" },
           { label: "Explanation", value: "Short rationale" },
         ],
+        workflow: {
+          purposeTitle: "Purpose",
+          purposeDescription:
+            "Check whether the organization falls under NIS2.",
+          inputsTitle: "Inputs",
+          inputs: [
+            "Sector selection",
+            "Employee count",
+            "Revenue/balance sheet total",
+            "Critical services",
+          ],
+          openQuestionnaire: "Open questionnaire",
+          resultTitle: "Result",
+          results: [
+            "Affected",
+            "Possibly affected",
+            "Currently not affected",
+          ],
+          viewResult: "View result",
+        },
       },
       actionPlan: {
         title: "Action plan",
@@ -1137,7 +1177,7 @@ const dictionaries = {
         notesPlaceholder: "Optional notes",
         showResult: "Show result",
         recalculateResult: "Recalculate result",
-        backToPreviousResult: "Back to previous result",
+        backToResult: "Back to result",
         calculating: "Calculating result...",
         disclaimer:
           "The quick check provides non-binding initial guidance and does not replace legal advice.",

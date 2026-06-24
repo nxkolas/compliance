@@ -17,6 +17,26 @@ export function calculateProgress(
   return Math.round((completed / requiredQuestionIds.length) * 100);
 }
 
+export function isMeaningfulAnswerValue(
+  value: unknown,
+  questionType?: string,
+) {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) {
+    return (
+      value.length > 0 &&
+      value.every(
+        (entry) => typeof entry === "string" && entry.trim().length > 0,
+      )
+    );
+  }
+
+  return questionType === "boolean";
+}
+
 export function evaluateQuickCheck(
   answers: QuickCheckAnswerMap,
 ): QuickCheckResult {
