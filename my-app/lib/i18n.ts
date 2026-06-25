@@ -88,6 +88,8 @@ const dictionaries = {
       saving: "Wird gespeichert...",
       saveNewPassword: "Neues Passwort speichern",
       errorFallback: "Ein Fehler ist aufgetreten",
+      invalidCredentials:
+        "E-Mail-Adresse oder Passwort ist nicht korrekt. Bitte prüfen Sie Ihre Eingabe.",
       sorryTitle: "Entschuldigung, etwas ist schiefgelaufen.",
       codeError: "Code-Fehler",
       unspecifiedError: "Ein unbekannter Fehler ist aufgetreten.",
@@ -758,6 +760,8 @@ const dictionaries = {
       saving: "Saving...",
       saveNewPassword: "Save new password",
       errorFallback: "An error occurred",
+      invalidCredentials:
+        "Email address or password is incorrect. Please check your input.",
       sorryTitle: "Sorry, something went wrong.",
       codeError: "Code error",
       unspecifiedError: "An unspecified error occurred.",
