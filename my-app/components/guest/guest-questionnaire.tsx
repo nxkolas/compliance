@@ -72,7 +72,11 @@ export function GuestQuestionnaire({
       cache: "no-store",
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(labels.notFound);
+    if (!response.ok) {
+      throw new Error(
+        typeof payload?.error === "string" ? payload.error : labels.notFound,
+      );
+    }
     setAssessment(payload.assessment);
     setValues(getInitialValues(payload.assessment));
   }, [labels.notFound, resolvedApiBasePath]);

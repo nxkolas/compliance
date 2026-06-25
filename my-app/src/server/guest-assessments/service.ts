@@ -484,7 +484,7 @@ async function authorizeGuestAssessment(
 
   const ownsSession =
     session.anonymousUserId === user.id || session.claimedByUserId === user.id;
-  if (!ownsSession || !matchesToken(session.claimTokenHash, claimToken)) {
+  if (!ownsSession && !matchesToken(session.claimTokenHash, claimToken)) {
     throw new ApiError(404, "Guest assessment not found");
   }
   return session;
