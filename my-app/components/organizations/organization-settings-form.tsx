@@ -10,13 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
 import type { OrganizationDto } from "@/src/server/organizations/types";
@@ -34,9 +27,7 @@ type OrganizationSettingsFormProps = {
 type OrganizationFormState = {
   name: string;
   legalName: string;
-  employeeCount: string;
-  size: "" | "micro" | "small" | "medium" | "large";
-  countryCode: string;
+  country: string;
 };
 
 type RequestState = {
@@ -64,10 +55,7 @@ export function OrganizationSettingsForm({
   const [form, setForm] = useState<OrganizationFormState>({
     name: organization.name,
     legalName: organization.legalName ?? "",
-    employeeCount:
-      organization.employeeCount === null ? "" : String(organization.employeeCount),
-    size: organization.size ?? "",
-    countryCode: organization.countryCode ?? "DE",
+    country: organization.country ?? "DE",
   });
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<RequestState>({
@@ -89,9 +77,7 @@ export function OrganizationSettingsForm({
         body: JSON.stringify({
           name: form.name,
           legalName: form.legalName || null,
-          employeeCount: form.employeeCount ? Number(form.employeeCount) : null,
-          size: form.size || null,
-          countryCode: form.countryCode || "DE",
+          country: form.country || "DE",
         }),
       });
 
@@ -179,63 +165,19 @@ export function OrganizationSettingsForm({
                 }
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_0.8fr_0.55fr]">
-              <div className="grid gap-2">
-                <Label htmlFor="employee-count">{labels.employees}</Label>
-                <Input
-                  id="employee-count"
-                  inputMode="numeric"
-                  min={0}
-                  type="number"
-                  value={form.employeeCount}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      employeeCount: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="organization-size">{labels.size}</Label>
-                <Select
-                  value={form.size || "unknown"}
-                  onValueChange={(value) =>
-                    setForm((current) => ({
-                      ...current,
-                      size:
-                        value === "unknown"
-                          ? ""
-                          : (value as OrganizationFormState["size"]),
-                    }))
-                  }
-                >
-                  <SelectTrigger id="organization-size">
-                    <SelectValue placeholder={labels.sizeOptions.unknown} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unknown">{labels.sizeOptions.unknown}</SelectItem>
-                    <SelectItem value="micro">{labels.sizeOptions.micro}</SelectItem>
-                    <SelectItem value="small">{labels.sizeOptions.small}</SelectItem>
-                    <SelectItem value="medium">{labels.sizeOptions.medium}</SelectItem>
-                    <SelectItem value="large">{labels.sizeOptions.large}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="country-code">{labels.country}</Label>
-                <Input
-                  id="country-code"
-                  maxLength={2}
-                  value={form.countryCode}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      countryCode: event.target.value.toUpperCase(),
-                    }))
-                  }
-                />
-              </div>
+            <div className="grid gap-2 sm:max-w-40">
+              <Label htmlFor="country">{labels.country}</Label>
+              <Input
+                id="country"
+                maxLength={2}
+                value={form.country}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    country: event.target.value.toUpperCase(),
+                  }))
+                }
+              />
             </div>
             <Button type="submit" disabled={isSaving}>
               {isSaving ? <Loader2 className="animate-spin" /> : <Save />}

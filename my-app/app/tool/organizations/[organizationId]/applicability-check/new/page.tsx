@@ -1,45 +1,48 @@
-import { AssessmentCreateForm } from "@/components/organizations/assessment-create-form";
-import { getDictionary } from "@/lib/i18n";
+import { ApplicabilityQuestionnaireForm } from "@/components/applicability-check/applicability-questionnaire-form";
+import { PageHeader } from "@/components/page-header";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getOrganizationForUser } from "@/src/server/organizations/service";
-import { notFound } from "next/navigation";
+import { getApplicabilityQuestionnaireForUser } from "@/src/server/applicability-check/service";
 import { connection } from "next/server";
 
-type NewAssessmentPageProps = {
+type NewApplicabilityCheckPageProps = {
   params: Promise<{
     organizationId: string;
   }>;
 };
 
-export default async function NewAssessmentPage({
+export default async function NewApplicabilityCheckPage({
   params,
-}: NewAssessmentPageProps) {
+}: NewApplicabilityCheckPageProps) {
   await connection();
   const user = await requireAuth();
-  const { organizationId } = await params;
   const dictionary = await getDictionary();
-  const organization = await getOrganizationForUser(user.id, organizationId);
-
-  if (!organization) {
-    notFound();
-  }
+  const locale = await getLocale();
+  const { organizationId } = await params;
+  const questionnaire = await getApplicabilityQuestionnaireForUser(
+    user.id,
+    organizationId,
+    locale,
+  );
 
   return (
-    <div className="flex w-full flex-col gap-8">
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">
-            {dictionary.assessment.newTitle}
-          </h1>
-          <p className="max-w-2xl text-muted-foreground">
-            {dictionary.assessment.newDescription} {organization.name}.
-          </p>
-        </div>
-      </section>
-      <AssessmentCreateForm
-        organizationId={organization.id}
-        labels={dictionary.assessment}
+    <section className="flex w-full flex-col gap-8">
+      <PageHeader
+        title={dictionary.modules.applicabilityCheck.title}
+        subtitle={dictionary.modules.applicabilityCheck.description}
       />
-    </div>
+
+      {questionnaire ? (
+        <ApplicabilityQuestionnaireForm
+          organizationId={organizationId}
+          questionnaire={questionnaire}
+          labels={dictionary.modules.applicabilityCheck.form}
+        />
+      ) : (
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground shadow-sm">
+          {dictionary.modules.applicabilityCheck.questionnaire.notSeeded}
+        </div>
+      )}
+    </section>
   );
 }

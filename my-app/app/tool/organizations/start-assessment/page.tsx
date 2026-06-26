@@ -1,29 +1,41 @@
 import { AppShell } from "@/components/app-shell";
-import { OrganizationAssessmentDestination } from "@/components/organizations/organization-assessment-destination";
+import { ProductModuleContent } from "@/components/product-module-content";
 import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { listOrganizationsForUser } from "@/src/server/organizations/service";
 import { connection } from "next/server";
 
 export default async function StartAssessmentPage() {
   await connection();
-  const user = await requireAuth();
+  await requireAuth();
   const dictionary = await getDictionary();
-  const organizations = await listOrganizationsForUser(user.id);
 
   return (
     <AppShell dictionary={dictionary}>
-      <OrganizationAssessmentDestination
+      <ProductModuleContent
         title={dictionary.assessment.newTitle}
-        description={dictionary.organizations.selectDescription}
-        newOrganizationHref="/tool/organizations/new?next=assessment"
-        organizations={organizations}
-        labels={{
-          assessment: dictionary.assessment,
-          common: dictionary.common,
-          organizations: dictionary.organizations,
-        }}
-        action={{ kind: "create-assessment" }}
+        description="Der Betroffenheitscheck wird nach dem Schema-Neustart als versionierter Fragebogen neu angebunden."
+        cards={[
+          {
+            title: "V1-Status",
+            description:
+              "Organisationen, Mitgliedschaften und Einladungen sind aktiv.",
+            items: [
+              "Neue Organisation erstellen",
+              "Teammitglieder einladen",
+              "Arbeitsbereich ueber die Navigation oeffnen",
+            ],
+          },
+          {
+            title: "NIS2-Schema-Phase",
+            description:
+              "Der Fragebogen bleibt als UI-Komponente erhalten und wird spaeter an das NIS2-Assessment-Modell angeschlossen.",
+            items: [
+              "NIS2 Version 2026-v1",
+              "Questionnaire-Versionen",
+              "Assessment-Revisions",
+            ],
+          },
+        ]}
       />
     </AppShell>
   );

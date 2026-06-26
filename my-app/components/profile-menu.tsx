@@ -65,20 +65,18 @@ export function ProfileMenu({
     <>
       {variant === "sidebar" ? (
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <SidebarMenuButton
-                size="lg"
-                aria-label={labels.profile.openMenu}
-                className="h-auto gap-3 px-3 pt-[14.5px] pb-[13.5px] data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground"
-              >
-                <UserRound className="size-5 shrink-0" />
-                <span className="truncate">
-                  {labels.sidebar?.profile ?? labels.common.account}
-                </span>
-              </SidebarMenuButton>
-            }
-          />
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              aria-label={labels.profile.openMenu}
+              className="h-auto gap-3 px-3 pt-[14.5px] pb-[13.5px] data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
+              <UserRound className="size-5 shrink-0" />
+              <span className="truncate">
+                {labels.sidebar?.profile ?? labels.common.account}
+              </span>
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
           <ProfileMenuContent
             email={email}
             locale={locale}
@@ -88,18 +86,16 @@ export function ProfileMenu({
         </DropdownMenu>
       ) : (
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full"
-                aria-label={labels.profile.openMenu}
-              >
-                <UserRound className="h-4 w-4" />
-              </Button>
-            }
-          />
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full"
+              aria-label={labels.profile.openMenu}
+            >
+              <UserRound className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <ProfileMenuContent
             email={email}
             locale={locale}
@@ -129,14 +125,12 @@ function ProfileMenuContent({
       <DropdownMenuGroup>
         <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          render={
-            <Link href="/tool/inbox">
-              <Inbox className="size-4" />
-              {labels.sidebar?.inbox ?? labels.common.inbox}
-            </Link>
-          }
-        />
+        <DropdownMenuItem asChild>
+          <Link href="/tool/inbox">
+            <Inbox className="size-4" />
+            {labels.sidebar?.inbox ?? labels.common.inbox}
+          </Link>
+        </DropdownMenuItem>
         <LanguageSwitcher
           locale={locale}
           label={labels.common.language}
@@ -144,15 +138,12 @@ function ProfileMenuContent({
         />
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
-      <DropdownMenuItem
-        nativeButton
-        render={
-          <LogoutButton variant="ghost" className="w-full justify-start">
-            <LogOut className="size-4" />
-            {labels.common.logout}
-          </LogoutButton>
-        }
-      />
+      <DropdownMenuItem asChild>
+        <LogoutButton variant="ghost" className="w-full justify-start">
+          <LogOut className="size-4" />
+          {labels.common.logout}
+        </LogoutButton>
+      </DropdownMenuItem>
     </DropdownMenuContent>
   );
 }

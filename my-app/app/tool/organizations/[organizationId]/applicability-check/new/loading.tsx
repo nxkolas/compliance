@@ -1,5 +1,5 @@
-import { AppFormContentSkeleton } from "@/components/navigation-loading";
+import { OrganizationModulePageSkeleton } from "@/components/navigation-loading";
 
-export default function Loading() {
-  return <AppFormContentSkeleton />;
+export default function NewApplicabilityCheckLoading() {
+  return <OrganizationModulePageSkeleton />;
 }

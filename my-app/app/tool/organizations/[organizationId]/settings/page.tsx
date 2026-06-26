@@ -6,9 +6,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getOrganizationForUser } from "@/src/server/organizations/service";
+import {
+  getOrganizationForUser,
+  listCurrentOrganizationFactsForUser,
+} from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
@@ -24,12 +27,20 @@ export default async function OrganizationSettingsPage({
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
+  const locale = await getLocale();
   const { organizationId } = await params;
   const organization = await getOrganizationForUser(user.id, organizationId);
 
   if (!organization) {
     notFound();
   }
+
+  const organizationFacts = await listCurrentOrganizationFactsForUser(
+    user.id,
+    organizationId,
+    locale,
+  );
+  const settingsLabels = dictionary.organizationSettings;
 
   return (
     <div className="flex w-full flex-col gap-8">
@@ -45,50 +56,89 @@ export default async function OrganizationSettingsPage({
         organization={serializeForClient(organization)}
         labels={dictionary.organizationForm}
       />
-      <section className="grid gap-4 md:grid-cols-2">
-        {[
-          {
-            title: dictionary.organizationSettings.accountTitle,
-            description: "Login, E-Mail und Kontoangaben bleiben in Supabase Auth.",
-            items: dictionary.organizationSettings.accountItems,
-          },
-          {
-            title: dictionary.organizationSettings.languageTitle,
-            description: "Die Spracheinstellung wird spaeter pro Nutzer gespeichert.",
-            items: dictionary.organizationSettings.languageItems,
-          },
-          {
-            title: dictionary.organizationSettings.notificationsTitle,
-            description: "Organisationweite und persoenliche Hinweise sind vorgesehen.",
-            items: dictionary.organizationSettings.notificationItems,
-          },
-          {
-            title: dictionary.organizationSettings.privacyTitle,
-            description: "Datenschutz- und Aufbewahrungseinstellungen werden separat abgebildet.",
-            items: dictionary.organizationSettings.privacyItems,
-          },
-        ].map((section) => (
-          <Card key={section.title} className="rounded-lg shadow-sm">
-            <CardHeader>
-              <CardTitle>{section.title}</CardTitle>
-              <CardDescription>{section.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
-                {section.items.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/50" />
-                    <span>{item}</span>
-                  </li>
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <Card className="rounded-lg shadow-sm">
+          <CardHeader>
+            <CardTitle>{settingsLabels.factsTitle}</CardTitle>
+            <CardDescription>{settingsLabels.factsDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {organizationFacts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {settingsLabels.factsEmpty}
+              </p>
+            ) : (
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {organizationFacts.map((fact) => (
+                  <div
+                    key={fact.id}
+                    className="rounded-md border bg-muted/20 px-4 py-3"
+                  >
+                    <dt className="text-sm font-medium">
+                      {fact.definition.label}
+                    </dt>
+                    <dd className="mt-1 break-words text-sm text-muted-foreground">
+                      {fact.valueLabel ??
+                        formatFactValue(fact.value, settingsLabels)}
+                    </dd>
+                    <dd className="mt-2 text-xs text-muted-foreground">
+                      {settingsLabels.sourceLabel}: {fact.sourceType}
+                    </dd>
+                  </div>
                 ))}
-              </ul>
-            </CardContent>
-          </Card>
-        ))}
+              </dl>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="rounded-lg shadow-sm">
+          <CardHeader>
+            <CardTitle>{settingsLabels.frameworkTitle}</CardTitle>
+            <CardDescription>
+              {settingsLabels.frameworkDescription}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border bg-muted/20 px-4 py-3">
+              <p className="text-sm text-muted-foreground">
+                {settingsLabels.activeFrameworkLabel}
+              </p>
+              <p className="mt-1 text-lg font-semibold">
+                {settingsLabels.activeFrameworkValue}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </div>
   );
 }
+
+function formatFactValue(
+  value: unknown,
+  labels: OrganizationSettingsLabels,
+): string {
+  if (typeof value === "boolean") {
+    return value ? labels.booleanTrue : labels.booleanFalse;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => formatFactValue(item, labels)).join(", ");
+  }
+
+  if (value && typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return labels.unsetValue;
+}
+
+type OrganizationSettingsLabels = Awaited<
+  ReturnType<typeof getDictionary>
+>["organizationSettings"];
 
 function serializeForClient<T>(value: T): JSONValue<T> {
   return JSON.parse(JSON.stringify(value)) as JSONValue<T>;

@@ -1,7 +1,18 @@
-import { OrganizationAssessmentWorkspace } from "@/components/organizations/organization-assessment-workspace";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { listSelfCheckAssessmentsForOrganization } from "@/src/server/organizations/service";
+import { getApplicabilityOverviewForUser } from "@/src/server/applicability-check/service";
+import { ArrowRight, ClipboardList, FileText, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 type ApplicabilityCheckPageProps = {
@@ -18,48 +29,112 @@ export default async function ApplicabilityCheckPage({
   const dictionary = await getDictionary();
   const locale = await getLocale();
   const { organizationId } = await params;
-  const assessments = await listSelfCheckAssessmentsForOrganization(
+  const overview = await getApplicabilityOverviewForUser(
     user.id,
     organizationId,
   );
 
+  if (!overview) {
+    redirect(`/tool/organizations/${organizationId}/applicability-check/new`);
+  }
+
+  const baseHref = `/tool/organizations/${organizationId}/applicability-check`;
+  const outcome = overview.result?.result.outcome ?? "possibly_affected";
+  const labels = dictionary.modules.applicabilityCheck.overview;
+  const resultLabel =
+    locale === "en"
+      ? overview.result?.result.labelEn ?? overview.result?.result.label
+      : overview.result?.result.label;
+
   return (
-    <div className="flex w-full flex-col gap-8">
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">
-            {dictionary.modules.applicabilityCheck.title}
-          </h1>
-          <p className="max-w-2xl text-muted-foreground">
-            {dictionary.modules.applicabilityCheck.description}
+    <section className="flex w-full flex-col gap-8">
+      <PageHeader
+        title={dictionary.modules.applicabilityCheck.title}
+        subtitle={dictionary.modules.applicabilityCheck.description}
+      />
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-md border bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">{labels.resultMetric}</p>
+          <p className="mt-1 text-xl font-semibold">
+            {resultLabel ?? labels.pending}
           </p>
         </div>
-      </section>
-      <OrganizationAssessmentWorkspace
-        organizationId={organizationId}
-        initialAssessments={serializeForClient(assessments)}
-        labels={{
-          assessment: dictionary.assessment,
-          common: dictionary.common,
-        }}
-        locale={locale}
-      />
-    </div>
+        <div className="rounded-md border bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">
+            {labels.revisionMetric}
+          </p>
+          <p className="mt-1 text-xl font-semibold">
+            {overview.assessmentRevisionNumber}
+          </p>
+        </div>
+        <div className="rounded-md border bg-card px-4 py-3">
+          <p className="text-sm text-muted-foreground">{labels.statusMetric}</p>
+          <p className="mt-1 text-xl font-semibold">
+            {formatOutcome(outcome, labels.outcomes)}
+          </p>
+        </div>
+      </div>
+
+      <Card className="rounded-lg shadow-sm">
+        <CardHeader>
+          <CardTitle>{labels.currentTitle}</CardTitle>
+          <CardDescription>
+            {labels.lastCalculation}:{" "}
+            {overview.submittedAt
+              ? new Intl.DateTimeFormat(locale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(overview.submittedAt))
+              : labels.noDate}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            {overview.result?.result.reasons.join(" ") ?? labels.noResult}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href={`${baseHref}/result`}>
+                <FileText />
+                {labels.viewResult}
+                <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={`${baseHref}/answers`}>
+                <ClipboardList />
+                {labels.viewAnswers}
+              </Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href={`${baseHref}/new`}>
+                <RefreshCw />
+                {labels.recalculate}
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
-function serializeForClient<T>(value: T): JSONValue<T> {
-  return JSON.parse(JSON.stringify(value)) as JSONValue<T>;
-}
+function formatOutcome(
+  outcome: string,
+  labels: {
+    affected: string;
+    possiblyAffected: string;
+    notAffected: string;
+  },
+) {
+  if (outcome === "affected") {
+    return labels.affected;
+  }
 
-type JSONValue<T> = T extends null
-  ? null
-  : T extends Date
-    ? string
-    : T extends Date | null
-      ? string | null
-      : T extends Array<infer U>
-        ? Array<JSONValue<U>>
-        : T extends object
-          ? { [K in keyof T]: JSONValue<T[K]> }
-          : T;
+  if (outcome === "not_affected") {
+    return labels.notAffected;
+  }
+
+  return labels.possiblyAffected;
+}

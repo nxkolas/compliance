@@ -15,11 +15,6 @@ version: "optional version label"
 Reference text to embed and cite.
 ```
 
-Run:
-
-```bash
-npm run ai:ingest-references
-```
-
-The script replaces an existing reference document with the same `sourceUrl` and
-indexes the current file contents into `ai_document_chunks`.
+Reference ingestion is disabled in the org-only v1 schema because the AI
+document and chunk tables have been removed. Reintroduce ingestion when the new
+document/artifact schema is added.

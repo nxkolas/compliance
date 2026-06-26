@@ -96,16 +96,8 @@ export default async function OrganizationsPage() {
                 <CardContent className="grid gap-4">
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="rounded-md border px-2 py-1">
-                      {organization.size ?? dictionary.common.sizeUnknown}
+                      {organization.country ?? "DE"}
                     </span>
-                    <span className="rounded-md border px-2 py-1">
-                      {organization.countryCode ?? "DE"}
-                    </span>
-                    {organization.employeeCount !== null && (
-                      <span className="rounded-md border px-2 py-1">
-                        {organization.employeeCount} {dictionary.common.employees}
-                      </span>
-                    )}
                   </div>
                   <Button asChild variant="outline" className="justify-self-start">
                     <Link href={`/tool/organizations/${organization.id}`}>

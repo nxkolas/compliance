@@ -53,11 +53,7 @@ Request:
 {
   "name": "Example GmbH",
   "legalName": "Example GmbH",
-  "employeeCount": 85,
-  "annualRevenueEur": "12000000.00",
-  "balanceSheetTotalEur": "8000000.00",
-  "size": "medium",
-  "countryCode": "DE"
+  "country": "DE"
 }
 ```
 
@@ -160,9 +156,10 @@ Response:
 - Only a SHA-256 token hash is stored in the database.
 - Invitations expire after 14 days by default.
 - `expiresInDays` must be between 1 and 90.
-- Accepting an invitation creates an `organization_members` row.
+- Accepting an invitation creates or reactivates an `organization_memberships`
+  row.
 - Accepting an invitation is idempotent for already-existing memberships because
-  the insert uses `onConflictDoNothing`.
+  the upsert sets the invited role and `active` status.
 
 ## Error Shapes
 
@@ -197,8 +194,8 @@ await fetch("/api/organizations", {
   },
   body: JSON.stringify({
     name: "Example GmbH",
-    employeeCount: 85,
-    size: "medium",
+    legalName: "Example GmbH",
+    country: "DE",
   }),
 });
 ```
