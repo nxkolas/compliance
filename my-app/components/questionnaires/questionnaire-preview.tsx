@@ -2,12 +2,13 @@
 
 import { Progress } from "@/components/ui/progress";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import type { Locale } from "@/lib/i18n-config";
 import { CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -51,6 +52,7 @@ const labels = {
     answered: "beantwortet",
     of: "von",
     selectPlaceholder: "Branche auswählen",
+    noResults: "Keine Treffer",
     required: "Pflichtfrage",
   },
   en: {
@@ -58,6 +60,7 @@ const labels = {
     answered: "answered",
     of: "of",
     selectPlaceholder: "Select sector",
+    noResults: "No results",
     required: "Required question",
   },
 } as const;
@@ -148,6 +151,12 @@ function QuestionBlock({
     question.helpText;
   const control = getControl(question.config);
   const renderAsSelect = control === "select" || question.options.length > 6;
+  const comboboxOptions = question.options.map((option) => ({
+    value: option.stableValue,
+    label: getOptionLabel(option, locale),
+  }));
+  const selectedComboboxOption =
+    comboboxOptions.find((option) => option.value === answer) ?? null;
 
   return (
     <article className="rounded-lg border bg-card p-5 shadow-sm">
@@ -175,18 +184,28 @@ function QuestionBlock({
           </div>
 
           {renderAsSelect ? (
-            <Select value={answer} onValueChange={onChange}>
-              <SelectTrigger className="h-11 max-w-xl">
-                <SelectValue placeholder={copy.selectPlaceholder} />
-              </SelectTrigger>
-              <SelectContent>
-                {question.options.map((option) => (
-                  <SelectItem key={option.id} value={option.stableValue}>
-                    {getOptionLabel(option, locale)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              items={comboboxOptions}
+              value={selectedComboboxOption}
+              onValueChange={(option) => onChange(option?.value ?? "")}
+              isItemEqualToValue={(item, value) => item.value === value.value}
+            >
+              <ComboboxInput
+                className="h-11 max-w-xl"
+                placeholder={copy.selectPlaceholder}
+                showClear={Boolean(answer)}
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>{copy.noResults}</ComboboxEmpty>
+                <ComboboxList>
+                  {(option: (typeof comboboxOptions)[number]) => (
+                    <ComboboxItem key={option.value} value={option}>
+                      {option.label}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           ) : (
             <div className="grid gap-2 sm:grid-cols-3">
               {question.options.map((option) => {
