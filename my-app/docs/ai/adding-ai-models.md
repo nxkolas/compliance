@@ -161,13 +161,10 @@ Every embedding model used in the same deployment must return that dimension. If
 
 ## Reference Ingestion
 
-Curated reference ingestion uses the default provider:
-
-```bash
-npm run ai:ingest-references
-```
-
-After changing embedding models or dimensions, re-ingest references and any uploaded test documents so stored vectors match the active model.
+Reference ingestion is disabled in the org-only v1 schema because the AI
+document tables are not active. When document storage returns, curated reference
+ingestion should use the selected embedding provider and re-index stored
+references after embedding model or dimension changes.
 
 ## Verification
 

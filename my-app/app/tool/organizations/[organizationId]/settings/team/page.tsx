@@ -68,16 +68,8 @@ export default async function OrganizationTeamPage({
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
           <span className="rounded-md border px-2.5 py-1">
-            {organization.size ?? dictionary.common.sizeUnknown}
+            {organization.country ?? "DE"}
           </span>
-          <span className="rounded-md border px-2.5 py-1">
-            {organization.countryCode ?? "DE"}
-          </span>
-          {organization.employeeCount !== null && (
-            <span className="rounded-md border px-2.5 py-1">
-              {organization.employeeCount} {dictionary.common.employees}
-            </span>
-          )}
         </CardContent>
       </Card>
 

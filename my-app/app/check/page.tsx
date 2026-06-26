@@ -1,8 +1,6 @@
 import { GuestShell } from "@/components/guest/guest-shell";
-import { GuestStartForm } from "@/components/guest/guest-start-form";
 import { getDictionary } from "@/lib/i18n";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 export default function GuestCheckPage() {
@@ -14,37 +12,19 @@ export default function GuestCheckPage() {
 }
 
 async function GuestCheckContent() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user && !user.is_anonymous) {
-    redirect("/tool/organizations/start-assessment");
-  }
-
-  const dictionary = await getDictionary();
-  const labels = dictionary.guestCheck;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const projectRef = supabaseUrl
-    ? new URL(supabaseUrl).hostname.split(".")[0]
-    : undefined;
+  await connection();
+  const labels = (await getDictionary()).guestCheck;
 
   return (
     <GuestShell
       title={labels.start.title}
-      description={labels.start.description}
+      description="Der oeffentliche Schnellcheck ist im org-only Schema voruebergehend deaktiviert."
       labels={labels.shell}
     >
-      <GuestStartForm
-        labels={labels.start}
-        turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-        supabaseAuthSettingsUrl={
-          projectRef
-            ? `https://supabase.com/dashboard/project/${projectRef}/auth/providers`
-            : undefined
-        }
-      />
+      <div className="rounded-2xl border border-white/15 bg-[#111522]/95 p-8 text-white/70">
+        Organisationen, Mitgliedschaften und Einladungen sind aktiv. Der
+        Fragebogen wird mit dem neuen versionierten Schema wieder verbunden.
+      </div>
     </GuestShell>
   );
 }

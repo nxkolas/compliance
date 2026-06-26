@@ -1,51 +1,36 @@
 import { db } from "@/src/db";
 import {
   organizationInvitations,
-  organizationMembers,
+  organizationMemberships,
   organizations,
-  questionnaireAnswers,
-  questionnaireQuestions,
-  questionnaireRuns,
-  questionnaireSections,
-  questionnaireTemplates,
-  selfCheckAssessments,
 } from "@/src/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { ApiError } from "../api/errors";
-import {
-  calculateProgress,
-  evaluateQuickCheck,
-  isMeaningfulAnswerValue,
-  type QuickCheckAnswerMap,
-} from "../guest-assessments/rules";
-import type { SaveGuestAnswersInput } from "../guest-assessments/validation";
 import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
   CreateOrganizationInvitationInput,
-  CreateSelfCheckAssessmentInput,
   CreatedOrganizationInvitationDto,
   OrganizationDto,
   OrganizationInvitationDto,
   OrganizationMailboxInvitationDto,
   OrganizationRole,
-  SelfCheckAssessmentDto,
-  SelfCheckAssessmentWithOrganizationDto,
   UpdateOrganizationInput,
 } from "./types";
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
 const organizationManagerRoles: OrganizationRole[] = ["owner", "admin"];
-const applicabilityTemplateCode = "nis2_guest_quick_check";
-const applicabilityTemplateVersion = "1";
 
 export async function listOrganizationsForUser(
   userId: string,
 ): Promise<OrganizationDto[]> {
-  const memberships = await db.query.organizationMembers.findMany({
-    where: eq(organizationMembers.userId, userId),
+  const memberships = await db.query.organizationMemberships.findMany({
+    where: and(
+      eq(organizationMemberships.userId, userId),
+      eq(organizationMemberships.status, "active"),
+    ),
     with: {
       organization: true,
     },
@@ -66,21 +51,15 @@ export async function createOrganizationForUser(
       .values({
         name,
         legalName: normalizeOptionalString(input.legalName),
-        industryDescription: normalizeOptionalString(input.industryDescription),
-        employeeCount: normalizeOptionalInteger(input.employeeCount),
-        annualRevenueEur: normalizeOptionalMoney(input.annualRevenueEur),
-        balanceSheetTotalEur: normalizeOptionalMoney(
-          input.balanceSheetTotalEur,
-        ),
-        size: input.size ?? null,
-        countryCode: normalizeCountryCode(input.countryCode),
+        country: normalizeCountry(input.country),
       })
       .returning();
 
-    await tx.insert(organizationMembers).values({
+    await tx.insert(organizationMemberships).values({
       organizationId: organization.id,
       userId,
       role: "owner",
+      status: "active",
     });
 
     return organization;
@@ -100,16 +79,15 @@ export async function updateOrganizationForUser(
     .set({
       name,
       legalName: normalizeOptionalString(input.legalName),
-      industryDescription: normalizeOptionalString(input.industryDescription),
-      employeeCount: normalizeOptionalInteger(input.employeeCount),
-      annualRevenueEur: normalizeOptionalMoney(input.annualRevenueEur),
-      balanceSheetTotalEur: normalizeOptionalMoney(input.balanceSheetTotalEur),
-      size: input.size ?? null,
-      countryCode: normalizeCountryCode(input.countryCode),
+      country: normalizeCountry(input.country),
       updatedAt: new Date(),
     })
     .where(eq(organizations.id, organizationId))
     .returning();
+
+  if (!organization) {
+    throw new ApiError(404, "Organization not found");
+  }
 
   return organization;
 }
@@ -118,10 +96,11 @@ export async function getOrganizationForUser(
   userId: string,
   organizationId: string,
 ): Promise<OrganizationDto | null> {
-  const membership = await db.query.organizationMembers.findFirst({
+  const membership = await db.query.organizationMemberships.findFirst({
     where: and(
-      eq(organizationMembers.userId, userId),
-      eq(organizationMembers.organizationId, organizationId),
+      eq(organizationMemberships.userId, userId),
+      eq(organizationMemberships.organizationId, organizationId),
+      eq(organizationMemberships.status, "active"),
     ),
     with: {
       organization: true,
@@ -129,309 +108,6 @@ export async function getOrganizationForUser(
   });
 
   return membership?.organization ?? null;
-}
-
-export async function listSelfCheckAssessmentsForOrganization(
-  userId: string,
-  organizationId: string,
-): Promise<SelfCheckAssessmentDto[]> {
-  await assertCanAccessOrganization(userId, organizationId);
-
-  return db.query.selfCheckAssessments.findMany({
-    where: eq(selfCheckAssessments.organizationId, organizationId),
-    orderBy: (assessment, { desc }) => [desc(assessment.createdAt)],
-  });
-}
-
-export async function createSelfCheckAssessmentForOrganization(
-  userId: string,
-  organizationId: string,
-  input: CreateSelfCheckAssessmentInput,
-): Promise<SelfCheckAssessmentDto> {
-  await assertCanAccessOrganization(userId, organizationId);
-  const template = await getActiveApplicabilityTemplate();
-
-  const assessment = await db.transaction(async (tx) => {
-    const [createdAssessment] = await tx
-      .insert(selfCheckAssessments)
-      .values({
-        organizationId,
-        performedByUserId: userId,
-        title: normalizeRequiredString(input.title, "title"),
-        status: "draft",
-        category: "unknown",
-      })
-      .returning();
-
-    await tx.insert(questionnaireRuns).values({
-      organizationId,
-      templateId: template.id,
-      selfCheckAssessmentId: createdAssessment.id,
-      performedByUserId: userId,
-      status: "draft",
-      result: "unknown",
-      progress: 0,
-    });
-
-    return createdAssessment;
-  });
-
-  return assessment;
-}
-
-export async function getSelfCheckAssessmentForUser(
-  userId: string,
-  assessmentId: string,
-): Promise<SelfCheckAssessmentWithOrganizationDto | null> {
-  const assessment = await db.query.selfCheckAssessments.findFirst({
-    where: eq(selfCheckAssessments.id, assessmentId),
-    with: {
-      organization: true,
-    },
-  });
-
-  if (!assessment) {
-    return null;
-  }
-
-  await assertCanAccessOrganization(userId, assessment.organizationId);
-
-  return {
-    ...assessment,
-    organization: assessment.organization,
-  };
-}
-
-export async function getSelfCheckQuestionnaireForUser(
-  userId: string,
-  assessmentId: string,
-) {
-  const assessment = await getSelfCheckAssessmentForUser(userId, assessmentId);
-
-  if (!assessment) {
-    throw new ApiError(404, "Assessment not found");
-  }
-
-  const run = await ensureSelfCheckQuestionnaireRun(
-    userId,
-    assessment.organizationId,
-    assessment.id,
-  );
-
-  const sections = [...run.template.sections]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((section) => ({
-      ...section,
-      questions: [...section.questions].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      ),
-    }));
-
-  return {
-    assessment,
-    organization: assessment.organization,
-    run: {
-      id: run.id,
-      status: run.status,
-      result: run.result,
-      progress: run.progress,
-      score: run.score,
-      summary: run.summary,
-      reasoning: run.reasoning,
-      answersSnapshot: run.answersSnapshot,
-      completedAt: run.completedAt,
-    },
-    template: {
-      id: run.template.id,
-      title: run.template.title,
-      description: run.template.description,
-      sections,
-    },
-    answers: run.answers,
-  };
-}
-
-export async function saveSelfCheckQuestionnaireAnswers(
-  userId: string,
-  assessmentId: string,
-  input: SaveGuestAnswersInput,
-) {
-  const existing = await getSelfCheckQuestionnaireForUser(userId, assessmentId);
-  const requestedIds = input.answers.map((answer) => answer.questionId);
-  const validQuestions = await db
-    .select({
-      id: questionnaireQuestions.id,
-      isRequired: questionnaireQuestions.isRequired,
-      questionType: questionnaireQuestions.questionType,
-    })
-    .from(questionnaireQuestions)
-    .innerJoin(
-      questionnaireSections,
-      eq(questionnaireQuestions.sectionId, questionnaireSections.id),
-    )
-    .where(
-      and(
-        eq(questionnaireSections.templateId, existing.template.id),
-        inArray(questionnaireQuestions.id, requestedIds),
-      ),
-    );
-
-  if (validQuestions.length !== new Set(requestedIds).size) {
-    throw new ApiError(400, "One or more questions do not belong to this questionnaire");
-  }
-
-  const questionById = new Map(
-    validQuestions.map((question) => [question.id, question]),
-  );
-  const invalidRequiredAnswers = input.answers
-    .filter((answer) => {
-      const question = questionById.get(answer.questionId);
-      return (
-        question?.isRequired &&
-        !isMeaningfulAnswerValue(answer.value, question.questionType)
-      );
-    })
-    .map((answer) => answer.questionId);
-
-  if (invalidRequiredAnswers.length > 0) {
-    throw new ApiError(400, "Please answer all required questions", {
-      missingQuestionIds: invalidRequiredAnswers,
-    });
-  }
-
-  await db.transaction(async (tx) => {
-    for (const answer of input.answers) {
-      await tx
-        .insert(questionnaireAnswers)
-        .values({
-          runId: existing.run.id,
-          questionId: answer.questionId,
-          value: { value: answer.value },
-          answeredByUserId: userId,
-        })
-        .onConflictDoUpdate({
-          target: [questionnaireAnswers.runId, questionnaireAnswers.questionId],
-          set: {
-            value: { value: answer.value },
-            answeredByUserId: userId,
-            updatedAt: new Date(),
-          },
-        });
-    }
-
-    const requiredQuestions = await tx
-      .select({
-        id: questionnaireQuestions.id,
-        questionType: questionnaireQuestions.questionType,
-      })
-      .from(questionnaireQuestions)
-      .innerJoin(
-        questionnaireSections,
-        eq(questionnaireQuestions.sectionId, questionnaireSections.id),
-      )
-      .where(
-        and(
-          eq(questionnaireSections.templateId, existing.template.id),
-          eq(questionnaireQuestions.isRequired, true),
-        ),
-      );
-    const savedAnswers = await tx
-      .select({
-        questionId: questionnaireAnswers.questionId,
-        value: questionnaireAnswers.value,
-      })
-      .from(questionnaireAnswers)
-      .where(eq(questionnaireAnswers.runId, existing.run.id));
-    const savedAnswerByQuestionId = new Map(
-      savedAnswers.map((answer) => [answer.questionId, answer.value]),
-    );
-    const progress = calculateProgress(
-      requiredQuestions.map((question) => question.id),
-      requiredQuestions
-        .filter((question) =>
-          isMeaningfulAnswerValue(
-            getStoredAnswerValue(savedAnswerByQuestionId.get(question.id)),
-            question.questionType,
-          ),
-        )
-        .map((question) => question.id),
-    );
-
-    await tx
-      .update(questionnaireRuns)
-      .set({ progress, updatedAt: new Date() })
-      .where(eq(questionnaireRuns.id, existing.run.id));
-  });
-
-  return getSelfCheckQuestionnaireForUser(userId, assessmentId);
-}
-
-export async function completeSelfCheckQuestionnaire(
-  userId: string,
-  assessmentId: string,
-) {
-  const existing = await getSelfCheckQuestionnaireForUser(userId, assessmentId);
-  const questions = existing.template.sections.flatMap(
-    (section) => section.questions,
-  );
-  const answerByQuestionId = new Map(
-    existing.answers.map((answer) => [answer.questionId, answer.value]),
-  );
-  const missing = questions.filter(
-    (question) =>
-      question.isRequired &&
-      !isMeaningfulAnswerValue(
-        getStoredAnswerValue(answerByQuestionId.get(question.id)),
-        question.questionType,
-      ),
-  );
-
-  if (missing.length > 0) {
-    throw new ApiError(400, "Please answer all required questions", {
-      missingQuestionIds: missing.map((question) => question.id),
-    });
-  }
-
-  const answersByCode: QuickCheckAnswerMap = {};
-  for (const question of questions) {
-    const stored = answerByQuestionId.get(question.id);
-    if (stored && typeof stored === "object" && "value" in stored) {
-      answersByCode[question.code] = stored.value;
-    }
-  }
-
-  const result = evaluateQuickCheck(answersByCode);
-  const completedAt = new Date();
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(questionnaireRuns)
-      .set({
-        status: "completed",
-        result: result.result,
-        progress: 100,
-        summary: result.summary,
-        reasoning: result.reasoning,
-        answersSnapshot: answersByCode,
-        completedAt,
-        updatedAt: completedAt,
-      })
-      .where(eq(questionnaireRuns.id, existing.run.id));
-    await tx
-      .update(selfCheckAssessments)
-      .set({
-        status: "completed",
-        category: result.category,
-        reasoning: result.reasoning,
-        answers: answersByCode,
-        lexSpecialisApplies: answersByCode.lex_specialis === "yes",
-        completedAt,
-        updatedAt: completedAt,
-      })
-      .where(eq(selfCheckAssessments.id, assessmentId));
-  });
-
-  return getSelfCheckQuestionnaireForUser(userId, assessmentId);
 }
 
 export async function listOrganizationInvitations(
@@ -553,133 +229,33 @@ export async function acceptMailboxInvitation(
   return acceptInvitationRecord(user, invitation);
 }
 
-async function assertCanManageOrganization(
+export async function assertCanAccessOrganization(
   userId: string,
   organizationId: string,
 ) {
-  const membership = await db.query.organizationMembers.findFirst({
+  const membership = await db.query.organizationMemberships.findFirst({
     where: and(
-      eq(organizationMembers.userId, userId),
-      eq(organizationMembers.organizationId, organizationId),
+      eq(organizationMemberships.userId, userId),
+      eq(organizationMemberships.organizationId, organizationId),
+      eq(organizationMemberships.status, "active"),
     ),
   });
 
   if (!membership) {
     throw new ApiError(404, "Organization not found");
-  }
-
-  if (!organizationManagerRoles.includes(membership.role)) {
-    throw new ApiError(403, "You cannot manage invitations for this organization");
   }
 
   return membership;
 }
 
-async function ensureSelfCheckQuestionnaireRun(
+export async function assertCanManageOrganization(
   userId: string,
   organizationId: string,
-  assessmentId: string,
 ) {
-  const existingRun = await db.query.questionnaireRuns.findFirst({
-    where: eq(questionnaireRuns.selfCheckAssessmentId, assessmentId),
-    with: {
-      template: {
-        with: {
-          sections: {
-            with: { questions: true },
-          },
-        },
-      },
-      answers: true,
-    },
-  });
+  const membership = await assertCanAccessOrganization(userId, organizationId);
 
-  if (existingRun) {
-    return existingRun;
-  }
-
-  const template = await getActiveApplicabilityTemplate();
-  const [createdRun] = await db
-    .insert(questionnaireRuns)
-    .values({
-      organizationId,
-      templateId: template.id,
-      selfCheckAssessmentId: assessmentId,
-      performedByUserId: userId,
-      status: "draft",
-      result: "unknown",
-      progress: 0,
-    })
-    .onConflictDoNothing({
-      target: questionnaireRuns.selfCheckAssessmentId,
-    })
-    .returning();
-
-  const run = await db.query.questionnaireRuns.findFirst({
-    where: createdRun
-      ? eq(questionnaireRuns.id, createdRun.id)
-      : eq(questionnaireRuns.selfCheckAssessmentId, assessmentId),
-    with: {
-      template: {
-        with: {
-          sections: {
-            with: { questions: true },
-          },
-        },
-      },
-      answers: true,
-    },
-  });
-
-  if (!run) {
-    throw new ApiError(404, "Questionnaire run not found");
-  }
-
-  return run;
-}
-
-async function getActiveApplicabilityTemplate() {
-  const template = await db.query.questionnaireTemplates.findFirst({
-    where: and(
-      eq(questionnaireTemplates.code, applicabilityTemplateCode),
-      eq(questionnaireTemplates.version, applicabilityTemplateVersion),
-      eq(questionnaireTemplates.isActive, true),
-    ),
-  });
-
-  if (!template) {
-    throw new ApiError(
-      503,
-      "Applicability questionnaire is not seeded. Run npm run db:seed:questionnaire.",
-    );
-  }
-
-  return template;
-}
-
-function getStoredAnswerValue(stored: unknown) {
-  if (
-    stored &&
-    typeof stored === "object" &&
-    !Array.isArray(stored) &&
-    "value" in stored
-  ) {
-    return stored.value;
-  }
-
-  return undefined;
-}
-
-async function assertCanAccessOrganization(userId: string, organizationId: string) {
-  const membership = await db.query.organizationMembers.findFirst({
-    where: and(
-      eq(organizationMembers.userId, userId),
-      eq(organizationMembers.organizationId, organizationId),
-    ),
-  });
-
-  if (!membership) {
-    throw new ApiError(404, "Organization not found");
+  if (!organizationManagerRoles.includes(membership.role)) {
+    throw new ApiError(403, "You cannot manage this organization");
   }
 
   return membership;
@@ -711,14 +287,23 @@ async function acceptInvitationRecord(
 
   const acceptedInvitation = await db.transaction(async (tx) => {
     await tx
-      .insert(organizationMembers)
+      .insert(organizationMemberships)
       .values({
         organizationId: invitation.organizationId,
         userId: user.id,
         role: invitation.role,
+        status: "active",
       })
-      .onConflictDoNothing({
-        target: [organizationMembers.organizationId, organizationMembers.userId],
+      .onConflictDoUpdate({
+        target: [
+          organizationMemberships.organizationId,
+          organizationMemberships.userId,
+        ],
+        set: {
+          role: invitation.role,
+          status: "active",
+          updatedAt: new Date(),
+        },
       });
 
     const [updatedInvitation] = await tx
@@ -747,7 +332,7 @@ function toInvitationDto(
   return dto;
 }
 
-function normalizeInvitationRole(role: OrganizationRole | undefined): OrganizationRole {
+function normalizeInvitationRole(role: OrganizationRole | undefined) {
   const nextRole = role ?? "member";
 
   if (!assignableRoles.includes(nextRole)) {
@@ -804,37 +389,13 @@ function normalizeOptionalString(value: unknown): string | null {
   return value.trim();
 }
 
-function normalizeOptionalInteger(value: unknown): number | null {
-  if (value === undefined || value === null || value === "") {
-    return null;
-  }
-
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
-    throw new ApiError(400, "Expected a positive integer value");
-  }
-
-  return value;
-}
-
-function normalizeOptionalMoney(value: unknown): string | null {
-  if (value === undefined || value === null || value === "") {
-    return null;
-  }
-
-  if (typeof value !== "string" || Number.isNaN(Number(value))) {
-    throw new ApiError(400, "Expected a decimal string value");
-  }
-
-  return value;
-}
-
-function normalizeCountryCode(value: unknown): string {
+function normalizeCountry(value: unknown): string {
   if (value === undefined || value === null || value === "") {
     return "DE";
   }
 
   if (typeof value !== "string" || value.trim().length !== 2) {
-    throw new ApiError(400, "countryCode must be a two-letter country code");
+    throw new ApiError(400, "country must be a two-letter country code");
   }
 
   return value.trim().toUpperCase();

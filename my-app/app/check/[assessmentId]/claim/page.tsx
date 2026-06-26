@@ -1,41 +1,29 @@
-import { LoginForm } from "@/components/login-form";
+import { GuestShell } from "@/components/guest/guest-shell";
 import { getDictionary } from "@/lib/i18n";
-import Image from "next/image";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
-type PageProps = {
-  params: Promise<{ assessmentId: string }>;
-};
-
-export default function GuestClaimPage({ params }: PageProps) {
+export default function GuestClaimPage() {
   return (
     <Suspense fallback={null}>
-      <GuestClaimContent params={params} />
+      <GuestClaimContent />
     </Suspense>
   );
 }
 
-async function GuestClaimContent({ params }: PageProps) {
-  const { assessmentId } = await params;
-  const dictionary = await getDictionary();
+async function GuestClaimContent() {
+  await connection();
+  const labels = (await getDictionary()).guestCheck;
 
   return (
-    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <Image
-          src="/images/Startseite.svg"
-          alt={dictionary.auth.backgroundAlt}
-          fill
-          className="object-cover"
-          priority
-        />
+    <GuestShell
+      title={labels.finalizer.title}
+      description="Die Uebernahme alter Schnellchecks ist im org-only Schema deaktiviert."
+      labels={labels.shell}
+    >
+      <div className="rounded-2xl border border-white/15 bg-[#111522]/95 p-8 text-white/70">
+        Bitte nutze vorerst Organisationen und Einladungen im Arbeitsbereich.
       </div>
-      <div className="relative z-10 w-full max-w-md">
-        <LoginForm
-          labels={dictionary.auth}
-          guestAssessmentId={assessmentId}
-        />
-      </div>
-    </main>
+    </GuestShell>
   );
 }

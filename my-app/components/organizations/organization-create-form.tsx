@@ -10,27 +10,17 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
 import type { OrganizationDto } from "@/src/server/organizations/types";
 import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { claimGuestAssessmentForOrganization } from "./claim-guest-assessment";
 
 type CreateOrganizationState = {
   name: string;
   legalName: string;
-  employeeCount: string;
-  size: "" | "micro" | "small" | "medium" | "large";
-  countryCode: string;
+  country: string;
 };
 
 type RequestState = {
@@ -48,19 +38,15 @@ type RedirectAfterCreate = "organization" | "assessment";
 const defaultOrganizationForm: CreateOrganizationState = {
   name: "",
   legalName: "",
-  employeeCount: "",
-  size: "",
-  countryCode: "DE",
+  country: "DE",
 };
 
 export function OrganizationCreateForm({
   labels,
   redirectAfterCreate = "organization",
-  claimAssessmentId,
 }: {
   labels: Dictionary["organizationForm"];
   redirectAfterCreate?: RedirectAfterCreate;
-  claimAssessmentId?: string;
 }) {
   const router = useRouter();
   const [organizationForm, setOrganizationForm] = useState(
@@ -86,11 +72,7 @@ export function OrganizationCreateForm({
         body: JSON.stringify({
           name: organizationForm.name,
           legalName: organizationForm.legalName || null,
-          employeeCount: organizationForm.employeeCount
-            ? Number(organizationForm.employeeCount)
-            : null,
-          size: organizationForm.size || null,
-          countryCode: organizationForm.countryCode || "DE",
+          country: organizationForm.country || "DE",
         }),
       });
 
@@ -101,20 +83,6 @@ export function OrganizationCreateForm({
       }
 
       const organizationHref = `/tool/organizations/${body.organization.id}`;
-      if (claimAssessmentId) {
-        const claimed = await claimGuestAssessmentForOrganization({
-          assessmentId: claimAssessmentId,
-          organizationId: body.organization.id,
-          fallbackError: labels.createErrorFallback,
-        });
-
-        router.push(
-          `/tool/organizations/${claimed.organizationId}/applicability-check/${claimed.assessmentId}/result`,
-        );
-        router.refresh();
-        return;
-      }
-
       router.push(
         redirectAfterCreate === "assessment"
           ? `${organizationHref}/applicability-check/new`
@@ -193,64 +161,19 @@ export function OrganizationCreateForm({
                 }
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_0.8fr_0.55fr]">
-              <div className="grid gap-2">
-                <Label htmlFor="employee-count">{labels.employees}</Label>
-                <Input
-                  id="employee-count"
-                  inputMode="numeric"
-                  min={0}
-                  placeholder="85"
-                  type="number"
-                  value={organizationForm.employeeCount}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({
-                      ...current,
-                      employeeCount: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="organization-size">{labels.size}</Label>
-                <Select
-                  value={organizationForm.size || "unknown"}
-                  onValueChange={(value) =>
-                    setOrganizationForm((current) => ({
-                      ...current,
-                      size:
-                        value === "unknown"
-                          ? ""
-                          : (value as CreateOrganizationState["size"]),
-                    }))
-                  }
-                >
-                  <SelectTrigger id="organization-size">
-                    <SelectValue placeholder={labels.sizeOptions.unknown} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unknown">{labels.sizeOptions.unknown}</SelectItem>
-                    <SelectItem value="micro">{labels.sizeOptions.micro}</SelectItem>
-                    <SelectItem value="small">{labels.sizeOptions.small}</SelectItem>
-                    <SelectItem value="medium">{labels.sizeOptions.medium}</SelectItem>
-                    <SelectItem value="large">{labels.sizeOptions.large}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="country-code">{labels.country}</Label>
-                <Input
-                  id="country-code"
-                  maxLength={2}
-                  value={organizationForm.countryCode}
-                  onChange={(event) =>
-                    setOrganizationForm((current) => ({
-                      ...current,
-                      countryCode: event.target.value.toUpperCase(),
-                    }))
-                  }
-                />
-              </div>
+            <div className="grid gap-2 sm:max-w-40">
+              <Label htmlFor="country">{labels.country}</Label>
+              <Input
+                id="country"
+                maxLength={2}
+                value={organizationForm.country}
+                onChange={(event) =>
+                  setOrganizationForm((current) => ({
+                    ...current,
+                    country: event.target.value.toUpperCase(),
+                  }))
+                }
+              />
             </div>
             <Button type="submit" disabled={isCreatingOrganization}>
               {isCreatingOrganization ? (

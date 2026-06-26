@@ -1,12 +1,6 @@
 import * as z from "zod";
 
-const moneySchema = z
-  .string()
-  .trim()
-  .regex(/^\d+(\.\d{1,2})?$/, "Expected a decimal string with up to 2 decimals");
-
 export const organizationIdSchema = z.uuid();
-export const selfCheckAssessmentIdSchema = z.uuid();
 export const invitationIdSchema = z.uuid();
 
 export const organizationRoleSchema = z.enum([
@@ -25,12 +19,7 @@ export const assignableOrganizationRoleSchema = z.enum([
 export const createOrganizationSchema = z.object({
   name: z.string().trim().min(1).max(255),
   legalName: z.string().trim().max(255).nullish(),
-  industryDescription: z.string().trim().nullish(),
-  employeeCount: z.number().int().nonnegative().nullish(),
-  annualRevenueEur: moneySchema.nullish(),
-  balanceSheetTotalEur: moneySchema.nullish(),
-  size: z.enum(["micro", "small", "medium", "large"]).nullish(),
-  countryCode: z
+  country: z
     .string()
     .trim()
     .length(2)
@@ -44,10 +33,6 @@ export const createOrganizationInvitationSchema = z.object({
   email: z.email().trim().toLowerCase(),
   role: assignableOrganizationRoleSchema.default("member"),
   expiresInDays: z.number().int().min(1).max(90).default(14),
-});
-
-export const createSelfCheckAssessmentSchema = z.object({
-  title: z.string().trim().min(1).max(255).default("NIS2 assessment"),
 });
 
 export const acceptOrganizationInvitationSchema = z.object({

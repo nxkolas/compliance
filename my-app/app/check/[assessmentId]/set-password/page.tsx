@@ -1,41 +1,29 @@
-import { GuestAccountFinalizer } from "@/components/guest/guest-account-finalizer";
+import { GuestShell } from "@/components/guest/guest-shell";
 import { getDictionary } from "@/lib/i18n";
-import Image from "next/image";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
-type PageProps = {
-  params: Promise<{ assessmentId: string }>;
-};
-
-export default function GuestAccountFinalizerPage({ params }: PageProps) {
+export default function GuestAccountFinalizerPage() {
   return (
     <Suspense fallback={null}>
-      <GuestAccountFinalizerContent params={params} />
+      <GuestAccountFinalizerContent />
     </Suspense>
   );
 }
 
-async function GuestAccountFinalizerContent({ params }: PageProps) {
-  const { assessmentId } = await params;
-  const dictionary = await getDictionary();
+async function GuestAccountFinalizerContent() {
+  await connection();
+  const labels = (await getDictionary()).guestCheck;
 
   return (
-    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <Image
-          src="/images/Startseite.svg"
-          alt={dictionary.guestCheck.finalizer.backgroundAlt}
-          fill
-          className="object-cover"
-          priority
-        />
+    <GuestShell
+      title={labels.finalizer.title}
+      description="Schnellcheck-Finalisierung ist im org-only Schema deaktiviert."
+      labels={labels.shell}
+    >
+      <div className="rounded-2xl border border-white/15 bg-[#111522]/95 p-8 text-white/70">
+        Organisationen und Team-Einladungen sind der aktive Datenbereich.
       </div>
-      <div className="relative z-10 w-full max-w-md">
-        <GuestAccountFinalizer
-          assessmentId={assessmentId}
-          labels={dictionary.guestCheck.finalizer}
-        />
-      </div>
-    </main>
+    </GuestShell>
   );
 }
