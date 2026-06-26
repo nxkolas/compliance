@@ -271,6 +271,11 @@ ISO27001
 
 ## 5. Versioned questionnaires
 
+Implementation status: the questionnaire-definition foundation is implemented
+in `src/db/schema.ts` with `questionnaires` and `questionnaire_versions`.
+`scripts/seed-compliance-foundation.ts` currently seeds the published NIS2
+`betroffenheitscheck` questionnaire and its `2026-v1` questionnaire version.
+
 You want to seed different questions. So questionnaires need versions.
 
 ```sql
@@ -305,6 +310,14 @@ Once a questionnaire version is published, do **not** mutate it. If you change q
 ---
 
 ## 6. Flexible question model
+
+Implementation status: `questions` and `question_options` are implemented in
+`src/db/schema.ts`. The current seed creates twelve required `single_choice`
+Betroffenheitscheck questions. Question text is stored in German by default,
+English translations live in `questions.config.translations.en`, and option
+translations live in `question_options.metadata.translations.en`. The
+questionnaire preview renders options as buttons by default and as a combobox
+when `config.ui.control` is `select` or the option list is long.
 
 ```sql
 CREATE TABLE questions (
@@ -389,6 +402,12 @@ stable_value: "50_249"
 
 ## 7. Mapping questions to organization facts
 
+Implementation status: `question_fact_mappings` is implemented in
+`src/db/schema.ts`. The current Betroffenheitscheck seed maps each question to
+one stable organization fact with an identity transform. The mapping layer is
+definition-only for now; `organization_fact_values` are still skipped by the
+seed until persisted assessment revisions exist.
+
 This solves your “how do I save company size / industry / etc.” problem.
 
 ```sql
@@ -425,6 +444,10 @@ This way, your Betroffenheitscheck can change wording or answer options, but you
 ---
 
 ## 8. Versioned assessments and answers
+
+Implementation status: assessment instances, assessment revisions, and answers
+are not implemented yet. The current Betroffenheitscheck page only previews the
+published questionnaire definition from the database.
 
 A user does not just “fill out a Betroffenheitscheck”. They create an **assessment instance** with multiple revisions.
 
@@ -543,6 +566,10 @@ For free text:
 ---
 
 ## 9. Betroffenheitscheck outcome
+
+Implementation status: generated artifacts and affectedness outcomes are not
+implemented yet. The current database stores the questionnaire definitions and
+fact mappings needed to support this later.
 
 Your Betroffenheitscheck has three fixed outcomes:
 
@@ -983,6 +1010,39 @@ action_plan_items
 documents
 document_versions
 
+audit_events
+```
+
+Current implementation status:
+
+```text
+Implemented:
+organizations
+organization_memberships
+organization_invitations
+compliance_frameworks
+compliance_framework_versions
+compliance_modules
+questionnaires
+questionnaire_versions
+questions
+question_options
+question_fact_mappings
+organization_fact_definitions
+organization_fact_values
+
+Planned:
+assessments
+assessment_revisions
+assessment_answers
+generated_artifacts
+generated_artifact_revisions
+artifact_revision_sources
+compliance_requirements
+gap_findings
+action_plan_items
+documents
+document_versions
 audit_events
 ```
 

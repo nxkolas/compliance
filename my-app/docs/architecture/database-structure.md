@@ -1,13 +1,14 @@
 # Database Structure
 
-This document describes the current organization and compliance-foundation
-database model. Supabase Auth
-remains the source of truth for users. The app-owned public schema stores only
-organizations, memberships, invitations, organization facts, and the NIS2
-framework/module registry.
+This document describes the current organization, compliance-foundation, and
+questionnaire-definition database model. Supabase Auth remains the source of
+truth for users. The app-owned public schema stores organizations,
+memberships, invitations, organization facts, the NIS2 framework/module
+registry, and the versioned questionnaire definitions used by the current
+Betroffenheitscheck preview.
 
-The future compliance/questionnaire schema is planned separately in
-`docs/architecture/db-schema-plan.md`.
+The remaining assessment, answer, generated artifact, document, and audit-event
+schema is still planned separately in `docs/architecture/db-schema-plan.md`.
 
 ## Workflow
 
@@ -29,13 +30,29 @@ migrations. The Drizzle config manages only these app tables:
 - `compliance_frameworks`
 - `compliance_framework_versions`
 - `compliance_modules`
+- `questionnaires`
+- `questionnaire_versions`
+- `questions`
+- `question_options`
+- `question_fact_mappings`
 
-To seed the NIS2 framework, initial NIS2 modules, and reusable organization fact
-definitions:
+To seed the NIS2 framework, initial NIS2 modules, reusable organization fact
+definitions, and the published NIS2 Betroffenheitscheck questionnaire:
 
 ```bash
 npm run db:seed:compliance
 ```
+
+The seed creates:
+
+- The `nis2` compliance framework.
+- The published `2026-v1` framework version.
+- Four NIS2 modules: `betroffenheitscheck`, `gap_analysis`, `action_plan`, and
+  `document_analysis`.
+- Reusable organization fact definitions.
+- The published `2026-v1` `betroffenheitscheck` questionnaire.
+- Twelve single-choice Betroffenheitscheck questions, their options, and
+  identity mappings to organization facts.
 
 The seed intentionally skips `organization_fact_values`, because values require
 a real organization and source revision from an assessment or artifact.
@@ -157,8 +174,7 @@ Columns:
 
 ### `compliance_framework_versions`
 
-Stores versioned framework releases for modules and future questionnaire
-definitions.
+Stores versioned framework releases for modules and questionnaire definitions.
 
 Columns:
 
@@ -181,6 +197,112 @@ Columns:
 - `name`: Display name.
 - `module_type`: `questionnaire`, `generated_artifact`, or `document_analysis`.
 - `position`: Sort order.
+
+### `questionnaires`
+
+Stores questionnaire identities attached to a module. The current seed creates
+one questionnaire: `betroffenheitscheck` for the NIS2 Betroffenheitscheck
+module.
+
+Columns:
+
+- `id`: Primary key.
+- `module_id`: Parent compliance module.
+- `code`: Stable questionnaire code.
+- `title`: Display title.
+- `created_at`: Audit timestamp.
+
+Constraints:
+
+- A module can only have one questionnaire with a given `code`.
+- Deleting a module cascades its questionnaires.
+
+### `questionnaire_versions`
+
+Stores immutable questionnaire releases. The active Betroffenheitscheck uses
+the same `2026-v1` label as the seeded NIS2 framework version.
+
+Columns:
+
+- `id`: Primary key.
+- `questionnaire_id`: Parent questionnaire.
+- `version_label`: Stable version label such as `2026-v1`.
+- `status`: `draft`, `published`, or `archived`.
+- `created_at`, `published_at`: Version lifecycle timestamps.
+
+Constraints:
+
+- A questionnaire can only have one version with a given `version_label`.
+- Deleting a questionnaire cascades its versions.
+
+### `questions`
+
+Stores versioned question definitions.
+
+Columns:
+
+- `id`: Primary key.
+- `questionnaire_version_id`: Parent questionnaire version.
+- `stable_key`: Stable semantic key such as `bc.employee_count`.
+- `position`: Sort order within the questionnaire version.
+- `question_text`: Default display text.
+- `help_text`: Optional help copy.
+- `answer_type`: `single_choice`, `multi_choice`, `text`, `long_text`,
+  `number`, `boolean`, `date`, `file`, or `json`.
+- `required`: Marks whether the question is required.
+- `config`: JSON configuration for UI hints and translations.
+- `created_at`: Audit timestamp.
+
+Constraints:
+
+- A questionnaire version can only have one question with a given
+  `stable_key`.
+- Deleting a questionnaire version cascades its questions.
+
+The seeded Betroffenheitscheck stores English translations in
+`config.translations.en.questionText`. It also stores `config.ui.control`; the
+industry-sector question is seeded with `select`, while the other questions use
+button-style choices.
+
+### `question_options`
+
+Stores options for choice-based questions.
+
+Columns:
+
+- `id`: Primary key.
+- `question_id`: Parent question.
+- `stable_value`: Stable answer value such as `yes`, `no`, `unsure`, or
+  `50_249`.
+- `label`: Default display label.
+- `position`: Sort order within the question.
+- `metadata`: JSON metadata, currently used for English option labels.
+
+Constraints:
+
+- A question can only have one option with a given `stable_value`.
+- Deleting a question cascades its options.
+
+### `question_fact_mappings`
+
+Maps versioned questions to stable organization fact definitions.
+
+Columns:
+
+- `id`: Primary key.
+- `question_id`: Source question.
+- `fact_key`: Target organization fact definition key.
+- `transform`: JSON transform rule. The current seed uses
+  `{ "type": "identity" }`.
+- `created_at`: Audit timestamp.
+
+Constraints:
+
+- A question can only map once to a given fact key.
+- Deleting a question cascades its fact mappings.
+
+These mappings let the Betroffenheitscheck wording, options, or version change
+without changing the internal organization fact keys.
 
 ## Common Queries
 
@@ -220,9 +342,22 @@ const organization = await db.transaction(async (tx) => {
 });
 ```
 
+Load the active NIS2 Betroffenheitscheck questionnaire preview:
+
+```ts
+const questionnaire = await getActiveApplicabilityQuestionnaire();
+```
+
+The service reads the published `nis2` `2026-v1` framework version, the
+`betroffenheitscheck` module, the `betroffenheitscheck` questionnaire, its
+published `2026-v1` questionnaire version, ordered questions, and ordered
+options.
+
 ## Current Placeholders
 
 The old compliance, guest assessment, AI chat, document review, and export data
-tables have been removed from the active schema. Their pages remain as static
-placeholders so navigation stays intact while the new versioned questionnaire
-and artifact schema is introduced later.
+tables have been removed from the active schema. The Betroffenheitscheck page
+now renders the seeded questionnaire definition as an interactive preview, but
+it does not yet persist assessment instances or answers. Other compliance pages
+remain static placeholders while the versioned assessment, answer, artifact,
+document, and audit-event tables are introduced later.

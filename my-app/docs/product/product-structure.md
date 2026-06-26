@@ -21,11 +21,16 @@ Zentrale Uebersicht ueber den aktuellen NIS2-Status einer Organisation.
 
 ### Datenbasis
 
-- `self_check_assessments` und `questionnaire_runs` fuer Betroffenheit und Analysefortschritt
-- `organization_requirements` fuer Sicherheitsmassnahmen
-- `document_review_runs` und `document_review_findings` fuer Dokumentenstatus
-- `action_plan_items` fuer naechste Schritte
-- `report_exports` fuer vorhandene PDF-Berichte
+- Aktuell implementiert: `organizations`, `organization_fact_definitions`,
+  `organization_fact_values`, `compliance_frameworks`,
+  `compliance_framework_versions`, `compliance_modules`,
+  `questionnaires`, `questionnaire_versions`, `questions`,
+  `question_options` und `question_fact_mappings`
+- Geplant: `assessments`, `assessment_revisions` und
+  `assessment_answers` fuer Betroffenheit und Analysefortschritt
+- Geplant: `generated_artifacts`, `generated_artifact_revisions` und
+  `artifact_revision_sources` fuer Ergebnisse, Dokumentenstatus, naechste
+  Schritte und exportierbare Berichte
 
 ## Betroffenheitscheck
 
@@ -50,11 +55,17 @@ Kurze Erklaerung: "Warum ist mein Unternehmen betroffen?"
 
 ### Datenbasis
 
-- `organizations` fuer Mitarbeiteranzahl, Umsatz, Bilanzsumme und Unternehmensdaten
-- `nis2_sectors` und `organization_sectors` fuer Branchen
-- `nis2_critical_services` und `organization_critical_services` fuer kritische Dienstleistungen
-- `questionnaire_templates`, `questionnaire_sections`, `questionnaire_questions`, `questionnaire_runs`, `questionnaire_answers` fuer strukturierte Fragen und Antworten
-- `self_check_assessments` fuer finales Ergebnis und Begruendung
+- `organizations` fuer stabile Unternehmensidentitaet
+- `questionnaires`, `questionnaire_versions`, `questions` und
+  `question_options` fuer den versionierten NIS2-Betroffenheitscheck
+- `question_fact_mappings` fuer die Zuordnung von Fragen zu stabilen
+  Organisationsfakten wie Mitarbeiteranzahl, Umsatz, Bilanzsumme, Branche und
+  kritische Dienstleistungen
+- `organization_fact_definitions` und spaeter `organization_fact_values` fuer
+  wiederverwendbare Compliance-Fakten
+- Geplant: `assessments`, `assessment_revisions`, `assessment_answers` sowie
+  `generated_artifacts` fuer gespeicherte Antworten, finales Ergebnis und
+  Begruendung
 
 ## Gap-Analyse
 
@@ -87,10 +98,12 @@ Fragebogen zu:
 
 ### Datenbasis
 
-- `questionnaire_templates`, `questionnaire_sections`, `questionnaire_questions`, `questionnaire_runs`, `questionnaire_answers` fuer Fragebogen, Fortschritt und Ergebnis
-- `tom_areas` und `organization_requirements` fuer Sicherheitsmassnahmen
-- `action_plan_items` fuer priorisierte Massnahmen
-- `requirement_evidence` fuer Nachweise zu Anforderungen
+- Geplant: `questionnaires`, `questionnaire_versions`, `questions`,
+  `question_options`, `assessments`, `assessment_revisions` und
+  `assessment_answers` fuer Fragebogen, Fortschritt und Ergebnis
+- Geplant: `compliance_requirements` und `gap_findings` fuer Anforderungen,
+  Luecken und Nachweise
+- Geplant: `action_plan_items` fuer priorisierte Massnahmen
 
 ## Dokumentenpruefung
 
@@ -122,11 +135,12 @@ KI erkennt:
 
 ### Datenbasis
 
-- `ai_documents` und `ai_document_chunks` fuer Uploads, Textextraktion und RAG-Suche
-- `document_requirement_types` fuer erwartete Dokumenttypen
-- `document_review_runs` fuer Prueflaeufe
-- `document_review_findings` fuer Ergebnisse wie vorhanden, unvollstaendig oder nicht gefunden
-- `action_plan_items` fuer Aufgaben aus fehlenden oder unvollstaendigen Dokumenten
+- Geplant: `documents` und `document_versions` fuer Uploads,
+  Textextraktion und Versionshistorie
+- Geplant: `generated_artifacts`, `generated_artifact_revisions` und
+  `artifact_revision_sources` fuer Prueflaeufe und nachvollziehbare Quellen
+- Geplant: `gap_findings` und `action_plan_items` fuer Ergebnisse und Aufgaben
+  aus fehlenden oder unvollstaendigen Dokumenten
 
 ## Massnahmenplan
 
@@ -154,12 +168,13 @@ Priorisierte Aufgaben:
 
 ### Datenbasis
 
-- `action_plan_items` als zentrale Aufgabenliste
+- Geplant: `action_plan_items` als zentrale Aufgabenliste
+- Geplant: `generated_artifact_revisions` und `artifact_revision_sources` fuer
+  die Herleitung aus Fragebogen, Gap-Analyse und Dokumentenpruefung
 - Optionale Quellen:
-  - `organization_requirements`
-  - `questionnaire_runs`
-  - `document_review_findings`
-  - `ai_documents`
+  - `assessment_revisions`
+  - `gap_findings`
+  - `document_versions`
 
 ## PDF-Export
 
@@ -183,9 +198,9 @@ Bericht exportieren.
 
 ### Datenbasis
 
-- `report_exports` fuer Export-Historie, Zielgruppe, Status und Speicherpfad
-- PDF-Inhalt wird aus dem aktuellen Organisationsstatus, den Fragebogen,
-  Dokumentenpruefungen und Massnahmen generiert
+- Geplant: Export-Historie als eigener Artifact- oder Export-Datensatz
+- PDF-Inhalt wird aus dem aktuellen Organisationsstatus, den versionierten
+  Fragebogen, Dokumentenpruefungen und Massnahmen generiert
 
 ## Einstellungen
 
@@ -205,8 +220,8 @@ Persoenliche und organisatorische Einstellungen.
 
 - `organizations` fuer Unternehmensdaten
 - Supabase Auth fuer Benutzerkonto und Login-Daten
-- `user_preferences` fuer Sprache, Benachrichtigungen, Datenschutz und UI-Einstellungen
-- `organization_settings` fuer organisationsweite Benachrichtigungs-, Datenschutz- und Compliance-Einstellungen
+- Geplant: Tabellen fuer Benutzerpraeferenzen und Organisationseinstellungen
+  fuer Sprache, Benachrichtigungen, Datenschutz und UI-Einstellungen
 
 ## Hilfe & Glossar
 
