@@ -446,8 +446,9 @@ This way, your Betroffenheitscheck can change wording or answer options, but you
 ## 8. Versioned assessments and answers
 
 Implementation status: assessment instances, assessment revisions, and answers
-are not implemented yet. The current Betroffenheitscheck page only previews the
-published questionnaire definition from the database.
+are implemented in `src/db/schema.ts`. The org-scoped Betroffenheitscheck flow
+creates one active assessment per organization/module and stores later
+submissions as new assessment revisions with answer snapshots.
 
 A user does not just “fill out a Betroffenheitscheck”. They create an **assessment instance** with multiple revisions.
 
@@ -572,9 +573,11 @@ assessment revision.
 
 ## 9. Betroffenheitscheck outcome
 
-Implementation status: generated artifacts and affectedness outcomes are not
-implemented yet. The current database stores the questionnaire definitions and
-fact mappings needed to support this later.
+Implementation status: `rule_sets`, `generated_artifacts`,
+`generated_artifact_revisions`, and `artifact_revision_sources` are implemented
+in `src/db/schema.ts`. `scripts/seed-compliance-foundation.ts` seeds the
+published `affectedness_check` rule set, and runtime calculation loads that
+rule JSON from the database before storing the generated outcome revision.
 
 Your Betroffenheitscheck has three fixed outcomes:
 
@@ -1107,8 +1110,6 @@ question_options
 question_fact_mappings
 organization_fact_definitions
 organization_fact_values
-
-Planned:
 assessments
 assessment_revisions
 assessment_answers
@@ -1116,6 +1117,8 @@ rule_sets
 generated_artifacts
 generated_artifact_revisions
 artifact_revision_sources
+
+Planned:
 compliance_requirements
 gap_findings
 action_plan_items

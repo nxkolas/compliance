@@ -13,9 +13,15 @@ export default defineConfig({
   dialect: 'postgresql',
   schemaFilter: 'public',
   tablesFilter: [
+    'artifact_revision_sources',
+    'assessment_answers',
+    'assessment_revisions',
+    'assessments',
     'compliance_framework_versions',
     'compliance_frameworks',
     'compliance_modules',
+    'generated_artifact_revisions',
+    'generated_artifacts',
     'organization_fact_definitions',
     'organization_fact_values',
     'organization_invitations',
@@ -26,6 +32,7 @@ export default defineConfig({
     'questionnaire_versions',
     'questionnaires',
     'questions',
+    'rule_sets',
   ],
   dbCredentials: {
     url: databaseUrl,

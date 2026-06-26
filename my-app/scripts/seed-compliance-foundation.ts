@@ -12,6 +12,7 @@ import {
   questionnaireVersions,
   questionnaires,
   questions,
+  ruleSets,
 } from "../src/db/schema";
 
 const databaseUrl = process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -396,6 +397,298 @@ const betroffenheitscheckQuestions: SeedQuestion[] = [
   },
 ];
 
+const affectednessRuleSet = {
+  version: 1,
+  defaultOutcome: "possibly_affected",
+  disclaimer:
+    "Diese Einstufung ist eine automatisierte Vorpruefung und ersetzt keine rechtliche Beratung.",
+  outcomes: {
+    affected: {
+      label: "Betroffen",
+      labelEn: "Affected",
+    },
+    possibly_affected: {
+      label: "Moeglicherweise betroffen",
+      labelEn: "Possibly affected",
+    },
+    not_affected: {
+      label: "Nicht betroffen",
+      labelEn: "Not affected",
+    },
+  },
+  rules: [
+    {
+      id: "outside_german_market",
+      outcome: "not_affected",
+      priority: 1000,
+      conditions: {
+        all: [
+          {
+            factKey: "has_german_market_presence",
+            operator: "equals",
+            value: "no",
+          },
+        ],
+      },
+      reasons: [
+        "Das Unternehmen hat nach den Antworten keinen relevanten Deutschlandbezug.",
+      ],
+      confidence: 0.9,
+    },
+    {
+      id: "clear_sector_and_size_match",
+      outcome: "affected",
+      priority: 900,
+      conditions: {
+        all: [
+          {
+            factKey: "has_german_market_presence",
+            operator: "equals",
+            value: "yes",
+          },
+          {
+            factKey: "industry_sector",
+            operator: "in",
+            values: [
+              "energy",
+              "transport",
+              "banking",
+              "financial_market_infrastructures",
+              "health",
+              "drinking_water",
+              "waste_water",
+              "digital_infrastructure",
+              "ict_service_management",
+              "public_administration",
+              "space",
+              "postal_courier",
+              "waste_management",
+              "chemicals",
+              "food",
+              "manufacturing",
+              "digital_providers",
+              "research",
+            ],
+          },
+          {
+            any: [
+              {
+                factKey: "employee_count_bucket",
+                operator: "in",
+                values: ["50_249", "250_plus"],
+              },
+              {
+                factKey: "annual_revenue_bucket",
+                operator: "in",
+                values: ["revenue_10m_50m", "revenue_over_50m"],
+              },
+              {
+                factKey: "balance_sheet_total_bucket",
+                operator: "in",
+                values: ["balance_10m_43m", "balance_over_43m"],
+              },
+              {
+                factKey: "belongs_to_group",
+                operator: "equals",
+                value: "yes",
+              },
+            ],
+          },
+        ],
+      },
+      reasons: [
+        "Die Antworten deuten auf einen NIS2-relevanten Sektor und eine relevante Unternehmensgroesse hin.",
+      ],
+      confidence: 0.86,
+    },
+    {
+      id: "critical_service_with_size_signal",
+      outcome: "affected",
+      priority: 850,
+      conditions: {
+        all: [
+          {
+            factKey: "has_german_market_presence",
+            operator: "equals",
+            value: "yes",
+          },
+          {
+            factKey: "provides_critical_services",
+            operator: "equals",
+            value: "yes",
+          },
+          {
+            any: [
+              {
+                factKey: "employee_count_bucket",
+                operator: "in",
+                values: ["50_249", "250_plus"],
+              },
+              {
+                factKey: "annual_revenue_bucket",
+                operator: "in",
+                values: ["revenue_10m_50m", "revenue_over_50m"],
+              },
+              {
+                factKey: "balance_sheet_total_bucket",
+                operator: "in",
+                values: ["balance_10m_43m", "balance_over_43m"],
+              },
+            ],
+          },
+        ],
+      },
+      reasons: [
+        "Das Unternehmen erbringt wichtige Leistungen und erreicht nach den Antworten relevante Groessensignale.",
+      ],
+      confidence: 0.8,
+    },
+    {
+      id: "uncertain_required_signal",
+      outcome: "possibly_affected",
+      priority: 700,
+      conditions: {
+        any: [
+          {
+            factKey: "has_german_market_presence",
+            operator: "equals",
+            value: "unsure",
+          },
+          {
+            factKey: "employee_count_bucket",
+            operator: "equals",
+            value: "unsure",
+          },
+          {
+            factKey: "annual_revenue_bucket",
+            operator: "equals",
+            value: "unsure",
+          },
+          {
+            factKey: "balance_sheet_total_bucket",
+            operator: "equals",
+            value: "unsure",
+          },
+          {
+            factKey: "industry_sector",
+            operator: "equals",
+            value: "unsure",
+          },
+          {
+            factKey: "belongs_to_group",
+            operator: "equals",
+            value: "unsure",
+          },
+        ],
+      },
+      reasons: [
+        "Mindestens eine zentrale Antwort ist unsicher und sollte individuell geprueft werden.",
+      ],
+      confidence: 0.64,
+    },
+    {
+      id: "digital_or_customer_risk_signal",
+      outcome: "possibly_affected",
+      priority: 650,
+      conditions: {
+        all: [
+          {
+            factKey: "has_german_market_presence",
+            operator: "equals",
+            value: "yes",
+          },
+          {
+            any: [
+              {
+                factKey: "provides_it_services",
+                operator: "equals",
+                value: "yes",
+              },
+              {
+                factKey: "serves_critical_customers",
+                operator: "equals",
+                value: "yes",
+              },
+              {
+                factKey: "failure_causes_major_impact",
+                operator: "equals",
+                value: "yes",
+              },
+              {
+                factKey: "has_customer_security_evidence_requests",
+                operator: "equals",
+                value: "yes",
+              },
+            ],
+          },
+        ],
+      },
+      reasons: [
+        "Die Antworten enthalten IT-, Kunden- oder Ausfallrisiko-Signale mit moeglicher NIS2-Relevanz.",
+      ],
+      confidence: 0.68,
+    },
+    {
+      id: "clear_low_risk_screen",
+      outcome: "not_affected",
+      priority: 500,
+      conditions: {
+        all: [
+          {
+            factKey: "has_german_market_presence",
+            operator: "equals",
+            value: "yes",
+          },
+          {
+            factKey: "industry_sector",
+            operator: "equals",
+            value: "other",
+          },
+          {
+            factKey: "employee_count_bucket",
+            operator: "equals",
+            value: "under_50",
+          },
+          {
+            factKey: "annual_revenue_bucket",
+            operator: "equals",
+            value: "revenue_under_10m",
+          },
+          {
+            factKey: "balance_sheet_total_bucket",
+            operator: "equals",
+            value: "balance_under_10m",
+          },
+          {
+            factKey: "provides_critical_services",
+            operator: "equals",
+            value: "no",
+          },
+          {
+            factKey: "provides_it_services",
+            operator: "equals",
+            value: "no",
+          },
+          {
+            factKey: "serves_critical_customers",
+            operator: "equals",
+            value: "no",
+          },
+          {
+            factKey: "failure_causes_major_impact",
+            operator: "equals",
+            value: "no",
+          },
+        ],
+      },
+      reasons: [
+        "Die Antworten zeigen derzeit weder relevante Groessen- noch Sektor- oder Risikosignale.",
+      ],
+      confidence: 0.78,
+    },
+  ],
+};
+
 async function main() {
   try {
     for (const definition of factDefinitions) {
@@ -609,8 +902,31 @@ async function main() {
         });
     }
 
+    await db
+      .insert(ruleSets)
+      .values({
+        moduleId: betroffenheitscheckModule.id,
+        code: "affectedness_check",
+        versionLabel: "2026-v1",
+        status: "published",
+        rules: affectednessRuleSet,
+        publishedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [
+          ruleSets.moduleId,
+          ruleSets.code,
+          ruleSets.versionLabel,
+        ],
+        set: {
+          status: "published",
+          rules: affectednessRuleSet,
+          publishedAt: new Date(),
+        },
+      });
+
     console.log(
-      "Seeded NIS2 framework, modules, organization facts, and Betroffenheitscheck questionnaire.",
+      "Seeded NIS2 framework, modules, organization facts, Betroffenheitscheck questionnaire, and affectedness rules.",
     );
     console.log(
       "Skipped organization_fact_values because values require an organization and source revision.",
