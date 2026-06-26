@@ -13,6 +13,11 @@ export default defineConfig({
   dialect: 'postgresql',
   schemaFilter: 'public',
   tablesFilter: [
+    'compliance_framework_versions',
+    'compliance_frameworks',
+    'compliance_modules',
+    'organization_fact_definitions',
+    'organization_fact_values',
     'organization_invitations',
     'organization_memberships',
     'organizations',

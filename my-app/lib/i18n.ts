@@ -266,6 +266,19 @@ const dictionaries = {
         "Dokumentenverarbeitung",
         "Organisationsrichtlinien",
       ],
+      factsTitle: "Organisationsfakten",
+      factsDescription:
+        "Aktuelle, aus Assessments abgeleitete Fakten. Diese Werte sind hier nur lesbar.",
+      factsEmpty: "Noch keine Organisationsfakten gespeichert.",
+      sourceLabel: "Quelle",
+      frameworkTitle: "Compliance-Framework",
+      frameworkDescription:
+        "Fuer diesen Produktstand ist das Framework fest gesetzt.",
+      activeFrameworkLabel: "Aktives Framework",
+      activeFrameworkValue: "NIS2",
+      booleanTrue: "Ja",
+      booleanFalse: "Nein",
+      unsetValue: "Nicht gesetzt",
     },
     assessment: {
       newTitle: "Neue NIS2-Bewertung",
@@ -938,6 +951,19 @@ const dictionaries = {
         "Document processing",
         "Organization policies",
       ],
+      factsTitle: "Organization facts",
+      factsDescription:
+        "Current facts derived from assessments. These values are read-only here.",
+      factsEmpty: "No organization facts have been saved yet.",
+      sourceLabel: "Source",
+      frameworkTitle: "Compliance framework",
+      frameworkDescription:
+        "The framework is fixed for this product version.",
+      activeFrameworkLabel: "Active framework",
+      activeFrameworkValue: "NIS2",
+      booleanTrue: "Yes",
+      booleanFalse: "No",
+      unsetValue: "Not set",
     },
     assessment: {
       newTitle: "New NIS2 assessment",

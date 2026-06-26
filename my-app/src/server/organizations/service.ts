@@ -1,5 +1,6 @@
 import { db } from "@/src/db";
 import {
+  organizationFactValues,
   organizationInvitations,
   organizationMemberships,
   organizations,
@@ -14,6 +15,7 @@ import type {
   CreateOrganizationInvitationInput,
   CreatedOrganizationInvitationDto,
   OrganizationDto,
+  OrganizationFactDto,
   OrganizationInvitationDto,
   OrganizationMailboxInvitationDto,
   OrganizationRole,
@@ -108,6 +110,27 @@ export async function getOrganizationForUser(
   });
 
   return membership?.organization ?? null;
+}
+
+export async function listCurrentOrganizationFactsForUser(
+  userId: string,
+  organizationId: string,
+): Promise<OrganizationFactDto[]> {
+  await assertCanAccessOrganization(userId, organizationId);
+
+  return db.query.organizationFactValues.findMany({
+    where: and(
+      eq(organizationFactValues.organizationId, organizationId),
+      eq(organizationFactValues.isCurrent, true),
+    ),
+    with: {
+      definition: true,
+    },
+    orderBy: (factValue, { asc, desc }) => [
+      asc(factValue.factKey),
+      desc(factValue.createdAt),
+    ],
+  });
 }
 
 export async function listOrganizationInvitations(

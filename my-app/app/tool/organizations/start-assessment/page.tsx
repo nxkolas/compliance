@@ -26,11 +26,11 @@ export default async function StartAssessmentPage() {
             ],
           },
           {
-            title: "Naechste Schema-Phase",
+            title: "NIS2-Schema-Phase",
             description:
-              "Der Fragebogen bleibt als UI-Komponente erhalten und wird spaeter an das neue Assessment-Modell angeschlossen.",
+              "Der Fragebogen bleibt als UI-Komponente erhalten und wird spaeter an das NIS2-Assessment-Modell angeschlossen.",
             items: [
-              "Framework-Versionen",
+              "NIS2 Version 2026-v1",
               "Questionnaire-Versionen",
               "Assessment-Revisions",
             ],

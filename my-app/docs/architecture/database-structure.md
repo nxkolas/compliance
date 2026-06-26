@@ -1,8 +1,10 @@
 # Database Structure
 
-This document describes the current org-only v1 database model. Supabase Auth
+This document describes the current organization and compliance-foundation
+database model. Supabase Auth
 remains the source of truth for users. The app-owned public schema stores only
-organizations, memberships, and invitations.
+organizations, memberships, invitations, organization facts, and the NIS2
+framework/module registry.
 
 The future compliance/questionnaire schema is planned separately in
 `docs/architecture/db-schema-plan.md`.
@@ -22,6 +24,21 @@ migrations. The Drizzle config manages only these app tables:
 - `organizations`
 - `organization_memberships`
 - `organization_invitations`
+- `organization_fact_definitions`
+- `organization_fact_values`
+- `compliance_frameworks`
+- `compliance_framework_versions`
+- `compliance_modules`
+
+To seed the NIS2 framework, initial NIS2 modules, and reusable organization fact
+definitions:
+
+```bash
+npm run db:seed:compliance
+```
+
+The seed intentionally skips `organization_fact_values`, because values require
+a real organization and source revision from an assessment or artifact.
 
 To clear Drizzle-managed app tables in development:
 
@@ -36,7 +53,7 @@ DB_CLEAR_CONFIRM=clear-app-tables npm run db:reset
 ```
 
 `db:reset` first drops known legacy app tables and enum types from the previous
-schema, then runs `db:push`, then clears the current v1 tables.
+schema, then runs `db:push`, then clears the current app tables.
 
 Do not clear or mutate Supabase Auth tables as part of this app reset.
 
@@ -91,6 +108,79 @@ Columns:
 
 The raw token is returned only when an invitation is created. Accept endpoints
 hash the submitted token and compare it with `token_hash`.
+
+### `organization_fact_definitions`
+
+Defines stable semantic organization facts that can be reused across
+questionnaires and generated artifacts.
+
+Columns:
+
+- `key`: Primary key such as `employee_count_bucket`.
+- `label`: Human-readable label.
+- `data_type`: `text`, `number`, `boolean`, `enum`, or `json`.
+- `description`: Optional explanation of the fact.
+- `created_at`: Audit timestamp.
+
+### `organization_fact_values`
+
+Stores current and historical organization-specific fact values derived from
+versioned sources.
+
+Columns:
+
+- `id`: Primary key.
+- `organization_id`: Organization.
+- `fact_key`: Fact definition key.
+- `value`: JSON value.
+- `source_type`: Source category such as an assessment revision.
+- `source_revision_id`: Exact source revision UUID.
+- `confidence`: Optional confidence score.
+- `is_current`: Marks the current value for a fact.
+- `created_at`: Audit timestamp.
+
+Current fact lookups are indexed by `organization_id` and `fact_key`; JSON
+values also have a GIN index for later filtering.
+
+### `compliance_frameworks`
+
+Stores compliance framework identities. The current product seed creates only
+the `nis2` framework.
+
+Columns:
+
+- `id`: Primary key.
+- `code`: Stable unique code such as `nis2`.
+- `name`: Display name.
+- `description`: Optional description.
+- `created_at`: Audit timestamp.
+
+### `compliance_framework_versions`
+
+Stores versioned framework releases for modules and future questionnaire
+definitions.
+
+Columns:
+
+- `id`: Primary key.
+- `framework_id`: Framework.
+- `version_label`: Version label such as `2026-v1`.
+- `status`: `draft`, `published`, or `archived`.
+- `effective_from`, `effective_to`: Optional validity dates.
+- `created_at`: Audit timestamp.
+
+### `compliance_modules`
+
+Stores modules attached to a specific framework version.
+
+Columns:
+
+- `id`: Primary key.
+- `framework_version_id`: Framework version.
+- `code`: Stable module code.
+- `name`: Display name.
+- `module_type`: `questionnaire`, `generated_artifact`, or `document_analysis`.
+- `position`: Sort order.
 
 ## Common Queries
 

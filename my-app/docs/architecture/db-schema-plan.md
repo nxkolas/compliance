@@ -71,6 +71,11 @@ Instead, use a separate **organization facts** layer.
 
 ## 2. Recommended model for organization facts
 
+Implementation status: the foundation tables `organization_fact_definitions`
+and `organization_fact_values` are implemented in `src/db/schema.ts`. Seed data
+currently covers reusable fact definitions only; organization-specific values
+are written later from assessment revisions.
+
 Use stable semantic facts like:
 
 ```text
@@ -191,6 +196,11 @@ CREATE TABLE organization_memberships (
 ---
 
 ## 4. Compliance frameworks and versions
+
+Implementation status: the foundation tables `compliance_frameworks`,
+`compliance_framework_versions`, and `compliance_modules` are implemented in
+`src/db/schema.ts`. The current frontend and seed data are intentionally
+hardcoded to NIS2 only.
 
 This is what makes NIS-2 changes and additional compliance checks manageable.
 

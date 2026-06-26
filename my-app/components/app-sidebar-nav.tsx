@@ -12,9 +12,7 @@ import {
 import type { Dictionary } from "@/lib/i18n";
 import {
   BookOpen,
-  Bot,
   ClipboardCheck,
-  FileSearch,
   ListChecks,
   PieChart,
   ReceiptText,
@@ -56,12 +54,6 @@ export function AppSidebarNav({
           match: "prefix" as const,
         },
         {
-          href: `/tool/organizations/${organizationId}/document-review`,
-          label: labels.documentReview,
-          icon: FileSearch,
-          match: "prefix" as const,
-        },
-        {
           href: `/tool/organizations/${organizationId}/gap-analysis`,
           label: labels.gapAnalysis,
           icon: ShieldCheck,
@@ -77,12 +69,6 @@ export function AppSidebarNav({
           href: `/tool/organizations/${organizationId}/pdf-export`,
           label: labels.pdfExport,
           icon: ReceiptText,
-          match: "prefix" as const,
-        },
-        {
-          href: `/tool/organizations/${organizationId}/assistant`,
-          label: `${labels.assistant} (${labels.experimental})`,
-          icon: Bot,
           match: "prefix" as const,
         },
       ]

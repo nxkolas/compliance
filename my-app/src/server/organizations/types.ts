@@ -1,4 +1,6 @@
 import type {
+  organizationFactDefinitions,
+  organizationFactValues,
   organizationInvitations,
   organizationMemberships,
   organizations,
@@ -30,6 +32,10 @@ export type AcceptOrganizationInvitationInput = z.infer<
 >;
 
 export type OrganizationDto = typeof organizations.$inferSelect;
+
+export type OrganizationFactDto = typeof organizationFactValues.$inferSelect & {
+  definition: typeof organizationFactDefinitions.$inferSelect;
+};
 
 export type OrganizationMembershipDto =
   typeof organizationMemberships.$inferSelect;
