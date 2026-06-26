@@ -49,6 +49,18 @@ export const complianceModuleTypeEnum = pgEnum("compliance_module_type", [
   "document_analysis",
 ]);
 
+export const questionAnswerTypeEnum = pgEnum("question_answer_type", [
+  "single_choice",
+  "multi_choice",
+  "text",
+  "long_text",
+  "number",
+  "boolean",
+  "date",
+  "file",
+  "json",
+]);
+
 export const organizations = pgTable(
   "organizations",
   {
@@ -259,6 +271,147 @@ export const complianceModules = pgTable(
   ],
 );
 
+export const questionnaires = pgTable(
+  "questionnaires",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    moduleId: uuid("module_id").notNull(),
+    code: text("code").notNull(),
+    title: text("title").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "questionnaires_module_fk",
+      columns: [table.moduleId],
+      foreignColumns: [complianceModules.id],
+    }).onDelete("cascade"),
+    uniqueIndex("questionnaires_module_code_unique").on(
+      table.moduleId,
+      table.code,
+    ),
+    index("questionnaires_module_idx").on(table.moduleId),
+    index("questionnaires_code_idx").on(table.code),
+  ],
+);
+
+export const questionnaireVersions = pgTable(
+  "questionnaire_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    questionnaireId: uuid("questionnaire_id").notNull(),
+    versionLabel: text("version_label").notNull(),
+    status: complianceFrameworkVersionStatusEnum("status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "questionnaire_versions_questionnaire_fk",
+      columns: [table.questionnaireId],
+      foreignColumns: [questionnaires.id],
+    }).onDelete("cascade"),
+    uniqueIndex("questionnaire_versions_questionnaire_label_unique").on(
+      table.questionnaireId,
+      table.versionLabel,
+    ),
+    index("questionnaire_versions_questionnaire_idx").on(table.questionnaireId),
+    index("questionnaire_versions_status_idx").on(table.status),
+  ],
+);
+
+export const questions = pgTable(
+  "questions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    questionnaireVersionId: uuid("questionnaire_version_id").notNull(),
+    stableKey: text("stable_key").notNull(),
+    position: integer("position").notNull(),
+    questionText: text("question_text").notNull(),
+    helpText: text("help_text"),
+    answerType: questionAnswerTypeEnum("answer_type").notNull(),
+    required: boolean("required").default(false).notNull(),
+    config: jsonb("config").default(sql`'{}'::jsonb`).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "questions_questionnaire_version_fk",
+      columns: [table.questionnaireVersionId],
+      foreignColumns: [questionnaireVersions.id],
+    }).onDelete("cascade"),
+    uniqueIndex("questions_version_stable_key_unique").on(
+      table.questionnaireVersionId,
+      table.stableKey,
+    ),
+    index("questions_questionnaire_version_idx").on(
+      table.questionnaireVersionId,
+    ),
+    index("questions_stable_key_idx").on(table.stableKey),
+  ],
+);
+
+export const questionOptions = pgTable(
+  "question_options",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    questionId: uuid("question_id").notNull(),
+    stableValue: text("stable_value").notNull(),
+    label: text("label").notNull(),
+    position: integer("position").notNull(),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`).notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "question_options_question_fk",
+      columns: [table.questionId],
+      foreignColumns: [questions.id],
+    }).onDelete("cascade"),
+    uniqueIndex("question_options_question_value_unique").on(
+      table.questionId,
+      table.stableValue,
+    ),
+    index("question_options_question_idx").on(table.questionId),
+  ],
+);
+
+export const questionFactMappings = pgTable(
+  "question_fact_mappings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    questionId: uuid("question_id").notNull(),
+    factKey: text("fact_key").notNull(),
+    transform: jsonb("transform").default(sql`'{}'::jsonb`).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "question_fact_mappings_question_fk",
+      columns: [table.questionId],
+      foreignColumns: [questions.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "question_fact_mappings_fact_definition_fk",
+      columns: [table.factKey],
+      foreignColumns: [organizationFactDefinitions.key],
+    }),
+    uniqueIndex("question_fact_mappings_question_fact_unique").on(
+      table.questionId,
+      table.factKey,
+    ),
+    index("question_fact_mappings_question_idx").on(table.questionId),
+    index("question_fact_mappings_fact_key_idx").on(table.factKey),
+  ],
+);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   memberships: many(organizationMemberships),
   invitations: many(organizationInvitations),
@@ -289,6 +442,7 @@ export const organizationFactDefinitionsRelations = relations(
   organizationFactDefinitions,
   ({ many }) => ({
     values: many(organizationFactValues),
+    questionMappings: many(questionFactMappings),
   }),
 );
 
@@ -326,10 +480,66 @@ export const complianceFrameworkVersionsRelations = relations(
 
 export const complianceModulesRelations = relations(
   complianceModules,
-  ({ one }) => ({
+  ({ one, many }) => ({
     frameworkVersion: one(complianceFrameworkVersions, {
       fields: [complianceModules.frameworkVersionId],
       references: [complianceFrameworkVersions.id],
+    }),
+    questionnaires: many(questionnaires),
+  }),
+);
+
+export const questionnairesRelations = relations(
+  questionnaires,
+  ({ one, many }) => ({
+    module: one(complianceModules, {
+      fields: [questionnaires.moduleId],
+      references: [complianceModules.id],
+    }),
+    versions: many(questionnaireVersions),
+  }),
+);
+
+export const questionnaireVersionsRelations = relations(
+  questionnaireVersions,
+  ({ one, many }) => ({
+    questionnaire: one(questionnaires, {
+      fields: [questionnaireVersions.questionnaireId],
+      references: [questionnaires.id],
+    }),
+    questions: many(questions),
+  }),
+);
+
+export const questionsRelations = relations(questions, ({ one, many }) => ({
+  questionnaireVersion: one(questionnaireVersions, {
+    fields: [questions.questionnaireVersionId],
+    references: [questionnaireVersions.id],
+  }),
+  options: many(questionOptions),
+  factMappings: many(questionFactMappings),
+}));
+
+export const questionOptionsRelations = relations(
+  questionOptions,
+  ({ one }) => ({
+    question: one(questions, {
+      fields: [questionOptions.questionId],
+      references: [questions.id],
+    }),
+  }),
+);
+
+export const questionFactMappingsRelations = relations(
+  questionFactMappings,
+  ({ one }) => ({
+    question: one(questions, {
+      fields: [questionFactMappings.questionId],
+      references: [questions.id],
+    }),
+    factDefinition: one(organizationFactDefinitions, {
+      fields: [questionFactMappings.factKey],
+      references: [organizationFactDefinitions.key],
     }),
   }),
 );

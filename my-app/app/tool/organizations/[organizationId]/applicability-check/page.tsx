@@ -1,28 +1,33 @@
-import { ProductModuleContent } from "@/components/product-module-content";
-import { getDictionary } from "@/lib/i18n";
+import { PageHeader } from "@/components/page-header";
+import { QuestionnairePreview } from "@/components/questionnaires/questionnaire-preview";
+import { getDictionary, getLocale } from "@/lib/i18n";
+import { getActiveApplicabilityQuestionnaire } from "@/src/server/questionnaires/service";
+import { connection } from "next/server";
 
 export default async function ApplicabilityCheckPage() {
+  await connection();
   const dictionary = await getDictionary();
-  const workflow = dictionary.modules.applicabilityCheck.workflow;
+  const locale = await getLocale();
+  const questionnaire = await getActiveApplicabilityQuestionnaire();
 
   return (
-    <ProductModuleContent
-      title={dictionary.modules.applicabilityCheck.title}
-      description={dictionary.modules.applicabilityCheck.description}
-      metrics={dictionary.modules.applicabilityCheck.metrics}
-      cards={[
-        {
-          title: workflow.purposeTitle,
-          description: workflow.purposeDescription,
-          items: workflow.results,
-        },
-        {
-          title: workflow.inputsTitle,
-          description:
-            "Der neue versionierte Fragebogen wird in einer spaeteren Schema-Phase angebunden.",
-          items: workflow.inputs,
-        },
-      ]}
-    />
+    <section className="flex w-full flex-col gap-8">
+      <PageHeader
+        title={dictionary.modules.applicabilityCheck.title}
+        subtitle={dictionary.modules.applicabilityCheck.description}
+      />
+
+      {questionnaire ? (
+        <QuestionnairePreview
+          questionnaire={questionnaire}
+          locale={locale}
+        />
+      ) : (
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground shadow-sm">
+          Der NIS2-Betroffenheitscheck wurde noch nicht in die Datenbank
+          geseedet.
+        </div>
+      )}
+    </section>
   );
 }

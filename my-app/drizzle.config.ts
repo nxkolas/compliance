@@ -21,6 +21,11 @@ export default defineConfig({
     'organization_invitations',
     'organization_memberships',
     'organizations',
+    'question_fact_mappings',
+    'question_options',
+    'questionnaire_versions',
+    'questionnaires',
+    'questions',
   ],
   dbCredentials: {
     url: databaseUrl,
