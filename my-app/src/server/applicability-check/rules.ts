@@ -5,21 +5,13 @@ import {
   type RuleOutcome,
   type RuleSetDocument,
 } from "./rule-set-schema";
+import type { RuleEvaluationResult } from "./rule-evaluation-schema";
+
+export type { RuleEvaluationResult } from "./rule-evaluation-schema";
 
 export type RuleEvaluationContext = {
   facts: Record<string, unknown>;
   answers?: Record<string, unknown>;
-};
-
-export type RuleEvaluationResult = {
-  outcome: RuleOutcome;
-  label: string;
-  labelEn: string | null;
-  reasons: string[];
-  confidence: number;
-  matchedRuleIds: string[];
-  ruleSetVersion: number;
-  disclaimer: string | null;
 };
 
 export function evaluateRuleSet(

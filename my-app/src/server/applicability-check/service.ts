@@ -27,7 +27,11 @@ import {
   ACTIVE_MODULE_CODE,
   ACTIVE_QUESTIONNAIRE_CODE,
 } from "../questionnaires/service";
-import { evaluateRuleSet, type RuleEvaluationResult } from "./rules";
+import {
+  parseStoredRuleEvaluationResult,
+  type StoredRuleEvaluationResult,
+} from "./rule-evaluation-schema";
+import { evaluateRuleSet } from "./rules";
 import type { SubmitApplicabilityCheckInput } from "./validation";
 
 const ACTIVE_RULE_SET_CODE = "affectedness_check";
@@ -95,7 +99,7 @@ export type ApplicabilityResultDto = {
   ruleSetId: string | null;
   ruleSetVersionLabel: string | null;
   assessmentRevisionId: string | null;
-  result: RuleEvaluationResult;
+  result: StoredRuleEvaluationResult;
 };
 
 type ActiveDefinition = {
@@ -671,9 +675,7 @@ async function getCurrentResult(
     return null;
   }
 
-  const result = resultRow.result as RuleEvaluationResult & {
-    assessmentRevisionId?: string;
-  };
+  const result = parseStoredRuleEvaluationResult(resultRow.result);
 
   return {
     artifactRevisionId: resultRow.artifactRevisionId,
