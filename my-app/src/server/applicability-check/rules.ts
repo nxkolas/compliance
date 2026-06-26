@@ -1,15 +1,18 @@
+import {
+  parseRuleSetDocument,
+  type FieldRuleCondition,
+  type RuleCondition,
+  type RuleOutcome,
+  type RuleSetDocument,
+} from "./rule-set-schema";
+
 export type RuleEvaluationContext = {
   facts: Record<string, unknown>;
   answers?: Record<string, unknown>;
 };
 
-export type AffectednessOutcome =
-  | "affected"
-  | "possibly_affected"
-  | "not_affected";
-
 export type RuleEvaluationResult = {
-  outcome: AffectednessOutcome;
+  outcome: RuleOutcome;
   label: string;
   labelEn: string | null;
   reasons: string[];
@@ -19,40 +22,11 @@ export type RuleEvaluationResult = {
   disclaimer: string | null;
 };
 
-type RuleSetDocument = {
-  version: number;
-  defaultOutcome: AffectednessOutcome;
-  disclaimer?: string;
-  outcomes: Record<string, { label: string; labelEn?: string }>;
-  rules: RuleDocument[];
-};
-
-type RuleDocument = {
-  id: string;
-  outcome: AffectednessOutcome;
-  priority: number;
-  conditions: RuleCondition;
-  reasons?: string[];
-  confidence?: number;
-};
-
-type RuleCondition =
-  | { all: RuleCondition[] }
-  | { any: RuleCondition[] }
-  | { not: RuleCondition }
-  | {
-      factKey?: string;
-      questionStableKey?: string;
-      operator: "equals" | "not_equals" | "in" | "not_in" | "exists" | "missing";
-      value?: unknown;
-      values?: unknown[];
-    };
-
 export function evaluateRuleSet(
   ruleSetRules: unknown,
   context: RuleEvaluationContext,
 ): RuleEvaluationResult {
-  const ruleSet = parseRuleSet(ruleSetRules);
+  const ruleSet = parseRuleSetDocument(ruleSetRules);
   const orderedRules = [...ruleSet.rules].sort((left, right) => {
     if (right.priority !== left.priority) {
       return right.priority - left.priority;
@@ -128,7 +102,7 @@ function evaluateCondition(
 }
 
 function getConditionValue(
-  condition: Extract<RuleCondition, { operator: string }>,
+  condition: FieldRuleCondition,
   context: RuleEvaluationContext,
 ) {
   if (condition.factKey) {
@@ -142,135 +116,9 @@ function getConditionValue(
   return undefined;
 }
 
-function parseRuleSet(value: unknown): RuleSetDocument {
-  if (!isRecord(value)) {
-    throw new Error("Rule set must be a JSON object");
-  }
-
-  const version = value.version;
-  const defaultOutcome = value.defaultOutcome;
-  const outcomes = value.outcomes;
-  const rules = value.rules;
-
-  if (typeof version !== "number") {
-    throw new Error("Rule set version must be a number");
-  }
-
-  if (!isOutcome(defaultOutcome)) {
-    throw new Error("Rule set defaultOutcome is invalid");
-  }
-
-  if (!isRecord(outcomes)) {
-    throw new Error("Rule set outcomes must be an object");
-  }
-
-  if (!Array.isArray(rules)) {
-    throw new Error("Rule set rules must be an array");
-  }
-
-  return {
-    version,
-    defaultOutcome,
-    disclaimer:
-      typeof value.disclaimer === "string" ? value.disclaimer : undefined,
-    outcomes: parseOutcomes(outcomes),
-    rules: rules.map(parseRule),
-  };
-}
-
-function parseOutcomes(
-  outcomes: Record<string, unknown>,
-): RuleSetDocument["outcomes"] {
-  return Object.fromEntries(
-    Object.entries(outcomes).map(([outcome, labels]) => {
-      if (!isRecord(labels) || typeof labels.label !== "string") {
-        throw new Error(`Outcome ${outcome} must define a label`);
-      }
-
-      return [
-        outcome,
-        {
-          label: labels.label,
-          labelEn:
-            typeof labels.labelEn === "string" ? labels.labelEn : undefined,
-        },
-      ];
-    }),
-  );
-}
-
-function parseRule(value: unknown): RuleDocument {
-  if (!isRecord(value)) {
-    throw new Error("Rule must be an object");
-  }
-
-  if (typeof value.id !== "string" || value.id.trim().length === 0) {
-    throw new Error("Rule id is required");
-  }
-
-  if (!isOutcome(value.outcome)) {
-    throw new Error(`Rule ${value.id} has invalid outcome`);
-  }
-
-  if (typeof value.priority !== "number") {
-    throw new Error(`Rule ${value.id} priority must be a number`);
-  }
-
-  return {
-    id: value.id,
-    outcome: value.outcome,
-    priority: value.priority,
-    conditions: parseCondition(value.conditions, value.id),
-    reasons: Array.isArray(value.reasons)
-      ? value.reasons.filter((reason): reason is string => typeof reason === "string")
-      : undefined,
-    confidence:
-      typeof value.confidence === "number" ? value.confidence : undefined,
-  };
-}
-
-function parseCondition(value: unknown, ruleId: string): RuleCondition {
-  if (!isRecord(value)) {
-    throw new Error(`Rule ${ruleId} condition must be an object`);
-  }
-
-  if (Array.isArray(value.all)) {
-    return { all: value.all.map((child) => parseCondition(child, ruleId)) };
-  }
-
-  if (Array.isArray(value.any)) {
-    return { any: value.any.map((child) => parseCondition(child, ruleId)) };
-  }
-
-  if (value.not !== undefined) {
-    return { not: parseCondition(value.not, ruleId) };
-  }
-
-  const operator = value.operator;
-
-  if (!isOperator(operator)) {
-    throw new Error(`Rule ${ruleId} has invalid condition operator`);
-  }
-
-  if (typeof value.factKey !== "string" && typeof value.questionStableKey !== "string") {
-    throw new Error(`Rule ${ruleId} condition needs factKey or questionStableKey`);
-  }
-
-  return {
-    factKey: typeof value.factKey === "string" ? value.factKey : undefined,
-    questionStableKey:
-      typeof value.questionStableKey === "string"
-        ? value.questionStableKey
-        : undefined,
-    operator,
-    value: value.value,
-    values: Array.isArray(value.values) ? value.values : undefined,
-  };
-}
-
 function getOutcomeLabels(
   ruleSet: RuleSetDocument,
-  outcome: AffectednessOutcome,
+  outcome: RuleOutcome,
 ) {
   const labels = ruleSet.outcomes[outcome];
 
@@ -291,29 +139,4 @@ function clampConfidence(value: number) {
   }
 
   return Math.min(1, Math.max(0, value));
-}
-
-function isOutcome(value: unknown): value is AffectednessOutcome {
-  return (
-    value === "affected" ||
-    value === "possibly_affected" ||
-    value === "not_affected"
-  );
-}
-
-function isOperator(
-  value: unknown,
-): value is Extract<RuleCondition, { operator: string }>["operator"] {
-  return (
-    value === "equals" ||
-    value === "not_equals" ||
-    value === "in" ||
-    value === "not_in" ||
-    value === "exists" ||
-    value === "missing"
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

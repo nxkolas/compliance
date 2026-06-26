@@ -122,4 +122,64 @@ describe("DB-driven applicability rule evaluator", () => {
     expect(result.outcome).toBe("possibly_affected");
     expect(result.matchedRuleIds).toEqual([]);
   });
+
+  it("accepts module-specific outcomes defined by the rule set", () => {
+    const result = evaluateRuleSet(
+      {
+        version: 1,
+        defaultOutcome: "manual_review",
+        outcomes: {
+          compliant: { label: "Compliant" },
+          manual_review: { label: "Manual review" },
+        },
+        rules: [
+          {
+            id: "complete_controls",
+            outcome: "compliant",
+            priority: 10,
+            conditions: {
+              factKey: "controls_complete",
+              operator: "equals",
+              value: true,
+            },
+          },
+        ],
+      },
+      {
+        facts: { controls_complete: true },
+      },
+    );
+
+    expect(result.outcome).toBe("compliant");
+    expect(result.label).toBe("Compliant");
+  });
+
+  it("rejects rule outcomes that are not defined by the rule set", () => {
+    expect(() =>
+      evaluateRuleSet(
+        {
+          version: 1,
+          defaultOutcome: "manual_review",
+          outcomes: {
+            manual_review: { label: "Manual review" },
+          },
+          rules: [
+            {
+              id: "complete_controls",
+              outcome: "compliant",
+              priority: 10,
+              conditions: {
+                factKey: "controls_complete",
+                operator: "equals",
+                value: true,
+              },
+            },
+          ],
+        },
+        {
+          facts: { controls_complete: true },
+        },
+      ),
+    ).toThrow("rules.0.outcome");
+  });
 });
