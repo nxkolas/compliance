@@ -3,11 +3,14 @@ import {
   complianceFrameworkVersions,
   complianceFrameworks,
   complianceModules,
+  questionOptionTranslations,
   questionOptions,
+  questionTranslations,
   questionnaireVersions,
   questionnaires,
   questions,
 } from "@/src/db/schema";
+import type { Locale } from "@/lib/i18n-config";
 import { and, asc, eq } from "drizzle-orm";
 
 export const ACTIVE_FRAMEWORK_CODE = "nis2";
@@ -43,7 +46,9 @@ export type QuestionnairePreviewOptionDto = {
   metadata: unknown;
 };
 
-export async function getActiveApplicabilityQuestionnaire(): Promise<QuestionnairePreviewDto | null> {
+export async function getActiveApplicabilityQuestionnaire(
+  locale: Locale,
+): Promise<QuestionnairePreviewDto | null> {
   const rows = await db
     .select({
       questionnaireId: questionnaires.id,
@@ -55,12 +60,15 @@ export async function getActiveApplicabilityQuestionnaire(): Promise<Questionnai
       questionPosition: questions.position,
       questionText: questions.questionText,
       questionHelpText: questions.helpText,
+      translatedQuestionText: questionTranslations.questionText,
+      translatedQuestionHelpText: questionTranslations.helpText,
       questionAnswerType: questions.answerType,
       questionRequired: questions.required,
       questionConfig: questions.config,
       optionId: questionOptions.id,
       optionStableValue: questionOptions.stableValue,
       optionLabel: questionOptions.label,
+      translatedOptionLabel: questionOptionTranslations.label,
       optionPosition: questionOptions.position,
       optionMetadata: questionOptions.metadata,
     })
@@ -85,7 +93,21 @@ export async function getActiveApplicabilityQuestionnaire(): Promise<Questionnai
       questions,
       eq(questions.questionnaireVersionId, questionnaireVersions.id),
     )
+    .leftJoin(
+      questionTranslations,
+      and(
+        eq(questionTranslations.questionId, questions.id),
+        eq(questionTranslations.locale, locale),
+      ),
+    )
     .leftJoin(questionOptions, eq(questionOptions.questionId, questions.id))
+    .leftJoin(
+      questionOptionTranslations,
+      and(
+        eq(questionOptionTranslations.questionOptionId, questionOptions.id),
+        eq(questionOptionTranslations.locale, locale),
+      ),
+    )
     .where(
       and(
         eq(complianceFrameworks.code, ACTIVE_FRAMEWORK_CODE),
@@ -117,8 +139,8 @@ export async function getActiveApplicabilityQuestionnaire(): Promise<Questionnai
         id: row.questionId,
         stableKey: row.questionStableKey,
         position: row.questionPosition,
-        questionText: row.questionText,
-        helpText: row.questionHelpText,
+        questionText: row.translatedQuestionText ?? row.questionText,
+        helpText: row.translatedQuestionHelpText ?? row.questionHelpText,
         answerType: row.questionAnswerType,
         required: row.questionRequired,
         config: row.questionConfig,
@@ -131,7 +153,7 @@ export async function getActiveApplicabilityQuestionnaire(): Promise<Questionnai
       question.options.push({
         id: row.optionId,
         stableValue: row.optionStableValue ?? "",
-        label: row.optionLabel ?? "",
+        label: row.translatedOptionLabel ?? row.optionLabel ?? "",
         position: row.optionPosition ?? 0,
         metadata: row.optionMetadata,
       });

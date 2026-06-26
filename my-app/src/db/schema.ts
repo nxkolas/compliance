@@ -209,6 +209,31 @@ export const organizationFactDefinitions = pgTable(
   (table) => [index("organization_fact_definitions_data_type_idx").on(table.dataType)],
 );
 
+export const organizationFactDefinitionTranslations = pgTable(
+  "organization_fact_definition_translations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    factKey: text("fact_key").notNull(),
+    locale: text("locale").notNull(),
+    label: text("label").notNull(),
+    description: text("description"),
+  },
+  (table) => [
+    foreignKey({
+      name: "organization_fact_definition_translations_fact_fk",
+      columns: [table.factKey],
+      foreignColumns: [organizationFactDefinitions.key],
+    }).onDelete("cascade"),
+    uniqueIndex("organization_fact_definition_translations_fact_locale_unique").on(
+      table.factKey,
+      table.locale,
+    ),
+    index("organization_fact_definition_translations_locale_idx").on(
+      table.locale,
+    ),
+  ],
+);
+
 export const organizationFactValues = pgTable(
   "organization_fact_values",
   {
@@ -401,6 +426,29 @@ export const questions = pgTable(
   ],
 );
 
+export const questionTranslations = pgTable(
+  "question_translations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    questionId: uuid("question_id").notNull(),
+    locale: text("locale").notNull(),
+    questionText: text("question_text").notNull(),
+    helpText: text("help_text"),
+  },
+  (table) => [
+    foreignKey({
+      name: "question_translations_question_fk",
+      columns: [table.questionId],
+      foreignColumns: [questions.id],
+    }).onDelete("cascade"),
+    uniqueIndex("question_translations_question_locale_unique").on(
+      table.questionId,
+      table.locale,
+    ),
+    index("question_translations_locale_idx").on(table.locale),
+  ],
+);
+
 export const questionOptions = pgTable(
   "question_options",
   {
@@ -422,6 +470,28 @@ export const questionOptions = pgTable(
       table.stableValue,
     ),
     index("question_options_question_idx").on(table.questionId),
+  ],
+);
+
+export const questionOptionTranslations = pgTable(
+  "question_option_translations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    questionOptionId: uuid("question_option_id").notNull(),
+    locale: text("locale").notNull(),
+    label: text("label").notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "question_option_translations_option_fk",
+      columns: [table.questionOptionId],
+      foreignColumns: [questionOptions.id],
+    }).onDelete("cascade"),
+    uniqueIndex("question_option_translations_option_locale_unique").on(
+      table.questionOptionId,
+      table.locale,
+    ),
+    index("question_option_translations_locale_idx").on(table.locale),
   ],
 );
 
@@ -747,6 +817,17 @@ export const organizationFactDefinitionsRelations = relations(
   ({ many }) => ({
     values: many(organizationFactValues),
     questionMappings: many(questionFactMappings),
+    translations: many(organizationFactDefinitionTranslations),
+  }),
+);
+
+export const organizationFactDefinitionTranslationsRelations = relations(
+  organizationFactDefinitionTranslations,
+  ({ one }) => ({
+    factDefinition: one(organizationFactDefinitions, {
+      fields: [organizationFactDefinitionTranslations.factKey],
+      references: [organizationFactDefinitions.key],
+    }),
   }),
 );
 
@@ -827,14 +908,36 @@ export const questionsRelations = relations(questions, ({ one, many }) => ({
   }),
   options: many(questionOptions),
   factMappings: many(questionFactMappings),
+  translations: many(questionTranslations),
 }));
+
+export const questionTranslationsRelations = relations(
+  questionTranslations,
+  ({ one }) => ({
+    question: one(questions, {
+      fields: [questionTranslations.questionId],
+      references: [questions.id],
+    }),
+  }),
+);
 
 export const questionOptionsRelations = relations(
   questionOptions,
-  ({ one }) => ({
+  ({ one, many }) => ({
     question: one(questions, {
       fields: [questionOptions.questionId],
       references: [questions.id],
+    }),
+    translations: many(questionOptionTranslations),
+  }),
+);
+
+export const questionOptionTranslationsRelations = relations(
+  questionOptionTranslations,
+  ({ one }) => ({
+    option: one(questionOptions, {
+      fields: [questionOptionTranslations.questionOptionId],
+      references: [questionOptions.id],
     }),
   }),
 );

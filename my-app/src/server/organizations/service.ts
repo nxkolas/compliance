@@ -1,11 +1,18 @@
 import { db } from "@/src/db";
 import {
+  assessmentAnswers,
+  organizationFactDefinitionTranslations,
+  organizationFactDefinitions,
   organizationFactValues,
   organizationInvitations,
   organizationMemberships,
   organizations,
+  questionFactMappings,
+  questionOptionTranslations,
+  questionOptions,
 } from "@/src/db/schema";
-import { and, eq } from "drizzle-orm";
+import type { Locale } from "@/lib/i18n-config";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { ApiError } from "../api/errors";
@@ -115,22 +122,121 @@ export async function getOrganizationForUser(
 export async function listCurrentOrganizationFactsForUser(
   userId: string,
   organizationId: string,
+  locale: Locale,
 ): Promise<OrganizationFactDto[]> {
   await assertCanAccessOrganization(userId, organizationId);
 
-  return db.query.organizationFactValues.findMany({
-    where: and(
-      eq(organizationFactValues.organizationId, organizationId),
-      eq(organizationFactValues.isCurrent, true),
-    ),
-    with: {
-      definition: true,
-    },
-    orderBy: (factValue, { asc, desc }) => [
-      asc(factValue.factKey),
-      desc(factValue.createdAt),
-    ],
-  });
+  const rows = await db
+    .select({
+      id: organizationFactValues.id,
+      organizationId: organizationFactValues.organizationId,
+      factKey: organizationFactValues.factKey,
+      value: organizationFactValues.value,
+      sourceType: organizationFactValues.sourceType,
+      sourceRevisionId: organizationFactValues.sourceRevisionId,
+      confidence: organizationFactValues.confidence,
+      isCurrent: organizationFactValues.isCurrent,
+      createdAt: organizationFactValues.createdAt,
+      definitionKey: organizationFactDefinitions.key,
+      definitionLabel: organizationFactDefinitions.label,
+      translatedDefinitionLabel: organizationFactDefinitionTranslations.label,
+      definitionDataType: organizationFactDefinitions.dataType,
+      definitionDescription: organizationFactDefinitions.description,
+      translatedDefinitionDescription:
+        organizationFactDefinitionTranslations.description,
+      definitionCreatedAt: organizationFactDefinitions.createdAt,
+      optionLabel: questionOptions.label,
+      translatedOptionLabel: questionOptionTranslations.label,
+    })
+    .from(organizationFactValues)
+    .innerJoin(
+      organizationFactDefinitions,
+      eq(organizationFactValues.factKey, organizationFactDefinitions.key),
+    )
+    .leftJoin(
+      organizationFactDefinitionTranslations,
+      and(
+        eq(
+          organizationFactDefinitionTranslations.factKey,
+          organizationFactDefinitions.key,
+        ),
+        eq(organizationFactDefinitionTranslations.locale, locale),
+      ),
+    )
+    .leftJoin(
+      questionFactMappings,
+      eq(questionFactMappings.factKey, organizationFactValues.factKey),
+    )
+    .leftJoin(
+      assessmentAnswers,
+      and(
+        eq(
+          assessmentAnswers.assessmentRevisionId,
+          organizationFactValues.sourceRevisionId,
+        ),
+        eq(assessmentAnswers.questionId, questionFactMappings.questionId),
+        sql`${assessmentAnswers.answerValue} = ${organizationFactValues.value}`,
+      ),
+    )
+    .leftJoin(
+      questionOptions,
+      and(
+        eq(questionOptions.questionId, assessmentAnswers.questionId),
+        sql`${assessmentAnswers.answerValue} = to_jsonb(${questionOptions.stableValue})`,
+      ),
+    )
+    .leftJoin(
+      questionOptionTranslations,
+      and(
+        eq(questionOptionTranslations.questionOptionId, questionOptions.id),
+        eq(questionOptionTranslations.locale, locale),
+      ),
+    )
+    .where(
+      and(
+        eq(organizationFactValues.organizationId, organizationId),
+        eq(organizationFactValues.isCurrent, true),
+      ),
+    )
+    .orderBy(asc(organizationFactValues.factKey), desc(organizationFactValues.createdAt));
+
+  const factsById = new Map<string, OrganizationFactDto>();
+
+  for (const row of rows) {
+    const existingFact = factsById.get(row.id);
+    const valueLabel = row.translatedOptionLabel ?? row.optionLabel ?? null;
+
+    if (existingFact) {
+      if (!existingFact.valueLabel && valueLabel) {
+        existingFact.valueLabel = valueLabel;
+      }
+
+      continue;
+    }
+
+    factsById.set(row.id, {
+      id: row.id,
+      organizationId: row.organizationId,
+      factKey: row.factKey,
+      value: row.value,
+      sourceType: row.sourceType,
+      sourceRevisionId: row.sourceRevisionId,
+      confidence: row.confidence,
+      isCurrent: row.isCurrent,
+      createdAt: row.createdAt,
+      valueLabel,
+      definition: {
+        key: row.definitionKey,
+        label: row.translatedDefinitionLabel ?? row.definitionLabel,
+        dataType: row.definitionDataType,
+        description:
+          row.translatedDefinitionDescription ?? row.definitionDescription,
+        createdAt: row.definitionCreatedAt,
+      },
+    });
+  }
+
+  return Array.from(factsById.values());
 }
 
 export async function listOrganizationInvitations(

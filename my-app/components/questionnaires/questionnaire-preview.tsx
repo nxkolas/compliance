@@ -116,7 +116,6 @@ export function QuestionnairePreview({
             key={question.id}
             answer={answers[question.id] ?? ""}
             copy={copy}
-            locale={locale}
             onChange={(value) =>
               setAnswers((current) => ({ ...current, [question.id]: value }))
             }
@@ -131,7 +130,6 @@ export function QuestionnairePreview({
 type QuestionBlockProps = {
   answer: string;
   copy: (typeof labels)[Locale];
-  locale: Locale;
   onChange: (value: string) => void;
   question: QuestionnairePreviewQuestion;
 };
@@ -139,21 +137,14 @@ type QuestionBlockProps = {
 function QuestionBlock({
   answer,
   copy,
-  locale,
   onChange,
   question,
 }: QuestionBlockProps) {
-  const questionText =
-    getTranslatedValue(question.config, locale, "questionText") ??
-    question.questionText;
-  const helpText =
-    getTranslatedValue(question.config, locale, "helpText") ??
-    question.helpText;
   const control = getControl(question.config);
   const renderAsSelect = control === "select" || question.options.length > 6;
   const comboboxOptions = question.options.map((option) => ({
     value: option.stableValue,
-    label: getOptionLabel(option, locale),
+    label: option.label,
   }));
   const selectedComboboxOption =
     comboboxOptions.find((option) => option.value === answer) ?? null;
@@ -168,7 +159,7 @@ function QuestionBlock({
           <div>
             <div className="flex flex-wrap items-start gap-2">
               <h3 className="text-base font-semibold leading-7">
-                {questionText}
+                {question.questionText}
               </h3>
               {question.required ? (
                 <span className="mt-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
@@ -176,9 +167,9 @@ function QuestionBlock({
                 </span>
               ) : null}
             </div>
-            {helpText ? (
+            {question.helpText ? (
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                {helpText}
+                {question.helpText}
               </p>
             ) : null}
           </div>
@@ -223,9 +214,7 @@ function QuestionBlock({
                         : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     }`}
                   >
-                    <span className="break-words">
-                      {getOptionLabel(option, locale)}
-                    </span>
+                    <span className="break-words">{option.label}</span>
                     {selected ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                     ) : null}
@@ -240,10 +229,6 @@ function QuestionBlock({
   );
 }
 
-function getOptionLabel(option: QuestionnairePreviewOption, locale: Locale) {
-  return getTranslatedValue(option.metadata, locale, "label") ?? option.label;
-}
-
 function getControl(config: unknown) {
   if (!isRecord(config) || !isRecord(config.ui)) {
     return undefined;
@@ -252,26 +237,6 @@ function getControl(config: unknown) {
   return typeof config.ui.control === "string"
     ? config.ui.control
     : undefined;
-}
-
-function getTranslatedValue(
-  source: unknown,
-  locale: Locale,
-  key: string,
-): string | undefined {
-  if (locale === "de" || !isRecord(source) || !isRecord(source.translations)) {
-    return undefined;
-  }
-
-  const localeTranslations = source.translations[locale];
-
-  if (!isRecord(localeTranslations)) {
-    return undefined;
-  }
-
-  const value = localeTranslations[key];
-
-  return typeof value === "string" ? value : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -6,9 +6,12 @@ import {
   complianceFrameworkVersions,
   complianceFrameworks,
   complianceModules,
+  organizationFactDefinitionTranslations,
   organizationFactDefinitions,
   questionFactMappings,
+  questionOptionTranslations,
   questionOptions,
+  questionTranslations,
   questionnaireVersions,
   questionnaires,
   questions,
@@ -30,84 +33,120 @@ const client = postgres(databaseUrl, {
 });
 const db = drizzle(client);
 
-const factDefinitions: Array<
-  typeof organizationFactDefinitions.$inferInsert
-> = [
+type SeedFactDefinition = typeof organizationFactDefinitions.$inferInsert & {
+  labelEn: string;
+  descriptionEn?: string | null;
+};
+
+const factDefinitions: SeedFactDefinition[] = [
   {
     key: "employee_count_bucket",
-    label: "Employee count bucket",
+    label: "Mitarbeiterzahl",
+    labelEn: "Employee count bucket",
     dataType: "enum",
-    description: "Reusable company-size bucket derived from assessment input.",
+    description:
+      "Wiederverwendbare Unternehmensgroesse aus Assessment-Antworten.",
+    descriptionEn:
+      "Reusable company-size bucket derived from assessment input.",
   },
   {
     key: "annual_revenue_bucket",
-    label: "Annual revenue bucket",
+    label: "Jahresumsatz",
+    labelEn: "Annual revenue bucket",
     dataType: "enum",
-    description: "Reusable annual revenue bucket derived from assessment input.",
+    description:
+      "Wiederverwendbare Jahresumsatzklasse aus Assessment-Antworten.",
+    descriptionEn: "Reusable annual revenue bucket derived from assessment input.",
   },
   {
     key: "balance_sheet_total_bucket",
-    label: "Balance sheet total bucket",
+    label: "Bilanzsumme",
+    labelEn: "Balance sheet total bucket",
     dataType: "enum",
     description:
+      "Wiederverwendbare Bilanzsummenklasse aus Assessment-Antworten.",
+    descriptionEn:
       "Reusable balance sheet total bucket derived from assessment input.",
   },
   {
     key: "industry_sector",
-    label: "Industry sector",
+    label: "Branche",
+    labelEn: "Industry sector",
     dataType: "enum",
-    description: "Primary sector used for compliance applicability checks.",
+    description: "Primaere Branche fuer Compliance-Betroffenheitspruefungen.",
+    descriptionEn: "Primary sector used for compliance applicability checks.",
   },
   {
     key: "has_german_market_presence",
-    label: "German market presence",
+    label: "Deutsche Marktpräsenz",
+    labelEn: "German market presence",
     dataType: "boolean",
-    description: "Whether the organization has relevant activity in Germany.",
+    description:
+      "Ob die Organisation relevante Aktivitaeten in Deutschland hat.",
+    descriptionEn: "Whether the organization has relevant activity in Germany.",
   },
   {
     key: "belongs_to_group",
-    label: "Belongs to a group",
+    label: "Teil einer Unternehmensgruppe",
+    labelEn: "Belongs to a group",
     dataType: "boolean",
     description:
+      "Ob die Organisation als Teil einer Unternehmensgruppe betrachtet werden soll.",
+    descriptionEn:
       "Whether the organization should be considered as part of a corporate group.",
   },
   {
     key: "provides_critical_services",
-    label: "Provides critical services",
+    label: "Erbringt kritische Leistungen",
+    labelEn: "Provides critical services",
     dataType: "boolean",
-    description: "Whether the organization provides services in critical areas.",
+    description: "Ob die Organisation Leistungen in kritischen Bereichen erbringt.",
+    descriptionEn: "Whether the organization provides services in critical areas.",
   },
   {
     key: "provides_it_services",
-    label: "Provides IT services",
+    label: "Erbringt IT-Dienstleistungen",
+    labelEn: "Provides IT services",
     dataType: "boolean",
-    description: "Whether the organization provides IT or digital services.",
+    description: "Ob die Organisation IT- oder digitale Dienstleistungen erbringt.",
+    descriptionEn: "Whether the organization provides IT or digital services.",
   },
   {
     key: "serves_critical_customers",
-    label: "Serves critical customers",
+    label: "Bedient kritische Kunden",
+    labelEn: "Serves critical customers",
     dataType: "boolean",
     description:
+      "Ob die Organisation Kunden in kritischen oder regulierten Sektoren bedient.",
+    descriptionEn:
       "Whether the organization serves customers in critical or regulated sectors.",
   },
   {
     key: "failure_causes_major_impact",
-    label: "Failure causes major impact",
+    label: "Ausfall verursacht grosse Auswirkungen",
+    labelEn: "Failure causes major impact",
     dataType: "boolean",
     description:
+      "Ob ein Ausfall grosse operative oder gesellschaftliche Auswirkungen verursachen koennte.",
+    descriptionEn:
       "Whether service failure could cause major operational or societal impact.",
   },
   {
     key: "processes_sensitive_data",
-    label: "Processes sensitive data",
+    label: "Verarbeitet sensible Daten",
+    labelEn: "Processes sensitive data",
     dataType: "boolean",
-    description: "Whether the organization processes sensitive or protected data.",
+    description: "Ob die Organisation sensible oder geschuetzte Daten verarbeitet.",
+    descriptionEn: "Whether the organization processes sensitive or protected data.",
   },
   {
     key: "has_customer_security_evidence_requests",
-    label: "Customer security evidence requests",
+    label: "Kundenanfragen zu Sicherheitsnachweisen",
+    labelEn: "Customer security evidence requests",
     dataType: "boolean",
     description:
+      "Ob Kunden Sicherheitsdokumentation oder Compliance-Nachweise anfragen.",
+    descriptionEn:
       "Whether customers request security documentation or compliance evidence.",
   },
 ];
@@ -692,15 +731,36 @@ const affectednessRuleSet = {
 async function main() {
   try {
     for (const definition of factDefinitions) {
+      const { labelEn, descriptionEn, ...definitionValues } = definition;
+
       await db
         .insert(organizationFactDefinitions)
-        .values(definition)
+        .values(definitionValues)
         .onConflictDoUpdate({
           target: organizationFactDefinitions.key,
           set: {
             label: definition.label,
             dataType: definition.dataType,
             description: definition.description,
+          },
+        });
+
+      await db
+        .insert(organizationFactDefinitionTranslations)
+        .values({
+          factKey: definition.key,
+          locale: "en",
+          label: labelEn,
+          description: descriptionEn ?? null,
+        })
+        .onConflictDoUpdate({
+          target: [
+            organizationFactDefinitionTranslations.factKey,
+            organizationFactDefinitionTranslations.locale,
+          ],
+          set: {
+            label: labelEn,
+            description: descriptionEn ?? null,
           },
         });
     }
@@ -823,11 +883,6 @@ async function main() {
             ui: {
               control: seedQuestion.uiControl ?? "buttons",
             },
-            translations: {
-              en: {
-                questionText: seedQuestion.questionTextEn,
-              },
-            },
           },
         })
         .onConflictDoUpdate({
@@ -842,44 +897,61 @@ async function main() {
               ui: {
                 control: seedQuestion.uiControl ?? "buttons",
               },
-              translations: {
-                en: {
-                  questionText: seedQuestion.questionTextEn,
-                },
-              },
             },
           },
         })
         .returning();
 
+      await db
+        .insert(questionTranslations)
+        .values({
+          questionId: question.id,
+          locale: "en",
+          questionText: seedQuestion.questionTextEn,
+          helpText: null,
+        })
+        .onConflictDoUpdate({
+          target: [questionTranslations.questionId, questionTranslations.locale],
+          set: {
+            questionText: seedQuestion.questionTextEn,
+            helpText: null,
+          },
+        });
+
       for (const [optionIndex, option] of seedQuestion.options.entries()) {
-        await db
+        const [seededOption] = await db
           .insert(questionOptions)
           .values({
             questionId: question.id,
             stableValue: option.stableValue,
             label: option.label,
             position: optionIndex + 1,
-            metadata: {
-              translations: {
-                en: {
-                  label: option.labelEn,
-                },
-              },
-            },
+            metadata: {},
           })
           .onConflictDoUpdate({
             target: [questionOptions.questionId, questionOptions.stableValue],
             set: {
               label: option.label,
               position: optionIndex + 1,
-              metadata: {
-                translations: {
-                  en: {
-                    label: option.labelEn,
-                  },
-                },
-              },
+              metadata: {},
+            },
+          })
+          .returning();
+
+        await db
+          .insert(questionOptionTranslations)
+          .values({
+            questionOptionId: seededOption.id,
+            locale: "en",
+            label: option.labelEn,
+          })
+          .onConflictDoUpdate({
+            target: [
+              questionOptionTranslations.questionOptionId,
+              questionOptionTranslations.locale,
+            ],
+            set: {
+              label: option.labelEn,
             },
           });
       }

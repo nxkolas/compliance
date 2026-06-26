@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getOrganizationForUser,
@@ -27,6 +27,7 @@ export default async function OrganizationSettingsPage({
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
+  const locale = await getLocale();
   const { organizationId } = await params;
   const organization = await getOrganizationForUser(user.id, organizationId);
 
@@ -37,6 +38,7 @@ export default async function OrganizationSettingsPage({
   const organizationFacts = await listCurrentOrganizationFactsForUser(
     user.id,
     organizationId,
+    locale,
   );
   const settingsLabels = dictionary.organizationSettings;
 
@@ -76,7 +78,8 @@ export default async function OrganizationSettingsPage({
                       {fact.definition.label}
                     </dt>
                     <dd className="mt-1 break-words text-sm text-muted-foreground">
-                      {formatFactValue(fact.value, settingsLabels)}
+                      {fact.valueLabel ??
+                        formatFactValue(fact.value, settingsLabels)}
                     </dd>
                     <dd className="mt-2 text-xs text-muted-foreground">
                       {settingsLabels.sourceLabel}: {fact.sourceType}

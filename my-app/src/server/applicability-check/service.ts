@@ -11,12 +11,15 @@ import {
   generatedArtifacts,
   organizationFactValues,
   questionFactMappings,
+  questionOptionTranslations,
   questionOptions,
+  questionTranslations,
   questionnaireVersions,
   questionnaires,
   questions,
   ruleSets,
 } from "@/src/db/schema";
+import type { Locale } from "@/lib/i18n-config";
 import { and, asc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { ApiError } from "../api/errors";
@@ -126,10 +129,11 @@ type ValidatedAnswer = {
 export async function getApplicabilityQuestionnaireForUser(
   userId: string,
   organizationId: string,
+  locale: Locale,
 ): Promise<ApplicabilityQuestionnaireDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
 
-  const definition = await getActiveDefinition();
+  const definition = await getActiveDefinition(locale);
 
   if (!definition) {
     return null;
@@ -195,9 +199,10 @@ export async function getApplicabilityOverviewForUser(
 export async function getApplicabilityAnswersForUser(
   userId: string,
   organizationId: string,
+  locale: Locale,
 ): Promise<ApplicabilityAnswersDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
-  const definition = await getActiveDefinition();
+  const definition = await getActiveDefinition(locale);
 
   if (!definition) {
     return null;
@@ -250,6 +255,8 @@ export async function getApplicabilityAnswersForUser(
 
       return {
         ...row,
+        questionText: question?.questionText ?? row.questionText,
+        answerLabel: option?.label ?? row.answerLabel,
         answerMetadata: option?.metadata ?? null,
       };
     }),
@@ -476,7 +483,9 @@ export async function submitApplicabilityCheckForUser(
   });
 }
 
-async function getActiveDefinition(): Promise<ActiveDefinition | null> {
+async function getActiveDefinition(
+  locale: Locale = "de",
+): Promise<ActiveDefinition | null> {
   const rows = await db
     .select({
       moduleId: complianceModules.id,
@@ -490,12 +499,15 @@ async function getActiveDefinition(): Promise<ActiveDefinition | null> {
       questionPosition: questions.position,
       questionText: questions.questionText,
       questionHelpText: questions.helpText,
+      translatedQuestionText: questionTranslations.questionText,
+      translatedQuestionHelpText: questionTranslations.helpText,
       questionAnswerType: questions.answerType,
       questionRequired: questions.required,
       questionConfig: questions.config,
       optionId: questionOptions.id,
       optionStableValue: questionOptions.stableValue,
       optionLabel: questionOptions.label,
+      translatedOptionLabel: questionOptionTranslations.label,
       optionPosition: questionOptions.position,
       optionMetadata: questionOptions.metadata,
       factKey: questionFactMappings.factKey,
@@ -522,7 +534,21 @@ async function getActiveDefinition(): Promise<ActiveDefinition | null> {
       questions,
       eq(questions.questionnaireVersionId, questionnaireVersions.id),
     )
+    .leftJoin(
+      questionTranslations,
+      and(
+        eq(questionTranslations.questionId, questions.id),
+        eq(questionTranslations.locale, locale),
+      ),
+    )
     .leftJoin(questionOptions, eq(questionOptions.questionId, questions.id))
+    .leftJoin(
+      questionOptionTranslations,
+      and(
+        eq(questionOptionTranslations.questionOptionId, questionOptions.id),
+        eq(questionOptionTranslations.locale, locale),
+      ),
+    )
     .leftJoin(questionFactMappings, eq(questionFactMappings.questionId, questions.id))
     .where(
       and(
@@ -558,8 +584,8 @@ async function getActiveDefinition(): Promise<ActiveDefinition | null> {
         id: row.questionId,
         stableKey: row.questionStableKey,
         position: row.questionPosition,
-        questionText: row.questionText,
-        helpText: row.questionHelpText,
+        questionText: row.translatedQuestionText ?? row.questionText,
+        helpText: row.translatedQuestionHelpText ?? row.questionHelpText,
         answerType: row.questionAnswerType,
         required: row.questionRequired,
         config: row.questionConfig,
@@ -576,7 +602,7 @@ async function getActiveDefinition(): Promise<ActiveDefinition | null> {
       question.options.push({
         id: row.optionId,
         stableValue: row.optionStableValue ?? "",
-        label: row.optionLabel ?? "",
+        label: row.translatedOptionLabel ?? row.optionLabel ?? "",
         position: row.optionPosition ?? 0,
         metadata: row.optionMetadata,
       });

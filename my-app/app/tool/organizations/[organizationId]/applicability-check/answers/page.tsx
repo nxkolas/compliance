@@ -29,7 +29,11 @@ export default async function ApplicabilityAnswersPage({
   const dictionary = await getDictionary();
   const locale = await getLocale();
   const { organizationId } = await params;
-  const answers = await getApplicabilityAnswersForUser(user.id, organizationId);
+  const answers = await getApplicabilityAnswersForUser(
+    user.id,
+    organizationId,
+    locale,
+  );
 
   if (!answers) {
     redirect(`/tool/organizations/${organizationId}/applicability-check/new`);
@@ -86,17 +90,10 @@ export default async function ApplicabilityAnswersPage({
                   <span className="text-muted-foreground">
                     {answer.questionPosition}.
                   </span>
-                  <span>
-                    {getTranslatedValue(
-                      answer.questionConfig,
-                      locale,
-                      "questionText",
-                    ) ?? answer.questionText}
-                  </span>
+                  <span>{answer.questionText}</span>
                 </dt>
                 <dd className="mt-2 text-sm text-muted-foreground">
-                  {getTranslatedValue(answer.answerMetadata, locale, "label") ??
-                    answer.answerLabel ??
+                  {answer.answerLabel ??
                     formatAnswerValue(answer.answerValue, labels.unset)}
                 </dd>
               </div>
@@ -122,28 +119,4 @@ function formatAnswerValue(value: unknown, unsetLabel: string): string {
   }
 
   return unsetLabel;
-}
-
-function getTranslatedValue(
-  source: unknown,
-  locale: string,
-  key: string,
-): string | undefined {
-  if (locale === "de" || !isRecord(source) || !isRecord(source.translations)) {
-    return undefined;
-  }
-
-  const localeTranslations = source.translations[locale];
-
-  if (!isRecord(localeTranslations)) {
-    return undefined;
-  }
-
-  const value = localeTranslations[key];
-
-  return typeof value === "string" ? value : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

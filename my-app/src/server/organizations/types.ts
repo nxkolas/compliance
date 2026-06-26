@@ -35,6 +35,7 @@ export type OrganizationDto = typeof organizations.$inferSelect;
 
 export type OrganizationFactDto = typeof organizationFactValues.$inferSelect & {
   definition: typeof organizationFactDefinitions.$inferSelect;
+  valueLabel: string | null;
 };
 
 export type OrganizationMembershipDto =

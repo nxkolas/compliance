@@ -22,6 +22,7 @@ export default async function NewApplicabilityCheckPage({
   const questionnaire = await getApplicabilityQuestionnaireForUser(
     user.id,
     organizationId,
+    locale,
   );
 
   return (
@@ -35,7 +36,6 @@ export default async function NewApplicabilityCheckPage({
         <ApplicabilityQuestionnaireForm
           organizationId={organizationId}
           questionnaire={questionnaire}
-          locale={locale}
           labels={dictionary.modules.applicabilityCheck.form}
         />
       ) : (
