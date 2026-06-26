@@ -563,6 +563,11 @@ For free text:
 }
 ```
 
+Do **not** store the Betroffenheitscheck outcome in `assessment_answers`.
+Answers are user-provided input. The outcome is a derived, reproducible result
+and belongs in a generated artifact revision that points back to this exact
+assessment revision.
+
 ---
 
 ## 9. Betroffenheitscheck outcome
@@ -579,7 +584,50 @@ nicht betroffen
 möglicherweise betroffen
 ```
 
-Do not store this as just a column on `organizations`. Store it as a generated result depending on a specific assessment revision.
+Calculate this outcome with deterministic backend rules, not AI. The result
+should be reproducible, auditable, testable, legally defensible, and tied to a
+specific rule-set version. AI can still help explain or summarize the result,
+but the actual `outcome` value should come from system logic.
+
+Do not store this as just a column on `organizations`, and do not write it back
+as a questionnaire answer. Store it as a generated result depending on a
+specific assessment revision and rule set.
+
+Rule sets should be versioned under the module they belong to. Since modules
+are meaningful domain concepts, this keeps questionnaires, rules, and generated
+artifacts grouped around the same workflow:
+
+```sql
+CREATE TABLE rule_sets (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    module_id uuid NOT NULL REFERENCES compliance_modules(id),
+
+    code text NOT NULL, -- e.g. affectedness_check
+    version_label text NOT NULL, -- e.g. 2026-v1
+
+    status text NOT NULL CHECK (
+        status IN ('draft', 'published', 'archived')
+    ),
+
+    rules jsonb NOT NULL,
+
+    created_at timestamptz NOT NULL DEFAULT now(),
+    published_at timestamptz,
+
+    UNIQUE (module_id, code, version_label)
+);
+```
+
+Conceptually:
+
+```text
+compliance_framework_versions
+  -> compliance_modules
+      -> questionnaires
+      -> rule_sets
+      -> generated_artifacts
+```
 
 You can use a generic artifact table:
 
@@ -625,7 +673,7 @@ CREATE TABLE generated_artifact_revisions (
 
     model_name text,
     prompt_version text,
-    rule_set_version text,
+    rule_set_id uuid REFERENCES rule_sets(id),
     input_hash text,
 
     generated_by text NOT NULL DEFAULT 'system'
@@ -642,6 +690,11 @@ ADD CONSTRAINT fk_artifacts_current_revision
 FOREIGN KEY (current_revision_id)
 REFERENCES generated_artifact_revisions(id);
 ```
+
+For the Betroffenheitscheck, `generated_by` should be `system`,
+`rule_set_id` should point to the affectedness rule set, and AI-specific fields
+such as `model_name` and `prompt_version` should remain `NULL` unless an
+optional AI explanation was generated as part of the stored result.
 
 Dependencies:
 
@@ -679,6 +732,29 @@ Example Betroffenheitscheck result:
   ],
   "confidence": 0.74
 }
+```
+
+Recommended submission flow:
+
+```text
+1. Create a new assessment_revision.
+2. Store all questionnaire answers in assessment_answers.
+3. Extract/update organization_fact_values from question_fact_mappings.
+4. Run the published affectedness rule set in backend application code.
+5. Create a generated_artifact_revision with the affectedness result.
+6. Link the artifact revision to the assessment revision in artifact_revision_sources.
+7. Mark the artifact revision as current on generated_artifacts.
+```
+
+This lets you audit a result later as:
+
+```text
+NIS2 framework version 2026-v1
++ module Betroffenheitscheck
++ questionnaire version 2026-v1
++ assessment revision 3
++ rule set affectedness_check 2026-v1
+= affectedness result revision 3
 ```
 
 ---
@@ -985,6 +1061,7 @@ organization_memberships
 compliance_frameworks
 compliance_framework_versions
 compliance_modules
+rule_sets
 
 questionnaires
 questionnaire_versions
@@ -1035,6 +1112,7 @@ Planned:
 assessments
 assessment_revisions
 assessment_answers
+rule_sets
 generated_artifacts
 generated_artifact_revisions
 artifact_revision_sources
