@@ -8,9 +8,7 @@ import { hasEnvVars } from "../utils";
 function isPublicRoute(pathname: string) {
   return (
     pathname === "/" ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/check") ||
-    pathname.startsWith("/api/guest-assessments")
+    pathname.startsWith("/auth")
   );
 }
 
@@ -82,7 +80,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user?.is_anonymous && request.nextUrl.pathname.startsWith("/tool")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/check";
+    url.pathname = "/auth/login";
     url.search = "";
     return NextResponse.redirect(url);
   }

@@ -18,12 +18,10 @@ import Image from "next/image";
 
 export function SignUpForm({
   labels,
-  guestAssessmentId,
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & {
   labels: Dictionary["auth"];
-  guestAssessmentId?: string;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,7 +31,6 @@ export function SignUpForm({
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [confirmationEmail, setConfirmationEmail] = useState<string>();
   const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -61,49 +58,6 @@ export function SignUpForm({
     }
 
     try {
-      if (guestAssessmentId) {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-        if (userError || !user?.is_anonymous) {
-          throw new Error("Die anonyme Sitzung ist nicht mehr verfügbar.");
-        }
-
-        const next = `/tool/organizations/claim-assessment/${guestAssessmentId}`;
-        const { error: updateError } = await supabase.auth.updateUser(
-          { email, password },
-          {
-            emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
-          },
-        );
-        if (updateError) throw updateError;
-
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (!signInError) {
-          const {
-            data: { user: signedInUser },
-            error: signedInUserError,
-          } = await supabase.auth.getUser();
-          if (signedInUserError || !signedInUser || signedInUser.is_anonymous) {
-            throw new Error(labels.errorFallback);
-          }
-
-          router.replace(
-            `/tool/organizations/claim-assessment/${guestAssessmentId}`,
-          );
-          router.refresh();
-          return;
-        }
-
-        setConfirmationEmail(email);
-        return;
-      }
-
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -122,47 +76,6 @@ export function SignUpForm({
       setIsLoading(false);
     }
   };
-
-  if (confirmationEmail) {
-    return (
-      <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#02040E] p-4 md:p-10">
-        <div className="pointer-events-none absolute inset-0 z-0 size-full">
-          <Image
-            src="/images/Startseite.svg"
-            alt={labels.backgroundAlt}
-            fill
-            className="object-cover"
-            priority
-          />
-        </div>
-        <div className="relative z-10 flex w-full max-w-110.5 flex-col items-start gap-4 font-['Space_Grotesk']">
-          <div className="flex h-16 items-center">
-            <Image
-              src="/images/Logo-weiß.svg"
-              alt="complyX Logo"
-              width={180}
-              height={48}
-              priority
-              className="object-contain"
-            />
-          </div>
-          <div className="flex self-stretch flex-col gap-2 pb-4">
-            <h1 className="text-4xl font-medium tracking-tight text-white">
-              E-Mail bestätigen
-            </h1>
-            <p className="text-base text-white/80">
-              Öffnen Sie den Bestätigungslink in diesem Browser.
-            </p>
-          </div>
-          <div className="self-stretch rounded-2xl bg-[#FAFAFA] p-8 text-black">
-            Wir haben einen Bestätigungslink an{" "}
-            <strong>{confirmationEmail}</strong> gesendet. Danach wird Ihr
-            Schnellcheck mit einer Organisation Ihrer Wahl verknüpft.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen w-full bg-[#02040E] flex items-center justify-center overflow-hidden p-4 md:p-10">
@@ -201,25 +114,23 @@ export function SignUpForm({
         <div className="self-stretch p-8 bg-[#FAFAFA] rounded-2xl shadow-none flex flex-col justify-start items-start gap-6">
           <form onSubmit={handleSignUp} className="w-full flex flex-col gap-5">
             
-            {!guestAssessmentId ? (
-              <div className="self-stretch flex flex-col justify-start items-start gap-2">
-                <Label htmlFor="name" className="text-black text-base font-medium">
-                  {labels.name}
-                </Label>
-                <div className="relative w-full">
-                  <User className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder={labels.namePlaceholder}
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal shadow-none focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
-                  />
-                </div>
+            <div className="self-stretch flex flex-col justify-start items-start gap-2">
+              <Label htmlFor="name" className="text-black text-base font-medium">
+                {labels.name}
+              </Label>
+              <div className="relative w-full">
+                <User className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder={labels.namePlaceholder}
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal shadow-none focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                />
               </div>
-            ) : null}
+            </div>
 
             <AccountEmailField
               labels={labels}
@@ -268,11 +179,7 @@ export function SignUpForm({
         <div className="self-stretch flex justify-center items-center gap-1 mt-2 text-white text-base">
           <span className="font-normal">{labels.alreadyHaveAnAccount}</span>
           <Link
-            href={
-              guestAssessmentId
-                ? `/check/${guestAssessmentId}/claim`
-                : "/auth/login"
-            }
+            href="/auth/login"
             className="font-semibold hover:underline decoration-2 text-white"
           >
             {labels.login}

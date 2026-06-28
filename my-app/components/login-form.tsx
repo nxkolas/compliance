@@ -67,12 +67,10 @@ function getNextPath() {
 
 export function LoginForm({
   labels,
-  guestAssessmentId,
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div"> & {
   labels: Dictionary["auth"];
-  guestAssessmentId?: string;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -118,14 +116,6 @@ export function LoginForm({
         throw loginError;
       }
 
-      if (guestAssessmentId) {
-        router.replace(
-          `/tool/organizations/claim-assessment/${guestAssessmentId}`,
-        );
-        router.refresh();
-        return;
-      }
-
       router.replace(getNextPath());
       router.refresh();
     } catch (caught) {
@@ -160,14 +150,10 @@ export function LoginForm({
 
       <div className="flex self-stretch flex-col items-start gap-2 pb-4">
         <h1 className="text-4xl font-medium tracking-tight text-neutral-50">
-          {guestAssessmentId
-            ? "Mit bestehendem Konto übernehmen"
-            : labels.welcomeBack}
+          {labels.welcomeBack}
         </h1>
         <p className="text-base font-normal text-neutral-50/80">
-          {guestAssessmentId
-            ? "Melden Sie sich an, um den Schnellcheck mit Ihrem Konto zu verknüpfen."
-            : labels.signInDescription}
+          {labels.signInDescription}
         </p>
       </div>
 
@@ -243,11 +229,7 @@ export function LoginForm({
                 "cursor-not-allowed bg-gray-100 text-gray-400 hover:bg-gray-100 disabled:opacity-100",
             )}
           >
-            {isLoading
-              ? labels.signingIn
-              : guestAssessmentId
-                ? "Anmelden und übernehmen"
-                : labels.login}
+            {isLoading ? labels.signingIn : labels.login}
           </Button>
         </form>
       </div>
@@ -264,11 +246,7 @@ export function LoginForm({
           <>
             <span className="font-normal">{labels.noAccount}</span>
             <Link
-              href={
-                guestAssessmentId
-                  ? `/check/${guestAssessmentId}/create-account`
-                  : "/auth/sign-up"
-              }
+              href="/auth/sign-up"
               className="font-bold decoration-2 hover:underline"
             >
               {labels.signUp}
