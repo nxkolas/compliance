@@ -76,31 +76,7 @@ export function GuestApplicabilityActions({
         </div>
       ) : null}
 
-      {isAuthenticated ? (
-        <Button asChild>
-          <Link href={claimPath}>
-            <Building2 />
-            {labels.saveToAccount}
-          </Link>
-        </Button>
-      ) : (
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button asChild>
-            <Link href={`/auth/sign-up?next=${encodeURIComponent(claimPath)}`}>
-              <UserPlus />
-              {labels.createAccount}
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href={`/auth/login?next=${encodeURIComponent(claimPath)}`}>
-              <LogIn />
-              {labels.signIn}
-            </Link>
-          </Button>
-        </div>
-      )}
-
-      <div className="mt-4 flex justify-end border-t pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button
           type="button"
           variant="destructive"
@@ -110,6 +86,33 @@ export function GuestApplicabilityActions({
           <Trash2 />
           {isDeleting ? labels.deleting : labels.deleteData}
         </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {isAuthenticated ? (
+            <Button asChild>
+              <Link href={claimPath}>
+                <Building2 />
+                {labels.saveToAccount}
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button asChild variant="outline">
+                <Link href={`/auth/login?next=${encodeURIComponent(claimPath)}`}>
+                  <LogIn />
+                  {labels.signIn}
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link
+                  href={`/auth/sign-up?next=${encodeURIComponent(claimPath)}`}
+                >
+                  <UserPlus />
+                  {labels.createAccount}
+                </Link>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
