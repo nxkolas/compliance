@@ -8,7 +8,7 @@ export async function requireApiUser() {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
+  if (error || !user || user.is_anonymous) {
     throw new ApiError(401, "Authentication required");
   }
 
