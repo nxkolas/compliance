@@ -16,7 +16,7 @@ export async function requireAuth() {
   }
 
   if (user.is_anonymous) {
-    redirect("/check");
+    redirect("/auth/login");
   }
 
   return user;

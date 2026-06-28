@@ -1,7 +1,6 @@
 "use client";
 
 import type { Dictionary } from "@/lib/i18n";
-import Link from "next/link";
 
 export function TermsAcceptance({
   labels,
@@ -29,13 +28,13 @@ export function TermsAcceptance({
         className="cursor-pointer select-none text-sm font-normal leading-tight text-[#4A5565]"
       >
         {labels.acceptTermsPrefix}{" "}
-        <Link href="/terms" className="text-[#002AFF] hover:underline">
+        <span className="text-[#002AFF]">
           {labels.terms}
-        </Link>{" "}
+        </span>{" "}
         {labels.termsConnector}{" "}
-        <Link href="/privacy" className="text-[#002AFF] hover:underline">
+        <span className="text-[#002AFF]">
           {labels.privacyPolicy}
-        </Link>
+        </span>
         .
       </label>
     </div>

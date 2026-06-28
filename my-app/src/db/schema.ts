@@ -72,6 +72,11 @@ export const assessmentRevisionStatusEnum = pgEnum(
   ["draft", "submitted", "superseded", "archived"],
 );
 
+export const guestApplicabilityCheckStatusEnum = pgEnum(
+  "guest_applicability_check_status",
+  ["submitted", "claimed", "deleted", "expired"],
+);
+
 export const ruleSetStatusEnum = pgEnum("rule_set_status", [
   "draft",
   "published",
@@ -642,6 +647,74 @@ export const assessmentAnswers = pgTable(
   ],
 );
 
+export const guestApplicabilityChecks = pgTable(
+  "guest_applicability_checks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tokenHash: text("token_hash").notNull(),
+    status: guestApplicabilityCheckStatusEnum("status")
+      .default("submitted")
+      .notNull(),
+    moduleId: uuid("module_id").notNull(),
+    questionnaireId: uuid("questionnaire_id").notNull(),
+    questionnaireVersionId: uuid("questionnaire_version_id").notNull(),
+    ruleSetId: uuid("rule_set_id"),
+    answers: jsonb("answers").notNull(),
+    facts: jsonb("facts").notNull(),
+    result: jsonb("result").notNull(),
+    inputHash: text("input_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    claimedByUserId: uuid("claimed_by_user_id"),
+    claimedOrganizationId: uuid("claimed_organization_id"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "guest_applicability_checks_module_fk",
+      columns: [table.moduleId],
+      foreignColumns: [complianceModules.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "guest_applicability_checks_questionnaire_fk",
+      columns: [table.questionnaireId],
+      foreignColumns: [questionnaires.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "guest_applicability_checks_version_fk",
+      columns: [table.questionnaireVersionId],
+      foreignColumns: [questionnaireVersions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "guest_applicability_checks_rule_set_fk",
+      columns: [table.ruleSetId],
+      foreignColumns: [ruleSets.id],
+    }).onDelete("set null"),
+    foreignKey({
+      name: "guest_applicability_checks_claimed_org_fk",
+      columns: [table.claimedOrganizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("set null"),
+    uniqueIndex("guest_applicability_checks_token_hash_unique").on(
+      table.tokenHash,
+    ),
+    index("guest_applicability_checks_status_idx").on(table.status),
+    index("guest_applicability_checks_expires_at_idx").on(table.expiresAt),
+    index("guest_applicability_checks_claimed_user_idx").on(
+      table.claimedByUserId,
+    ),
+  ],
+);
+
 export const ruleSets = pgTable(
   "rule_sets",
   {
@@ -1008,6 +1081,32 @@ export const assessmentAnswersRelations = relations(
     question: one(questions, {
       fields: [assessmentAnswers.questionId],
       references: [questions.id],
+    }),
+  }),
+);
+
+export const guestApplicabilityChecksRelations = relations(
+  guestApplicabilityChecks,
+  ({ one }) => ({
+    module: one(complianceModules, {
+      fields: [guestApplicabilityChecks.moduleId],
+      references: [complianceModules.id],
+    }),
+    questionnaire: one(questionnaires, {
+      fields: [guestApplicabilityChecks.questionnaireId],
+      references: [questionnaires.id],
+    }),
+    questionnaireVersion: one(questionnaireVersions, {
+      fields: [guestApplicabilityChecks.questionnaireVersionId],
+      references: [questionnaireVersions.id],
+    }),
+    ruleSet: one(ruleSets, {
+      fields: [guestApplicabilityChecks.ruleSetId],
+      references: [ruleSets.id],
+    }),
+    claimedOrganization: one(organizations, {
+      fields: [guestApplicabilityChecks.claimedOrganizationId],
+      references: [organizations.id],
     }),
   }),
 );

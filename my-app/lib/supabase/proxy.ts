@@ -10,7 +10,8 @@ function isPublicRoute(pathname: string) {
     pathname === "/" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/check") ||
-    pathname.startsWith("/api/guest-assessments")
+    pathname === "/api/guest/applicability-check/submissions" ||
+    pathname === "/api/guest/applicability-check/result"
   );
 }
 
@@ -82,7 +83,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user?.is_anonymous && request.nextUrl.pathname.startsWith("/tool")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/check";
+    url.pathname = "/auth/login";
     url.search = "";
     return NextResponse.redirect(url);
   }

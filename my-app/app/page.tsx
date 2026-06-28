@@ -71,7 +71,9 @@ async function HomeContent() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/check">{dictionary.home.selfCheckCta}</Link>
+                <Link href="/check/applicability">
+                  {dictionary.home.selfCheckCta}
+                </Link>
               </Button>
             </div>
             <div className="grid max-w-xl grid-cols-3 gap-3">

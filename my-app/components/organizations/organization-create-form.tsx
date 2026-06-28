@@ -35,6 +35,11 @@ type CreateOrganizationResponse = {
 
 type RedirectAfterCreate = "organization" | "assessment";
 
+type GuestApplicabilityClaim = {
+  checkId: string;
+  token?: string;
+};
+
 const defaultOrganizationForm: CreateOrganizationState = {
   name: "",
   legalName: "",
@@ -44,9 +49,11 @@ const defaultOrganizationForm: CreateOrganizationState = {
 export function OrganizationCreateForm({
   labels,
   redirectAfterCreate = "organization",
+  guestApplicabilityClaim,
 }: {
   labels: Dictionary["organizationForm"];
   redirectAfterCreate?: RedirectAfterCreate;
+  guestApplicabilityClaim?: GuestApplicabilityClaim;
 }) {
   const router = useRouter();
   const [organizationForm, setOrganizationForm] = useState(
@@ -83,6 +90,37 @@ export function OrganizationCreateForm({
       }
 
       const organizationHref = `/tool/organizations/${body.organization.id}`;
+      if (guestApplicabilityClaim) {
+        const claimResponse = await fetch(
+          "/api/guest/applicability-check/claim",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(guestApplicabilityClaim.token
+                ? {
+                    "x-guest-applicability-token":
+                      guestApplicabilityClaim.token,
+                  }
+                : {}),
+            },
+            body: JSON.stringify({
+              organizationId: body.organization.id,
+              checkId: guestApplicabilityClaim.checkId,
+            }),
+          },
+        );
+        const claimBody = (await claimResponse.json()) as { error?: string };
+
+        if (!claimResponse.ok) {
+          throw new Error(claimBody.error ?? labels.createErrorFallback);
+        }
+
+        router.push(`${organizationHref}/applicability-check/result`);
+        router.refresh();
+        return;
+      }
+
       router.push(
         redirectAfterCreate === "assessment"
           ? `${organizationHref}/applicability-check/new`

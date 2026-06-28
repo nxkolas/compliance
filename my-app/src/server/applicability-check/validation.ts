@@ -11,6 +11,19 @@ export const submitApplicabilityCheckSchema = z.object({
     .min(1),
 });
 
+export const claimGuestApplicabilityCheckSchema = z.object({
+  organizationId: z.uuid(),
+  checkId: z.uuid().optional(),
+});
+
+export const guestApplicabilityCheckReferenceSchema = z.object({
+  checkId: z.uuid().optional(),
+});
+
 export type SubmitApplicabilityCheckInput = z.infer<
   typeof submitApplicabilityCheckSchema
+>;
+
+export type ClaimGuestApplicabilityCheckInput = z.infer<
+  typeof claimGuestApplicabilityCheckSchema
 >;
