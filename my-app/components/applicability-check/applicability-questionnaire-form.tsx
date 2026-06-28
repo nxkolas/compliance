@@ -20,7 +20,9 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 
 type ApplicabilityQuestionnaireFormProps = {
-  organizationId: string;
+  submitUrl: string;
+  successUrl: string;
+  navigationMode?: "router" | "document";
   questionnaire: ApplicabilityQuestionnaireDto;
   labels: ApplicabilityQuestionnaireFormLabels;
 };
@@ -44,7 +46,9 @@ type ApplicabilityQuestionnaireFormLabels = {
 };
 
 export function ApplicabilityQuestionnaireForm({
-  organizationId,
+  submitUrl,
+  successUrl,
+  navigationMode = "router",
   questionnaire,
   labels,
 }: ApplicabilityQuestionnaireFormProps) {
@@ -85,25 +89,23 @@ export function ApplicabilityQuestionnaireForm({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch(
-        `/api/organizations/${organizationId}/applicability-check/submissions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            answers: questionnaire.questions
-              .filter((question) => answers[question.id])
-              .map((question) => ({
-                questionId: question.id,
-                value: answers[question.id],
-              })),
-          }),
+      const response = await fetch(submitUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          answers: questionnaire.questions
+            .filter((question) => answers[question.id])
+            .map((question) => ({
+              questionId: question.id,
+              value: answers[question.id],
+            })),
+        }),
+      });
       const body = (await response.json()) as {
         result?: unknown;
+        resultUrl?: string;
         error?: string;
       };
 
@@ -111,9 +113,14 @@ export function ApplicabilityQuestionnaireForm({
         throw new Error(body.error ?? labels.submitError);
       }
 
-      router.push(
-        `/tool/organizations/${organizationId}/applicability-check/result`,
-      );
+      const nextUrl = body.resultUrl ?? successUrl;
+
+      if (navigationMode === "document") {
+        window.location.assign(nextUrl);
+        return;
+      }
+
+      router.push(nextUrl);
       router.refresh();
     } catch (error) {
       setNotice({

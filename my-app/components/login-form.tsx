@@ -246,7 +246,11 @@ export function LoginForm({
           <>
             <span className="font-normal">{labels.noAccount}</span>
             <Link
-              href="/auth/sign-up"
+              href={
+                getNextPath() !== "/tool/organizations"
+                  ? `/auth/sign-up?next=${encodeURIComponent(getNextPath())}`
+                  : "/auth/sign-up"
+              }
               className="font-bold decoration-2 hover:underline"
             >
               {labels.signUp}

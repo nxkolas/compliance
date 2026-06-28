@@ -63,7 +63,6 @@ const legacyTypes = [
   "ai_document_scope",
   "ai_document_status",
   "ai_message_role",
-  "assessment_status",
   "document_finding_status",
   "document_review_status",
   "guest_assessment_status",

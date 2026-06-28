@@ -9,6 +9,7 @@ import {
   complianceModules,
   generatedArtifactRevisions,
   generatedArtifacts,
+  guestApplicabilityChecks,
   organizationFactValues,
   questionFactMappings,
   questionOptionTranslations,
@@ -21,9 +22,12 @@ import {
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { and, asc, eq } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { ApiError } from "../api/errors";
-import { assertCanAccessOrganization } from "../organizations/service";
+import {
+  assertCanAccessOrganization,
+  createOrganizationForUser,
+} from "../organizations/service";
 import {
   ACTIVE_FRAMEWORK_CODE,
   ACTIVE_FRAMEWORK_VERSION_LABEL,
@@ -35,9 +39,13 @@ import {
   type StoredRuleEvaluationResult,
 } from "./rule-evaluation-schema";
 import { evaluateRuleSet } from "./rules";
-import type { SubmitApplicabilityCheckInput } from "./validation";
+import {
+  submitApplicabilityCheckSchema,
+  type SubmitApplicabilityCheckInput,
+} from "./validation";
 
 const ACTIVE_RULE_SET_CODE = "affectedness_check";
+const GUEST_CHECK_TTL_DAYS = 14;
 
 export type ApplicabilityQuestionnaireDto = {
   id: string;
@@ -105,6 +113,22 @@ export type ApplicabilityResultDto = {
   result: StoredRuleEvaluationResult;
 };
 
+export type GuestApplicabilitySession = {
+  id: string;
+  token: string;
+};
+
+export type GuestApplicabilityCheckDto = {
+  id: string;
+  submittedAt: string;
+  expiresAt: string;
+  result: ApplicabilityResultDto;
+};
+
+export type ClaimGuestApplicabilityCheckInput = {
+  organizationName: string;
+};
+
 type ActiveDefinition = {
   moduleId: string;
   questionnaireId: string;
@@ -124,6 +148,16 @@ type ValidatedAnswer = {
   questionStableKey: string;
   answerValue: string;
   answerLabel: string;
+};
+
+type PreparedApplicabilitySubmission = {
+  definition: ActiveDefinition;
+  ruleSet: NonNullable<Awaited<ReturnType<typeof getActiveRuleSet>>>;
+  validatedAnswers: ValidatedAnswer[];
+  facts: Record<string, unknown>;
+  answerContext: Record<string, string>;
+  evaluation: ReturnType<typeof evaluateRuleSet>;
+  now: Date;
 };
 
 export async function getApplicabilityQuestionnaireForUser(
@@ -156,6 +190,30 @@ export async function getApplicabilityQuestionnaireForUser(
       return question;
     }),
     latestAnswers,
+  };
+}
+
+export async function getApplicabilityQuestionnaireForGuest(
+  locale: Locale,
+): Promise<ApplicabilityQuestionnaireDto | null> {
+  const definition = await getActiveDefinition(locale);
+
+  if (!definition) {
+    return null;
+  }
+
+  return {
+    id: definition.questionnaireId,
+    moduleId: definition.moduleId,
+    questionnaireVersionId: definition.questionnaireVersionId,
+    title: definition.questionnaireTitle,
+    code: definition.questionnaireCode,
+    versionLabel: definition.versionLabel,
+    questions: definition.questions.map(({ factMappings, ...question }) => {
+      void factMappings;
+      return question;
+    }),
+    latestAnswers: {},
   };
 }
 
@@ -283,31 +341,16 @@ export async function submitApplicabilityCheckForUser(
   input: SubmitApplicabilityCheckInput,
 ): Promise<ApplicabilityResultDto> {
   await assertCanAccessOrganization(userId, organizationId);
-
-  const definition = await getActiveDefinition();
-
-  if (!definition) {
-    throw new ApiError(404, "Betroffenheitscheck questionnaire is not seeded");
-  }
-
-  const ruleSet = await getActiveRuleSet(definition.moduleId);
-
-  if (!ruleSet) {
-    throw new ApiError(404, "Betroffenheitscheck rule set is not seeded");
-  }
-
-  const validatedAnswers = validateAnswers(definition, input);
-  const facts = deriveFacts(definition, validatedAnswers);
-  const answerContext = Object.fromEntries(
-    validatedAnswers.map((answer) => [
-      answer.questionStableKey,
-      answer.answerValue,
-    ]),
-  );
-  const evaluation = evaluateRuleSet(ruleSet.rules, {
+  const prepared = await prepareApplicabilitySubmission(input);
+  const {
+    definition,
+    ruleSet,
+    validatedAnswers,
     facts,
-    answers: answerContext,
-  });
+    answerContext,
+    evaluation,
+    now,
+  } = prepared;
 
   return db.transaction(async (tx) => {
     let assessment = await tx.query.assessments.findFirst({
@@ -337,7 +380,6 @@ export async function submitApplicabilityCheckForUser(
         orderDesc(revision.revisionNumber),
       ],
     });
-    const now = new Date();
     const [assessmentRevision] = await tx
       .insert(assessmentRevisions)
       .values({
@@ -481,6 +523,119 @@ export async function submitApplicabilityCheckForUser(
       result,
     };
   });
+}
+
+export async function submitApplicabilityCheckForGuest(
+  input: SubmitApplicabilityCheckInput,
+): Promise<GuestApplicabilitySession & { result: ApplicabilityResultDto }> {
+  const prepared = await prepareApplicabilitySubmission(input);
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = hashGuestToken(token);
+  const expiresAt = createGuestExpiryDate(prepared.now);
+  const storedResult = {
+    ...prepared.evaluation,
+    generatedAt: prepared.now.toISOString(),
+  };
+  const inputHash = hashRuleInput({
+    answers: prepared.answerContext,
+    facts: prepared.facts,
+    questionnaireVersionId: prepared.definition.questionnaireVersionId,
+    ruleSetId: prepared.ruleSet.id,
+    ruleSetVersionLabel: prepared.ruleSet.versionLabel,
+  });
+
+  const [guestCheck] = await db
+    .insert(guestApplicabilityChecks)
+    .values({
+      tokenHash,
+      moduleId: prepared.definition.moduleId,
+      questionnaireId: prepared.definition.questionnaireId,
+      questionnaireVersionId: prepared.definition.questionnaireVersionId,
+      ruleSetId: prepared.ruleSet.id,
+      answers: input.answers,
+      facts: prepared.facts,
+      result: storedResult,
+      inputHash,
+      expiresAt,
+      submittedAt: prepared.now,
+    })
+    .returning();
+
+  return {
+    id: guestCheck.id,
+    token,
+    result: toGuestApplicabilityCheckDto(guestCheck).result,
+  };
+}
+
+export async function getGuestApplicabilityCheck(
+  token: string | undefined,
+  guestCheckId?: string,
+): Promise<GuestApplicabilityCheckDto | null> {
+  const guestCheck = await findGuestApplicabilityCheck(token, guestCheckId);
+
+  if (!guestCheck) {
+    return null;
+  }
+
+  return toGuestApplicabilityCheckDto(guestCheck);
+}
+
+export async function deleteGuestApplicabilityCheck(
+  token: string | undefined,
+): Promise<void> {
+  const guestCheck = await findGuestApplicabilityCheck(token);
+
+  if (!guestCheck) {
+    return;
+  }
+
+  await db
+    .update(guestApplicabilityChecks)
+    .set({
+      status: "deleted",
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(guestApplicabilityChecks.id, guestCheck.id));
+}
+
+export async function claimGuestApplicabilityCheckForUser(
+  userId: string,
+  token: string | undefined,
+  input: ClaimGuestApplicabilityCheckInput,
+): Promise<{ organizationId: string; result: ApplicabilityResultDto }> {
+  const guestCheck = await findGuestApplicabilityCheck(token);
+
+  if (!guestCheck) {
+    throw new ApiError(404, "Guest applicability check not found");
+  }
+
+  const organization = await createOrganizationForUser(userId, {
+    name: normalizeClaimOrganizationName(input.organizationName),
+    country: "DE",
+  });
+  const result = await submitApplicabilityCheckForUser(
+    userId,
+    organization.id,
+    { answers: parseGuestAnswers(guestCheck.answers) },
+  );
+
+  await db
+    .update(guestApplicabilityChecks)
+    .set({
+      status: "claimed",
+      claimedByUserId: userId,
+      claimedOrganizationId: organization.id,
+      claimedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(guestApplicabilityChecks.id, guestCheck.id));
+
+  return {
+    organizationId: organization.id,
+    result,
+  };
 }
 
 async function getActiveDefinition(
@@ -639,6 +794,129 @@ async function getActiveRuleSet(moduleId: string) {
       eq(ruleSets.status, "published"),
     ),
   });
+}
+
+async function prepareApplicabilitySubmission(
+  input: SubmitApplicabilityCheckInput,
+): Promise<PreparedApplicabilitySubmission> {
+  const definition = await getActiveDefinition();
+
+  if (!definition) {
+    throw new ApiError(404, "Betroffenheitscheck questionnaire is not seeded");
+  }
+
+  const ruleSet = await getActiveRuleSet(definition.moduleId);
+
+  if (!ruleSet) {
+    throw new ApiError(404, "Betroffenheitscheck rule set is not seeded");
+  }
+
+  const validatedAnswers = validateAnswers(definition, input);
+  const facts = deriveFacts(definition, validatedAnswers);
+  const answerContext = Object.fromEntries(
+    validatedAnswers.map((answer) => [
+      answer.questionStableKey,
+      answer.answerValue,
+    ]),
+  );
+  const evaluation = evaluateRuleSet(ruleSet.rules, {
+    facts,
+    answers: answerContext,
+  });
+
+  return {
+    definition,
+    ruleSet,
+    validatedAnswers,
+    facts,
+    answerContext,
+    evaluation,
+    now: new Date(),
+  };
+}
+
+async function findGuestApplicabilityCheck(
+  token: string | undefined,
+  guestCheckId?: string,
+) {
+  if (!token) {
+    return null;
+  }
+
+  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({
+    where: guestCheckId
+      ? and(
+          eq(guestApplicabilityChecks.id, guestCheckId),
+          eq(guestApplicabilityChecks.tokenHash, hashGuestToken(token)),
+        )
+      : eq(guestApplicabilityChecks.tokenHash, hashGuestToken(token)),
+  });
+
+  if (!guestCheck) {
+    return null;
+  }
+
+  if (guestCheck.status !== "submitted" || guestCheck.expiresAt <= new Date()) {
+    if (guestCheck.status === "submitted") {
+      await db
+        .update(guestApplicabilityChecks)
+        .set({ status: "expired", updatedAt: new Date() })
+        .where(eq(guestApplicabilityChecks.id, guestCheck.id));
+    }
+
+    return null;
+  }
+
+  return guestCheck;
+}
+
+function toGuestApplicabilityCheckDto(
+  guestCheck: typeof guestApplicabilityChecks.$inferSelect,
+): GuestApplicabilityCheckDto {
+  const result = parseStoredRuleEvaluationResult(guestCheck.result);
+
+  return {
+    id: guestCheck.id,
+    submittedAt: guestCheck.submittedAt.toISOString(),
+    expiresAt: guestCheck.expiresAt.toISOString(),
+    result: {
+      artifactRevisionId: guestCheck.id,
+      artifactRevisionNumber: 1,
+      createdAt: guestCheck.submittedAt.toISOString(),
+      ruleSetId: guestCheck.ruleSetId,
+      ruleSetVersionLabel: null,
+      assessmentRevisionId: null,
+      result,
+    },
+  };
+}
+
+function parseGuestAnswers(value: unknown): SubmitApplicabilityCheckInput["answers"] {
+  const parsed = submitApplicabilityCheckSchema.shape.answers.safeParse(value);
+
+  if (!parsed.success) {
+    throw new ApiError(409, "Stored guest answers are no longer valid");
+  }
+
+  return parsed.data;
+}
+
+function normalizeClaimOrganizationName(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new ApiError(400, "organizationName is required");
+  }
+
+  return value.trim();
+}
+
+function createGuestExpiryDate(from: Date): Date {
+  const expiresAt = new Date(from);
+  expiresAt.setDate(expiresAt.getDate() + GUEST_CHECK_TTL_DAYS);
+  return expiresAt;
+}
+
+export function hashGuestToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 async function getCurrentAssessment(organizationId: string, moduleId: string) {

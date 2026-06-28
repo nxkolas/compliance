@@ -34,7 +34,8 @@ export default async function NewApplicabilityCheckPage({
 
       {questionnaire ? (
         <ApplicabilityQuestionnaireForm
-          organizationId={organizationId}
+          submitUrl={`/api/organizations/${organizationId}/applicability-check/submissions`}
+          successUrl={`/tool/organizations/${organizationId}/applicability-check/result`}
           questionnaire={questionnaire}
           labels={dictionary.modules.applicabilityCheck.form}
         />

@@ -467,6 +467,28 @@ const dictionaries = {
             "Der Betroffenheitscheck konnte nicht berechnet werden.",
           allRequired: "Bitte beantworten Sie alle Pflichtfragen.",
         },
+        guest: {
+          title: "NIS2-Betroffenheit prüfen",
+          description:
+            "Starten Sie ohne Registrierung. Nach dem Ergebnis können Sie die Daten löschen oder in einem Konto speichern.",
+          backHome: "Zur Startseite",
+          resultTitle: "Ihr Ergebnis",
+          resultDescription:
+            "Dieses Ergebnis ist vorläufig gespeichert und kann innerhalb von 14 Tagen in ein Konto übernommen werden.",
+          createAccount: "Konto erstellen und speichern",
+          signIn: "Anmelden und speichern",
+          deleteData: "Daten löschen",
+          deleting: "Wird gelöscht...",
+          saveToAccount: "In Konto speichern",
+          saving: "Wird gespeichert...",
+          organizationName: "Organisationsname",
+          organizationNamePlaceholder: "Beispiel GmbH",
+          notFound:
+            "Kein gespeicherter Gast-Betroffenheitscheck gefunden. Bitte starten Sie den Check erneut.",
+          deleteError: "Die Gastdaten konnten nicht gelöscht werden.",
+          claimError: "Der Betroffenheitscheck konnte nicht gespeichert werden.",
+          deleted: "Die Gastdaten wurden gelöscht.",
+        },
       },
       actionPlan: {
         title: "Maßnahmenplan",
@@ -1213,6 +1235,28 @@ const dictionaries = {
           submitting: "Calculating...",
           submitError: "The applicability check could not be calculated.",
           allRequired: "Please answer all required questions.",
+        },
+        guest: {
+          title: "Check NIS2 applicability",
+          description:
+            "Start without registering. After the result, you can delete the data or save it into an account.",
+          backHome: "Back home",
+          resultTitle: "Your result",
+          resultDescription:
+            "This result is temporarily stored and can be moved into an account within 14 days.",
+          createAccount: "Create account and save",
+          signIn: "Sign in and save",
+          deleteData: "Delete data",
+          deleting: "Deleting...",
+          saveToAccount: "Save to account",
+          saving: "Saving...",
+          organizationName: "Organization name",
+          organizationNamePlaceholder: "Example Ltd.",
+          notFound:
+            "No saved guest applicability check was found. Please start the check again.",
+          deleteError: "The guest data could not be deleted.",
+          claimError: "The applicability check could not be saved.",
+          deleted: "The guest data was deleted.",
         },
       },
       actionPlan: {

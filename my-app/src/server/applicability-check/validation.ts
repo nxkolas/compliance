@@ -11,6 +11,14 @@ export const submitApplicabilityCheckSchema = z.object({
     .min(1),
 });
 
+export const claimGuestApplicabilityCheckSchema = z.object({
+  organizationName: z.string().trim().min(1).max(255),
+});
+
 export type SubmitApplicabilityCheckInput = z.infer<
   typeof submitApplicabilityCheckSchema
+>;
+
+export type ClaimGuestApplicabilityCheckInput = z.infer<
+  typeof claimGuestApplicabilityCheckSchema
 >;

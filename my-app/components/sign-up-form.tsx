@@ -16,6 +16,15 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 
+function getNextPath() {
+  if (typeof window === "undefined") return null;
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return null;
+  }
+  return next;
+}
+
 export function SignUpForm({
   labels,
   className,
@@ -68,8 +77,13 @@ export function SignUpForm({
         },
       });
       if (signUpError) throw signUpError;
-      
-      router.push("/auth/login?registered=true");
+
+      const next = getNextPath();
+      const loginPath = next
+        ? `/auth/login?registered=true&next=${encodeURIComponent(next)}`
+        : "/auth/login?registered=true";
+
+      router.push(loginPath);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : labels.errorFallback);
     } finally {
@@ -179,7 +193,11 @@ export function SignUpForm({
         <div className="self-stretch flex justify-center items-center gap-1 mt-2 text-white text-base">
           <span className="font-normal">{labels.alreadyHaveAnAccount}</span>
           <Link
-            href="/auth/login"
+            href={
+              getNextPath()
+                ? `/auth/login?next=${encodeURIComponent(getNextPath() ?? "")}`
+                : "/auth/login"
+            }
             className="font-semibold hover:underline decoration-2 text-white"
           >
             {labels.login}

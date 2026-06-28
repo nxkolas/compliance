@@ -8,7 +8,10 @@ import { hasEnvVars } from "../utils";
 function isPublicRoute(pathname: string) {
   return (
     pathname === "/" ||
-    pathname.startsWith("/auth")
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/check") ||
+    pathname === "/api/guest/applicability-check/submissions" ||
+    pathname === "/api/guest/applicability-check/result"
   );
 }
 
