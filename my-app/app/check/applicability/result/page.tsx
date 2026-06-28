@@ -76,22 +76,6 @@ async function GuestApplicabilityResultPageContent({
     locale === "en"
       ? guestCheck.result.result.labelEn ?? guestCheck.result.result.label
       : guestCheck.result.result.label;
-  const returnPathSearchParams = new URLSearchParams();
-
-  if (resolvedSearchParams?.check) {
-    returnPathSearchParams.set("check", resolvedSearchParams.check);
-  }
-
-  if (resolvedSearchParams?.claim) {
-    returnPathSearchParams.set("claim", resolvedSearchParams.claim);
-  }
-
-  const returnPath = `/check/applicability/result${
-    returnPathSearchParams.size > 0
-      ? `?${returnPathSearchParams.toString()}`
-      : ""
-  }`;
-
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -122,7 +106,6 @@ async function GuestApplicabilityResultPageContent({
           isAuthenticated={isAuthenticated}
           guestToken={resolvedSearchParams?.claim}
           guestCheckId={guestCheck.id}
-          returnPath={returnPath}
         />
       </div>
     </main>

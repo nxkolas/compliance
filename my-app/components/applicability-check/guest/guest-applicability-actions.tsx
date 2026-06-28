@@ -1,20 +1,17 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { Dictionary } from "@/lib/i18n";
-import { LogIn, Save, Trash2, UserPlus } from "lucide-react";
+import { Building2, LogIn, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 
 type GuestApplicabilityActionsProps = {
   labels: Dictionary["modules"]["applicabilityCheck"]["guest"];
   isAuthenticated: boolean;
   guestToken?: string;
   guestCheckId: string;
-  returnPath: string;
 };
 
 export function GuestApplicabilityActions({
@@ -22,13 +19,19 @@ export function GuestApplicabilityActions({
   isAuthenticated,
   guestToken,
   guestCheckId,
-  returnPath,
 }: GuestApplicabilityActionsProps) {
   const router = useRouter();
-  const [organizationName, setOrganizationName] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const claimPathSearchParams = new URLSearchParams({
+    guestApplicabilityCheck: guestCheckId,
+  });
+
+  if (guestToken) {
+    claimPathSearchParams.set("claim", guestToken);
+  }
+
+  const claimPath = `/tool/organizations/new?${claimPathSearchParams.toString()}`;
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -62,42 +65,6 @@ export function GuestApplicabilityActions({
     }
   }
 
-  async function handleClaim(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/guest/applicability-check/claim", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(guestToken
-            ? { "x-guest-applicability-token": guestToken }
-            : {}),
-        },
-        body: JSON.stringify({ organizationName, checkId: guestCheckId }),
-      });
-      const body = (await response.json()) as {
-        organizationId?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !body.organizationId) {
-        throw new Error(body.error ?? labels.claimError);
-      }
-
-      router.replace(
-        `/tool/organizations/${body.organizationId}/applicability-check/result`,
-      );
-      router.refresh();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : labels.claimError);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   return (
     <div className="rounded-lg border bg-card p-5 shadow-sm">
       {error ? (
@@ -110,37 +77,22 @@ export function GuestApplicabilityActions({
       ) : null}
 
       {isAuthenticated ? (
-        <form className="grid gap-4 sm:grid-cols-[1fr_auto]" onSubmit={handleClaim}>
-          <div className="grid gap-2">
-            <Label htmlFor="guest-organization-name">
-              {labels.organizationName}
-            </Label>
-            <Input
-              id="guest-organization-name"
-              value={organizationName}
-              onChange={(event) => setOrganizationName(event.target.value)}
-              placeholder={labels.organizationNamePlaceholder}
-              required
-              maxLength={255}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button type="submit" disabled={isSaving} className="w-full">
-              <Save />
-              {isSaving ? labels.saving : labels.saveToAccount}
-            </Button>
-          </div>
-        </form>
+        <Button asChild>
+          <Link href={claimPath}>
+            <Building2 />
+            {labels.saveToAccount}
+          </Link>
+        </Button>
       ) : (
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button asChild>
-            <Link href={`/auth/sign-up?next=${encodeURIComponent(returnPath)}`}>
+            <Link href={`/auth/sign-up?next=${encodeURIComponent(claimPath)}`}>
               <UserPlus />
               {labels.createAccount}
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href={`/auth/login?next=${encodeURIComponent(returnPath)}`}>
+            <Link href={`/auth/login?next=${encodeURIComponent(claimPath)}`}>
               <LogIn />
               {labels.signIn}
             </Link>
@@ -153,7 +105,7 @@ export function GuestApplicabilityActions({
           type="button"
           variant="destructive"
           onClick={handleDelete}
-          disabled={isDeleting || isSaving}
+          disabled={isDeleting}
         >
           <Trash2 />
           {isDeleting ? labels.deleting : labels.deleteData}

@@ -24,10 +24,7 @@ import type { Locale } from "@/lib/i18n-config";
 import { and, asc, eq } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { ApiError } from "../api/errors";
-import {
-  assertCanAccessOrganization,
-  createOrganizationForUser,
-} from "../organizations/service";
+import { assertCanAccessOrganization } from "../organizations/service";
 import {
   ACTIVE_FRAMEWORK_CODE,
   ACTIVE_FRAMEWORK_VERSION_LABEL,
@@ -126,7 +123,8 @@ export type GuestApplicabilityCheckDto = {
 };
 
 export type ClaimGuestApplicabilityCheckInput = {
-  organizationName: string;
+  organizationId: string;
+  checkId?: string;
 };
 
 type ActiveDefinition = {
@@ -613,13 +611,10 @@ export async function claimGuestApplicabilityCheckForUser(
     throw new ApiError(404, "Guest applicability check not found");
   }
 
-  const organization = await createOrganizationForUser(userId, {
-    name: normalizeClaimOrganizationName(input.organizationName),
-    country: "DE",
-  });
+  await assertCanAccessOrganization(userId, input.organizationId);
   const result = await submitApplicabilityCheckForUser(
     userId,
-    organization.id,
+    input.organizationId,
     { answers: parseGuestAnswers(guestCheck.answers) },
   );
 
@@ -628,14 +623,14 @@ export async function claimGuestApplicabilityCheckForUser(
     .set({
       status: "claimed",
       claimedByUserId: userId,
-      claimedOrganizationId: organization.id,
+      claimedOrganizationId: input.organizationId,
       claimedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(guestApplicabilityChecks.id, guestCheck.id));
 
   return {
-    organizationId: organization.id,
+    organizationId: input.organizationId,
     result,
   };
 }
@@ -901,14 +896,6 @@ function parseGuestAnswers(value: unknown): SubmitApplicabilityCheckInput["answe
   }
 
   return parsed.data;
-}
-
-function normalizeClaimOrganizationName(value: unknown): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new ApiError(400, "organizationName is required");
-  }
-
-  return value.trim();
 }
 
 function createGuestExpiryDate(from: Date): Date {

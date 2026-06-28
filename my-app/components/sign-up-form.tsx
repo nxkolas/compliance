@@ -67,7 +67,7 @@ export function SignUpForm({
     }
 
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -79,6 +79,12 @@ export function SignUpForm({
       if (signUpError) throw signUpError;
 
       const next = getNextPath();
+      if (next && data.session) {
+        router.push(next);
+        router.refresh();
+        return;
+      }
+
       const loginPath = next
         ? `/auth/login?registered=true&next=${encodeURIComponent(next)}`
         : "/auth/login?registered=true";

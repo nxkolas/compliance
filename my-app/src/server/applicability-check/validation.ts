@@ -12,7 +12,7 @@ export const submitApplicabilityCheckSchema = z.object({
 });
 
 export const claimGuestApplicabilityCheckSchema = z.object({
-  organizationName: z.string().trim().min(1).max(255),
+  organizationId: z.uuid(),
   checkId: z.uuid().optional(),
 });
 
