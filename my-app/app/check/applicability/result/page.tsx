@@ -37,7 +37,7 @@ async function GuestApplicabilityResultPageContent({
   const resultLabels = dictionary.modules.applicabilityCheck.result;
   const resolvedSearchParams = await searchParams;
   const token =
-    (await getGuestApplicabilityToken()) ?? resolvedSearchParams?.claim;
+    resolvedSearchParams?.claim ?? (await getGuestApplicabilityToken());
   const guestCheck = await getGuestApplicabilityCheck(
     token,
     resolvedSearchParams?.check,
@@ -121,6 +121,7 @@ async function GuestApplicabilityResultPageContent({
           labels={labels}
           isAuthenticated={isAuthenticated}
           guestToken={resolvedSearchParams?.claim}
+          guestCheckId={guestCheck.id}
           returnPath={returnPath}
         />
       </div>

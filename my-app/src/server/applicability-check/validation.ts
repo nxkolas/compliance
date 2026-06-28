@@ -13,6 +13,11 @@ export const submitApplicabilityCheckSchema = z.object({
 
 export const claimGuestApplicabilityCheckSchema = z.object({
   organizationName: z.string().trim().min(1).max(255),
+  checkId: z.uuid().optional(),
+});
+
+export const guestApplicabilityCheckReferenceSchema = z.object({
+  checkId: z.uuid().optional(),
 });
 
 export type SubmitApplicabilityCheckInput = z.infer<

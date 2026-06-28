@@ -13,6 +13,7 @@ type GuestApplicabilityActionsProps = {
   labels: Dictionary["modules"]["applicabilityCheck"]["guest"];
   isAuthenticated: boolean;
   guestToken?: string;
+  guestCheckId: string;
   returnPath: string;
 };
 
@@ -20,6 +21,7 @@ export function GuestApplicabilityActions({
   labels,
   isAuthenticated,
   guestToken,
+  guestCheckId,
   returnPath,
 }: GuestApplicabilityActionsProps) {
   const router = useRouter();
@@ -35,11 +37,15 @@ export function GuestApplicabilityActions({
     try {
       const response = await fetch("/api/guest/applicability-check/result", {
         method: "DELETE",
-        headers: guestToken
-          ? {
-              "x-guest-applicability-token": guestToken,
-            }
-          : undefined,
+        headers: {
+          "Content-Type": "application/json",
+          ...(guestToken
+            ? {
+                "x-guest-applicability-token": guestToken,
+              }
+            : {}),
+        },
+        body: JSON.stringify({ checkId: guestCheckId }),
       });
 
       if (!response.ok) {
@@ -70,7 +76,7 @@ export function GuestApplicabilityActions({
             ? { "x-guest-applicability-token": guestToken }
             : {}),
         },
-        body: JSON.stringify({ organizationName }),
+        body: JSON.stringify({ organizationName, checkId: guestCheckId }),
       });
       const body = (await response.json()) as {
         organizationId?: string;

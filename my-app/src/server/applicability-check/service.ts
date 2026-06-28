@@ -583,8 +583,9 @@ export async function getGuestApplicabilityCheck(
 
 export async function deleteGuestApplicabilityCheck(
   token: string | undefined,
+  guestCheckId?: string,
 ): Promise<void> {
-  const guestCheck = await findGuestApplicabilityCheck(token);
+  const guestCheck = await findGuestApplicabilityCheck(token, guestCheckId);
 
   if (!guestCheck) {
     return;
@@ -603,9 +604,10 @@ export async function deleteGuestApplicabilityCheck(
 export async function claimGuestApplicabilityCheckForUser(
   userId: string,
   token: string | undefined,
+  guestCheckId: string | undefined,
   input: ClaimGuestApplicabilityCheckInput,
 ): Promise<{ organizationId: string; result: ApplicabilityResultDto }> {
-  const guestCheck = await findGuestApplicabilityCheck(token);
+  const guestCheck = await findGuestApplicabilityCheck(token, guestCheckId);
 
   if (!guestCheck) {
     throw new ApiError(404, "Guest applicability check not found");

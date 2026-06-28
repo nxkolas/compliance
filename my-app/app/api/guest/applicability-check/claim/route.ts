@@ -14,12 +14,13 @@ export async function POST(request: Request) {
   try {
     const user = await requireApiUser();
     const token =
-      (await getGuestApplicabilityToken()) ??
-      getGuestApplicabilityTokenFromRequest(request);
+      getGuestApplicabilityTokenFromRequest(request) ??
+      (await getGuestApplicabilityToken());
     const body = await readJsonBody(request, claimGuestApplicabilityCheckSchema);
     const result = await claimGuestApplicabilityCheckForUser(
       user.id,
       token,
+      body.checkId,
       body,
     );
 
