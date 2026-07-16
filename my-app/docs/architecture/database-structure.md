@@ -39,3 +39,19 @@ Publishing does not activate. Rollback changes only the active release pointer a
 - Claims preserve the guest release and convert option selections/facts in the same transaction that marks the guest record claimed.
 - New assessments use the active release; old assessments and results are never reinterpreted.
 - Result rendering resolves German/English content from the pinned release's content-revision set and reports when a newer release is active.
+
+## Compliance runtime reads
+
+`src/server/compliance/runtime-release/` is the only runtime release-loading seam. Its Postgres assembler loads a release header first, then performs the independent questionnaire, option/entity, legal-provision, and pinned-content reads concurrently. It assembles immutable locale-specific bundles with lookup indices in memory.
+
+App Router code uses the Next Cache Components adapter. Only successful immutable bundles are cached with the `max` profile, keyed by build/function identity plus release ID and locale. The mutable `active_compliance_check_releases` pointer is always queried outside the cached function, so activation affects new work and outdated-result status immediately. Authorization, organization facts, assessments, results, and guest sessions are never stored in this cache.
+
+Standalone publisher, activator, smoke, and diagnostic code must use the direct reader and must not invoke Next cache APIs. `db:smoke:nis2` explicitly supplies that reader. The read-only live benchmark uses a process-local cache around the same direct assembler so cold and warm database shapes can be measured under `tsx` without requiring a Next request runtime:
+
+```powershell
+npm.cmd run db:benchmark:compliance -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+```
+
+The IDs can instead be supplied through `COMPLIANCE_BENCHMARK_ORGANIZATION_ID` and `COMPLIANCE_BENCHMARK_USER_ID`. The benchmark performs no writes and reports only timings and thresholds; it does not print identifiers, credentials, answers, or connection details.
+
+Applicability submission preparation loads and localizes immutable release data before opening the write transaction. Within the transaction, answer headers, answer-option joins, fact invalidation, fact rows, fact-option lookup, and fact-option joins are each set-based operations. Revision, artifact, projection, provenance, pointer, and guest-claim changes remain in that same transaction.

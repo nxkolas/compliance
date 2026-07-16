@@ -11,6 +11,7 @@
     "db:publish:compliance": "tsx scripts/publish-compliance-release.ts",
     "db:activate:compliance": "tsx scripts/activate-compliance-release.ts",
     "db:smoke:nis2": "tsx scripts/smoke-nis2-scope.ts",
+    "db:benchmark:compliance": "tsx scripts/benchmark-compliance-runtime.ts",
     "test:ai": "vitest run evals",
     "test:ai:watch": "vitest evals"
   },

@@ -15,7 +15,9 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { ApiError } from "../api/errors";
-import { loadComplianceRelease } from "../compliance/release-service";
+import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
+import { loadPublishedReleasesById } from "../compliance/runtime-release/load-published-releases";
+import type { RuntimeReleaseReader } from "../compliance/runtime-release/types";
 import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
@@ -123,6 +125,7 @@ export async function listCurrentOrganizationFactsForUser(
   userId: string,
   organizationId: string,
   locale: Locale,
+  dependencies: { runtimeReleaseReader?: RuntimeReleaseReader } = {},
 ): Promise<OrganizationFactDto[]> {
   await assertCanAccessOrganization(userId, organizationId);
 
@@ -146,17 +149,36 @@ export async function listCurrentOrganizationFactsForUser(
   }).from(organizationFactValueOptions)
     .innerJoin(factOptions, eq(organizationFactValueOptions.factOptionId, factOptions.id))
     .where(inArray(organizationFactValueOptions.organizationFactValueId, rows.map((row) => row.value.id)));
-  const releaseCache = new Map<string, Awaited<ReturnType<typeof loadComplianceRelease>>>();
+  const releases = await loadPublishedReleasesById(
+    dependencies.runtimeReleaseReader ?? nextCachedRuntimeReleaseReader,
+    rows.map((row) => row.checkReleaseId),
+    locale,
+  );
+  const optionsByValueId = new Map<string, string[]>();
+  for (const option of optionRows) {
+    const values = optionsByValueId.get(option.valueId) ?? [];
+    values.push(option.stableValue);
+    optionsByValueId.set(option.valueId, values);
+  }
   const result: OrganizationFactDto[] = [];
   for (const row of rows) {
-    let release = releaseCache.get(row.checkReleaseId);
-    if (release === undefined) {
-      release = await loadComplianceRelease(row.checkReleaseId, locale);
-      releaseCache.set(row.checkReleaseId, release);
-    }
-    const question = release?.questions.find((candidate) => candidate.factMappings.some((mapping) => mapping.factKey === row.value.factKey));
-    const stableValues = optionRows.filter((option) => option.valueId === row.value.id).map((option) => option.stableValue);
-    const labels = stableValues.map((stableValue) => question?.options.find((option) => option.stableValue === stableValue)?.label ?? stableValue);
+    const release = releases.get(row.checkReleaseId);
+    const questionIndex = release?.questionIndexByFactKey[row.value.factKey];
+    const question = questionIndex === undefined
+      ? undefined
+      : release?.questions[questionIndex];
+    const stableValues = optionsByValueId.get(row.value.id) ?? [];
+    const labels = stableValues.map((stableValue) => {
+      if (!release || !question) return stableValue;
+      const optionIndex = release.optionIndexByQuestionAndValue[
+        `${question.id}\u0000${stableValue}`
+      ];
+      return optionIndex
+        ? release.questions[optionIndex.questionIndex]?.options[
+            optionIndex.optionIndex
+          ]?.label ?? stableValue
+        : stableValue;
+    });
     result.push({
       ...row.value,
       value: stableValues.length > 1 ? stableValues : stableValues[0] ?? row.value.textValue ?? row.value.numberValue ?? row.value.booleanValue ?? row.value.structuredValue,

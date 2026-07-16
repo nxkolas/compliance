@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n-config";
-import { loadActiveComplianceRelease } from "../compliance/release-service";
+import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
+import { NIS2_CHECK_CODE } from "../compliance/runtime-release";
 
 export type QuestionnairePreviewDto = {
   id: string;
@@ -32,8 +33,12 @@ export type QuestionnairePreviewOptionDto = {
 export async function getActiveApplicabilityQuestionnaire(
   locale: Locale,
 ): Promise<QuestionnairePreviewDto | null> {
-  const release = await loadActiveComplianceRelease(locale);
-  if (!release) return null;
+  const resolved = await nextCachedRuntimeReleaseReader.getActive({
+    checkCode: NIS2_CHECK_CODE,
+    locale,
+  });
+  if (!resolved) return null;
+  const release = resolved.published;
   return {
     id: release.questionnaireId,
     title: release.questionnaireTitle,

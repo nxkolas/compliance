@@ -1,23 +1,13 @@
 import { db } from "@/src/db";
 import {
-  artifactRevisionSources,
   assessmentAnswerOptions,
   assessmentAnswers,
   assessmentRevisions,
   assessments,
-  complianceCheckReleaseProfiles,
-  complianceCheckReleaseContentRevisions,
   complianceCheckReleases,
-  contentItems,
-  contentRevisions,
-  contentTranslations,
-  factOptions,
   generatedArtifactRevisions,
   generatedArtifacts,
   guestApplicabilityChecks,
-  nis2ResultProjections,
-  organizationFactValueOptions,
-  organizationFactValues,
   questionOptions,
   questions,
   ruleSets,
@@ -27,12 +17,12 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { ApiError } from "../api/errors";
 import { assertCanAccessOrganization } from "../organizations/service";
-import {
-  loadActiveComplianceRelease,
-  loadComplianceRelease,
-  NIS2_CHECK_CODE,
-  type LoadedComplianceRelease,
-} from "../compliance/release-service";
+import { NIS2_CHECK_CODE } from "../compliance/runtime-release";
+import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
+import type {
+  ResolvedComplianceRelease,
+  RuntimeReleaseReader,
+} from "../compliance/runtime-release/types";
 import {
   parseStoredRuleEvaluationResult,
   type StoredRuleEvaluationResult,
@@ -43,9 +33,13 @@ import {
   type ApplicabilityAnswerValue,
 } from "./question-visibility";
 import { evaluateRuleSet } from "./rules";
-import { parseRuleSetDocument } from "./rule-set-schema";
 import { catalogOptionsForCountry } from "./entity-catalog";
 import { guestStartedExpiry, guestSubmittedExpiry } from "./guest-lifecycle";
+import {
+  localizeEvaluation,
+  type LocalizedRuleEvaluationResult,
+} from "./localize-evaluation";
+import { persistApplicabilitySubmission } from "./submission-persistence";
 import {
   submitApplicabilityCheckSchema,
   type SubmitApplicabilityCheckInput,
@@ -179,31 +173,7 @@ type ValidatedAnswer = {
   optionIds: string[];
 };
 
-export type LocalizedRuleEvaluationResult = {
-  outcome: StoredRuleEvaluationResult["outcome"];
-  label: string;
-  labelEn: string;
-  reasons: string[];
-  reasonsEn: string[];
-  sizeClassification: StoredRuleEvaluationResult["sizeClassification"];
-  jurisdiction: {
-    countryCode: string | null;
-    countryProfileVersion: string | null;
-  };
-  matchedEntityTypes: Array<{
-    code: string;
-    label: string;
-    labelEn: string;
-    legalReference: string;
-  }>;
-  scopeBases: Array<{ code: string; description: string; descriptionEn: string; legalReference: string | null }>;
-  unresolvedFacts: string[];
-  unresolvedFactsEn: string[];
-  obligationOverlays: Array<{ code: string; description: string; descriptionEn: string; legalReference: string | null }>;
-  indirectExposure: { status: StoredRuleEvaluationResult["indirectExposure"]["status"]; reasons: string[]; reasonsEn: string[] };
-  disclaimer: string;
-  disclaimerEn: string;
-};
+export type { LocalizedRuleEvaluationResult } from "./localize-evaluation";
 
 type PreparedApplicabilitySubmission = {
   definition: ActiveDefinition;
@@ -212,17 +182,27 @@ type PreparedApplicabilitySubmission = {
   facts: Record<string, unknown>;
   answerContext: Record<string, ApplicabilityAnswerValue>;
   evaluation: ReturnType<typeof evaluateRuleSet>;
+  localizedResult: LocalizedRuleEvaluationResult;
+  inputHash: string;
   now: Date;
+};
+
+type ApplicabilityRuntimeDependencies = {
+  runtimeReleaseReader?: RuntimeReleaseReader;
 };
 
 export async function getApplicabilityQuestionnaireForUser(
   userId: string,
   organizationId: string,
   locale: Locale,
+  dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<ApplicabilityQuestionnaireDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
 
-  const definition = await getActiveDefinition(locale);
+  const definition = await getActiveDefinition(
+    locale,
+    dependencies.runtimeReleaseReader,
+  );
 
   if (!definition) {
     return null;
@@ -252,8 +232,12 @@ export async function getApplicabilityQuestionnaireForUser(
 
 export async function getApplicabilityQuestionnaireForGuest(
   locale: Locale,
+  dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<ApplicabilityQuestionnaireDto | null> {
-  const definition = await getActiveDefinition(locale);
+  const definition = await getActiveDefinition(
+    locale,
+    dependencies.runtimeReleaseReader,
+  );
 
   if (!definition) {
     return null;
@@ -290,28 +274,23 @@ export async function getApplicabilityQuestionnaireForGuest(
 export async function getApplicabilityOverviewForUser(
   userId: string,
   organizationId: string,
+  dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<ApplicabilityOverviewDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
-  const assessment = await getLatestAssessment(organizationId);
-
-  if (!assessment?.currentRevisionId) {
-    return null;
-  }
-
-  const revision = await db.query.assessmentRevisions.findFirst({
-    where: eq(assessmentRevisions.id, assessment.currentRevisionId),
-  });
-
-  if (!revision) {
+  const current = await getLatestAssessmentWithCurrentRevision(organizationId);
+  if (!current) {
     return null;
   }
 
   return {
-    assessmentId: assessment.id,
-    assessmentRevisionId: revision.id,
-    assessmentRevisionNumber: revision.revisionNumber,
-    submittedAt: revision.submittedAt?.toISOString() ?? null,
-    result: await getCurrentResult(organizationId),
+    assessmentId: current.assessment.id,
+    assessmentRevisionId: current.revision.id,
+    assessmentRevisionNumber: current.revision.revisionNumber,
+    submittedAt: current.revision.submittedAt?.toISOString() ?? null,
+    result: await getCurrentResult(
+      organizationId,
+      dependencies.runtimeReleaseReader,
+    ),
   };
 }
 
@@ -326,8 +305,17 @@ export async function getApplicabilityAnswersForUser(
   if (!assessment?.currentRevisionId) {
     return null;
   }
-  const pinnedRelease = await loadComplianceRelease(assessment.checkReleaseId, locale);
-  const definition = pinnedRelease ? toActiveDefinition(pinnedRelease) : null;
+  const pinnedRelease = await nextCachedRuntimeReleaseReader.getPublished({
+    checkReleaseId: assessment.checkReleaseId,
+    locale,
+  });
+  const definition = pinnedRelease
+    ? toActiveDefinition({
+        published: pinnedRelease,
+        activePointer: null,
+        isActive: false,
+      })
+    : null;
   if (!definition) return null;
 
   const revision = await db.query.assessmentRevisions.findFirst({
@@ -390,272 +378,60 @@ export async function getApplicabilityAnswersForUser(
 export async function getApplicabilityResultForUser(
   userId: string,
   organizationId: string,
+  dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<ApplicabilityResultDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
-  return getCurrentResult(organizationId);
+  return getCurrentResult(
+    organizationId,
+    dependencies.runtimeReleaseReader,
+  );
 }
 
 export async function submitApplicabilityCheckForUser(
   userId: string,
   organizationId: string,
   input: SubmitApplicabilityCheckInput,
-  options?: { checkReleaseId?: string; claimGuestCheckId?: string },
+  options?: {
+    checkReleaseId?: string;
+    claimGuestCheckId?: string;
+    runtimeReleaseReader?: RuntimeReleaseReader;
+  },
 ): Promise<ApplicabilityResultDto> {
   await assertCanAccessOrganization(userId, organizationId);
-  const prepared = await prepareApplicabilitySubmission(input, options?.checkReleaseId);
-  const {
-    definition,
-    ruleSet,
-    validatedAnswers,
-    facts,
-    answerContext,
-    evaluation,
-    now,
-  } = prepared;
-
-  return db.transaction(async (tx) => {
-    let assessment = await tx.query.assessments.findFirst({
-      where: and(
-        eq(assessments.organizationId, organizationId),
-        eq(assessments.moduleId, definition.moduleId),
-        eq(assessments.checkReleaseId, definition.checkReleaseId),
-        eq(assessments.status, "active"),
-      ),
-    });
-
-    if (!assessment) {
-      const previousActive = await tx.select({ id: assessments.id })
-        .from(assessments)
-        .innerJoin(complianceCheckReleases, eq(assessments.checkReleaseId, complianceCheckReleases.id))
-        .where(and(
-          eq(assessments.organizationId, organizationId),
-          eq(assessments.status, "active"),
-          eq(complianceCheckReleases.checkCode, NIS2_CHECK_CODE),
-        ));
-      if (previousActive.length > 0) {
-        await tx.update(assessments).set({ status: "archived" }).where(inArray(assessments.id, previousActive.map((item) => item.id)));
-      }
-      const [createdAssessment] = await tx
-        .insert(assessments)
-        .values({
-          organizationId,
-          moduleId: definition.moduleId,
-          questionnaireId: definition.questionnaireId,
-          checkReleaseId: definition.checkReleaseId,
-          createdBy: userId,
-        })
-        .returning();
-      assessment = createdAssessment;
-    }
-
-    const latestRevision = await tx.query.assessmentRevisions.findFirst({
-      where: eq(assessmentRevisions.assessmentId, assessment.id),
-      orderBy: (revision, { desc: orderDesc }) => [
-        orderDesc(revision.revisionNumber),
-      ],
-    });
-    const [assessmentRevision] = await tx
-      .insert(assessmentRevisions)
-      .values({
-        assessmentId: assessment.id,
-        questionnaireVersionId: definition.questionnaireVersionId,
-        revisionNumber: (latestRevision?.revisionNumber ?? 0) + 1,
-        parentRevisionId: assessment.currentRevisionId,
-        status: "submitted",
-        createdBy: userId,
-        submittedAt: now,
-      })
-      .returning();
-
-    if (assessment.currentRevisionId) {
-      await tx
-        .update(assessmentRevisions)
-        .set({ status: "superseded" })
-        .where(eq(assessmentRevisions.id, assessment.currentRevisionId));
-    }
-
-    await tx
-      .update(assessments)
-      .set({ currentRevisionId: assessmentRevision.id })
-      .where(eq(assessments.id, assessment.id));
-
-    for (const answer of validatedAnswers) {
-      const [answerHeader] = await tx.insert(assessmentAnswers).values({
-        assessmentRevisionId: assessmentRevision.id,
-        questionId: answer.questionId,
-        questionStableKey: answer.questionStableKey,
-      }).returning();
-      await tx.insert(assessmentAnswerOptions).values(
-        answer.optionIds.map((questionOptionId) => ({ assessmentAnswerId: answerHeader.id, questionOptionId })),
-      );
-    }
-
-    const factEntries = Object.entries(facts);
-
-    for (const [factKey, value] of factEntries) {
-      await tx
-        .update(organizationFactValues)
-        .set({ isCurrent: false })
-        .where(
-          and(
-            eq(organizationFactValues.organizationId, organizationId),
-            eq(organizationFactValues.factKey, factKey),
-            eq(organizationFactValues.isCurrent, true),
-          ),
-        );
-
-      const [factValue] = await tx.insert(organizationFactValues).values({
-        organizationId,
-        factKey,
-        sourceType: "assessment_revision",
-        sourceRevisionId: assessmentRevision.id,
-        confidence: "1.0000",
-        isCurrent: true,
-      }).returning();
-      const stableValues = Array.isArray(value) ? value : [value];
-      const selectedFactOptions = await tx.query.factOptions.findMany({
-        where: and(
-          eq(factOptions.factDefinitionKey, factKey),
-          inArray(factOptions.stableValue, stableValues.filter((item): item is string => typeof item === "string")),
-        ),
-      });
-      if (selectedFactOptions.length !== stableValues.length) throw new ApiError(409, `Fact option mapping is incomplete for ${factKey}`);
-      await tx.insert(organizationFactValueOptions).values(
-        selectedFactOptions.map((option) => ({ organizationFactValueId: factValue.id, factOptionId: option.id })),
-      );
-    }
-
-    let artifact = await tx.query.generatedArtifacts.findFirst({
-      where: and(
-        eq(generatedArtifacts.organizationId, organizationId),
-        eq(generatedArtifacts.moduleId, definition.moduleId),
-        eq(generatedArtifacts.artifactType, "affectedness_result"),
-      ),
-    });
-
-    if (!artifact) {
-      const [createdArtifact] = await tx
-        .insert(generatedArtifacts)
-        .values({
-          organizationId,
-          moduleId: definition.moduleId,
-          artifactType: "affectedness_result",
-        })
-        .returning();
-      artifact = createdArtifact;
-    }
-
-    const latestArtifactRevision =
-      await tx.query.generatedArtifactRevisions.findFirst({
-        where: eq(generatedArtifactRevisions.artifactId, artifact.id),
-        orderBy: (revision, { desc: orderDesc }) => [
-          orderDesc(revision.revisionNumber),
-        ],
-      });
-
-    if (artifact.currentRevisionId) {
-      await tx
-        .update(generatedArtifactRevisions)
-        .set({ status: "superseded" })
-        .where(eq(generatedArtifactRevisions.id, artifact.currentRevisionId));
-    }
-
-    const inputHash = hashRuleInput({
-      answers: answerContext,
-      facts,
-      checkReleaseId: definition.checkReleaseId,
-      ruleSetId: ruleSet.id,
-    });
-    const result: StoredRuleEvaluationResult = {
-      ...evaluation,
-      checkReleaseId: definition.checkReleaseId,
-      ruleSetId: ruleSet.id,
-      inputHash,
-      evaluatedAt: now.toISOString(),
-      assessmentRevisionId: assessmentRevision.id,
-      assessmentRevisionNumber: assessmentRevision.revisionNumber,
-    };
-    const [artifactRevision] = await tx
-      .insert(generatedArtifactRevisions)
-      .values({
-        artifactId: artifact.id,
-        revisionNumber: (latestArtifactRevision?.revisionNumber ?? 0) + 1,
-        parentRevisionId: artifact.currentRevisionId,
-        status: "generated",
-        result,
-        ruleSetId: ruleSet.id,
-        checkReleaseId: definition.checkReleaseId,
-        evaluatorKind: definition.ruleSet.evaluatorKind,
-        outcomeCode: evaluation.outcome,
-        evaluatedAt: now,
-        inputHash,
-        generatedBy: "system",
-        createdBy: userId,
-      })
-      .returning();
-
-    const profileVersion = evaluation.jurisdiction.countryCode
-      ? await tx.query.complianceCheckReleaseProfiles.findFirst({
-          where: and(
-            eq(complianceCheckReleaseProfiles.checkReleaseId, definition.checkReleaseId),
-            eq(complianceCheckReleaseProfiles.countryCode, evaluation.jurisdiction.countryCode),
-          ),
-        })
-      : null;
-    await tx.insert(nis2ResultProjections).values({
-      artifactRevisionId: artifactRevision.id,
-      countryCode: evaluation.jurisdiction.countryCode,
-      sizeClassification: evaluation.sizeClassification,
-      jurisdictionProfileVersionId: profileVersion?.jurisdictionProfileVersionId,
-    });
-
-    await tx.insert(artifactRevisionSources).values({
-      artifactRevisionId: artifactRevision.id,
-      sourceType: "assessment_revision",
-      sourceId: assessmentRevision.id,
-    });
-
-    await tx
-      .update(generatedArtifacts)
-      .set({ currentRevisionId: artifactRevision.id })
-      .where(eq(generatedArtifacts.id, artifact.id));
-
-    const localizedResult = await localizeEvaluation(result);
-
-    if (options?.claimGuestCheckId) {
-      await tx.update(guestApplicabilityChecks).set({
-        status: "claimed",
-        claimedByUserId: userId,
-        claimedOrganizationId: organizationId,
-        claimedAt: now,
-        updatedAt: now,
-      }).where(and(
-        eq(guestApplicabilityChecks.id, options.claimGuestCheckId),
-        eq(guestApplicabilityChecks.status, "submitted"),
-      ));
-    }
-
-    return {
-      artifactRevisionId: artifactRevision.id,
-      artifactRevisionNumber: artifactRevision.revisionNumber,
-      createdAt: artifactRevision.createdAt.toISOString(),
-      ruleSetId: ruleSet.id,
-      ruleSetVersionLabel: ruleSet.versionLabel,
-      assessmentRevisionId: assessmentRevision.id,
-      evidence: result,
-      result: localizedResult,
-      release: {
-        id: definition.checkReleaseId,
-        versionLabel: definition.versionLabel,
-        isOutdated: !definition.isActive,
-        activeVersionLabel: definition.activeReleaseVersionLabel,
-      },
-    };
+  const prepared = await prepareApplicabilitySubmission(
+    input,
+    options?.checkReleaseId,
+    options?.runtimeReleaseReader,
+  );
+  return persistApplicabilitySubmission({
+    userId,
+    organizationId,
+    release: {
+      checkCode: NIS2_CHECK_CODE,
+      checkReleaseId: prepared.definition.checkReleaseId,
+      moduleId: prepared.definition.moduleId,
+      questionnaireId: prepared.definition.questionnaireId,
+      questionnaireVersionId: prepared.definition.questionnaireVersionId,
+      versionLabel: prepared.definition.versionLabel,
+      isActive: prepared.definition.isActive,
+      activeReleaseVersionLabel:
+        prepared.definition.activeReleaseVersionLabel,
+      evaluatorKind: prepared.definition.ruleSet.evaluatorKind,
+    },
+    ruleSet: prepared.ruleSet,
+    answers: prepared.validatedAnswers,
+    facts: prepared.facts,
+    evaluation: prepared.evaluation,
+    localizedResult: prepared.localizedResult,
+    inputHash: prepared.inputHash,
+    now: prepared.now,
+    claimGuestCheckId: options?.claimGuestCheckId,
   });
 }
 
 export async function submitApplicabilityCheckForGuest(
   input: SubmitApplicabilityCheckInput,
+  dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<GuestApplicabilitySession & { result: ApplicabilityResultDto }> {
   if (!input.guestSession) throw new ApiError(400, "Guest session is required");
   const guestCheck = await db.query.guestApplicabilityChecks.findFirst({
@@ -667,7 +443,11 @@ export async function submitApplicabilityCheckForGuest(
   if (!guestCheck || guestCheck.status !== "started" || guestCheck.expiresAt <= new Date()) {
     throw new ApiError(409, "Guest session is invalid or expired");
   }
-  const prepared = await prepareApplicabilitySubmission(input, guestCheck.checkReleaseId);
+  const prepared = await prepareApplicabilitySubmission(
+    input,
+    guestCheck.checkReleaseId,
+    dependencies.runtimeReleaseReader,
+  );
   const expiresAt = createGuestExpiryDate(prepared.now);
   const inputHash = hashRuleInput({
     answers: prepared.answerContext,
@@ -703,7 +483,12 @@ export async function submitApplicabilityCheckForGuest(
   return {
     id: submittedCheck.id,
     token: input.guestSession.token,
-    result: (await toGuestApplicabilityCheckDto(submittedCheck)).result,
+    result: (
+      await toGuestApplicabilityCheckDto(
+        submittedCheck,
+        dependencies.runtimeReleaseReader,
+      )
+    ).result,
   };
 }
 
@@ -768,19 +553,24 @@ export async function claimGuestApplicabilityCheckForUser(
 
 async function getActiveDefinition(
   locale: Locale = "de",
+  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
 ): Promise<ActiveDefinition | null> {
-  const release = await loadActiveComplianceRelease(locale);
+  const release = await reader.getActive({
+    checkCode: NIS2_CHECK_CODE,
+    locale,
+  });
   return release ? toActiveDefinition(release) : null;
 }
 
 async function prepareApplicabilitySubmission(
   input: SubmitApplicabilityCheckInput,
   checkReleaseId?: string,
+  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
 ): Promise<PreparedApplicabilitySubmission> {
-  const loadedRelease = checkReleaseId
-    ? await loadComplianceRelease(checkReleaseId)
-    : await loadActiveComplianceRelease();
-  const definition = loadedRelease ? toActiveDefinition(loadedRelease) : null;
+  const resolved = checkReleaseId
+    ? await resolvePinnedRelease(reader, checkReleaseId, "de")
+    : await reader.getActive({ checkCode: NIS2_CHECK_CODE, locale: "de" });
+  const definition = resolved ? toActiveDefinition(resolved) : null;
 
   if (!definition) {
     throw new ApiError(404, "Betroffenheitscheck questionnaire is not seeded");
@@ -800,6 +590,31 @@ async function prepareApplicabilitySubmission(
     facts,
     answers: answerContext,
   });
+  const now = new Date();
+  const inputHash = hashRuleInput({
+    answers: answerContext,
+    facts,
+    checkReleaseId: definition.checkReleaseId,
+    ruleSetId: ruleSet.id,
+  });
+  const releaseEn = await reader.getPublished({
+    checkReleaseId: definition.checkReleaseId,
+    locale: "en",
+  });
+  if (!releaseEn || !resolved) {
+    throw new ApiError(409, "Pinned compliance release is unavailable");
+  }
+  const localizedResult = localizeEvaluation(
+    {
+      ...evaluation,
+      checkReleaseId: definition.checkReleaseId,
+      ruleSetId: ruleSet.id,
+      inputHash,
+      evaluatedAt: now.toISOString(),
+    },
+    resolved.published,
+    releaseEn,
+  );
 
   return {
     definition,
@@ -808,7 +623,24 @@ async function prepareApplicabilitySubmission(
     facts,
     answerContext,
     evaluation,
-    now: new Date(),
+    localizedResult,
+    inputHash,
+    now,
+  };
+}
+
+async function resolvePinnedRelease(
+  reader: RuntimeReleaseReader,
+  checkReleaseId: string,
+  locale: Locale,
+): Promise<ResolvedComplianceRelease | null> {
+  const published = await reader.getPublished({ checkReleaseId, locale });
+  if (!published) return null;
+  const activePointer = await reader.getActivePointer(published.checkCode);
+  return {
+    published,
+    activePointer,
+    isActive: activePointer?.checkReleaseId === published.checkReleaseId,
   };
 }
 
@@ -849,13 +681,26 @@ async function findGuestApplicabilityCheck(
 
 async function toGuestApplicabilityCheckDto(
   guestCheck: typeof guestApplicabilityChecks.$inferSelect,
+  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
 ): Promise<GuestApplicabilityCheckDto> {
   if (!guestCheck.result || !guestCheck.submittedAt) {
     throw new ApiError(409, "Guest applicability check has not been submitted");
   }
   const result = parseStoredRuleEvaluationResult(guestCheck.result);
-  const release = await loadComplianceRelease(guestCheck.checkReleaseId);
-  if (!release) throw new ApiError(409, "Pinned compliance release is unavailable");
+  const [release, releaseEn, activePointer] = await Promise.all([
+    reader.getPublished({
+      checkReleaseId: guestCheck.checkReleaseId,
+      locale: "de",
+    }),
+    reader.getPublished({
+      checkReleaseId: guestCheck.checkReleaseId,
+      locale: "en",
+    }),
+    reader.getActivePointer(NIS2_CHECK_CODE),
+  ]);
+  if (!release || !releaseEn) {
+    throw new ApiError(409, "Pinned compliance release is unavailable");
+  }
 
   return {
     id: guestCheck.id,
@@ -869,12 +714,13 @@ async function toGuestApplicabilityCheckDto(
       ruleSetVersionLabel: release.releaseVersionLabel,
       assessmentRevisionId: null,
       evidence: result,
-      result: await localizeEvaluation(result),
+      result: localizeEvaluation(result, release, releaseEn),
       release: {
         id: release.checkReleaseId,
         versionLabel: release.releaseVersionLabel,
-        isOutdated: !release.isActive,
-        activeVersionLabel: release.activeReleaseVersionLabel,
+        isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
+        activeVersionLabel:
+          activePointer?.versionLabel ?? release.releaseVersionLabel,
       },
     },
   };
@@ -949,12 +795,36 @@ async function getLatestAssessment(organizationId: string) {
   return rows[0]?.assessment ?? null;
 }
 
+async function getLatestAssessmentWithCurrentRevision(organizationId: string) {
+  const rows = await db
+    .select({ assessment: assessments, revision: assessmentRevisions })
+    .from(assessments)
+    .innerJoin(
+      complianceCheckReleases,
+      eq(assessments.checkReleaseId, complianceCheckReleases.id),
+    )
+    .innerJoin(
+      assessmentRevisions,
+      eq(assessments.currentRevisionId, assessmentRevisions.id),
+    )
+    .where(
+      and(
+        eq(assessments.organizationId, organizationId),
+        eq(complianceCheckReleases.checkCode, NIS2_CHECK_CODE),
+      ),
+    )
+    .orderBy(desc(assessments.createdAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 function createGuestStartedExpiryDate(from: Date): Date {
   return guestStartedExpiry(from);
 }
 
 async function getCurrentResult(
   organizationId: string,
+  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
 ): Promise<ApplicabilityResultDto | null> {
   const row = await db
     .select({
@@ -989,8 +859,20 @@ async function getCurrentResult(
   }
 
   const result = parseStoredRuleEvaluationResult(resultRow.result);
-  const release = await loadComplianceRelease(result.checkReleaseId);
-  if (!release) throw new ApiError(409, "Pinned compliance release is unavailable");
+  const [release, releaseEn, activePointer] = await Promise.all([
+    reader.getPublished({
+      checkReleaseId: result.checkReleaseId,
+      locale: "de",
+    }),
+    reader.getPublished({
+      checkReleaseId: result.checkReleaseId,
+      locale: "en",
+    }),
+    reader.getActivePointer(NIS2_CHECK_CODE),
+  ]);
+  if (!release || !releaseEn) {
+    throw new ApiError(409, "Pinned compliance release is unavailable");
+  }
 
   return {
     artifactRevisionId: resultRow.artifactRevisionId,
@@ -1000,12 +882,13 @@ async function getCurrentResult(
     ruleSetVersionLabel: resultRow.ruleSetVersionLabel,
     assessmentRevisionId: result.assessmentRevisionId ?? null,
     evidence: result,
-    result: await localizeEvaluation(result),
+    result: localizeEvaluation(result, release, releaseEn),
     release: {
       id: release.checkReleaseId,
       versionLabel: release.releaseVersionLabel,
-      isOutdated: !release.isActive,
-      activeVersionLabel: release.activeReleaseVersionLabel,
+      isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
+      activeVersionLabel:
+        activePointer?.versionLabel ?? release.releaseVersionLabel,
     },
   };
 }
@@ -1219,20 +1102,22 @@ function getEntityCatalogs(
   );
 }
 
-function toActiveDefinition(release: LoadedComplianceRelease): ActiveDefinition {
+function toActiveDefinition(release: ResolvedComplianceRelease): ActiveDefinition {
+  const published = release.published;
   return {
-    checkReleaseId: release.checkReleaseId,
-    aggregateHash: release.aggregateHash,
+    checkReleaseId: published.checkReleaseId,
+    aggregateHash: published.aggregateHash,
     isActive: release.isActive,
-    activeReleaseVersionLabel: release.activeReleaseVersionLabel,
-    moduleId: release.moduleId,
-    questionnaireId: release.questionnaireId,
-    questionnaireVersionId: release.questionnaireVersionId,
-    questionnaireTitle: release.questionnaireTitle,
-    questionnaireCode: release.questionnaireCode,
-    versionLabel: release.releaseVersionLabel,
-    ruleSet: release.ruleSet,
-    questions: release.questions,
+    activeReleaseVersionLabel:
+      release.activePointer?.versionLabel ?? published.releaseVersionLabel,
+    moduleId: published.moduleId,
+    questionnaireId: published.questionnaireId,
+    questionnaireVersionId: published.questionnaireVersionId,
+    questionnaireTitle: published.questionnaireTitle,
+    questionnaireCode: published.questionnaireCode,
+    versionLabel: published.releaseVersionLabel,
+    ruleSet: published.ruleSet,
+    questions: published.questions,
   };
 }
 
@@ -1243,80 +1128,6 @@ function toQuestionnaireRelease(definition: ActiveDefinition) {
     aggregateHash: definition.aggregateHash,
     isActive: definition.isActive,
     activeVersionLabel: definition.activeReleaseVersionLabel,
-  };
-}
-
-async function localizeEvaluation(
-  evidence: StoredRuleEvaluationResult,
-): Promise<LocalizedRuleEvaluationResult> {
-  const release = await loadComplianceRelease(evidence.checkReleaseId, "de");
-  const releaseEn = await loadComplianceRelease(evidence.checkReleaseId, "en");
-  if (!release || !releaseEn) throw new ApiError(409, "Pinned compliance release is unavailable");
-  const artifact = parseRuleSetDocument(release.ruleSet.rules);
-  const rows = await db.select({
-    stableKey: contentItems.stableKey,
-    locale: contentTranslations.locale,
-    value: contentTranslations.value,
-  }).from(complianceCheckReleaseContentRevisions)
-    .innerJoin(contentRevisions, eq(complianceCheckReleaseContentRevisions.contentRevisionId, contentRevisions.id))
-    .innerJoin(contentItems, eq(contentRevisions.contentItemId, contentItems.id))
-    .innerJoin(contentTranslations, eq(contentTranslations.contentRevisionId, contentRevisions.id))
-    .where(eq(complianceCheckReleaseContentRevisions.checkReleaseId, evidence.checkReleaseId));
-  const localized = new Map(rows.map((row) => [`${row.stableKey}:${row.locale}`, row.value]));
-  const text = (key: string | undefined, locale: "de" | "en") => key ? localized.get(`${key}:${locale}`) ?? localized.get(`${key}:de`) ?? key : "";
-  const reason = (code: string, locale: "de" | "en") => text(artifact.reasonContentKeys[code], locale) || code;
-  const legalCitation = (key: string, locale: "de" | "en") => {
-    const separator = key.indexOf(".");
-    if (separator < 1) return key;
-    const instrumentCode = key.slice(0, separator);
-    const provisionCode = key.slice(separator + 1);
-    return text(
-      `nis2.legal.${instrumentCode}.${provisionCode}.citation`,
-      locale,
-    ) || key;
-  };
-  const entityQuestion = release.questions.find((question) => question.factMappings.some((mapping) => mapping.factKey === "nis2_entity_types"));
-  const entityQuestionEn = releaseEn.questions.find((question) => question.factMappings.some((mapping) => mapping.factKey === "nis2_entity_types"));
-  const displayEntities =
-    evidence.evaluatorKind === "nis2_scope_v3" &&
-    evidence.matchedNationalEntityTypes.length > 0
-      ? evidence.matchedNationalEntityTypes
-      : evidence.matchedEntityTypes;
-  const localizeBasis = (item: StoredRuleEvaluationResult["scopeBases"][number]) => ({
-    code: item.code,
-    description: reason(item.code, "de"),
-    descriptionEn: reason(item.code, "en"),
-    legalReference:
-      item.legalProvisionKeys
-        .map((key) => legalCitation(key, "de"))
-        .join(", ") || null,
-  });
-
-  return {
-    outcome: evidence.outcome,
-    label: text(artifact.outcomeContentKeys[evidence.outcome], "de"),
-    labelEn: text(artifact.outcomeContentKeys[evidence.outcome], "en"),
-    reasons: evidence.reasonCodes.map((code) => reason(code, "de")),
-    reasonsEn: evidence.reasonCodes.map((code) => reason(code, "en")),
-    sizeClassification: evidence.sizeClassification,
-    jurisdiction: { countryCode: evidence.jurisdiction.countryCode, countryProfileVersion: evidence.profileVersionKey },
-    matchedEntityTypes: displayEntities.map((entity) => ({
-      code: entity.code,
-      label: entityQuestion?.options.find((option) => option.stableValue === entity.code)?.label ?? entity.code,
-      labelEn: entityQuestionEn?.options.find((option) => option.stableValue === entity.code)?.label ?? entity.code,
-      legalReference: entity.legalProvisionKeys.map((key) => legalCitation(key, "de")).join(", "),
-    })),
-    scopeBases: evidence.scopeBases.map(localizeBasis),
-    unresolvedFacts: evidence.unresolvedFactCodes.map((code) => reason(code, "de")),
-    unresolvedFactsEn: evidence.unresolvedFactCodes.map((code) => reason(code, "en")),
-    obligationOverlays: evidence.obligationOverlays.map(localizeBasis),
-    indirectExposure: {
-      status: evidence.indirectExposure.status,
-      reasons: evidence.indirectExposure.reasonCodes.map((code) => reason(code, "de")),
-      reasonsEn: evidence.indirectExposure.reasonCodes.map((code) => reason(code, "en")),
-    },
-    disclaimer: text(artifact.disclaimerContentKey, "de"),
-    disclaimerEn: text(artifact.disclaimerContentKey, "en"),
   };
 }
 

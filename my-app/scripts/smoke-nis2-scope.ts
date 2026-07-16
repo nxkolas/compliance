@@ -7,6 +7,7 @@ import {
   submitApplicabilityCheckForGuest,
 } from "../src/server/applicability-check/service";
 import type { ApplicabilityAnswerValue } from "../src/server/applicability-check/question-visibility";
+import { directRuntimeReleaseReader } from "../src/server/compliance/runtime-release/direct-reader";
 
 const databaseUrl = process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
 
@@ -119,7 +120,9 @@ async function main() {
         "bc.security_evidence_requested",
     };
     for (const fixture of fixtures) {
-      const questionnaire = await getApplicabilityQuestionnaireForGuest("en");
+      const questionnaire = await getApplicabilityQuestionnaireForGuest("en", {
+        runtimeReleaseReader: directRuntimeReleaseReader,
+      });
       if (!questionnaire?.guestSession) {
         throw new Error("Guest questionnaire session is unavailable");
       }
@@ -138,10 +141,13 @@ async function main() {
           value: value as ApplicabilityAnswerValue,
         };
       });
-      const submission = await submitApplicabilityCheckForGuest({
-        answers,
-        guestSession: questionnaire.guestSession,
-      });
+      const submission = await submitApplicabilityCheckForGuest(
+        {
+          answers,
+          guestSession: questionnaire.guestSession,
+        },
+        { runtimeReleaseReader: directRuntimeReleaseReader },
+      );
       submissionOutcomes.push(submission.result.result.outcome);
     }
 
