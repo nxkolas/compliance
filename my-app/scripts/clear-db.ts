@@ -1,7 +1,6 @@
 import "dotenv/config";
 
-import { reset } from "drizzle-seed";
-import { drizzle } from "drizzle-orm/postgres-js";
+import { getTableUniqueName, isTable } from "drizzle-orm";
 import postgres from "postgres";
 import * as schema from "../src/db/schema";
 
@@ -24,11 +23,42 @@ if (process.env.DB_CLEAR_CONFIRM !== "clear-app-tables") {
 const client = postgres(databaseUrl, {
   prepare: false,
 });
-const db = drizzle(client);
+
+const quoteIdentifier = (identifier: string) =>
+  `"${identifier.replaceAll('"', '""')}"`;
 
 async function main() {
   try {
-    await reset(db, schema);
+    const managedTableNames = new Set<string>();
+    for (const value of Object.values(schema)) {
+      if (isTable(value)) {
+        managedTableNames.add(getTableUniqueName(value));
+      }
+    }
+    const existingTables = await client<
+      { table_schema: string; table_name: string }[]
+    >`
+      select table_schema, table_name
+      from information_schema.tables
+      where table_type = 'BASE TABLE'
+        and table_schema = 'public'
+      order by table_name
+    `;
+    const tablesToClear = existingTables.filter(({ table_schema, table_name }) =>
+      managedTableNames.has(`${table_schema}.${table_name}`),
+    );
+
+    if (tablesToClear.length > 0) {
+      const qualifiedTables = tablesToClear
+        .map(
+          ({ table_schema, table_name }) =>
+            `${quoteIdentifier(table_schema)}.${quoteIdentifier(table_name)}`,
+        )
+        .join(",");
+
+      await client.unsafe(`truncate ${qualifiedTables} cascade`);
+    }
+
     console.log("Cleared Drizzle-managed app tables.");
   } finally {
     await client.end();

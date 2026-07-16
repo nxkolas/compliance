@@ -18,6 +18,10 @@ import {
   isAnswered,
   type ApplicabilityAnswerValue,
 } from "@/src/server/applicability-check/question-visibility";
+import {
+  catalogOptionsForCountry,
+  reconcileCatalogAnswers,
+} from "@/src/server/applicability-check/entity-catalog";
 import type {
   ApplicabilityQuestionDto,
   ApplicabilityQuestionnaireDto,
@@ -70,9 +74,30 @@ export function ApplicabilityQuestionnaireForm({
     message: null,
     tone: "default",
   });
+  const catalogQuestions = useMemo(() => {
+    const countryQuestion = questionnaire.questions.find(
+      (question) => question.stableKey === "bc.jurisdiction_country",
+    );
+    const countryAnswer = countryQuestion
+      ? answers[countryQuestion.id]
+      : undefined;
+    const countryCode = typeof countryAnswer === "string" ? countryAnswer : null;
+    const nationalCatalogCode = countryCode ? `country:${countryCode}` : null;
+    const entityCatalogCode =
+      nationalCatalogCode && questionnaire.entityCatalogs[nationalCatalogCode]
+        ? nationalCatalogCode
+        : "eu_core";
+    return questionnaire.questions.map((question) => ({
+      ...question,
+      options:
+        question.stableKey === "bc.entity_types"
+          ? questionnaire.entityCatalogs[entityCatalogCode] ?? question.options
+          : catalogOptionsForCountry(question.options, countryCode),
+    }));
+  }, [answers, questionnaire.entityCatalogs, questionnaire.questions]);
   const visibleQuestions = useMemo(
-    () => getVisibleQuestions(questionnaire.questions, answers),
-    [answers, questionnaire.questions],
+    () => getVisibleQuestions(catalogQuestions, answers),
+    [answers, catalogQuestions],
   );
   const requiredQuestions = useMemo(
     () => visibleQuestions.filter((question) => question.required),
@@ -108,6 +133,7 @@ export function ApplicabilityQuestionnaireForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          guestSession: questionnaire.guestSession,
           answers: visibleQuestions
             .filter((question) => isAnswered(answers[question.id]))
             .map((question) => ({
@@ -189,7 +215,12 @@ export function ApplicabilityQuestionnaireForm({
             answer={answers[question.id] ?? ""}
             labels={labels}
             onChange={(value) =>
-              setAnswers((current) => ({ ...current, [question.id]: value }))
+              setAnswers((current) =>
+                reconcileCatalogAnswers(questionnaire.questions, {
+                  ...current,
+                  [question.id]: value,
+                }),
+              )
             }
             question={question}
           />

@@ -100,6 +100,7 @@ async function GuestApplicabilityResultPageContent({
           locale={locale}
           labels={resultLabels}
           title={resultTitle}
+          startCurrentHref="/check/applicability"
         />
 
         <GuestApplicabilityActions

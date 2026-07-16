@@ -54,7 +54,7 @@ export function getQuestionControl(config: unknown): string | undefined {
     : undefined;
 }
 
-function getVisibilityCondition(config: unknown): VisibilityCondition | null {
+export function getVisibilityCondition(config: unknown): VisibilityCondition | null {
   if (!isRecord(config) || !isRecord(config.visibleWhen)) {
     return null;
   }

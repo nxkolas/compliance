@@ -1,8 +1,13 @@
-import type { RuleEvaluationResult } from "./rule-evaluation-schema";
+import {
+  ruleEvaluationResultSchema,
+  type RuleEvaluationResult,
+} from "./rule-evaluation-schema";
 import {
   parseRuleSetDocument,
   type Nis2EntityType,
+  type Nis2NationalEntityType,
   type Nis2Outcome,
+  type Nis2ScopeRuleSetDocument,
 } from "./rule-set-schema";
 
 export type { RuleEvaluationResult } from "./rule-evaluation-schema";
@@ -12,7 +17,27 @@ export type RuleEvaluationContext = {
   answers?: Record<string, unknown>;
 };
 
-type ScopeBasis = RuleEvaluationResult["scopeBases"][number];
+type Nis2ScopeV3Document = Extract<
+  Nis2ScopeRuleSetDocument,
+  { kind: "nis2_scope_v3" }
+>;
+
+type ScopeBasis = {
+  code: string;
+  description: string;
+  descriptionEn: string;
+  legalReference: string | null;
+};
+type InternalIndirectExposure = {
+  status: "none" | "signals_present" | "unknown";
+  reasons: string[];
+  reasonsEn: string[];
+};
+type EvaluableEntityType = Nis2EntityType & {
+  label: string;
+  labelEn: string;
+  legalReference: string;
+};
 
 const ARTICLE_2_REFERENCE = "Directive (EU) 2022/2555, Article 2";
 const ARTICLE_3_REFERENCE = "Directive (EU) 2022/2555, Article 3";
@@ -24,6 +49,292 @@ export function evaluateRuleSet(
   context: RuleEvaluationContext,
 ): RuleEvaluationResult {
   const ruleSet = parseRuleSetDocument(ruleSetRules);
+  return ruleSet.kind === "nis2_scope_v3"
+    ? evaluateV3RuleSet(ruleSet, context)
+    : evaluateLegacyRuleSet(ruleSet, context);
+}
+
+function evaluateV3RuleSet(
+  ruleSet: Nis2ScopeV3Document,
+  context: RuleEvaluationContext,
+): RuleEvaluationResult {
+  const euActivity = readSingle(context.facts.eu_activity, ["yes", "no", "unsure"]);
+  const countryCode = readNullableString(context.facts.jurisdiction_country);
+  const jurisdictionBasis = readNullableString(context.facts.jurisdiction_basis);
+  const selectedCodes = readStringArray(context.facts.nis2_entity_types);
+  const profile = countryCode ? ruleSet.countryProfiles[countryCode] : undefined;
+  const nationalByCode = new Map(
+    profile?.entityCatalog.map((entity) => [entity.code, entity]) ?? [],
+  );
+  const matchedNational = selectedCodes
+    .map((code) => nationalByCode.get(code))
+    .filter((entity): entity is Nis2NationalEntityType => Boolean(entity));
+  const unresolvedFactCodes: string[] = [];
+  const addUnresolved = (code: string) => {
+    if (!unresolvedFactCodes.includes(code)) unresolvedFactCodes.push(code);
+  };
+  const scopeBases: Array<{ code: string; legalProvisionKeys: string[] }> = [];
+  const obligationOverlays: Array<{ code: string; legalProvisionKeys: string[] }> = [];
+  const designation = readNullableString(context.facts.member_state_designation);
+  const sizeDependent = matchedNational.some((entity) =>
+    ["annex_1_standard", "annex_2_standard", "telecom"].includes(
+      entity.classificationRule,
+    ),
+  );
+  const sizeClassification = calculateSizeWithVerification(
+    context.facts,
+    ruleSet.thresholds,
+    profile?.countryCode === "DE"
+      ? ["verified_de_without_it_exception", "verified_de_with_it_exception"]
+      : ["yes"],
+  );
+
+  let outcome: Nis2Outcome = "clarification_required";
+
+  if (euActivity === "no") {
+    outcome = "not_directly_in_scope";
+    scopeBases.push({
+      code: "outside_eu_activity",
+      legalProvisionKeys: ["eu_nis2.article_2"],
+    });
+  } else if (euActivity === "unsure") {
+    addUnresolved("unresolved_eu_activity");
+  } else if (!profile?.supported) {
+    addUnresolved(countryCode ? "unresolved_unsupported_profile" : "unresolved_country");
+  } else {
+    const explicitNone = selectedCodes.includes("none_of_these");
+    const invalidSelections = selectedCodes.filter(
+      (code) => code !== "none_of_these" && code !== "unsure" && !nationalByCode.has(code),
+    );
+
+    if (!countryCode || countryCode === "unsure") addUnresolved("unresolved_country");
+    if (!jurisdictionBasis || jurisdictionBasis === "unsure") {
+      addUnresolved("unresolved_jurisdiction_basis");
+    }
+    if (
+      selectedCodes.includes("unsure") ||
+      invalidSelections.length > 0 ||
+      (matchedNational.length === 0 && !explicitNone)
+    ) {
+      addUnresolved("unresolved_entity_type");
+    }
+
+    if (matchedNational.length > 0 && jurisdictionBasis && jurisdictionBasis !== "unsure") {
+      const permittedEntityCodes = new Set(
+        profile.jurisdictionRules
+          .filter((rule) => rule.basisCode === jurisdictionBasis)
+          .flatMap((rule) => rule.entityCodes),
+      );
+      if (matchedNational.some((entity) => !permittedEntityCodes.has(entity.code))) {
+        addUnresolved("unresolved_profile_jurisdiction");
+      }
+    }
+
+    if (sizeDependent && sizeClassification === "unknown") {
+      addUnresolved("unresolved_size_aggregation");
+    }
+
+    const criticalInstallation =
+      profile.countryCode === "DE" && designation === "de_critical_installation";
+    if (
+      criticalInstallation ||
+      designation === "essential" ||
+      designation === "cer_critical"
+    ) {
+      outcome = "essential_entity";
+      scopeBases.push({
+        code: criticalInstallation
+          ? "de_critical_installation"
+          : designation === "cer_critical"
+            ? "cer_critical_designation"
+            : "member_state_essential_designation",
+        legalProvisionKeys: criticalInstallation
+          ? ["de_bsig.section_28_1_1"]
+          : ["eu_nis2.article_3"],
+      });
+    } else if (matchedNational.length > 0) {
+      const classified = classifyNationalEntityTypes(matchedNational, sizeClassification);
+      outcome = classified.outcome;
+      if (classified.basisCode) {
+        const classificationLegalProvisionKeys = new Set(
+          matchedNational.flatMap((entity) => entity.legalProvisionKeys),
+        );
+        classificationLegalProvisionKeys.add("de_bsig.section_28");
+        if (
+          matchedNational.some(
+            (entity) => entity.classificationRule === "federal_administration",
+          )
+        ) {
+          classificationLegalProvisionKeys.add("de_bsig.section_29");
+        }
+        scopeBases.push({
+          code: classified.basisCode,
+          legalProvisionKeys: [...classificationLegalProvisionKeys],
+        });
+      }
+    } else if (explicitNone) {
+      outcome = profile.allowNegativeConclusion
+        ? "not_directly_in_scope"
+        : "clarification_required";
+      if (outcome === "not_directly_in_scope") {
+        scopeBases.push({
+          code: "no_covered_entity_type",
+          legalProvisionKeys: profile.legalProvisionKeys,
+        });
+      }
+    }
+
+    if (designation === "important" && outcome !== "essential_entity") {
+      outcome = "important_entity";
+      scopeBases.push({
+        code: "member_state_important_designation",
+        legalProvisionKeys: ["eu_nis2.article_3"],
+      });
+    }
+
+    if (
+      matchedNational.some(
+        (entity) => entity.classificationRule === "domain_registration_obligations",
+      )
+    ) {
+      obligationOverlays.push({
+        code: "domain_registration_obligations",
+        legalProvisionKeys: ["de_bsig.section_34"],
+      });
+      addUnresolved("unresolved_domain_registration_classification");
+    }
+    if (
+      matchedNational.some((entity) => entity.classificationRule === "requires_land_law")
+    ) {
+      addUnresolved("unresolved_regional_administration");
+    }
+
+    if (unresolvedFactCodes.length > 0) outcome = "clarification_required";
+  }
+
+  const euEntityByCode = new Map(ruleSet.entityTypes.map((entity) => [entity.code, entity]));
+  const nationalMappings = matchedNational.flatMap((entity) =>
+    entity.mappings.map((mapping) => ({
+      nationalEntityVersionKey: entity.versionKey,
+      euEntityCode: mapping.euEntityCode,
+      relationship: mapping.relationship,
+    })),
+  );
+  const matchedEntityTypes = Array.from(
+    new Set(nationalMappings.map((mapping) => mapping.euEntityCode)),
+  )
+    .map((code) => euEntityByCode.get(code))
+    .filter((entity): entity is Nis2EntityType => Boolean(entity));
+  const indirectExposure = evaluateIndirectExposure(context.facts);
+  const appliedJurisdictionRules = profile && jurisdictionBasis
+    ? profile.jurisdictionRules
+        .filter((rule) => rule.basisCode === jurisdictionBasis)
+        .map((rule) => ({
+          basisCode: rule.basisCode,
+          legalProvisionKey: rule.legalProvisionKey,
+          authorityDecisionRequired: rule.authorityDecisionRequired ?? false,
+        }))
+    : [];
+
+  return ruleEvaluationResultSchema.parse({
+    schemaVersion: 4,
+    evaluatorKind: "nis2_scope_v3",
+    evaluatorVersion: 3,
+    outcome,
+    reasonCodes:
+      unresolvedFactCodes.length > 0
+        ? unresolvedFactCodes
+        : scopeBases.map((item) => item.code),
+    releaseVersion: ruleSet.releaseVersion,
+    scopeModelVersion: ruleSet.scopeModelVersion,
+    thresholdSetVersion: ruleSet.thresholdSetVersion,
+    profileVersionKey: profile?.versionKey ?? null,
+    jurisdiction: {
+      euActivity,
+      countryCode: countryCode && countryCode !== "unsure" ? countryCode : null,
+      basisCode:
+        jurisdictionBasis && jurisdictionBasis !== "unsure" ? jurisdictionBasis : null,
+    },
+    sizeClassification,
+    matchedEntityTypes,
+    scopeBases,
+    unresolvedFactCodes,
+    obligationOverlays,
+    indirectExposure: {
+      status: indirectExposure.status,
+      reasonCodes: [
+        context.facts.serves_critical_customers === "yes"
+          ? "indirect_serves_regulated_customers"
+          : null,
+        context.facts.has_customer_security_evidence_requests === "yes"
+          ? "indirect_security_evidence_requests"
+          : null,
+        indirectExposure.status === "unknown" ? "indirect_unknown" : null,
+      ].filter((code): code is string => Boolean(code)),
+    },
+    decisiveFacts: context.facts,
+    selectedCatalogCode: profile ? `country:${profile.countryCode}` : null,
+    matchedNationalEntityTypes: matchedNational,
+    nationalMappings,
+    appliedProfilePolicyCodes: profile
+      ? [profile.thresholdPolicy.aggregationRule, jurisdictionBasis]
+          .filter((code): code is string => Boolean(code))
+      : [],
+    appliedProfileLegalProvisionKeys: profile?.thresholdPolicy.legalProvisionKeys ?? [],
+    appliedJurisdictionRules,
+    effectiveStateCodes: profile?.effectiveStates.map((state) => state.code) ?? [],
+    effectiveStateDeclarations: profile?.effectiveStates ?? [],
+  });
+}
+
+function classifyNationalEntityTypes(
+  entityTypes: Nis2NationalEntityType[],
+  size: RuleEvaluationResult["sizeClassification"],
+): { outcome: Nis2Outcome; basisCode: string | null } {
+  const rules = new Set(entityTypes.map((entity) => entity.classificationRule));
+  if (rules.has("always_particularly_important") || rules.has("federal_administration")) {
+    return { outcome: "essential_entity", basisCode: "de_size_independent_particularly_important" };
+  }
+  if (rules.has("always_important")) {
+    return { outcome: "important_entity", basisCode: "de_size_independent_important" };
+  }
+  if (rules.has("telecom")) {
+    if (size === "large" || size === "medium") {
+      return { outcome: "essential_entity", basisCode: "de_telecom_medium_or_large" };
+    }
+    if (size === "small") {
+      return { outcome: "important_entity", basisCode: "de_telecom_small" };
+    }
+  }
+  if (rules.has("annex_1_standard")) {
+    if (size === "large") return { outcome: "essential_entity", basisCode: "de_annex_1_large" };
+    if (size === "medium") return { outcome: "important_entity", basisCode: "de_annex_1_medium" };
+    if (size === "small") return { outcome: "not_directly_in_scope", basisCode: "de_below_size_cap" };
+  }
+  if (rules.has("annex_2_standard")) {
+    if (size === "large" || size === "medium") {
+      return { outcome: "important_entity", basisCode: "de_annex_2_medium_or_large" };
+    }
+    if (size === "small") return { outcome: "not_directly_in_scope", basisCode: "de_below_size_cap" };
+  }
+  return { outcome: "clarification_required", basisCode: null };
+}
+
+function calculateSizeWithVerification(
+  facts: Record<string, unknown>,
+  thresholds: Nis2ScopeRuleSetDocument["thresholds"],
+  acceptedVerificationCodes: string[],
+): RuleEvaluationResult["sizeClassification"] {
+  if (!acceptedVerificationCodes.includes(readNullableString(facts.sme_figures_verified) ?? "")) {
+    return "unknown";
+  }
+  return calculateSizeBuckets(facts, thresholds);
+}
+
+function evaluateLegacyRuleSet(
+  ruleSet: Nis2ScopeRuleSetDocument,
+  context: RuleEvaluationContext,
+): RuleEvaluationResult {
   const euActivity = readSingle(context.facts.eu_activity, [
     "yes",
     "no",
@@ -34,30 +345,43 @@ export function evaluateRuleSet(
     context.facts.jurisdiction_basis,
   );
   const selectedCodes = readStringArray(context.facts.nis2_entity_types);
+  const runtimeEntityTypes: EvaluableEntityType[] = ruleSet.entityTypes.map(
+    (entityType) => ({
+      ...entityType,
+      label: entityType.code,
+      labelEn: entityType.code,
+      legalReference: entityType.legalProvisionKeys.join(", "),
+    }),
+  );
   const entityByCode = new Map(
-    ruleSet.entityTypes.map((entityType) => [entityType.code, entityType]),
+    runtimeEntityTypes.map((entityType) => [entityType.code, entityType]),
   );
   const matchedEntityTypes = selectedCodes
     .map((code) => entityByCode.get(code))
-    .filter((entityType): entityType is Nis2EntityType => Boolean(entityType));
+    .filter((entityType): entityType is EvaluableEntityType => Boolean(entityType));
   const designation = readNullableString(
     context.facts.member_state_designation,
   );
   const isGermanCriticalInstallation =
     designation === "de_critical_installation" && countryCode === "DE";
-  const sizeClassification = calculateSize(context.facts);
+  const sizeClassification = calculateSize(context.facts, ruleSet.thresholds);
   const countryProfile = countryCode
+    ? ruleSet.countryProfiles[countryCode]
+    : undefined;
+  const v3CountryProfile = ruleSet.kind === "nis2_scope_v3" && countryCode
     ? ruleSet.countryProfiles[countryCode]
     : undefined;
   const scopeBases: ScopeBasis[] = [];
   const obligationOverlays: ScopeBasis[] = [];
   const unresolvedFacts: string[] = [];
   const unresolvedFactsEn: string[] = [];
+  const unresolvedFactCodes: string[] = [];
 
   const addUnresolved = (de: string, en: string) => {
     if (!unresolvedFacts.includes(de)) {
       unresolvedFacts.push(de);
       unresolvedFactsEn.push(en);
+      unresolvedFactCodes.push(unresolvedCode(en));
     }
   };
 
@@ -310,21 +634,22 @@ export function evaluateRuleSet(
     }
   }
 
-  const outcomeLabels = ruleSet.outcomes[outcome];
-  const reasons =
-    scopeBases.length > 0
-      ? scopeBases.map((item) => item.description)
-      : unresolvedFacts;
-  const reasonsEn =
-    scopeBases.length > 0
-      ? scopeBases.map((item) => item.descriptionEn)
-      : unresolvedFactsEn;
+  const indirectExposure = evaluateIndirectExposure(context.facts);
+  const reasons: string[] = [];
+  const reasonsEn: string[] = [];
 
-  return {
-    schemaVersion: 2,
+  return ruleEvaluationResultSchema.parse({
+    schemaVersion: ruleSet.kind === "nis2_scope_v3" ? 4 : 3,
     outcome,
-    label: outcomeLabels.label,
-    labelEn: outcomeLabels.labelEn,
+    reasonCodes: scopeBases.length > 0 ? scopeBases.map((item) => item.code) : unresolvedFactCodes,
+    releaseVersion: ruleSet.releaseVersion,
+    evaluatorKind: ruleSet.kind,
+    evaluatorVersion: ruleSet.evaluatorSchemaVersion,
+    scopeModelVersion: ruleSet.scopeModelVersion,
+    thresholdSetVersion: ruleSet.thresholdSetVersion,
+    profileVersionKey: countryProfile?.versionKey ?? null,
+    label: outcome,
+    labelEn: outcome,
     reasons:
       reasons.length > 0
         ? reasons
@@ -333,10 +658,10 @@ export function evaluateRuleSet(
       reasonsEn.length > 0
         ? reasonsEn
         : ["The supplied information is insufficient for a reliable classification."],
-    ruleSetVersion: ruleSet.version,
-    profileVersion: ruleSet.profileVersion,
-    disclaimer: ruleSet.disclaimer,
-    disclaimerEn: ruleSet.disclaimerEn,
+    ruleSetVersion: ruleSet.evaluatorSchemaVersion,
+    profileVersion: ruleSet.scopeModelVersion,
+    disclaimer: ruleSet.disclaimerContentKey,
+    disclaimerEn: ruleSet.disclaimerContentKey,
     jurisdiction: {
       euActivity,
       countryCode:
@@ -345,32 +670,58 @@ export function evaluateRuleSet(
         jurisdictionBasis && jurisdictionBasis !== "unsure"
           ? jurisdictionBasis
           : null,
-      countryProfileVersion: countryProfile?.version ?? null,
+      basisCode:
+        jurisdictionBasis && jurisdictionBasis !== "unsure"
+          ? jurisdictionBasis
+          : null,
+      countryProfileVersion: countryProfile?.versionKey ?? null,
     },
     sizeClassification,
     matchedEntityTypes: matchedEntityTypes.map((entityType) => ({
       code: entityType.code,
+      versionKey: entityType.versionKey,
       sectorCode: entityType.sectorCode,
       annex: entityType.annex,
+      legalProvisionKeys: entityType.legalProvisionKeys,
       label: entityType.label,
       labelEn: entityType.labelEn,
       legalReference: entityType.legalReference,
     })),
-    scopeBases,
+    scopeBases: scopeBases.map(toEvidenceBasis),
+    unresolvedFactCodes,
     unresolvedFacts,
     unresolvedFactsEn,
-    obligationOverlays,
-    indirectExposure: evaluateIndirectExposure(context.facts),
-  };
+    obligationOverlays: obligationOverlays.map(toEvidenceBasis),
+    indirectExposure: {
+      status: indirectExposure.status,
+      reasonCodes: [
+        context.facts.serves_critical_customers === "yes" ? "indirect_serves_regulated_customers" : null,
+        context.facts.has_customer_security_evidence_requests === "yes" ? "indirect_security_evidence_requests" : null,
+        indirectExposure.status === "unknown" ? "indirect_unknown" : null,
+      ].filter((code): code is string => Boolean(code)),
+    },
+    decisiveFacts: context.facts,
+    ...(ruleSet.kind === "nis2_scope_v3"
+      ? {
+          selectedCatalogCode: countryProfile ? `country:${countryProfile.countryCode}` : "eu_core",
+          matchedNationalEntityTypes: [],
+          nationalMappings: [],
+          appliedProfilePolicyCodes: v3CountryProfile
+            ? [v3CountryProfile.thresholdPolicy.aggregationRule]
+            : [],
+          effectiveStateCodes: v3CountryProfile?.effectiveStates.map((state) => state.code) ?? [],
+        }
+      : {}),
+  });
 }
 
 function classifyEntityTypes(
-  entityTypes: Nis2EntityType[],
+  entityTypes: EvaluableEntityType[],
   size: RuleEvaluationResult["sizeClassification"],
   scopeBases: ScopeBasis[],
 ): Nis2Outcome {
   const addEntityBasis = (
-    entityType: Nis2EntityType,
+    entityType: EvaluableEntityType,
     code: string,
     description: string,
     descriptionEn: string,
@@ -495,10 +846,19 @@ function classifyEntityTypes(
 
 function calculateSize(
   facts: Record<string, unknown>,
+  thresholds: ReturnType<typeof parseRuleSetDocument>["thresholds"],
 ): RuleEvaluationResult["sizeClassification"] {
   if (facts.sme_figures_verified !== "yes") {
     return "unknown";
   }
+
+  return calculateSizeBuckets(facts, thresholds);
+}
+
+function calculateSizeBuckets(
+  facts: Record<string, unknown>,
+  thresholds: Nis2ScopeRuleSetDocument["thresholds"],
+): RuleEvaluationResult["sizeClassification"] {
 
   const employees = readNullableString(facts.employee_count_bucket);
   const revenue = readNullableString(facts.annual_revenue_bucket);
@@ -514,27 +874,24 @@ function calculateSize(
   }
 
   const large =
-    employees === "250_plus" ||
-    (revenue === "revenue_over_50m" && balance === "balance_over_43m");
+    employees === thresholds.buckets.employees.large ||
+    (revenue === thresholds.buckets.turnover.large &&
+      balance === thresholds.buckets.balanceSheet.large);
   if (large) {
     return "large";
   }
 
   const medium =
-    employees === "50_249" ||
-    (revenue === "revenue_over_10m_to_50m" &&
-      balance === "balance_over_10m_to_43m") ||
-    (revenue === "revenue_over_10m_to_50m" &&
-      balance === "balance_over_43m") ||
-    (revenue === "revenue_over_50m" &&
-      balance === "balance_over_10m_to_43m");
+    employees === thresholds.buckets.employees.medium ||
+    (thresholds.buckets.turnover.medium.includes(revenue) &&
+      thresholds.buckets.balanceSheet.medium.includes(balance));
 
   return medium ? "medium" : "small";
 }
 
 function evaluateIndirectExposure(
   facts: Record<string, unknown>,
-): RuleEvaluationResult["indirectExposure"] {
+): InternalIndirectExposure {
   const criticalCustomers = readNullableString(facts.serves_critical_customers);
   const evidenceRequests = readNullableString(
     facts.has_customer_security_evidence_requests,
@@ -581,6 +938,49 @@ function basis(
   legalReference: string | null,
 ): ScopeBasis {
   return { code, description, descriptionEn, legalReference };
+}
+
+function toEvidenceBasis(item: ScopeBasis) {
+  return {
+    code: item.code,
+    legalProvisionKeys: item.legalReference
+      ? item.legalReference.split(",").map((value) => normalizeLegalProvisionKey(value.trim())).filter(Boolean)
+      : [],
+  };
+}
+
+function normalizeLegalProvisionKey(reference: string) {
+  if (reference.startsWith("eu_") || reference.startsWith("de_")) return reference;
+  if (reference.includes("Article 26")) return "eu_nis2.article_26";
+  if (reference.includes("Article 28")) return "eu_nis2.article_28";
+  if (reference.includes("Article 2(4)")) return "eu_nis2.article_2_4";
+  if (reference.includes("Article 2")) return "eu_nis2.article_2";
+  if (reference.includes("Article 3")) return "eu_nis2.article_3";
+  if (reference.includes("Article 4")) return "eu_nis2.article_4";
+  if (reference.includes("2003/361")) return "eu_sme_recommendation.annex_article_2";
+  if (reference.includes("28(1)(1)")) return "de_bsig.section_28_1_1";
+  if (reference.includes("28(5)")) return "de_bsig.section_28_5";
+  if (reference.includes("28(6)")) return "de_bsig.section_28_6";
+  return `reference.${toStableCode(reference)}`;
+}
+
+function toStableCode(value: string) {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, "_").replaceAll(/^_|_$/g, "");
+}
+
+function unresolvedCode(value: string) {
+  if (value.includes("relevant services or activities")) return "unresolved_eu_activity";
+  if (value.includes("competent Member State")) return "unresolved_country";
+  if (value.includes("basis for EU jurisdiction")) return "unresolved_jurisdiction_basis";
+  if (value.includes("exact entity type")) return "unresolved_entity_type";
+  if (value.includes("regional public-administration")) return "unresolved_regional_administration";
+  if (value.includes("authority classification or CER")) return "unresolved_designation";
+  if (value.includes("German critical-installation")) return "unresolved_german_designation_country";
+  if (value.includes("enterprise size")) return "unresolved_size";
+  if (value.includes("No supported national profile")) return "unresolved_unsupported_profile";
+  if (value.includes("domain-name registration")) return "unresolved_domain_registration_classification";
+  if (value.includes("negative conclusion")) return "unresolved_negative_profile_required";
+  return `unresolved_${toStableCode(value)}`;
 }
 
 function readNullableString(value: unknown): string | null {

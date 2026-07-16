@@ -1,8 +1,18 @@
 import type {
   Nis2EntityRule,
-  Nis2EntityType,
-  Nis2ScopeRuleSetDocument,
-} from "./rule-set-schema";
+} from "../../../../applicability-check/rule-set-schema";
+
+export type Nis2SourceEntityType = {
+  code: string;
+  sectorCode: string;
+  annex: 1 | 2 | null;
+  label: string;
+  labelEn: string;
+  description: string;
+  descriptionEn: string;
+  legalReference: string;
+  rule: Nis2EntityRule;
+};
 
 export type Nis2SeedOption = {
   stableValue: string;
@@ -96,15 +106,21 @@ function entity(
   labelEn: string,
   section: string,
   rule: Nis2EntityRule = "standard",
-): Nis2EntityType {
+): Nis2SourceEntityType {
   return {
     code,
     sectorCode,
     annex,
     label,
     labelEn,
-    description: `Rechtlich definierte Einrichtungsart: ${label}.`,
-    descriptionEn: `Legally defined entity type: ${labelEn}.`,
+    description:
+      annex === null
+        ? `${label} im Sinne von Artikel 2 Absatz 4 und Artikel 28 der NIS2-Richtlinie; erfasst ist die gewerbliche Verwaltung von Domänennamenregistrierungen.`
+        : `${label} im Sinne der in NIS2 Anhang ${annex === 1 ? "I" : "II"}, Nummer ${section}, in Bezug genommenen sektorspezifischen Unionsrechtsdefinition.`,
+    descriptionEn:
+      annex === null
+        ? `${labelEn} within Articles 2(4) and 28 of the NIS2 Directive, covering commercial management of domain-name registrations.`
+        : `${labelEn} within the sector-specific Union-law definition referenced by NIS2 Annex ${annex === 1 ? "I" : "II"}, point ${section}.`,
     legalReference:
       annex === null
         ? "Directive (EU) 2022/2555, Articles 2(4) and 28"
@@ -113,7 +129,7 @@ function entity(
   };
 }
 
-export const nis2EntityTypes: Nis2EntityType[] = [
+export const nis2EntityTypes: Nis2SourceEntityType[] = [
   entity("electricity_supplier", "energy", 1, "Stromlieferant", "Electricity undertaking carrying out supply", "1(a)"),
   entity("electricity_distribution_operator", "energy", 1, "Elektrizitätsverteilernetzbetreiber", "Electricity distribution system operator", "1(a)"),
   entity("electricity_transmission_operator", "energy", 1, "Elektrizitätsübertragungsnetzbetreiber", "Electricity transmission system operator", "1(a)"),
@@ -454,7 +470,7 @@ export const nis2Questions: Nis2SeedQuestion[] = [
   },
 ];
 
-export const nis2ScopeRuleSet: Nis2ScopeRuleSetDocument = {
+export const nis2ScopeRuleSet = {
   kind: "nis2_scope_v2",
   version: 2,
   profileVersion: "eu-core-2026-01",

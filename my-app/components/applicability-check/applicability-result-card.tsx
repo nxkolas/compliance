@@ -8,12 +8,17 @@ import {
 import type { Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
 import type { ApplicabilityResultDto } from "@/src/server/applicability-check/service";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 type ApplicabilityResultCardProps = {
   result: ApplicabilityResultDto;
   locale: Locale;
   labels: {
     ruleSet: string;
+    release: string;
+    outdated: string;
+    startCurrent: string;
     unknown: string;
     revision: string;
     outcome: string;
@@ -35,6 +40,7 @@ type ApplicabilityResultCardProps = {
     };
   };
   title: string;
+  startCurrentHref: string;
 };
 
 export function ApplicabilityResultCard({
@@ -42,6 +48,7 @@ export function ApplicabilityResultCard({
   locale,
   labels,
   title,
+  startCurrentHref,
 }: ApplicabilityResultCardProps) {
   const evaluation = result.result;
   const presentation = getOutcomePresentation(evaluation.outcome);
@@ -61,11 +68,19 @@ export function ApplicabilityResultCard({
       <CardHeader>
         <CardTitle className="text-2xl">{title}</CardTitle>
         <CardDescription>
-          {labels.ruleSet}: {result.ruleSetVersionLabel ?? labels.unknown} |{" "}
+          {labels.release}: {result.release.versionLabel} | {labels.ruleSet}: {result.ruleSetVersionLabel ?? labels.unknown} |{" "}
           {labels.revision} {result.artifactRevisionNumber}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
+        {result.release.isOutdated ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+            <span>{labels.outdated}</span>
+            <Button asChild size="sm">
+              <Link href={startCurrentHref}>{labels.startCurrent}</Link>
+            </Button>
+          </div>
+        ) : null}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label={labels.outcome} value={getOutcomeLabel(evaluation.outcome, labels.outcomes)} />
           <Metric label={labels.size} value={formatSize(evaluation.sizeClassification, locale)} />
@@ -73,7 +88,7 @@ export function ApplicabilityResultCard({
             label={labels.jurisdiction}
             value={evaluation.jurisdiction.countryCode ?? labels.unknown}
           />
-          <Metric label={labels.profile} value={evaluation.jurisdiction.countryProfileVersion ?? evaluation.profileVersion} />
+          <Metric label={labels.profile} value={evaluation.jurisdiction.countryProfileVersion ?? result.evidence.scopeModelVersion} />
         </div>
 
         <ResultSection title={labels.reasoning} values={reasons} />

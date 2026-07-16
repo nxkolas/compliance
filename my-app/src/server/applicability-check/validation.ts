@@ -1,6 +1,7 @@
 import * as z from "zod";
 
 export const submitApplicabilityCheckSchema = z.object({
+  guestSession: z.object({ id: z.uuid(), token: z.string().min(32) }).optional(),
   answers: z
     .array(
       z.object({

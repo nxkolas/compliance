@@ -8,8 +8,8 @@
     "db:push": "drizzle-kit push",
     "db:drop:legacy": "tsx scripts/drop-legacy-app-tables.ts",
     "db:clear": "tsx scripts/clear-db.ts",
-    "db:reset": "npm run db:drop:legacy && npm run db:push && npm run db:clear",
-    "db:seed:compliance": "tsx scripts/seed-compliance-foundation.ts",
+    "db:publish:compliance": "tsx scripts/publish-compliance-release.ts",
+    "db:activate:compliance": "tsx scripts/activate-compliance-release.ts",
     "db:smoke:nis2": "tsx scripts/smoke-nis2-scope.ts",
     "test:ai": "vitest run evals",
     "test:ai:watch": "vitest evals"
