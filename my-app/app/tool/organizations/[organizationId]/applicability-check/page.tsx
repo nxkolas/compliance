@@ -39,7 +39,7 @@ export default async function ApplicabilityCheckPage({
   }
 
   const baseHref = `/tool/organizations/${organizationId}/applicability-check`;
-  const outcome = overview.result?.result.outcome ?? "possibly_affected";
+  const outcome = overview.result?.result.outcome ?? "clarification_required";
   const labels = dictionary.modules.applicabilityCheck.overview;
   const resultLabel =
     locale === "en"
@@ -123,18 +123,23 @@ export default async function ApplicabilityCheckPage({
 function formatOutcome(
   outcome: string,
   labels: {
-    affected: string;
-    possiblyAffected: string;
-    notAffected: string;
+    essentialEntity: string;
+    importantEntity: string;
+    notDirectlyInScope: string;
+    clarificationRequired: string;
   },
 ) {
-  if (outcome === "affected") {
-    return labels.affected;
+  if (outcome === "essential_entity") {
+    return labels.essentialEntity;
   }
 
-  if (outcome === "not_affected") {
-    return labels.notAffected;
+  if (outcome === "important_entity") {
+    return labels.importantEntity;
   }
 
-  return labels.possiblyAffected;
+  if (outcome === "not_directly_in_scope") {
+    return labels.notDirectlyInScope;
+  }
+
+  return labels.clarificationRequired;
 }

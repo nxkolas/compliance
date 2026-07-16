@@ -35,6 +35,11 @@ import {
   parseStoredRuleEvaluationResult,
   type StoredRuleEvaluationResult,
 } from "./rule-evaluation-schema";
+import {
+  getVisibleQuestions,
+  isAnswered,
+  type ApplicabilityAnswerValue,
+} from "./question-visibility";
 import { evaluateRuleSet } from "./rules";
 import {
   submitApplicabilityCheckSchema,
@@ -52,7 +57,7 @@ export type ApplicabilityQuestionnaireDto = {
   code: string;
   versionLabel: string;
   questions: ApplicabilityQuestionDto[];
-  latestAnswers: Record<string, string>;
+  latestAnswers: Record<string, ApplicabilityAnswerValue>;
 };
 
 export type ApplicabilityQuestionDto = {
@@ -144,7 +149,7 @@ type ActiveDefinition = {
 type ValidatedAnswer = {
   questionId: string;
   questionStableKey: string;
-  answerValue: string;
+  answerValue: ApplicabilityAnswerValue;
   answerLabel: string;
 };
 
@@ -153,7 +158,7 @@ type PreparedApplicabilitySubmission = {
   ruleSet: NonNullable<Awaited<ReturnType<typeof getActiveRuleSet>>>;
   validatedAnswers: ValidatedAnswer[];
   facts: Record<string, unknown>;
-  answerContext: Record<string, string>;
+  answerContext: Record<string, ApplicabilityAnswerValue>;
   evaluation: ReturnType<typeof evaluateRuleSet>;
   now: Date;
 };
@@ -305,15 +310,19 @@ export async function getApplicabilityAnswersForUser(
       const question = definition.questions.find(
         (candidate) => candidate.id === row.questionId,
       );
-      const option = question?.options.find(
-        (candidate) => candidate.stableValue === row.answerValue,
+      const translatedAnswerLabel = getTranslatedAnswerLabel(
+        question?.options ?? [],
+        row.answerValue,
       );
 
       return {
         ...row,
         questionText: question?.questionText ?? row.questionText,
-        answerLabel: option?.label ?? row.answerLabel,
-        answerMetadata: option?.metadata ?? null,
+        answerLabel: translatedAnswerLabel ?? row.answerLabel,
+        answerMetadata: getAnswerMetadata(
+          question?.options ?? [],
+          row.answerValue,
+        ),
       };
     }),
   };
@@ -756,7 +765,7 @@ async function getActiveDefinition(
         stableValue: row.optionStableValue ?? "",
         label: row.translatedOptionLabel ?? row.optionLabel ?? "",
         position: row.optionPosition ?? 0,
-        metadata: row.optionMetadata,
+        metadata: localizeOptionMetadata(row.optionMetadata, locale),
       });
     }
 
@@ -930,7 +939,11 @@ async function getLatestAnswerMap(organizationId: string, moduleId: string) {
   });
 
   return Object.fromEntries(
-    rows.map((answer) => [answer.questionId, String(answer.answerValue)]),
+    rows.flatMap((answer) =>
+      isApplicabilityAnswerValue(answer.answerValue)
+        ? [[answer.questionId, answer.answerValue] as const]
+        : [],
+    ),
   );
 }
 
@@ -988,9 +1001,13 @@ function validateAnswers(
   const questionById = new Map(
     definition.questions.map((question) => [question.id, question]),
   );
-  const answerByQuestionId = new Map<string, string>();
+  const answerByQuestionId = new Map<string, ApplicabilityAnswerValue>();
 
   for (const answer of input.answers) {
+    if (!questionById.has(answer.questionId)) {
+      throw new ApiError(400, "Unknown questionId");
+    }
+
     if (answerByQuestionId.has(answer.questionId)) {
       throw new ApiError(400, "Each question can only be answered once");
     }
@@ -998,38 +1015,83 @@ function validateAnswers(
     answerByQuestionId.set(answer.questionId, answer.value);
   }
 
-  for (const question of definition.questions) {
+  const answersRecord = Object.fromEntries(answerByQuestionId);
+  const visibleQuestions = getVisibleQuestions(
+    definition.questions,
+    answersRecord,
+  );
+
+  for (const question of visibleQuestions) {
     const answerValue = answerByQuestionId.get(question.id);
 
-    if (question.required && !answerValue) {
+    if (question.required && !isAnswered(answerValue)) {
       throw new ApiError(400, "All required questions must be answered");
     }
   }
 
-  return Array.from(answerByQuestionId.entries()).map(
-    ([questionId, answerValue]) => {
-      const question = questionById.get(questionId);
+  return visibleQuestions.flatMap<ValidatedAnswer>((question) => {
+    const answerValue = answerByQuestionId.get(question.id);
+    if (!isAnswered(answerValue)) {
+      return [];
+    }
 
-      if (!question) {
-        throw new ApiError(400, "Unknown questionId");
+    if (question.answerType === "multi_choice") {
+      if (!Array.isArray(answerValue)) {
+        throw new ApiError(400, "Multi-choice answers must be arrays");
       }
 
-      const option = question.options.find(
-        (candidate) => candidate.stableValue === answerValue,
+      const uniqueValues = [...new Set(answerValue)];
+      if (uniqueValues.length !== answerValue.length) {
+        throw new ApiError(400, "Multi-choice answers cannot contain duplicates");
+      }
+
+      const exclusiveValues = uniqueValues.filter((value) =>
+        ["none_of_these", "unsure"].includes(value),
       );
-
-      if (!option) {
-        throw new ApiError(400, "Invalid answer value");
+      if (exclusiveValues.length > 0 && uniqueValues.length > 1) {
+        throw new ApiError(400, "Exclusive answers cannot be combined");
       }
 
-      return {
-        questionId,
+      const selectedOptions = uniqueValues.map((value) => {
+        const option = question.options.find(
+          (candidate) => candidate.stableValue === value,
+        );
+        if (!option) {
+          throw new ApiError(400, "Invalid answer value");
+        }
+        return option;
+      });
+
+      return [
+        {
+          questionId: question.id,
+          questionStableKey: question.stableKey,
+          answerValue: uniqueValues,
+          answerLabel: selectedOptions.map((option) => option.label).join(", "),
+        },
+      ];
+    }
+
+    if (Array.isArray(answerValue)) {
+      throw new ApiError(400, "Single-choice answers must be strings");
+    }
+
+    const option = question.options.find(
+      (candidate) => candidate.stableValue === answerValue,
+    );
+    if (!option) {
+      throw new ApiError(400, "Invalid answer value");
+    }
+
+    return [
+      {
+        questionId: question.id,
         questionStableKey: question.stableKey,
         answerValue,
         answerLabel: option.label,
-      };
-    },
-  );
+      },
+    ];
+  });
 }
 
 function deriveFacts(
@@ -1054,6 +1116,70 @@ function deriveFacts(
   }
 
   return facts;
+}
+
+function getTranslatedAnswerLabel(
+  options: ApplicabilityOptionDto[],
+  value: unknown,
+): string | null {
+  const values = Array.isArray(value) ? value : [value];
+  const labels = values.flatMap((item) => {
+    const option = options.find(
+      (candidate) => candidate.stableValue === item,
+    );
+    return option ? [option.label] : [];
+  });
+
+  return labels.length > 0 ? labels.join(", ") : null;
+}
+
+function localizeOptionMetadata(value: unknown, locale: Locale): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const metadata = value as Record<string, unknown>;
+  if (locale !== "en") {
+    return metadata;
+  }
+
+  return {
+    ...metadata,
+    sectorLabel:
+      typeof metadata.sectorLabelEn === "string"
+        ? metadata.sectorLabelEn
+        : metadata.sectorLabel,
+    description:
+      typeof metadata.descriptionEn === "string"
+        ? metadata.descriptionEn
+        : metadata.description,
+  };
+}
+
+function getAnswerMetadata(
+  options: ApplicabilityOptionDto[],
+  value: unknown,
+): unknown {
+  const values = Array.isArray(value) ? value : [value];
+  const metadata = values.flatMap((item) => {
+    const option = options.find(
+      (candidate) => candidate.stableValue === item,
+    );
+    return option ? [option.metadata] : [];
+  });
+
+  return Array.isArray(value) ? metadata : metadata[0] ?? null;
+}
+
+function isApplicabilityAnswerValue(
+  value: unknown,
+): value is ApplicabilityAnswerValue {
+  return (
+    (typeof value === "string" && value.length > 0) ||
+    (Array.isArray(value) &&
+      value.length > 0 &&
+      value.every((item) => typeof item === "string" && item.length > 0))
+  );
 }
 
 function hashRuleInput(input: unknown) {

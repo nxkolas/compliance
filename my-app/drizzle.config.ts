@@ -22,6 +22,7 @@ export default defineConfig({
     'compliance_modules',
     'generated_artifact_revisions',
     'generated_artifacts',
+    'guest_applicability_checks',
     'organization_fact_definitions',
     'organization_fact_definition_translations',
     'organization_fact_values',

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Combobox,
   ComboboxContent,
@@ -11,11 +12,17 @@ import {
 } from "@/components/ui/combobox";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import {
+  getQuestionControl,
+  getVisibleQuestions,
+  isAnswered,
+  type ApplicabilityAnswerValue,
+} from "@/src/server/applicability-check/question-visibility";
 import type {
   ApplicabilityQuestionDto,
   ApplicabilityQuestionnaireDto,
 } from "@/src/server/applicability-check/service";
-import { CheckCircle2, Loader2, Save } from "lucide-react";
+import { CheckCircle2, Loader2, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 
@@ -53,7 +60,9 @@ export function ApplicabilityQuestionnaireForm({
   labels,
 }: ApplicabilityQuestionnaireFormProps) {
   const router = useRouter();
-  const [answers, setAnswers] = useState<Record<string, string>>(
+  const [answers, setAnswers] = useState<
+    Record<string, ApplicabilityAnswerValue>
+  >(
     questionnaire.latestAnswers,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,12 +70,16 @@ export function ApplicabilityQuestionnaireForm({
     message: null,
     tone: "default",
   });
+  const visibleQuestions = useMemo(
+    () => getVisibleQuestions(questionnaire.questions, answers),
+    [answers, questionnaire.questions],
+  );
   const requiredQuestions = useMemo(
-    () => questionnaire.questions.filter((question) => question.required),
-    [questionnaire.questions],
+    () => visibleQuestions.filter((question) => question.required),
+    [visibleQuestions],
   );
   const completedRequiredQuestions = requiredQuestions.filter(
-    (question) => answers[question.id],
+    (question) => isAnswered(answers[question.id]),
   ).length;
   const progress =
     requiredQuestions.length === 0
@@ -95,8 +108,8 @@ export function ApplicabilityQuestionnaireForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          answers: questionnaire.questions
-            .filter((question) => answers[question.id])
+          answers: visibleQuestions
+            .filter((question) => isAnswered(answers[question.id]))
             .map((question) => ({
               questionId: question.id,
               value: answers[question.id],
@@ -170,7 +183,7 @@ export function ApplicabilityQuestionnaireForm({
       </div>
 
       <div className="flex flex-col gap-4">
-        {questionnaire.questions.map((question) => (
+        {visibleQuestions.map((question) => (
           <QuestionBlock
             key={question.id}
             answer={answers[question.id] ?? ""}
@@ -199,9 +212,9 @@ export function ApplicabilityQuestionnaireForm({
 }
 
 type QuestionBlockProps = {
-  answer: string;
+  answer: ApplicabilityAnswerValue;
   labels: ApplicabilityQuestionnaireFormLabels;
-  onChange: (value: string) => void;
+  onChange: (value: ApplicabilityAnswerValue) => void;
   question: ApplicabilityQuestionDto;
 };
 
@@ -211,14 +224,17 @@ function QuestionBlock({
   onChange,
   question,
 }: QuestionBlockProps) {
-  const control = getControl(question.config);
+  const control = getQuestionControl(question.config);
+  const isMultiChoice = question.answerType === "multi_choice";
   const renderAsSelect = control === "select" || question.options.length > 6;
   const comboboxOptions = question.options.map((option) => ({
     value: option.stableValue,
     label: option.label,
   }));
   const selectedComboboxOption =
-    comboboxOptions.find((option) => option.value === answer) ?? null;
+    comboboxOptions.find(
+      (option) => typeof answer === "string" && option.value === answer,
+    ) ?? null;
 
   return (
     <article className="rounded-lg border bg-card p-5 shadow-sm">
@@ -245,7 +261,14 @@ function QuestionBlock({
             ) : null}
           </div>
 
-          {renderAsSelect ? (
+          {isMultiChoice ? (
+            <SearchableMultiSelect
+              answer={Array.isArray(answer) ? answer : []}
+              labels={labels}
+              onChange={onChange}
+              question={question}
+            />
+          ) : renderAsSelect ? (
             <Combobox
               items={comboboxOptions}
               value={selectedComboboxOption}
@@ -255,7 +278,7 @@ function QuestionBlock({
               <ComboboxInput
                 className="h-11 max-w-xl"
                 placeholder={labels.selectPlaceholder}
-                showClear={Boolean(answer)}
+                showClear={typeof answer === "string" && Boolean(answer)}
               />
               <ComboboxContent>
                 <ComboboxEmpty>{labels.noResults}</ComboboxEmpty>
@@ -271,7 +294,8 @@ function QuestionBlock({
           ) : (
             <div className="grid gap-2 sm:grid-cols-3">
               {question.options.map((option) => {
-                const selected = answer === option.stableValue;
+                const selected =
+                  typeof answer === "string" && answer === option.stableValue;
 
                 return (
                   <button
@@ -300,14 +324,152 @@ function QuestionBlock({
   );
 }
 
-function getControl(config: unknown) {
-  if (!isRecord(config) || !isRecord(config.ui)) {
-    return undefined;
+type SearchableMultiSelectProps = {
+  answer: string[];
+  labels: ApplicabilityQuestionnaireFormLabels;
+  onChange: (value: ApplicabilityAnswerValue) => void;
+  question: ApplicabilityQuestionDto;
+};
+
+function SearchableMultiSelect({
+  answer,
+  labels,
+  onChange,
+  question,
+}: SearchableMultiSelectProps) {
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filteredOptions = question.options.filter((option) => {
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    const metadata = getOptionMetadata(option.metadata);
+    return [option.label, metadata.sectorLabel, metadata.description]
+      .filter(Boolean)
+      .some((value) => value.toLocaleLowerCase().includes(normalizedSearch));
+  });
+
+  function toggle(stableValue: string, exclusive: boolean) {
+    if (exclusive) {
+      onChange(answer.length === 1 && answer[0] === stableValue ? [] : [stableValue]);
+      return;
+    }
+
+    const withoutExclusive = answer.filter(
+      (value) => !["none_of_these", "unsure"].includes(value),
+    );
+    onChange(
+      withoutExclusive.includes(stableValue)
+        ? withoutExclusive.filter((value) => value !== stableValue)
+        : [...withoutExclusive, stableValue],
+    );
   }
 
-  return typeof config.ui.control === "string"
-    ? config.ui.control
-    : undefined;
+  return (
+    <div className="flex flex-col gap-3">
+      {answer.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {answer.map((stableValue) => {
+            const option = question.options.find(
+              (candidate) => candidate.stableValue === stableValue,
+            );
+            if (!option) {
+              return null;
+            }
+
+            return (
+              <button
+                key={stableValue}
+                type="button"
+                onClick={() =>
+                  toggle(stableValue, getOptionMetadata(option.metadata).exclusive)
+                }
+                className="inline-flex items-center gap-1.5 rounded-full border bg-primary/10 px-3 py-1 text-xs font-medium"
+              >
+                {option.label}
+                <X className="h-3 w-3" />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <Input
+        className="max-w-xl"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder={labels.selectPlaceholder}
+      />
+
+      <div className="max-h-96 overflow-y-auto rounded-md border">
+        {filteredOptions.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            {labels.noResults}
+          </p>
+        ) : (
+          <div className="divide-y">
+            {filteredOptions.map((option) => {
+              const metadata = getOptionMetadata(option.metadata);
+              const selected = answer.includes(option.stableValue);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggle(option.stableValue, metadata.exclusive)}
+                  className={cn(
+                    "flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-accent",
+                    selected && "bg-primary/10",
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">
+                      {option.label}
+                    </span>
+                    {metadata.sectorLabel ? (
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {metadata.sectorLabel}
+                        {metadata.annex ? ` · Annex ${metadata.annex}` : ""}
+                      </span>
+                    ) : null}
+                    {metadata.description ? (
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                        {metadata.description}
+                      </span>
+                    ) : null}
+                  </span>
+                  {selected ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getOptionMetadata(value: unknown) {
+  if (!isRecord(value)) {
+    return {
+      sectorLabel: "",
+      description: "",
+      annex: null as number | null,
+      exclusive: false,
+    };
+  }
+
+  return {
+    sectorLabel:
+      typeof value.sectorLabel === "string" ? value.sectorLabel : "",
+    description:
+      typeof value.description === "string" ? value.description : "",
+    annex: typeof value.annex === "number" ? value.annex : null,
+    exclusive: value.exclusive === true,
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

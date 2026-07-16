@@ -82,14 +82,14 @@ Use stable semantic facts like:
 employee_count_bucket
 annual_revenue_bucket
 balance_sheet_total_bucket
-industry_sector
-has_german_market_presence
-belongs_to_group
-provides_critical_services
-provides_it_services
+eu_activity
+jurisdiction_country
+jurisdiction_basis
+nis2_entity_types
+member_state_designation
+sme_figures_verified
+sector_specific_regime
 serves_critical_customers
-failure_causes_major_impact
-processes_sensitive_data
 has_customer_security_evidence_requests
 ```
 
@@ -148,7 +148,7 @@ organization_compliance_profile_current
 - organization_id
 - facts jsonb
 - employee_count_bucket text
-- industry_sector text
+- jurisdiction_country text
 - annual_revenue_bucket text
 - affectedness_outcome text
 - current_betroffenheitscheck_revision_id
@@ -358,17 +358,17 @@ CREATE TABLE questions (
 Example `stable_key`s:
 
 ```text
-bc.german_market_presence
+bc.eu_activity
+bc.entity_types
+bc.jurisdiction_country
+bc.jurisdiction_basis
+bc.member_state_designation
 bc.employee_count
 bc.annual_revenue
 bc.balance_sheet_total
-bc.belongs_to_group
-bc.industry
-bc.critical_services
-bc.it_services
+bc.sme_figures_verified
+bc.sector_specific_regime
 bc.critical_customers
-bc.failure_impact
-bc.sensitive_data
 bc.security_evidence_requested
 ```
 
@@ -432,11 +432,11 @@ Example:
 Question: bc.employee_count
 maps to fact: employee_count_bucket
 
-Question: bc.industry
-maps to fact: industry_sector
+Question: bc.entity_types
+maps to fact: nis2_entity_types
 
-Question: bc.it_services
-maps to fact: provides_it_services
+Question: bc.jurisdiction_country
+maps to fact: jurisdiction_country
 ```
 
 This way, your Betroffenheitscheck can change wording or answer options, but your internal semantic facts remain stable.
@@ -579,12 +579,13 @@ in `src/db/schema.ts`. `scripts/seed-compliance-foundation.ts` seeds the
 published `affectedness_check` rule set, and runtime calculation loads that
 rule JSON from the database before storing the generated outcome revision.
 
-Your Betroffenheitscheck has three fixed outcomes:
+The deterministic NIS2 scope checker has four fixed outcomes:
 
 ```text
-betroffen
-nicht betroffen
-möglicherweise betroffen
+essential_entity
+important_entity
+not_directly_in_scope
+clarification_required
 ```
 
 Calculate this outcome with deterministic backend rules, not AI. The result
@@ -726,14 +727,20 @@ Example Betroffenheitscheck result:
 
 ```json
 {
-  "outcome": "possibly_affected",
-  "label": "Möglicherweise betroffen",
+  "schemaVersion": 2,
+  "outcome": "important_entity",
+  "label": "Wichtige Einrichtung",
   "reasons": [
-    "Unternehmen bietet IT-Dienstleistungen an",
-    "Kunden aus kritischen Bereichen vorhanden",
-    "Mitarbeiterzahl unsicher"
+    "Managed Service Provider fällt in Anhang I und erreicht die maßgebliche Unternehmensgröße."
   ],
-  "confidence": 0.74
+  "sizeClassification": "medium",
+  "matchedEntityTypes": [
+    {
+      "code": "managed_service_provider",
+      "annex": 1
+    }
+  ],
+  "unresolvedFacts": []
 }
 ```
 
@@ -1153,10 +1160,12 @@ Hardcode these as stable semantic concepts:
 employee_count_bucket
 annual_revenue_bucket
 balance_sheet_total_bucket
-industry_sector
-has_german_market_presence
-provides_it_services
-processes_sensitive_data
+eu_activity
+jurisdiction_country
+jurisdiction_basis
+nis2_entity_types
+member_state_designation
+sme_figures_verified
 ```
 
 Do **not** hardcode:

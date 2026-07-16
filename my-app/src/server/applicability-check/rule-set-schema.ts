@@ -1,140 +1,123 @@
 import * as z from "zod";
 
-const conditionOperatorSchema = z.enum([
-  "equals",
-  "not_equals",
-  "in",
-  "not_in",
-  "exists",
-  "missing",
+export const nis2OutcomeSchema = z.enum([
+  "essential_entity",
+  "important_entity",
+  "not_directly_in_scope",
+  "clarification_required",
 ]);
+
+export const nis2EntityRuleSchema = z.enum([
+  "standard",
+  "always_essential",
+  "always_important",
+  "telecom",
+  "central_public_administration",
+  "regional_public_administration",
+  "domain_registration",
+]);
+
+export const nis2EntityTypeSchema = z.object({
+  code: z.string().trim().min(1),
+  sectorCode: z.string().trim().min(1),
+  annex: z.union([z.literal(1), z.literal(2)]).nullable(),
+  label: z.string().trim().min(1),
+  labelEn: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  descriptionEn: z.string().trim().min(1),
+  legalReference: z.string().trim().min(1),
+  rule: nis2EntityRuleSchema.default("standard"),
+});
 
 const outcomeLabelSchema = z.object({
   label: z.string().trim().min(1),
-  labelEn: z.string().trim().min(1).optional(),
+  labelEn: z.string().trim().min(1),
 });
 
-export type RuleOutcome = string;
-
-export type RuleCondition =
-  | { all: RuleCondition[] }
-  | { any: RuleCondition[] }
-  | { not: RuleCondition }
-  | {
-      factKey?: string;
-      questionStableKey?: string;
-      operator: z.infer<typeof conditionOperatorSchema>;
-      value?: unknown;
-      values?: unknown[];
-    };
-
-export type FieldRuleCondition = Extract<RuleCondition, { operator: string }>;
-
-export const ruleConditionSchema: z.ZodType<RuleCondition> = z.lazy(() =>
-  z.union([
-    z.object({ all: z.array(ruleConditionSchema).min(1) }),
-    z.object({ any: z.array(ruleConditionSchema).min(1) }),
-    z.object({ not: ruleConditionSchema }),
-    z
-      .object({
-        factKey: z.string().trim().min(1).optional(),
-        questionStableKey: z.string().trim().min(1).optional(),
-        operator: conditionOperatorSchema,
-        value: z.unknown().optional(),
-        values: z.array(z.unknown()).optional(),
-      })
-      .superRefine((condition, context) => {
-        if (!condition.factKey && !condition.questionStableKey) {
-          context.addIssue({
-            code: "custom",
-            message: "Condition needs factKey or questionStableKey",
-            path: ["factKey"],
-          });
-        }
-
-        if (
-          (condition.operator === "in" || condition.operator === "not_in") &&
-          !condition.values
-        ) {
-          context.addIssue({
-            code: "custom",
-            message: `${condition.operator} conditions need values`,
-            path: ["values"],
-          });
-        }
-      }),
-  ]),
-);
-
-export const ruleDocumentSchema = z.object({
-  id: z.string().trim().min(1),
-  outcome: z.string().trim().min(1),
-  priority: z.number(),
-  conditions: ruleConditionSchema,
-  reasons: z.array(z.string()).optional(),
-  confidence: z.number().optional(),
+const countryProfileSchema = z.object({
+  countryCode: z.string().length(2),
+  version: z.string().trim().min(1),
+  supported: z.boolean(),
+  allowNegativeConclusion: z.boolean(),
+  legalReferences: z.array(z.string().trim().min(1)).min(1),
 });
 
-export const ruleSetDocumentSchema = z
+export const nis2ScopeRuleSetDocumentSchema = z
   .object({
-    version: z.number(),
-    defaultOutcome: z.string().trim().min(1),
-    disclaimer: z.string().optional(),
-    outcomes: z.record(z.string().trim().min(1), outcomeLabelSchema),
-    rules: z.array(ruleDocumentSchema),
+    kind: z.literal("nis2_scope_v2"),
+    version: z.number().int().positive(),
+    profileVersion: z.string().trim().min(1),
+    disclaimer: z.string().trim().min(1),
+    disclaimerEn: z.string().trim().min(1),
+    outcomes: z.object({
+      essential_entity: outcomeLabelSchema,
+      important_entity: outcomeLabelSchema,
+      not_directly_in_scope: outcomeLabelSchema,
+      clarification_required: outcomeLabelSchema,
+    }),
+    entityTypes: z.array(nis2EntityTypeSchema).min(1),
+    countryProfiles: z.record(z.string().length(2), countryProfileSchema),
   })
-  .superRefine((ruleSet, context) => {
-    const definedOutcomes = new Set(Object.keys(ruleSet.outcomes));
+  .superRefine((document, context) => {
+    const codes = new Set<string>();
 
-    if (definedOutcomes.size === 0) {
-      context.addIssue({
-        code: "custom",
-        message: "Rule set must define at least one outcome",
-        path: ["outcomes"],
-      });
-      return;
-    }
-
-    if (!definedOutcomes.has(ruleSet.defaultOutcome)) {
-      context.addIssue({
-        code: "custom",
-        message: `defaultOutcome must reference a defined outcome`,
-        path: ["defaultOutcome"],
-      });
-    }
-
-    ruleSet.rules.forEach((rule, index) => {
-      if (!definedOutcomes.has(rule.outcome)) {
+    document.entityTypes.forEach((entityType, index) => {
+      if (codes.has(entityType.code)) {
         context.addIssue({
           code: "custom",
-          message: `Rule outcome must reference a defined outcome`,
-          path: ["rules", index, "outcome"],
+          message: `Duplicate entity type code ${entityType.code}`,
+          path: ["entityTypes", index, "code"],
+        });
+      }
+      codes.add(entityType.code);
+
+      if (
+        entityType.annex === null &&
+        entityType.rule !== "domain_registration"
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Only domain-registration entries may omit an annex",
+          path: ["entityTypes", index, "annex"],
         });
       }
     });
+
+    for (const [countryCode, profile] of Object.entries(
+      document.countryProfiles,
+    )) {
+      if (countryCode !== profile.countryCode) {
+        context.addIssue({
+          code: "custom",
+          message: "Country-profile key must match countryCode",
+          path: ["countryProfiles", countryCode, "countryCode"],
+        });
+      }
+    }
   });
 
-export type RuleDocument = z.infer<typeof ruleDocumentSchema>;
-export type RuleSetDocument = z.infer<typeof ruleSetDocumentSchema>;
+export type Nis2Outcome = z.infer<typeof nis2OutcomeSchema>;
+export type Nis2EntityRule = z.infer<typeof nis2EntityRuleSchema>;
+export type Nis2EntityType = z.infer<typeof nis2EntityTypeSchema>;
+export type Nis2ScopeRuleSetDocument = z.infer<
+  typeof nis2ScopeRuleSetDocumentSchema
+>;
 
-export function parseRuleSetDocument(value: unknown): RuleSetDocument {
-  const result = ruleSetDocumentSchema.safeParse(value);
+export function parseRuleSetDocument(
+  value: unknown,
+): Nis2ScopeRuleSetDocument {
+  const result = nis2ScopeRuleSetDocumentSchema.safeParse(value);
 
   if (!result.success) {
-    throw new Error(formatRuleSetError(result.error));
+    const details = result.error.issues
+      .map((issue) => {
+        const path = issue.path.length > 0 ? issue.path.join(".") : "ruleSet";
+        return `${path}: ${issue.message}`;
+      })
+      .join("; ");
+
+    throw new Error(`Invalid NIS2 scope rule set: ${details}`);
   }
 
   return result.data;
-}
-
-function formatRuleSetError(error: z.ZodError) {
-  const details = error.issues
-    .map((issue) => {
-      const path = issue.path.length > 0 ? issue.path.join(".") : "ruleSet";
-
-      return `${path}: ${issue.message}`;
-    })
-    .join("; ");
-
-  return `Invalid rule set document: ${details}`;
 }

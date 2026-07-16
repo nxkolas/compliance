@@ -5,7 +5,10 @@ export const submitApplicabilityCheckSchema = z.object({
     .array(
       z.object({
         questionId: z.uuid(),
-        value: z.string().trim().min(1),
+        value: z.union([
+          z.string().trim().min(1),
+          z.array(z.string().trim().min(1)).min(1),
+        ]),
       }),
     )
     .min(1),
