@@ -16,6 +16,10 @@ Compliance Checker app.
 - [Engineering docs](./engineering/README.md)
 - [Navigation loading states](./engineering/navigation-loading-states.md)
 
+## Implementation Plans
+
+- [Document management, gap reassessment, and plan reconciliation](./plans/document-management-reassessment-and-plan-reconciliation.md)
+
 ## AI References
 
 - [AI docs](./ai/README.md)
