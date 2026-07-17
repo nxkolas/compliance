@@ -1,4 +1,4 @@
-# Supabase server-only data and guest-retention runbook
+# Supabase server-only data, evidence infrastructure, and guest-retention runbook
 
 This runbook applies the Supabase-specific part of the immutable NIS2 release cutover. Ordinary tables, constraints, indexes, and relations remain owned by Drizzle.
 
@@ -16,17 +16,42 @@ This runbook applies the Supabase-specific part of the immutable NIS2 release cu
    ```
 
 2. The application server role must remain able to use the tables after browser grants are revoked. These scripts deliberately do not use `FORCE ROW LEVEL SECURITY`; do not add it unless the direct server role has been proven safe.
-3. Apply the Drizzle schema first with `npm.cmd run db:push`.
+3. `004_gap_evidence_infrastructure.sql` must run once before `db:push` so the
+   `extensions.vector` type exists, and again after `db:push` so it can install
+   the search trigger, HNSW index, private storage bucket, and append-only audit
+   trigger.
 
 ## Execution order
 
-Paste and run these files in the Supabase SQL Editor, in order:
+Run the schema and SQL Editor files in this order:
 
-1. `supabase/sql-editor/001_server_only_definition_rls.sql`
-2. `supabase/sql-editor/002_server_only_application_data_rls.sql`
-3. `supabase/sql-editor/003_guest_retention_cleanup.sql`
+1. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql`. Before the
+   Drizzle tables exist, it creates the vector extension and reports that its
+   table-dependent work is deferred.
+2. Run `npm.cmd run db:push`.
+3. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
+4. Run `supabase/sql-editor/001_server_only_definition_rls.sql`.
+5. Run `supabase/sql-editor/002_server_only_application_data_rls.sql`.
+6. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
 
-Each file is idempotent. The first two fail immediately when an expected Drizzle table is absent.
+All four files are idempotent. `001` and `002` fail immediately when an
+expected Drizzle table is absent. The reassessment and reconciliation tables
+enable RLS in `src/db/schema.ts`; the grant verification below remains mandatory
+for every public table, including those new workflow tables.
+
+The current `001`/`002` table lists predate the five workflow tables below.
+RLS without a policy is default-deny, but revoke their browser grants explicitly
+after `db:push` as defense in depth:
+
+```sql
+revoke all privileges on table
+  public.gap_requirements,
+  public.gap_reassessment_drafts,
+  public.gap_reassessment_draft_documents,
+  public.action_plan_reconciliations,
+  public.action_plan_item_reconciliations
+from anon, authenticated;
+```
 
 After the SQL files succeed, publish and activate the repository release separately:
 
@@ -36,6 +61,15 @@ npm.cmd run db:activate:compliance -- --release nis2/2026-v1
 ```
 
 Publishing never changes the active pointer.
+
+Publish and activate the separate demo Gap-Analyse release when that workflow
+is required:
+
+```powershell
+npm.cmd run db:publish:gap -- --release nis2-gap/demo-v1
+npm.cmd run db:activate:gap -- --release nis2-gap/demo-v1
+npm.cmd run db:smoke:gap
+```
 
 ## Verification
 
@@ -80,6 +114,18 @@ rollback;
 ```
 
 Then smoke-test through server APIs only: login, organization access, authenticated questionnaire load/submission/result, guest load/submission/result, guest claim, and organization-fact reuse.
+
+For the organization-only evidence workflow, also verify:
+
+- `organization-evidence` exists and remains private;
+- members can upload a supported document and a new immutable version through
+  the server API;
+- direct browser-role reads of documents, reassessment drafts, findings,
+  action plans, reconciliations, and audit events fail;
+- preparing a reassessment does not call AI;
+- a candidate revision does not replace the accepted result or active plan;
+- reconciliation cannot activate with unresolved decisions; and
+- an applied reconciliation preserves the superseded plan as read-only history.
 
 ## Cleanup job
 

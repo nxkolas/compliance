@@ -2,6 +2,14 @@
 
 Status: implemented on 2026-07-17.
 
+This document records the first implemented Gap-Analyse baseline. The later
+organization document library, persisted reassessment workflow, separate
+accepted/candidate revisions, and non-destructive action-plan reconciliation
+supersede its inline evidence-selection and archive-and-regenerate behavior.
+See [Document Management, Gap Reassessment, and Plan Reconciliation](./document-management-reassessment-and-plan-reconciliation.md)
+for that successor design and [Current Gap-Analysis Workflow](../product/gap-analysis-current-workflow.md)
+for current runtime behavior.
+
 ## Implementation Status
 
 All six phases are implemented in the repository and the configured database:
@@ -22,8 +30,8 @@ All six phases are implemented in the repository and the configured database:
   supplied-citation validation, fail-closed transactional persistence, immutable
   corrections, owner/admin approval, and dependency-derived staleness;
 - approved findings generate a deterministic action plan without a second AI
-  call, and explicit regeneration archives instead of merging the previous
-  plan; and
+  call; the successor workflow now reconciles later approved revisions without
+  replacing the active plan until explicit activation; and
 - the organization Gap-Analyse and Maßnahmenplan routes expose the minimal
   dictionary-backed German/English workflow described below.
 

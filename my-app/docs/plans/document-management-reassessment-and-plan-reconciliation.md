@@ -4,6 +4,10 @@ Status: product decisions confirmed and application implementation completed on
 2026-07-17. Ordinary schema rollout uses `src/db/schema.ts` and the existing
 `db:push` workflow; resetting the configured database is an explicit operator step.
 
+This is the historical design and implementation plan. For the deployed user
+sequence and known runtime limitations, use
+[Current Gap-Analysis Workflow](../product/gap-analysis-current-workflow.md).
+
 ## Outcome
 
 Create an organization-wide document-management workflow and a non-destructive
@@ -72,7 +76,7 @@ The current runtime behavior is documented in
   owners/admins may approve gap results, decide reconciliation conflicts, and
   activate a reconciled plan. Auditors remain read-only.
 
-## Current Behavior That Must Change
+## Historical Baseline Replaced By This Implementation
 
 ### Documents
 
@@ -254,7 +258,7 @@ the reconciliation module's interface with table-driven scenarios. Database
 persistence is local-substitutable and should be verified through the module
 with the repository's database test adapter rather than mocked query-by-query.
 
-## Proposed Schema Changes
+## Implemented Schema Shape
 
 Names are provisional, but the responsibilities and invariants are required.
 
