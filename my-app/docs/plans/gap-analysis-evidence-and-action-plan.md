@@ -34,7 +34,7 @@ activation, RLS/setup SQL, and `db:smoke:gap`.
 
 The live model evaluation remains intentionally opt-in and was not run. An
 authenticated browser upload/generation pass also remains an operational manual
-check because the local environment needs `SUPABASE_SERVICE_ROLE_KEY` for the
+check because the local environment needs `SUPABASE_SECRET_KEY` for the
 private storage bucket. These are verification/configuration items, not deferred
 product scope.
 

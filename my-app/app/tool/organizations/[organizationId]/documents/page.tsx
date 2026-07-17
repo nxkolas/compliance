@@ -1,11 +1,11 @@
-import { GapAnalysisWorkflow } from "@/components/gap-analysis/gap-analysis-workflow";
+import { OrganizationDocumentManager } from "@/components/documents/organization-document-manager";
 import { PageHeader } from "@/components/page-header";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis/workflow-reader";
 import { connection } from "next/server";
 
-export default async function GapAnalysisPage({
+export default async function DocumentsPage({
   params,
 }: {
   params: Promise<{ organizationId: string }>;
@@ -24,15 +24,15 @@ export default async function GapAnalysisPage({
   return (
     <section className="flex w-full flex-col gap-8">
       <PageHeader
-        title={dictionary.modules.gapAnalysis.title}
-        subtitle={dictionary.modules.gapAnalysis.description}
+        title={dictionary.modules.documents.title}
+        subtitle={dictionary.modules.documents.description}
       />
-      <GapAnalysisWorkflow
+      <OrganizationDocumentManager
         organizationId={organizationId}
-        workflow={workflow}
-        labels={dictionary.modules.gapAnalysis.workflow}
-        documentLabels={dictionary.modules.documents.workflow}
-        locale={locale}
+        assessmentId={workflow.assessment?.id ?? null}
+        library={workflow.documentLibrary}
+        reassessment={workflow.reassessment}
+        labels={dictionary.modules.documents.workflow}
       />
     </section>
   );

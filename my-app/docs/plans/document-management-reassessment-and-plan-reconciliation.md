@@ -1,6 +1,8 @@
 # Document Management, Gap Reassessment, and Plan Reconciliation
 
-Status: product decisions confirmed on 2026-07-17; implementation not started.
+Status: product decisions confirmed and application implementation completed on
+2026-07-17. Ordinary schema rollout uses `src/db/schema.ts` and the existing
+`db:push` workflow; resetting the configured database is an explicit operator step.
 
 ## Outcome
 
@@ -559,38 +561,34 @@ policies. The UI is not an authorization boundary.
 - No upload, indexing completion, candidate generation, or approval silently
   spends another AI call beyond the explicitly requested generation/retry.
 
-## Migration and Backfill
+## Database Rollout
 
-1. Create stable `gap_requirements` rows for every distinct existing requirement
-   code and backfill `gap_requirement_versions.requirement_id`.
-2. Validate that no existing code is reused for semantically unrelated
-   requirements before making the foreign key non-null.
-3. Add and backfill `generated_artifacts.accepted_revision_id` from the current
-   approved revision or latest approved revision by revision number.
-4. Add action-plan revision metadata. Assign deterministic revision numbers by
-   organization and creation order. Do not infer item carry-over relationships
-   that were never recorded.
-5. Preserve existing active/stale plans and all item data. Map legacy status to
-   the new lifecycle without deleting rows.
-6. Add empty reassessment and reconciliation tables; no historical drafts or
-   decisions are fabricated.
-7. Add server-only RLS policies, foreign keys, indexes, and organization-scope
-   verification for all new tables.
-8. Run consistency checks before enabling the new routes and UI.
+Existing application data is disposable for this implementation. Do not create
+feature-specific migration or backfill SQL. `src/db/schema.ts` is the sole source
+of truth for ordinary tables, columns, enums, foreign keys, checks, indexes, and
+RLS enablement introduced by this feature.
 
-The migration must be additive first. Remove or repurpose legacy status behavior
-only after readers and writers use the new accepted/candidate and reconciliation
-interfaces.
+1. An operator explicitly authorizes and runs the guarded database clear.
+2. Apply the final Drizzle schema with `npm.cmd run db:push`.
+3. Keep the pre-existing Supabase SQL scripts `001` through `004` unchanged and
+   run them only through their existing documented operational sequence.
+4. Republish and activate the required releases and seed/demo content.
+5. Run consistency, RLS, permission, and workflow smoke checks before enabling
+   the new routes and UI.
+
+The accepted-revision ownership and approval invariants are enforced by the
+transactional server approval boundary and focused verification. This feature
+does not add custom SQL triggers or a Drizzle migration journal.
 
 ## Implementation Phases
 
 ### Phase 1: Schema and invariants
 
-1. Add stable requirements and backfill existing versions.
+1. Add stable requirements and link requirement versions in the final schema.
 2. Add the accepted gap-revision pointer and migrate authoritative readers.
 3. Add reassessment draft and draft-document tables with state constraints.
 4. Add plan revision, reconciliation, decision, and item-lineage schema.
-5. Add indexes, RLS policies, Drizzle relations, migration checks, and audit
+5. Add indexes, RLS enablement, Drizzle relations, schema checks, and audit
    event types.
 
 Do not change the UI until current approved-result and active-plan reads are
@@ -634,10 +632,11 @@ green through the new interfaces.
 5. Add read-only historical plan navigation.
 6. Put every user-facing label in the dictionary with proper German umlauts.
 
-### Phase 6: Migration verification and rollout
+### Phase 6: Schema verification and rollout
 
-1. Backfill and verify the configured database.
-2. Test existing active plans with populated owner, due date, and status fields.
+1. After explicit operator approval, clear and recreate the configured database
+   through the existing guarded `db:clear` and `db:push` workflow.
+2. Test recreated active plans with populated owner, due date, and status fields.
 3. Run end-to-end permission and concurrency scenarios.
 4. Confirm default tests make no external AI calls.
 5. Run an opt-in live document/reassessment pass only when explicitly enabled.
@@ -669,7 +668,7 @@ green through the new interfaces.
 - add-version number allocation under concurrency;
 - accepted/current pointer invariants;
 - activation rollback on conflicts; and
-- migration/backfill preserves every existing plan item value.
+- fresh-schema action plans preserve every carried item value during reconciliation.
 
 ### Route and UI tests
 
@@ -686,14 +685,15 @@ green through the new interfaces.
 
 ```powershell
 npm.cmd run lint
+npx.cmd tsc --noEmit
 npx.cmd vitest run tests evals
 npm.cmd run test:ai
 npm.cmd run build
 ```
 
-When database credentials are available, also run schema push, gap release
-publication/activation, RLS setup, and database smoke tests using the existing
-operational sequence.
+Database reset and schema push remain explicit operator steps. When authorized,
+also run gap release publication/activation, the pre-existing Supabase setup,
+and database smoke tests using the existing operational sequence.
 
 ## Acceptance Criteria
 

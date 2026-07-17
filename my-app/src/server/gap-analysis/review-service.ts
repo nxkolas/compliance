@@ -1,6 +1,5 @@
 import { db } from "@/src/db";
 import {
-  actionPlans,
   artifactRevisionSources,
   assessmentRevisions,
   assessments,
@@ -370,15 +369,19 @@ export async function approveGapRevision(input: {
       })
       .where(eq(generatedArtifactRevisions.id, revision.id))
       .returning();
-    await tx
-      .update(actionPlans)
-      .set({ status: "stale", updatedAt: approvedAt })
+    const [acceptedArtifact] = await tx
+      .update(generatedArtifacts)
+      .set({ acceptedRevisionId: revision.id })
       .where(
         and(
-          eq(actionPlans.organizationId, input.organizationId),
-          eq(actionPlans.status, "active"),
+          eq(generatedArtifacts.id, artifact.id),
+          eq(generatedArtifacts.currentRevisionId, revision.id),
         ),
-      );
+      )
+      .returning({ id: generatedArtifacts.id });
+    if (!acceptedArtifact) {
+      throw new ApiError(409, "A newer gap revision became current before approval");
+    }
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,

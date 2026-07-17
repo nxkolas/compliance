@@ -13,6 +13,7 @@ import type { Dictionary } from "@/lib/i18n";
 import {
   BookOpen,
   ClipboardCheck,
+  FolderOpen,
   ListChecks,
   PieChart,
   ReceiptText,
@@ -51,6 +52,12 @@ export function AppSidebarNav({
           href: `/tool/organizations/${organizationId}/applicability-check`,
           label: labels.applicabilityCheck,
           icon: ClipboardCheck,
+          match: "prefix" as const,
+        },
+        {
+          href: `/tool/organizations/${organizationId}/documents`,
+          label: labels.documents,
+          icon: FolderOpen,
           match: "prefix" as const,
         },
         {

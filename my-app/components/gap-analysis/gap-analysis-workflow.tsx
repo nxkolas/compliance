@@ -1,44 +1,36 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, FileText, Loader2, Play, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Play } from "lucide-react";
+import { OrganizationDocumentManager } from "@/components/documents/organization-document-manager";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { getGapAnalysisWorkflow } from "@/src/server/gap-analysis/workflow-reader";
 import type { Dictionary, Locale } from "@/lib/i18n";
 
 type Workflow = Awaited<ReturnType<typeof getGapAnalysisWorkflow>>;
 type Labels = Dictionary["modules"]["gapAnalysis"]["workflow"];
+type DocumentLabels = Dictionary["modules"]["documents"]["workflow"];
 
 export function GapAnalysisWorkflow({
   organizationId,
   workflow,
   labels,
+  documentLabels,
   locale,
 }: {
   organizationId: string;
   workflow: Workflow;
   labels: Labels;
+  documentLabels: DocumentLabels;
   locale: Locale;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>(workflow.answers);
-  const indexedVersions = useMemo(
-    () => workflow.documents.flatMap((row) =>
-      row.document.status === "active" &&
-      row.version &&
-      row.embedding?.status === "succeeded"
-        ? [row.version.id]
-        : [],
-    ),
-    [workflow.documents],
-  );
-  const [selectedVersions, setSelectedVersions] = useState<string[]>(indexedVersions);
   const baseUrl = `/api/organizations/${organizationId}/gap-analysis`;
 
   async function mutate(key: string, url: string, init: RequestInit = {}) {
@@ -85,7 +77,7 @@ export function GapAnalysisWorkflow({
         <>
           <Card>
             <CardHeader>
-              <CardTitle>{labels.questionnaire}</CardTitle>
+              <CardTitle>{labels.questionnaireSource}</CardTitle>
               <CardDescription>{workflow.release.versionLabel}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -122,7 +114,12 @@ export function GapAnalysisWorkflow({
                             name={question.id}
                             value={option.id}
                             checked={answers[question.id] === option.id}
-                            onChange={() => setAnswers((current) => ({ ...current, [question.id]: option.id }))}
+                            onChange={() =>
+                              setAnswers((current) => ({
+                                ...current,
+                                [question.id]: option.id,
+                              }))
+                            }
                             disabled={!workflow.canContribute}
                           />
                           {option.label}
@@ -148,167 +145,227 @@ export function GapAnalysisWorkflow({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{labels.documents}</CardTitle>
-              <CardDescription>{labels.documentHint}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {workflow.canContribute ? (
-                <form
-                  className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
-                  onSubmit={(event) => void uploadDocument(event, mutate, baseUrl)}
-                >
-                  <Input name="title" required placeholder={labels.documentTitle} />
-                  <Input
-                    name="file"
-                    type="file"
-                    required
-                    accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
-                    aria-label={labels.documentFile}
-                  />
-                  <Button type="submit" disabled={busy !== null}>
-                    {busy === "upload" ? <Loader2 className="animate-spin" /> : <Upload />}
-                    {labels.upload}
-                  </Button>
-                </form>
-              ) : null}
-              <div className="grid gap-3">
-                {workflow.documents.map((row) => {
-                  const selectable =
-                    row.document.status === "active" &&
-                    row.version &&
-                    row.embedding?.status === "succeeded";
-                  const processingLabel =
-                    row.embedding?.status === "succeeded"
-                      ? labels.indexed
-                      : row.embedding?.status === "failed" || row.extraction?.status === "failed"
-                        ? labels.failed
-                        : labels.processing;
-                  return (
-                    <div key={row.document.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4" />
-                        <div>
-                          <p className="font-medium">{row.document.title}</p>
-                          <p className="text-xs text-muted-foreground">{row.version?.fileName} · {processingLabel}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {selectable && row.version ? (
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={selectedVersions.includes(row.version.id)}
-                              onChange={(event) =>
-                                setSelectedVersions((current) =>
-                                  event.target.checked
-                                    ? [...new Set([...current, row.version!.id])]
-                                    : current.filter((id) => id !== row.version!.id),
-                                )
-                              }
-                            />
-                            {labels.selectEvidence}
-                          </label>
-                        ) : null}
-                        {workflow.canContribute && row.document.status === "active" ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={busy !== null}
-                            onClick={() =>
-                              mutate(
-                                `archive-${row.document.id}`,
-                                `${baseUrl}/documents/${row.document.id}/archive`,
-                                { method: "POST" },
-                              )
-                            }
-                          >
-                            {labels.archive}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-sm text-muted-foreground">{labels.questionnaireOnly}</p>
-              {workflow.canContribute && workflow.assessment.currentRevisionId ? (
-                <Button
-                  className="self-start"
-                  disabled={busy !== null}
-                  onClick={() =>
-                    mutate("generate", `${baseUrl}/generate`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        assessmentId: workflow.assessment!.id,
-                        selectedDocumentVersionIds: selectedVersions,
-                        ...(workflow.run?.status === "failed"
-                          ? { retryNonce: crypto.randomUUID() }
-                          : {}),
-                      }),
-                    })
-                  }
-                >
-                  {busy === "generate" ? <Loader2 className="animate-spin" /> : <Play />}
-                  {workflow.run?.status === "failed" ? labels.retry : labels.generate}
-                </Button>
-              ) : null}
-              {workflow.run?.status === "failed" ? (
-                <Notice tone="error">{labels.runFailed} {workflow.run.errorMessage}</Notice>
-              ) : null}
-            </CardContent>
-          </Card>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">{labels.evidencePreparation}</h2>
+            <OrganizationDocumentManager
+              organizationId={organizationId}
+              assessmentId={workflow.assessment.id}
+              library={workflow.documentLibrary}
+              reassessment={workflow.reassessment}
+              labels={documentLabels}
+              compact
+            />
+          </section>
+
+          {workflow.reassessment ? (
+            <ConfirmationCard
+              workflow={workflow}
+              labels={labels}
+              busy={busy}
+              mutate={mutate}
+              baseUrl={baseUrl}
+            />
+          ) : null}
         </>
       )}
 
-      {workflow.revision ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{labels.findings}</CardTitle>
-            <CardDescription>
-              {workflow.revision.status === "approved" ? labels.approved : workflow.revision.status}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {workflow.staleness?.stale ? <Notice tone="warning">{labels.stale}</Notice> : null}
-            {workflow.staleness?.outdatedRelease ? <Notice tone="warning">{labels.outdatedRelease}</Notice> : null}
-            {workflow.findings.map((row) => (
-              <FindingCard
-                key={row.finding.id}
-                row={row}
-                labels={labels}
-                locale={locale}
-                canManage={workflow.canManage}
-                revisionId={workflow.revision!.id}
-                baseUrl={baseUrl}
-                busy={busy}
-                mutate={mutate}
-              />
-            ))}
-            {workflow.canManage && workflow.revision.status !== "approved" ? (
-              <Button
-                className="self-start"
-                disabled={busy !== null || workflow.findings.some((row) => row.finding.requiresReview)}
-                onClick={() =>
-                  mutate(
-                    "approve",
-                    `${baseUrl}/revisions/${workflow.revision!.id}/approve`,
-                    { method: "POST" },
-                  )
-                }
-              >
-                {busy === "approve" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-                {labels.approve}
-              </Button>
-            ) : !workflow.canManage ? (
-              <p className="text-sm text-muted-foreground">{labels.ownerOnly}</p>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
+      <RevisionCard
+        title={labels.candidateResult}
+        empty={null}
+        revision={workflow.candidateRevision}
+        findings={workflow.candidateFindings}
+        staleness={workflow.candidateStaleness}
+        labels={labels}
+        locale={locale}
+        canManage={workflow.canManage}
+        baseUrl={baseUrl}
+        busy={busy}
+        mutate={mutate}
+        candidate
+      />
+      <RevisionCard
+        title={labels.acceptedResult}
+        empty={labels.noAcceptedResult}
+        revision={workflow.acceptedRevision}
+        findings={workflow.acceptedFindings}
+        staleness={workflow.acceptedStaleness}
+        labels={labels}
+        locale={locale}
+        canManage={false}
+        baseUrl={baseUrl}
+        busy={busy}
+        mutate={mutate}
+      />
     </div>
+  );
+}
+
+function ConfirmationCard({ workflow, labels, busy, mutate, baseUrl }: {
+  workflow: Workflow;
+  labels: Labels;
+  busy: string | null;
+  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
+  baseUrl: string;
+}) {
+  const reassessment = workflow.reassessment!;
+  const summary = reassessment.summary;
+  const versionName = (id: string) =>
+    workflow.documentLibrary.documents
+      .flatMap((entry) => entry.versions)
+      .find((item) => item.version.id === id)?.version.fileName ?? id;
+  const status = reassessment.draft.status;
+  const canGenerate = workflow.canContribute && status === "open";
+  const canRetry = workflow.canContribute && status === "failed";
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{labels.confirmation}</CardTitle>
+        <CardDescription>{status !== "open" ? labels.inputLocked : labels.documentHint}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <Summary
+            label={labels.baseRevision}
+            value={summary.baseAcceptedGapRevisionNumber
+              ? `#${summary.baseAcceptedGapRevisionNumber}`
+              : "—"}
+          />
+          <Summary
+            label={labels.questionnaireRevision}
+            value={summary.assessmentRevisionNumber
+              ? `#${summary.assessmentRevisionNumber}`
+              : summary.assessmentRevisionId}
+          />
+          <Summary label={labels.release} value={summary.gapAnalysisReleaseVersion ?? summary.gapAnalysisReleaseId} />
+          <Summary label={labels.requirementCount} value={String(summary.requirementCount)} />
+          <Summary label={labels.carriedEvidence} value={names(summary.carried, versionName)} />
+          <Summary label={labels.replacedEvidence} value={names(summary.replaced, versionName)} />
+          <Summary label={labels.addedEvidence} value={names(summary.added, versionName)} />
+          <Summary label={labels.removedEvidence} value={names(summary.removed, versionName)} />
+          <div className="sm:col-span-2">
+            <Summary
+              label={labels.completeEvidence}
+              value={names(summary.selectedDocumentVersionIds, versionName)}
+            />
+          </div>
+        </dl>
+        {canGenerate ? (
+          <Button
+            className="self-start"
+            disabled={busy !== null}
+            onClick={() =>
+              mutate("generate", `${baseUrl}/reassessment/generate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  draftId: reassessment.draft.id,
+                  expectedLockVersion: reassessment.draft.lockVersion,
+                }),
+              })
+            }
+          >
+            {busy === "generate" ? <Loader2 className="animate-spin" /> : <Play />}
+            {labels.generate}
+          </Button>
+        ) : canRetry ? (
+          <Button
+            className="self-start"
+            disabled={busy !== null}
+            onClick={() =>
+              mutate("retry", `${baseUrl}/reassessment/retry`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  draftId: reassessment.draft.id,
+                  retryNonce: crypto.randomUUID(),
+                }),
+              })
+            }
+          >
+            {busy === "retry" ? <Loader2 className="animate-spin" /> : <Play />}
+            {labels.retry}
+          </Button>
+        ) : null}
+        {workflow.run?.status === "failed" ? (
+          <Notice tone="error">{labels.runFailed} {workflow.run.errorMessage}</Notice>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RevisionCard({
+  title,
+  empty,
+  revision,
+  findings,
+  staleness,
+  labels,
+  locale,
+  canManage,
+  baseUrl,
+  busy,
+  mutate,
+  candidate = false,
+}: {
+  title: string;
+  empty: string | null;
+  revision: Workflow["acceptedRevision"] | Workflow["candidateRevision"];
+  findings: Workflow["acceptedFindings"] | Workflow["candidateFindings"];
+  staleness: Workflow["acceptedStaleness"] | Workflow["candidateStaleness"];
+  labels: Labels;
+  locale: Locale;
+  canManage: boolean;
+  baseUrl: string;
+  busy: string | null;
+  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
+  candidate?: boolean;
+}) {
+  if (!revision && !empty) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>
+          {revision ? `${revision.status} · #${revision.revisionNumber}` : empty}
+        </CardDescription>
+      </CardHeader>
+      {revision ? (
+        <CardContent className="flex flex-col gap-4">
+          {staleness?.stale ? <Notice tone="warning">{labels.stale}</Notice> : null}
+          {staleness?.outdatedRelease ? <Notice tone="warning">{labels.outdatedRelease}</Notice> : null}
+          {findings.map((row) => (
+            <FindingCard
+              key={row.finding.id}
+              row={row}
+              labels={labels}
+              locale={locale}
+              canManage={canManage}
+              revisionId={revision.id}
+              baseUrl={baseUrl}
+              busy={busy}
+              mutate={mutate}
+            />
+          ))}
+          {candidate && canManage ? (
+            <Button
+              className="self-start"
+              disabled={busy !== null || findings.some((row) => row.finding.requiresReview)}
+              onClick={() =>
+                mutate("approve", `${baseUrl}/revisions/${revision.id}/approve`, {
+                  method: "POST",
+                })
+              }
+            >
+              {busy === "approve" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+              {labels.approve}
+            </Button>
+          ) : candidate && !canManage ? (
+            <p className="text-sm text-muted-foreground">{labels.ownerOnly}</p>
+          ) : null}
+        </CardContent>
+      ) : null}
+    </Card>
   );
 }
 
@@ -325,13 +382,12 @@ function FindingCard({ row, labels, locale, canManage, revisionId, baseUrl, busy
   const [status, setStatus] = useState(row.finding.status);
   const [reason, setReason] = useState("");
   const [resolutionReason, setResolutionReason] = useState("");
-  const title = localized(row.requirement.title, locale);
   return (
     <article className="rounded-md border p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted-foreground">{row.requirement.code}</p>
-          <h3 className="font-semibold">{title}</h3>
+          <h3 className="font-semibold">{localized(row.requirement.title, locale)}</h3>
         </div>
         <span className="rounded-full border px-3 py-1 text-xs">
           {labels.statuses[row.finding.status]}
@@ -343,15 +399,14 @@ function FindingCard({ row, labels, locale, canManage, revisionId, baseUrl, busy
         </p>
       ) : null}
       <dl className="mt-4 grid gap-3 text-sm">
-        <div><dt className="font-medium">{labels.rationale}</dt><dd className="text-muted-foreground">{localized(row.finding.rationale, locale)}</dd></div>
-        <div><dt className="font-medium">{labels.recommendation}</dt><dd className="text-muted-foreground">{localized(row.finding.recommendation, locale)}</dd></div>
+        <Summary label={labels.rationale} value={localized(row.finding.rationale, locale)} />
+        <Summary label={labels.recommendation} value={localized(row.finding.recommendation, locale)} />
         <div>
           <dt className="font-medium">{labels.citations}</dt>
           <dd className="mt-1 grid gap-2">
             {row.evidence.length ? row.evidence.map((evidence) => (
               <blockquote key={evidence.id} className="border-l-2 pl-3 text-muted-foreground">
-                {evidence.excerpt}
-                <span className="ml-2 text-xs">[{evidence.citationId}]</span>
+                {evidence.excerpt}<span className="ml-2 text-xs">[{evidence.citationId}]</span>
               </blockquote>
             )) : labels.noCitations}
           </dd>
@@ -395,16 +450,12 @@ function FindingCard({ row, labels, locale, canManage, revisionId, baseUrl, busy
   );
 }
 
-async function uploadDocument(
-  event: FormEvent<HTMLFormElement>,
-  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>,
-  baseUrl: string,
-) {
-  event.preventDefault();
-  await mutate("upload", `${baseUrl}/documents`, {
-    method: "POST",
-    body: new FormData(event.currentTarget),
-  });
+function Summary({ label, value }: { label: string; value: string }) {
+  return <div><dt className="font-medium">{label}</dt><dd className="text-muted-foreground">{value || "—"}</dd></div>;
+}
+
+function names(ids: string[], name: (id: string) => string) {
+  return ids.length ? ids.map(name).join(", ") : "—";
 }
 
 function localized(value: unknown, locale: Locale) {

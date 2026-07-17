@@ -5,6 +5,7 @@ import {
   artifactRevisionSources,
   assessmentAnswerOptions,
   assessmentAnswers,
+  assessmentRevisions,
   assessments,
   auditEvents,
   documentVersions,
@@ -36,6 +37,7 @@ export async function generateGapAnalysis(input: {
   userId: string;
   organizationId: string;
   assessmentId: string;
+  assessmentRevisionId?: string;
   selectedDocumentVersionIds: string[];
   locale: Locale;
   retryNonce?: string;
@@ -54,9 +56,19 @@ export async function generateGapAnalysis(input: {
   if (
     !assessment?.gapAnalysisReleaseId ||
     !assessment.applicabilityArtifactRevisionId ||
-    !assessment.currentRevisionId
+    !(input.assessmentRevisionId ?? assessment.currentRevisionId)
   ) {
     throw new ApiError(409, "Submit the pinned gap questionnaire before generation");
+  }
+  const assessmentRevisionId = input.assessmentRevisionId ?? assessment.currentRevisionId!;
+  const assessmentRevision = await db.query.assessmentRevisions.findFirst({
+    where: and(
+      eq(assessmentRevisions.id, assessmentRevisionId),
+      eq(assessmentRevisions.assessmentId, assessment.id),
+    ),
+  });
+  if (!assessmentRevision) {
+    throw new ApiError(409, "Pinned gap questionnaire revision is unavailable");
   }
   const release = await loadGapAnalysisRelease(
     assessment.gapAnalysisReleaseId,
@@ -79,7 +91,7 @@ export async function generateGapAnalysis(input: {
   const answerRows = await db.query.assessmentAnswers.findMany({
     where: eq(
       assessmentAnswers.assessmentRevisionId,
-      assessment.currentRevisionId,
+      assessmentRevisionId,
     ),
   });
   const answerOptionRows = answerRows.length
@@ -120,7 +132,7 @@ export async function generateGapAnalysis(input: {
   }
   const sourceInputHash = contentHash({
     gapAnalysisReleaseId: release.id,
-    assessmentRevisionId: assessment.currentRevisionId,
+    assessmentRevisionId,
     applicabilityArtifactRevisionId: applicability.id,
     applicabilityInputHash: applicability.inputHash,
     answers: answerRows.map((answer) => ({
@@ -146,7 +158,17 @@ export async function generateGapAnalysis(input: {
       eq(aiProcessingRuns.idempotencyKey, idempotencyKey),
     ),
   });
-  if (existingRun) return { run: existingRun, reused: true };
+  if (existingRun) {
+    const artifactRevision = existingRun.outputArtifactRevisionId
+      ? await db.query.generatedArtifactRevisions.findFirst({
+          where: eq(
+            generatedArtifactRevisions.id,
+            existingRun.outputArtifactRevisionId,
+          ),
+        })
+      : undefined;
+    return { run: existingRun, artifactRevision, reused: true };
+  }
 
   const policy = parseModelPolicy(release.modelPolicy);
   const model = dependencies.model ?? createGapGenerationModel(policy.model);
@@ -154,7 +176,7 @@ export async function generateGapAnalysis(input: {
     .insert(aiProcessingRuns)
     .values({
       organizationId: input.organizationId,
-      assessmentRevisionId: assessment.currentRevisionId,
+      assessmentRevisionId,
       operationKind: "gap_analysis",
       status: "pending",
       inputHash: sourceInputHash,
@@ -174,7 +196,7 @@ export async function generateGapAnalysis(input: {
     {
       runId: run.id,
       sourceType: "assessment_revision",
-      sourceId: assessment.currentRevisionId,
+      sourceId: assessmentRevisionId,
       sourceHash: contentHash(answerRows),
     },
     {
@@ -264,7 +286,7 @@ export async function generateGapAnalysis(input: {
       runId: run.id,
       userId: input.userId,
       organizationId: input.organizationId,
-      assessmentRevisionId: assessment.currentRevisionId,
+      assessmentRevisionId,
       applicabilityArtifactRevisionId: applicability.id,
       release,
       selectedVersionIds,

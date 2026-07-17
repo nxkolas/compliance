@@ -50,6 +50,7 @@ export type LoadedGapRelease = {
   }>;
   requirements: Array<{
     id: string;
+    stableRequirementId: string;
     code: string;
     position: number;
     criticality: "low" | "medium" | "high" | "critical";
@@ -199,6 +200,7 @@ export async function loadGapAnalysisRelease(
       };
       return {
         id: requirement.id,
+        stableRequirementId: requirement.requirementId,
         code: requirement.code,
         position,
         criticality: requirement.criticality,

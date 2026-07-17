@@ -14,6 +14,8 @@ export default defineConfig({
   schemaFilter: 'public',
   tablesFilter: [
     'action_plan_items',
+    'action_plan_item_reconciliations',
+    'action_plan_reconciliations',
     'action_plans',
     'active_compliance_check_releases',
     'active_gap_analysis_releases',
@@ -50,6 +52,9 @@ export default defineConfig({
     'gap_finding_evidence',
     'gap_finding_review_resolutions',
     'gap_findings',
+    'gap_reassessment_draft_documents',
+    'gap_reassessment_drafts',
+    'gap_requirements',
     'gap_requirement_set_members',
     'gap_requirement_set_versions',
     'gap_requirement_sets',

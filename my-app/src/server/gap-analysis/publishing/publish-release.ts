@@ -7,6 +7,7 @@ import {
   contentTranslations,
   gapAnalysisReleaseApplicabilityRules,
   gapAnalysisReleases,
+  gapRequirements,
   gapRequirementSetMembers,
   gapRequirementSets,
   gapRequirementSetVersions,
@@ -209,19 +210,41 @@ export async function publishGapAnalysisRelease(
 
     const requirementVersionByCode = new Map<string, string>();
     for (const source of definition.requirementSet.requirements) {
-      const [requirement] = await tx
-        .insert(gapRequirementVersions)
-        .values({
-          code: source.code,
-          versionLabel: source.versionLabel,
-          criticality: source.criticality,
-          title: source.title,
-          requirementText: source.requirementText,
-          recommendation: source.recommendation,
-          legalReferences: source.legalReferences,
-          contentHash: compiled.hashes.requirements[source.code],
-        })
-        .returning();
+      await tx.insert(gapRequirements).values({ code: source.code }).onConflictDoNothing();
+      const stableRequirement = await tx.query.gapRequirements.findFirst({
+        where: eq(gapRequirements.code, source.code),
+      });
+      if (!stableRequirement) {
+        throw new Error(`Could not create stable requirement ${source.code}`);
+      }
+      let requirement = await tx.query.gapRequirementVersions.findFirst({
+        where: and(
+          eq(gapRequirementVersions.requirementId, stableRequirement.id),
+          eq(gapRequirementVersions.versionLabel, source.versionLabel),
+        ),
+      });
+      const requirementHash = compiled.hashes.requirements[source.code];
+      if (requirement && requirement.contentHash !== requirementHash) {
+        throw new Error(
+          `Requirement ${source.code}/${source.versionLabel} already exists with different content`,
+        );
+      }
+      if (!requirement) {
+        [requirement] = await tx
+          .insert(gapRequirementVersions)
+          .values({
+            requirementId: stableRequirement.id,
+            code: source.code,
+            versionLabel: source.versionLabel,
+            criticality: source.criticality,
+            title: source.title,
+            requirementText: source.requirementText,
+            recommendation: source.recommendation,
+            legalReferences: source.legalReferences,
+            contentHash: requirementHash,
+          })
+          .returning();
+      }
       if (!requirement) throw new Error(`Could not create ${source.code}`);
       requirementVersionByCode.set(source.code, requirement.id);
       await tx.insert(gapRequirementSetMembers).values({

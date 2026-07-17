@@ -35,12 +35,17 @@ async function main() {
     if (!bucket || bucket.public) throw new Error("Private evidence bucket is unavailable");
     const protectedTables = [
       "gap_analysis_releases",
+      "gap_requirements",
       "gap_requirement_versions",
       "documents",
       "document_versions",
       "ai_processing_runs",
       "gap_findings",
+      "gap_reassessment_drafts",
+      "gap_reassessment_draft_documents",
       "action_plans",
+      "action_plan_reconciliations",
+      "action_plan_item_reconciliations",
       "audit_events",
     ];
     const rlsRows = await sql<{ relname: string; relrowsecurity: boolean }[]>`
@@ -65,6 +70,35 @@ async function main() {
     `;
     if (triggerRows.length !== 2) {
       throw new Error("Gap-analysis database triggers are incomplete");
+    }
+    const [consistency] = await sql<{
+      missing_stable_requirements: number;
+      invalid_accepted_revisions: number;
+      duplicate_open_drafts: number;
+      duplicate_active_plans: number;
+    }[]>`
+      select
+        (select count(*)::int from gap_requirement_versions
+          where requirement_id is null) as missing_stable_requirements,
+        (select count(*)::int
+          from generated_artifacts artifact
+          join generated_artifact_revisions revision
+            on revision.id = artifact.accepted_revision_id
+          where revision.artifact_id <> artifact.id
+            or revision.status <> 'approved') as invalid_accepted_revisions,
+        (select count(*)::int from (
+          select assessment_id from gap_reassessment_drafts
+          where status = 'open'
+          group by assessment_id having count(*) > 1
+        ) duplicate) as duplicate_open_drafts,
+        (select count(*)::int from (
+          select organization_id from action_plans
+          where status = 'active'
+          group by organization_id having count(*) > 1
+        ) duplicate) as duplicate_active_plans
+    `;
+    if (!consistency || Object.values(consistency).some((count) => count > 0)) {
+      throw new Error("Reassessment or reconciliation consistency checks failed");
     }
     console.log(`Gap smoke test passed for ${release.release_code}/${release.version_label}.`);
   } finally {

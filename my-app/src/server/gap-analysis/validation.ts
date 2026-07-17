@@ -7,10 +7,25 @@ export const gapQuestionnaireSubmissionSchema = z.object({
     .min(1),
 });
 
-export const gapGenerationRequestSchema = z.object({
+export const gapReassessmentPrepareSchema = z.object({
   assessmentId: z.uuid(),
   selectedDocumentVersionIds: z.array(z.uuid()),
-  retryNonce: z.string().trim().min(1).max(100).optional(),
+});
+
+export const gapReassessmentEvidenceSchema = z.object({
+  draftId: z.uuid(),
+  expectedLockVersion: z.number().int().positive(),
+  selectedDocumentVersionIds: z.array(z.uuid()),
+});
+
+export const gapReassessmentGenerateSchema = z.object({
+  draftId: z.uuid(),
+  expectedLockVersion: z.number().int().positive(),
+});
+
+export const gapReassessmentRetrySchema = z.object({
+  draftId: z.uuid(),
+  retryNonce: z.string().trim().min(1).max(100),
 });
 
 const localizedTextSchema = z.object({
@@ -41,7 +56,26 @@ export const gapCorrectionRequestSchema = z.object({
 
 export const actionPlanGenerationRequestSchema = z.object({
   approvedGapRevisionId: z.uuid(),
-  regenerate: z.boolean().optional(),
+});
+
+export const actionPlanReconciliationPrepareSchema = z.object({
+  targetGapRevisionId: z.uuid(),
+});
+
+export const actionPlanReconciliationDecisionSchema = z.object({
+  decision: z.enum([
+    "carry_over",
+    "close",
+    "reopen",
+    "create_follow_up",
+    "keep_legacy",
+    "cancel",
+  ]),
+  reason: z.string().trim().min(1).max(2_000),
+});
+
+export const actionPlanReconciliationActivateSchema = z.object({
+  reconciliationId: z.uuid(),
 });
 
 export const actionPlanItemUpdateSchema = z.object({

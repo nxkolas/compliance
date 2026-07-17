@@ -10,7 +10,7 @@ import {
   organizationMemberships,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { getGapRevisionStaleness } from "../gap-analysis/staleness";
 import {
@@ -44,7 +44,6 @@ export async function generateActionPlan(input: {
   organizationId: string;
   approvedGapRevisionId: string;
   locale: Locale;
-  regenerate?: boolean;
 }) {
   await assertCanManageOrganization(input.userId, input.organizationId);
   const revision = await db.query.generatedArtifactRevisions.findFirst({
@@ -61,21 +60,21 @@ export async function generateActionPlan(input: {
       eq(generatedArtifacts.artifactType, "gap_analysis_result"),
     ),
   });
-  if (!artifact || artifact.currentRevisionId !== revision.id) {
-    throw new ApiError(409, "The approved gap revision is not current");
+  if (!artifact || artifact.acceptedRevisionId !== revision.id) {
+    throw new ApiError(409, "The approved gap revision is not accepted");
   }
   const currentPlan = await db.query.actionPlans.findFirst({
     where: and(
       eq(actionPlans.organizationId, input.organizationId),
-      ne(actionPlans.status, "archived"),
+      eq(actionPlans.status, "active"),
     ),
     orderBy: [desc(actionPlans.createdAt)],
   });
   if (currentPlan?.sourceGapArtifactRevisionId === revision.id) {
     return currentPlan;
   }
-  if (currentPlan && !input.regenerate) {
-    throw new ApiError(409, "Explicit regeneration is required to replace the existing plan");
+  if (currentPlan) {
+    throw new ApiError(409, "Prepare a reconciliation to update the active plan");
   }
   const findings = await db.query.gapFindings.findMany({
     where: eq(gapFindings.artifactRevisionId, revision.id),
@@ -102,26 +101,19 @@ export async function generateActionPlan(input: {
       };
     }),
   );
+  const latestPlan = await db.query.actionPlans.findFirst({
+    where: eq(actionPlans.organizationId, input.organizationId),
+    orderBy: [desc(actionPlans.revisionNumber)],
+  });
   return db.transaction(async (tx) => {
-    if (currentPlan) {
-      await tx
-        .update(actionPlans)
-        .set({ status: "archived", archivedAt: new Date(), updatedAt: new Date() })
-        .where(eq(actionPlans.id, currentPlan.id));
-      await tx.insert(auditEvents).values({
-        organizationId: input.organizationId,
-        actorUserId: input.userId,
-        eventType: "action_plan.archived",
-        entityType: "action_plan",
-        entityId: currentPlan.id,
-        metadata: { replacedByGapRevisionId: revision.id },
-      });
-    }
     const [plan] = await tx
       .insert(actionPlans)
       .values({
         organizationId: input.organizationId,
         sourceGapArtifactRevisionId: revision.id,
+        revisionNumber: (latestPlan?.revisionNumber ?? 0) + 1,
+        activatedBy: input.userId,
+        activatedAt: new Date(),
         createdBy: input.userId,
       })
       .returning();
@@ -151,7 +143,7 @@ export async function getCurrentActionPlan(
   const plan = await db.query.actionPlans.findFirst({
     where: and(
       eq(actionPlans.organizationId, organizationId),
-      ne(actionPlans.status, "archived"),
+      eq(actionPlans.status, "active"),
     ),
     orderBy: [desc(actionPlans.createdAt)],
   });
@@ -166,11 +158,9 @@ export async function getCurrentActionPlan(
     revisionId: plan.sourceGapArtifactRevisionId,
   });
   return {
-    plan:
-      sourceStaleness.stale && plan.status === "active"
-        ? { ...plan, status: "stale" as const }
-        : plan,
+    plan,
     items,
+    sourceStaleness,
   };
 }
 
@@ -184,7 +174,7 @@ export async function getCurrentApprovedGapRevision(
     .from(generatedArtifacts)
     .innerJoin(
       generatedArtifactRevisions,
-      eq(generatedArtifacts.currentRevisionId, generatedArtifactRevisions.id),
+      eq(generatedArtifacts.acceptedRevisionId, generatedArtifactRevisions.id),
     )
     .where(
       and(
@@ -195,6 +185,31 @@ export async function getCurrentApprovedGapRevision(
     )
     .limit(1);
   return rows[0]?.revision ?? null;
+}
+
+export async function getActionPlanHistory(
+  userId: string,
+  organizationId: string,
+) {
+  await assertCanAccessOrganization(userId, organizationId);
+  const plans = await db.query.actionPlans.findMany({
+    where: and(
+      eq(actionPlans.organizationId, organizationId),
+      inArray(actionPlans.status, ["superseded", "archived"]),
+    ),
+    orderBy: [desc(actionPlans.revisionNumber)],
+  });
+  if (!plans.length) return [];
+  const items = await db.query.actionPlanItems.findMany({
+    where: inArray(
+      actionPlanItems.actionPlanId,
+      plans.map((plan) => plan.id),
+    ),
+  });
+  return plans.map((plan) => ({
+    plan,
+    items: items.filter((item) => item.actionPlanId === plan.id),
+  }));
 }
 
 export async function updateActionPlanItem(input: {
@@ -214,7 +229,7 @@ export async function updateActionPlanItem(input: {
       and(
         eq(actionPlanItems.id, input.itemId),
         eq(actionPlans.organizationId, input.organizationId),
-        ne(actionPlans.status, "archived"),
+        eq(actionPlans.status, "active"),
       ),
     )
     .limit(1);
@@ -233,26 +248,40 @@ export async function updateActionPlanItem(input: {
   if (input.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) {
     throw new ApiError(400, "dueDate must use YYYY-MM-DD");
   }
+  const updatedAt = new Date();
   const changes = {
     ...(input.status !== undefined ? { status: input.status } : {}),
     ...(input.ownerUserId !== undefined ? { ownerUserId: input.ownerUserId } : {}),
     ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
-    updatedAt: new Date(),
+    updatedAt,
   };
-  const [updated] = await db
-    .update(actionPlanItems)
-    .set(changes)
-    .where(eq(actionPlanItems.id, input.itemId))
-    .returning();
-  await db.insert(auditEvents).values({
-    organizationId: input.organizationId,
-    actorUserId: input.userId,
-    eventType: "action_plan_item.updated",
-    entityType: "action_plan_item",
-    entityId: input.itemId,
-    metadata: { before: current.item, changes },
+  return db.transaction(async (tx) => {
+    const [lockedPlan] = await tx
+      .update(actionPlans)
+      .set({ updatedAt })
+      .where(
+        and(
+          eq(actionPlans.id, current.plan.id),
+          eq(actionPlans.status, "active"),
+        ),
+      )
+      .returning({ id: actionPlans.id });
+    if (!lockedPlan) throw new ApiError(409, "The action plan is no longer active");
+    const [updated] = await tx
+      .update(actionPlanItems)
+      .set(changes)
+      .where(eq(actionPlanItems.id, input.itemId))
+      .returning();
+    await tx.insert(auditEvents).values({
+      organizationId: input.organizationId,
+      actorUserId: input.userId,
+      eventType: "action_plan_item.updated",
+      entityType: "action_plan_item",
+      entityId: input.itemId,
+      metadata: { before: current.item, changes },
+    });
+    return updated;
   });
-  return updated;
 }
 
 function localize(value: unknown, locale: Locale) {

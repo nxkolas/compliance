@@ -1,6 +1,5 @@
 import { db } from "@/src/db";
 import {
-  actionPlans,
   assessmentAnswerOptions,
   assessmentAnswers,
   assessmentRevisions,
@@ -120,15 +119,6 @@ export async function submitGapQuestionnaire(input: {
       .update(assessments)
       .set({ currentRevisionId: revision.id })
       .where(eq(assessments.id, assessment.id));
-    await tx
-      .update(actionPlans)
-      .set({ status: "stale", updatedAt: new Date() })
-      .where(
-        and(
-          eq(actionPlans.organizationId, input.organizationId),
-          eq(actionPlans.status, "active"),
-        ),
-      );
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
