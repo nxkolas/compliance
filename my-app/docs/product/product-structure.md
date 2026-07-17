@@ -1,251 +1,122 @@
 # Produktstruktur: NIS2 Compliance Checker
 
-Dieses Dokument beschreibt die neue Modulstruktur des NIS2 Compliance Checkers.
-Es dient als fachliche Orientierung fuer UI, Datenmodell und spaetere API-
-Implementierung.
+Status: aktueller Produkt- und Implementierungsstand vom 17.07.2026.
 
-## Dashboard
+Dieses Dokument ordnet die sichtbaren Module fachlich ein. Der detaillierte
+Ablauf von Gap-Analyse, Dokumentnachweisen und Maßnahmenplan steht unter
+[Current Gap-Analysis Workflow](./gap-analysis-current-workflow.md).
 
-### Zweck
+## Organisationen
 
-Zentrale Uebersicht ueber den aktuellen NIS2-Status einer Organisation.
-
-### Inhalt
-
-- Betroffenheitsstatus
-- Sicherheitsmassnahmen
-- Analysefortschritt
-- Kritische Bereiche
-- Naechste Schritte
-- Dokumentenstatus
-
-### Datenbasis
-
-- Aktuell implementiert: `organizations`, `organization_fact_definitions`,
-  `organization_fact_values`, `compliance_frameworks`,
-  `compliance_framework_versions`, `compliance_modules`,
-  `questionnaires`, `questionnaire_versions`, `questions`,
-  `question_options` und `question_fact_mappings`
-- Geplant: `assessments`, `assessment_revisions` und
-  `assessment_answers` fuer Betroffenheit und Analysefortschritt
-- Geplant: `generated_artifacts`, `generated_artifact_revisions` und
-  `artifact_revision_sources` fuer Ergebnisse, Dokumentenstatus, naechste
-  Schritte und exportierbare Berichte
+Die Anwendung ist nach Organisationen getrennt. Mitgliedschaften bestimmen die
+Rolle `owner`, `admin`, `member` oder `auditor`. Fachliche Daten werden immer im
+Kontext einer Organisation gelesen und durch Server-APIs autorisiert; Browser-
+Rollen greifen nicht direkt auf Anwendungstabellen zu.
 
 ## Betroffenheitscheck
 
-### Zweck
+Der Betroffenheitscheck ermittelt deterministisch, ob und wie eine Organisation
+in den NIS2-Anwendungsbereich fällt.
 
-Pruefen, ob ein Unternehmen unter NIS2 faellt.
+- Fragebogen, Fakten, Rechtsquellen und Regeln stammen aus einer veröffentlichten,
+  unveränderlichen Compliance-Release.
+- Jede gestartete Prüfung bleibt an ihre Release gebunden.
+- Ergebnisse werden als unveränderliche Revisionen mit nachvollziehbarer Evidenz
+  gespeichert.
+- Eine neue aktive Release interpretiert historische Ergebnisse nicht neu.
+- Der Organisationsworkflow liefert automatisch ein genehmigtes Ergebnis, das
+  als Voraussetzung für die Gap-Analyse dient.
 
-### Inhalt
+Wichtige Tabellen sind `assessments`, `assessment_revisions`,
+`assessment_answers`, `generated_artifacts`, `generated_artifact_revisions` und
+`nis2_result_projections` sowie die Tabellen der unveränderlichen
+`compliance_check_releases`.
 
-- Branchenauswahl
-- Mitarbeiteranzahl
-- Umsatz/Bilanzsumme
-- Kritische Dienstleistungen
-- Ergebnis:
-  - betroffen
-  - moeglicherweise betroffen
-  - aktuell nicht betroffen
+## Dokumente
 
-### Zusaetzlich
+Die Dokumentenbibliothek ist ein eigenständiges Organisationsmodul. Sie dient
+als gemeinsame Evidenzquelle für Gap-Neubewertungen.
 
-Kurze Erklaerung: "Warum ist mein Unternehmen betroffen?"
+- Unterstützt werden Text-PDF, DOCX, TXT und Markdown bis 10 MB.
+- Ein Dokument besitzt unveränderliche Versionen und genau einen aktuellen
+  Versionszeiger.
+- Upload, Textextraktion, Chunking und Embeddings laufen derzeit synchron.
+- Neue Versionen ersetzen historische Versionen nicht.
+- Archivierung entfernt ein Dokument aus zukünftigen Auswahlen, löscht aber
+  keine bereits zitierte Evidenz.
+- Nutzungskennzeichen zeigen, ob eine Version noch nicht bewertet wurde, in
+  einem Entwurf oder einer Kandidatenrevision steckt, genehmigte Evidenz ist
+  oder den aktiven Maßnahmenplan unterstützt.
 
-### Datenbasis
-
-- `organizations` fuer stabile Unternehmensidentitaet
-- `questionnaires`, `questionnaire_versions`, `questions` und
-  `question_options` fuer den versionierten NIS2-Betroffenheitscheck
-- `question_fact_mappings` fuer die Zuordnung von Fragen zu stabilen
-  Organisationsfakten wie Mitarbeiteranzahl, Umsatz, Bilanzsumme, Branche und
-  kritische Dienstleistungen
-- `organization_fact_definitions` und spaeter `organization_fact_values` fuer
-  wiederverwendbare Compliance-Fakten
-- Geplant: `assessments`, `assessment_revisions`, `assessment_answers` sowie
-  `generated_artifacts` fuer gespeicherte Antworten, finales Ergebnis und
-  Begruendung
+Die privaten Quelldateien liegen im Supabase-Bucket `organization-evidence`.
+Metadaten und Suchdaten liegen in `documents`, `document_versions`,
+`document_extractions`, `document_chunks`, `document_embedding_generations` und
+`document_chunk_embeddings`.
 
 ## Gap-Analyse
 
-### Zweck
+Die Gap-Analyse ist ein KI-gestützter, aber serverseitig begrenzter
+Organisationsworkflow. Sie ist ein eigener Prozess neben dem deterministischen
+Betroffenheitscheck.
 
-Pruefung der aktuellen Sicherheitsmassnahmen.
+1. Eine aktive Gap-Release und ein kompatibles genehmigtes
+   Betroffenheitscheck-Ergebnis sind erforderlich.
+2. Der Nutzer speichert den Gap-Fragebogen als neue unveränderliche
+   Assessment-Revision.
+3. Er bereitet einen gemeinsamen Neubewertungsentwurf mit den vollständigen
+   Dokumentversionen vor.
+4. Erst die ausdrückliche Generierung sperrt die Eingaben und ruft das Modell
+   auf.
+5. Die KI bewertet nur die serverseitig ausgewählten Anforderungen und darf
+   weder Anwendbarkeit noch Priorität bestimmen.
+6. Owner/Admins korrigieren und genehmigen die Kandidatenrevision.
 
-### Inhalt
+Das zuletzt genehmigte Ergebnis bleibt über
+`generated_artifacts.accepted_revision_id` verbindlich, während
+`current_revision_id` eine neuere Arbeits- oder Kandidatenrevision zeigen kann.
+Dadurch überschreibt eine Neubewertung das akzeptierte Ergebnis nicht vorzeitig.
 
-Fragebogen zu:
+Anforderungen, Releases, KI-Läufe und Ergebnisse liegen unter anderem in
+`gap_requirements`, `gap_requirement_versions`, `gap_analysis_releases`,
+`ai_processing_runs`, `gap_findings`, `gap_finding_evidence`,
+`gap_reassessment_drafts` und `gap_reassessment_draft_documents`.
 
-- Zugriffskontrolle
-- Backup & Recovery
-- Incident Response
-- Lieferkettensicherheit
-- Netzwerk-/Systemschutz
-- Awareness-Schulungen
-- Risikoanalyse
+## Maßnahmenplan
 
-### Ergebnis
+Ein Maßnahmenplan wird deterministisch aus einer genehmigten Gap-Revision
+erzeugt; dafür erfolgt kein weiterer KI-Aufruf.
 
-- Handlungsbedarf
-- Teilweise umgesetzt
-- Grundanforderungen erfuellt
+- Nicht oder nur teilweise erfüllte Anforderungen sowie unzureichende Evidenz
+  erzeugen Aufgaben.
+- Mitglieder können Status, verantwortliche Benutzer-ID und Fälligkeitsdatum
+  pflegen.
+- Nach einer neu genehmigten Gap-Revision bleibt der aktive Plan zunächst
+  vollständig nutzbar.
+- Ein persistierter Planabgleich ordnet alte und neue Findings über stabile
+  Anforderungsidentitäten zu.
+- Unveränderte Aufgaben werden automatisch übernommen. Schließung,
+  Wiedereröffnung, Folgemaßnahmen, geänderte Anforderungen und entfernte
+  Anforderungen können eine Owner/Admin-Entscheidung mit Begründung verlangen.
+- Erst die ausdrückliche Aktivierung ersetzt den aktiven Plan atomar. Der
+  Vorgänger und seine Maßnahmen bleiben als schreibgeschützte Historie erhalten.
 
-### Zusaetzlich
+Die Daten liegen in `action_plans`, `action_plan_items`,
+`action_plan_reconciliations` und `action_plan_item_reconciliations`.
 
-- Fortschrittsanzeige
-- Priorisierte Massnahmen
+## Noch nicht umgesetzt
 
-### Datenbasis
+- ein fachlich vollständiger und rechtlich geprüfter NIS2-Anforderungskatalog;
+- OCR und Unterstützung gescannter PDFs oder Bildnachweise;
+- Hintergrundjobs für Extraktion, Embeddings und Gap-Generierung;
+- automatische KI-Aufrufe nach Upload oder Dokumentänderungen;
+- Dashboard-Auswertungen über den aktuellen Basisumfang hinaus;
+- PDF-Berichtsexport;
+- Benachrichtigungen, Kommentare und eine komfortable Benutzer-Auswahl für
+  Maßnahmenverantwortliche; und
+- ein Gastzugang für die Gap-Analyse.
 
-- Geplant: `questionnaires`, `questionnaire_versions`, `questions`,
-  `question_options`, `assessments`, `assessment_revisions` und
-  `assessment_answers` fuer Fragebogen, Fortschritt und Ergebnis
-- Geplant: `compliance_requirements` und `gap_findings` fuer Anforderungen,
-  Luecken und Nachweise
-- Geplant: `action_plan_items` fuer priorisierte Massnahmen
+## Weitere Dokumentation
 
-## Dokumentenpruefung
-
-### Zweck
-
-Automatische KI-Pruefung hochgeladener Dokumente.
-
-### Inhalt
-
-Upload von:
-
-- Richtlinien
-- Policies
-- Sicherheitskonzepten
-- Notfallplaenen
-
-KI erkennt:
-
-- vorhanden
-- unvollstaendig
-- nicht gefunden
-
-### Beispiele
-
-- Passwort-Richtlinie
-- MFA-Richtlinie
-- Incident-Response-Dokument
-- Backup-Konzept
-
-### Datenbasis
-
-- Geplant: `documents` und `document_versions` fuer Uploads,
-  Textextraktion und Versionshistorie
-- Geplant: `generated_artifacts`, `generated_artifact_revisions` und
-  `artifact_revision_sources` fuer Prueflaeufe und nachvollziehbare Quellen
-- Geplant: `gap_findings` und `action_plan_items` fuer Ergebnisse und Aufgaben
-  aus fehlenden oder unvollstaendigen Dokumenten
-
-## Massnahmenplan
-
-### Zweck
-
-Konkrete naechste Schritte anzeigen.
-
-### Inhalt
-
-Priorisierte Aufgaben:
-
-- Zugriffskontrollen dokumentieren
-- Notfallmanagement definieren
-- Mitarbeiterschulungen nachweisen
-
-### Zusaetzlich
-
-- Prioritaet
-- Status
-- Fortschritt
-
-### Ziel
-
-"Was muss ich jetzt konkret tun?"
-
-### Datenbasis
-
-- Geplant: `action_plan_items` als zentrale Aufgabenliste
-- Geplant: `generated_artifact_revisions` und `artifact_revision_sources` fuer
-  die Herleitung aus Fragebogen, Gap-Analyse und Dokumentenpruefung
-- Optionale Quellen:
-  - `assessment_revisions`
-  - `gap_findings`
-  - `document_versions`
-
-## PDF-Export
-
-### Zweck
-
-Bericht exportieren.
-
-### Inhalt
-
-- Zusammenfassung des aktuellen Status
-- Kritische Bereiche
-- Massnahmenliste
-- Dokumentenpruefung
-- Fortschritt der Analyse
-
-### Zielgruppe
-
-- Geschaeftsfuehrung
-- externe Beratung
-- interne Dokumentation
-
-### Datenbasis
-
-- Geplant: Export-Historie als eigener Artifact- oder Export-Datensatz
-- PDF-Inhalt wird aus dem aktuellen Organisationsstatus, den versionierten
-  Fragebogen, Dokumentenpruefungen und Massnahmen generiert
-
-## Einstellungen
-
-### Zweck
-
-Persoenliche und organisatorische Einstellungen.
-
-### Inhalt
-
-- Unternehmensdaten
-- Benutzerkonto
-- Sprache
-- Benachrichtigungen
-- Datenschutz
-
-### Datenbasis
-
-- `organizations` fuer Unternehmensdaten
-- Supabase Auth fuer Benutzerkonto und Login-Daten
-- Geplant: Tabellen fuer Benutzerpraeferenzen und Organisationseinstellungen
-  fuer Sprache, Benachrichtigungen, Datenschutz und UI-Einstellungen
-
-## Hilfe & Glossar
-
-### Zweck
-
-NIS2 verstaendlich erklaeren.
-
-### Inhalt
-
-Einfache Erklaerungen zu Begriffen wie:
-
-- Incident Response
-- MFA
-- Risikoanalyse
-- Lieferkettensicherheit
-- Business Continuity
-
-### Zusaetzlich
-
-- FAQ
-- kurze Hilfetexte
-- Tooltips im gesamten System
-
-### Umsetzung
-
-Hilfe & Glossar ist bewusst statisch. Inhalte werden als HTML, Markdown oder
-React-Komponenten umgesetzt und haben keine Datenbanktabellen.
+- [Current Gap-Analysis Workflow](./gap-analysis-current-workflow.md)
+- [Database structure](../architecture/database-structure.md)
+- [Supabase security runbook](../database/supabase-security-runbook.md)

@@ -66,8 +66,10 @@ export default async function ApplicabilityResultPage({
 
       <ApplicabilityResultCard
         result={result}
+        locale={locale}
         labels={labels}
         title={resultTitle}
+        startCurrentHref={`${baseHref}/new`}
       />
     </section>
   );

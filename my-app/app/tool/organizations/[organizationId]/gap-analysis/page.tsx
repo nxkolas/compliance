@@ -1,56 +1,39 @@
-import { ProductModuleContent } from "@/components/product-module-content";
-import { getDictionary } from "@/lib/i18n";
+import { GapAnalysisWorkflow } from "@/components/gap-analysis/gap-analysis-workflow";
+import { PageHeader } from "@/components/page-header";
+import { getDictionary, getLocale } from "@/lib/i18n";
+import { requireAuth } from "@/lib/supabase/require-auth";
+import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis/workflow-reader";
+import { connection } from "next/server";
 
-export default async function GapAnalysisPage() {
+export default async function GapAnalysisPage({
+  params,
+}: {
+  params: Promise<{ organizationId: string }>;
+}) {
+  await connection();
+  const user = await requireAuth();
   const dictionary = await getDictionary();
+  const locale = await getLocale();
+  const { organizationId } = await params;
+  const workflow = await getGapAnalysisWorkflow({
+    userId: user.id,
+    organizationId,
+    locale,
+  });
 
   return (
-    <ProductModuleContent
-      title={dictionary.modules.gapAnalysis.title}
-      description={dictionary.modules.gapAnalysis.description}
-      metrics={dictionary.modules.gapAnalysis.metrics}
-      cards={[
-        {
-          title: "Fragebogen",
-          description: "Die fachlichen Sicherheitsbereiche der Analyse.",
-          items: [
-            "Zugriffskontrolle",
-            "Backup & Recovery",
-            "Incident Response",
-            "Lieferkettensicherheit",
-            "Netzwerk-/Systemschutz",
-            "Awareness-Schulungen",
-            "Risikoanalyse",
-          ],
-        },
-        {
-          title: "Ergebnis",
-          description: "Die spaetere Analyse ordnet den Status in eine Stufe ein.",
-          items: [
-            "Handlungsbedarf",
-            "Teilweise umgesetzt",
-            "Grundanforderungen erfuellt",
-          ],
-        },
-        {
-          title: "Fortschritt",
-          description: "Der Fortschritt entsteht aus beantworteten Fragen und bewerteten Bereichen.",
-          items: [
-            "Fortschrittsanzeige",
-            "Offene Bereiche",
-            "Abgeschlossene Pruefabschnitte",
-          ],
-        },
-        {
-          title: "Priorisierte Massnahmen",
-          description: "Aus Luecken entstehen spaeter konkrete Aufgaben.",
-          items: [
-            "Hohe Prioritaet fuer kritische Risiken",
-            "Mittlere Prioritaet fuer teilweise umgesetzte Anforderungen",
-            "Niedrige Prioritaet fuer Nachweise und Optimierungen",
-          ],
-        },
-      ]}
-    />
+    <section className="flex w-full flex-col gap-8">
+      <PageHeader
+        title={dictionary.modules.gapAnalysis.title}
+        subtitle={dictionary.modules.gapAnalysis.description}
+      />
+      <GapAnalysisWorkflow
+        organizationId={organizationId}
+        workflow={workflow}
+        labels={dictionary.modules.gapAnalysis.workflow}
+        documentLabels={dictionary.modules.documents.workflow}
+        locale={locale}
+      />
+    </section>
   );
 }

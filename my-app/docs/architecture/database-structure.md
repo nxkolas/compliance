@@ -1,363 +1,210 @@
-# Database Structure
+# Database structure
 
-This document describes the current organization, compliance-foundation, and
-questionnaire-definition database model. Supabase Auth remains the source of
-truth for users. The app-owned public schema stores organizations,
-memberships, invitations, organization facts, the NIS2 framework/module
-registry, and the versioned questionnaire definitions used by the current
-Betroffenheitscheck preview.
+Status: current schema overview as of 2026-07-17.
 
-The remaining assessment, answer, generated artifact, document, and audit-event
-schema is still planned separately in `docs/architecture/db-schema-plan.md`.
+`src/db/schema.ts` is the source of truth for ordinary application tables,
+columns, enums, relations, constraints, and indexes. Apply it with
+`npm.cmd run db:push`. Supabase-only extensions, search infrastructure, storage,
+privilege, RLS, audit-trigger, and retention operations live under
+`supabase/sql-editor/` and are documented in the
+[Supabase security runbook](../database/supabase-security-runbook.md).
 
-## Workflow
+## Ownership and authorization
 
-The TypeScript schema in `src/db/schema.ts` is the source of truth. Apply schema
-changes with:
+`organizations` is the tenant boundary. `organization_memberships` assigns the
+roles `owner`, `admin`, `member`, and `auditor`; invitations are separate
+records. Organization-owned workflow tables carry an organization ID directly
+or are constrained through organization-scoped foreign keys.
 
-```bash
-npm run db:push
+Browser roles have no supported direct table-access path. Next.js pages and API
+routes authenticate the user and enforce organization permissions in server
+services. RLS and revoked browser grants are defense in depth and must be
+verified after every schema rollout.
+
+## Immutable compliance releases
+
+The deterministic NIS2 checker uses four layers:
+
+1. Stable identities: frameworks, facts, sectors, entity types, legal
+   instruments, and content items.
+2. Immutable versions: content revisions/translations, legal-instrument
+   versions/provisions, scope-model entity versions, threshold sets,
+   jurisdiction profiles, questionnaire versions, and compiled rule sets.
+3. Aggregate releases: `compliance_check_releases` pins one exact questionnaire,
+   EU model, threshold set, evaluator/rule artifact, fact-version set,
+   content-revision set, and national-profile mapping.
+   `active_compliance_check_releases` is the only mutable activation pointer;
+   activation history is append-only.
+4. Runtime records: assessments and guest sessions pin an aggregate release.
+   Answers and fact choices use relational option joins. Generated artifact
+   revisions store language-neutral evidence, while `nis2_result_projections`
+   carries searchable NIS2-specific fields.
+
+Published versions are never updated by the publisher. A wording change creates
+a content revision; an evaluator-semantic change creates a new evaluator
+identifier/version and aggregate release.
+
+The German profile has its own relational catalog. It covers the BSIG Annex
+statutory categories, supported out-of-Annex identities, legal provenance,
+typed threshold policies, jurisdiction rules, and effective-state declarations.
+
+## Gap-analysis releases and requirements
+
+The AI-assisted Gap-Analyse is a sibling of the deterministic applicability
+workflow, not another interpretation of its rules.
+
+- `gap_requirements` provides stable identities used to reconcile findings and
+  action-plan items over time.
+- `gap_requirement_versions` stores immutable localized requirement content,
+  legal metadata, criticality, and prompt-facing text.
+- Requirement-set versions pin exact requirement versions.
+- `gap_analysis_releases` pins the questionnaire, requirement set, prompt
+  metadata, model configuration, and compatible applicability release.
+- Active-release pointers and activation history use the same publish-then-
+  activate separation as the applicability checker.
+
+An organization Gap assessment pins both its gap release and the exact approved
+applicability artifact revision used as the prerequisite. AI never decides
+applicability.
+
+## Assessments and generated artifacts
+
+`assessments` is the stable workflow record. `assessment_revisions` and their
+answer rows are immutable submitted sources. New answers create a new revision
+instead of mutating the previous one.
+
+`generated_artifacts` is the stable result identity. It has two intentionally
+different pointers:
+
+- `current_revision_id`: newest generated, reviewed, or approved working
+  revision; and
+- `accepted_revision_id`: currently authoritative approved business result.
+
+This separation lets a candidate Gap-Analyse coexist with the accepted result.
+Corrections create another complete revision; approval updates the accepted
+pointer transactionally. `artifact_revision_sources` pins the questionnaire,
+applicability result, release, and immutable document versions used by a result.
+
+## Organization document evidence
+
+Documents are organization-wide evidence, not children of one Gap assessment.
+
+- `documents` is the stable identity and holds the current-version pointer.
+- `document_versions` stores immutable file metadata, storage path, content
+  hash, MIME type, size, and version number.
+- `document_extractions` records extraction attempts and extracted text state.
+- `document_chunks` stores citeable text segments and a maintained PostgreSQL
+  search vector.
+- `document_embedding_generations` records the embedding model/dimension and
+  processing status.
+- `document_chunk_embeddings` stores 1,536-dimension pgvector values.
+
+The private source file is stored in the Supabase bucket
+`organization-evidence`. `004_gap_evidence_infrastructure.sql` owns the vector
+extension, chunk search-vector trigger, HNSW index, private bucket, and
+append-only audit trigger.
+
+Archiving is non-destructive. Historical document versions referenced by an
+artifact or plan remain available for reproducibility.
+
+## Reassessment drafts
+
+`gap_reassessment_drafts` persists the shared organization workflow for one
+assessment. It pins the base accepted result, latest saved questionnaire
+revision, gap release, AI run, and output candidate. Its states are `open`,
+`locked`, `generated`, `failed`, and `cancelled`.
+
+`gap_reassessment_draft_documents` pins the exact selected document versions
+and records whether each was carried from accepted evidence, replaced by a
+current version, or explicitly added. A partial unique index permits at most one
+open draft per assessment. `lock_version` provides optimistic concurrency, and
+generation locks the input before the external model call.
+
+Preparing or editing a draft does not call AI. Failed locked input is retried
+explicitly; a generated candidate is never mutated by later uploads.
+
+## AI runs, findings, and review
+
+`ai_processing_runs` and `ai_processing_run_inputs` make each model call durable
+and pin its input hash, prompt/model metadata, and source records. The generation
+service retrieves evidence only from the selected immutable document versions.
+
+`gap_findings` normalizes one result per applicable requirement.
+`gap_finding_evidence` stores exact question or document citations, and
+`gap_finding_review_resolutions` records human resolution history. Invalid or
+incomplete structured output fails closed before a result revision is stored.
+Review corrections copy the complete result into a new immutable revision.
+
+## Action-plan revisions and reconciliation
+
+`action_plans` is revisioned. Exactly one plan is active per organization;
+later plans can remain `draft_reconciliation` until explicit activation. A
+superseded plan is historical and read-only.
+
+`action_plan_items` stores the immutable baseline derived from a finding plus
+mutable operational fields such as status, responsible user, and due date.
+Predecessor links retain item lineage.
+
+`action_plan_reconciliations` pins the source plan, target draft plan, old/new
+gap revisions, concurrency timestamp, status, and activation actor.
+`action_plan_item_reconciliations` persists each stable-requirement match,
+change kind, proposed decision, human decision, and reason. Activation verifies
+that the accepted gap result and active plan have not changed, then supersedes
+the old plan and activates the successor in one transaction.
+
+## Audit history
+
+`audit_events` records material publication, activation, document, generation,
+review, reassessment, action-plan, reconciliation, and activation actions. The
+Supabase `004` script installs a trigger that rejects update or delete attempts,
+making this activity stream append-only at the database boundary.
+
+## Authoring and deployment
+
+Reviewed applicability release sources live under
+`src/server/compliance/nis2/releases/`; Gap-Analyse releases live under
+`src/server/gap-analysis/releases/`. Publication validates content and writes an
+immutable release. Publishing never activates.
+
+For a disposable development database, follow the security runbook and then
+publish both workflows as needed:
+
+```powershell
+$env:DB_CLEAR_CONFIRM='clear-app-tables'
+npm.cmd run db:clear
+# Run SQL Editor 004 once before db:push.
+npm.cmd run db:push
+# Run SQL Editor 004 again, followed by 001, 002, and 003.
+npm.cmd run db:publish:compliance -- --release nis2/2026-v1
+npm.cmd run db:activate:compliance -- --release nis2/2026-v1
+npm.cmd run db:publish:gap -- --release nis2-gap/demo-v1
+npm.cmd run db:activate:gap -- --release nis2-gap/demo-v1
+Remove-Item Env:DB_CLEAR_CONFIRM
 ```
 
-This project uses Drizzle Kit's push workflow and does not track generated SQL
-migrations. The Drizzle config manages only these app tables:
+Run this destructive sequence only after confirming that the configured
+database is the intended disposable target. Rollback changes active release or
+active plan pointers; it does not rewrite historical records.
 
-- `organizations`
-- `organization_memberships`
-- `organization_invitations`
-- `organization_fact_definitions`
-- `organization_fact_values`
-- `compliance_frameworks`
-- `compliance_framework_versions`
-- `compliance_modules`
-- `questionnaires`
-- `questionnaire_versions`
-- `questions`
-- `question_options`
-- `question_fact_mappings`
+## Compliance runtime reads
 
-To seed the NIS2 framework, initial NIS2 modules, reusable organization fact
-definitions, and the published NIS2 Betroffenheitscheck questionnaire:
+`src/server/compliance/runtime-release/` is the only applicability release-
+loading seam. Its PostgreSQL assembler loads independent release sections
+concurrently and assembles immutable locale-specific lookup bundles in memory.
 
-```bash
-npm run db:seed:compliance
+App Router code caches only successful immutable bundles. The mutable active-
+release pointer, authorization, organization facts, assessments, results, guest
+sessions, documents, drafts, and plans remain outside that cache. Standalone
+publisher, activator, smoke, and diagnostic scripts use the direct reader and
+must not invoke Next cache APIs.
+
+The read-only runtime benchmark is:
+
+```powershell
+npm.cmd run db:benchmark:compliance -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
 ```
 
-The seed creates:
-
-- The `nis2` compliance framework.
-- The published `2026-v1` framework version.
-- Four NIS2 modules: `betroffenheitscheck`, `gap_analysis`, `action_plan`, and
-  `document_analysis`.
-- Reusable organization fact definitions.
-- The published `2026-v1` `betroffenheitscheck` questionnaire.
-- Twelve single-choice Betroffenheitscheck questions, their options, and
-  identity mappings to organization facts.
-
-The seed intentionally skips `organization_fact_values`, because values require
-a real organization and source revision from an assessment or artifact.
-
-To clear Drizzle-managed app tables in development:
-
-```bash
-DB_CLEAR_CONFIRM=clear-app-tables npm run db:clear
-```
-
-To discard old development app data and reset to the org-only v1 schema:
-
-```bash
-DB_CLEAR_CONFIRM=clear-app-tables npm run db:reset
-```
-
-`db:reset` first drops known legacy app tables and enum types from the previous
-schema, then runs `db:push`, then clears the current app tables.
-
-Do not clear or mutate Supabase Auth tables as part of this app reset.
-
-## Tables
-
-### `organizations`
-
-Stores stable organization identity data.
-
-Columns:
-
-- `id`: Primary key.
-- `name`: Display name.
-- `legal_name`: Optional legal name.
-- `country`: Two-letter country code, defaults to `DE`.
-- `created_at`, `updated_at`: Audit timestamps.
-
-### `organization_memberships`
-
-Connects Supabase Auth users to organizations.
-
-Columns:
-
-- `id`: Primary key.
-- `organization_id`: Organization.
-- `user_id`: Supabase Auth user UUID.
-- `role`: `owner`, `admin`, `member`, or `auditor`.
-- `status`: `active` or `suspended`.
-- `created_at`, `updated_at`: Audit timestamps.
-
-Constraints:
-
-- A user can only have one membership per organization.
-- Deleting an organization cascades its memberships.
-
-### `organization_invitations`
-
-Stores pending and historical invitations.
-
-Columns:
-
-- `id`: Primary key.
-- `organization_id`: Organization.
-- `email`: Invited email address.
-- `role`: Role granted on acceptance; only `admin`, `member`, and `auditor` are assignable through invitations.
-- `invited_by_user_id`: Supabase Auth user UUID of the inviter.
-- `accepted_by_user_id`: Supabase Auth user UUID of the accepting user.
-- `token_hash`: SHA-256 hash of the one-time invitation token.
-- `status`: `pending`, `accepted`, `revoked`, or `expired`.
-- `expires_at`, `accepted_at`: Invitation lifecycle timestamps.
-- `created_at`, `updated_at`: Audit timestamps.
-
-The raw token is returned only when an invitation is created. Accept endpoints
-hash the submitted token and compare it with `token_hash`.
-
-### `organization_fact_definitions`
-
-Defines stable semantic organization facts that can be reused across
-questionnaires and generated artifacts.
-
-Columns:
-
-- `key`: Primary key such as `employee_count_bucket`.
-- `label`: Human-readable label.
-- `data_type`: `text`, `number`, `boolean`, `enum`, or `json`.
-- `description`: Optional explanation of the fact.
-- `created_at`: Audit timestamp.
-
-### `organization_fact_values`
-
-Stores current and historical organization-specific fact values derived from
-versioned sources.
-
-Columns:
-
-- `id`: Primary key.
-- `organization_id`: Organization.
-- `fact_key`: Fact definition key.
-- `value`: JSON value.
-- `source_type`: Source category such as an assessment revision.
-- `source_revision_id`: Exact source revision UUID.
-- `confidence`: Optional confidence score.
-- `is_current`: Marks the current value for a fact.
-- `created_at`: Audit timestamp.
-
-Current fact lookups are indexed by `organization_id` and `fact_key`; JSON
-values also have a GIN index for later filtering.
-
-### `compliance_frameworks`
-
-Stores compliance framework identities. The current product seed creates only
-the `nis2` framework.
-
-Columns:
-
-- `id`: Primary key.
-- `code`: Stable unique code such as `nis2`.
-- `name`: Display name.
-- `description`: Optional description.
-- `created_at`: Audit timestamp.
-
-### `compliance_framework_versions`
-
-Stores versioned framework releases for modules and questionnaire definitions.
-
-Columns:
-
-- `id`: Primary key.
-- `framework_id`: Framework.
-- `version_label`: Version label such as `2026-v1`.
-- `status`: `draft`, `published`, or `archived`.
-- `effective_from`, `effective_to`: Optional validity dates.
-- `created_at`: Audit timestamp.
-
-### `compliance_modules`
-
-Stores modules attached to a specific framework version.
-
-Columns:
-
-- `id`: Primary key.
-- `framework_version_id`: Framework version.
-- `code`: Stable module code.
-- `name`: Display name.
-- `module_type`: `questionnaire`, `generated_artifact`, or `document_analysis`.
-- `position`: Sort order.
-
-### `questionnaires`
-
-Stores questionnaire identities attached to a module. The current seed creates
-one questionnaire: `betroffenheitscheck` for the NIS2 Betroffenheitscheck
-module.
-
-Columns:
-
-- `id`: Primary key.
-- `module_id`: Parent compliance module.
-- `code`: Stable questionnaire code.
-- `title`: Display title.
-- `created_at`: Audit timestamp.
-
-Constraints:
-
-- A module can only have one questionnaire with a given `code`.
-- Deleting a module cascades its questionnaires.
-
-### `questionnaire_versions`
-
-Stores immutable questionnaire releases. The active Betroffenheitscheck uses
-the same `2026-v1` label as the seeded NIS2 framework version.
-
-Columns:
-
-- `id`: Primary key.
-- `questionnaire_id`: Parent questionnaire.
-- `version_label`: Stable version label such as `2026-v1`.
-- `status`: `draft`, `published`, or `archived`.
-- `created_at`, `published_at`: Version lifecycle timestamps.
-
-Constraints:
-
-- A questionnaire can only have one version with a given `version_label`.
-- Deleting a questionnaire cascades its versions.
-
-### `questions`
-
-Stores versioned question definitions.
-
-Columns:
-
-- `id`: Primary key.
-- `questionnaire_version_id`: Parent questionnaire version.
-- `stable_key`: Stable semantic key such as `bc.employee_count`.
-- `position`: Sort order within the questionnaire version.
-- `question_text`: Default display text.
-- `help_text`: Optional help copy.
-- `answer_type`: `single_choice`, `multi_choice`, `text`, `long_text`,
-  `number`, `boolean`, `date`, `file`, or `json`.
-- `required`: Marks whether the question is required.
-- `config`: JSON configuration for UI hints and translations.
-- `created_at`: Audit timestamp.
-
-Constraints:
-
-- A questionnaire version can only have one question with a given
-  `stable_key`.
-- Deleting a questionnaire version cascades its questions.
-
-The seeded Betroffenheitscheck stores English translations in
-`config.translations.en.questionText`. It also stores `config.ui.control`; the
-industry-sector question is seeded with `select`, while the other questions use
-button-style choices.
-
-### `question_options`
-
-Stores options for choice-based questions.
-
-Columns:
-
-- `id`: Primary key.
-- `question_id`: Parent question.
-- `stable_value`: Stable answer value such as `yes`, `no`, `unsure`, or
-  `50_249`.
-- `label`: Default display label.
-- `position`: Sort order within the question.
-- `metadata`: JSON metadata, currently used for English option labels.
-
-Constraints:
-
-- A question can only have one option with a given `stable_value`.
-- Deleting a question cascades its options.
-
-### `question_fact_mappings`
-
-Maps versioned questions to stable organization fact definitions.
-
-Columns:
-
-- `id`: Primary key.
-- `question_id`: Source question.
-- `fact_key`: Target organization fact definition key.
-- `transform`: JSON transform rule. The current seed uses
-  `{ "type": "identity" }`.
-- `created_at`: Audit timestamp.
-
-Constraints:
-
-- A question can only map once to a given fact key.
-- Deleting a question cascades its fact mappings.
-
-These mappings let the Betroffenheitscheck wording, options, or version change
-without changing the internal organization fact keys.
-
-## Common Queries
-
-List organizations for the current user:
-
-```ts
-const memberships = await db.query.organizationMemberships.findMany({
-  where: and(
-    eq(organizationMemberships.userId, user.id),
-    eq(organizationMemberships.status, "active"),
-  ),
-  with: { organization: true },
-});
-```
-
-Create an organization with an owner membership:
-
-```ts
-const organization = await db.transaction(async (tx) => {
-  const [created] = await tx
-    .insert(organizations)
-    .values({
-      name: "Example GmbH",
-      legalName: "Example GmbH",
-      country: "DE",
-    })
-    .returning();
-
-  await tx.insert(organizationMemberships).values({
-    organizationId: created.id,
-    userId: user.id,
-    role: "owner",
-    status: "active",
-  });
-
-  return created;
-});
-```
-
-Load the active NIS2 Betroffenheitscheck questionnaire preview:
-
-```ts
-const questionnaire = await getActiveApplicabilityQuestionnaire();
-```
-
-The service reads the published `nis2` `2026-v1` framework version, the
-`betroffenheitscheck` module, the `betroffenheitscheck` questionnaire, its
-published `2026-v1` questionnaire version, ordered questions, and ordered
-options.
-
-## Current Placeholders
-
-The old compliance, guest assessment, AI chat, document review, and export data
-tables have been removed from the active schema. The Betroffenheitscheck page
-now renders the seeded questionnaire definition as an interactive preview, but
-it does not yet persist assessment instances or answers. Other compliance pages
-remain static placeholders while the versioned assessment, answer, artifact,
-document, and audit-event tables are introduced later.
+Applicability submission preparation happens before the write transaction.
+Within the transaction, answer and fact persistence is set-based; revision,
+artifact, projection, provenance, pointer, and guest-claim changes remain
+atomic.

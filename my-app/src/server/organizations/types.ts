@@ -34,7 +34,11 @@ export type AcceptOrganizationInvitationInput = z.infer<
 export type OrganizationDto = typeof organizations.$inferSelect;
 
 export type OrganizationFactDto = typeof organizationFactValues.$inferSelect & {
-  definition: typeof organizationFactDefinitions.$inferSelect;
+  value: unknown;
+  definition: typeof organizationFactDefinitions.$inferSelect & {
+    label: string;
+    description: string | null;
+  };
   valueLabel: string | null;
 };
 

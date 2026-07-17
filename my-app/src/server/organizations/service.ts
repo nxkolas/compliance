@@ -1,21 +1,23 @@
 import { db } from "@/src/db";
 import {
-  assessmentAnswers,
-  organizationFactDefinitionTranslations,
+  assessmentRevisions,
+  assessments,
+  factOptions,
   organizationFactDefinitions,
+  organizationFactValueOptions,
   organizationFactValues,
   organizationInvitations,
   organizationMemberships,
   organizations,
-  questionFactMappings,
-  questionOptionTranslations,
-  questionOptions,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { ApiError } from "../api/errors";
+import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
+import { loadPublishedReleasesById } from "../compliance/runtime-release/load-published-releases";
+import type { RuntimeReleaseReader } from "../compliance/runtime-release/types";
 import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
@@ -28,9 +30,12 @@ import type {
   OrganizationRole,
   UpdateOrganizationInput,
 } from "./types";
+import {
+  canContributeToOrganizationWorkflow,
+  canManageOrganizationWorkflow,
+} from "./workflow-permissions";
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
-const organizationManagerRoles: OrganizationRole[] = ["owner", "admin"];
 
 export async function listOrganizationsForUser(
   userId: string,
@@ -123,120 +128,76 @@ export async function listCurrentOrganizationFactsForUser(
   userId: string,
   organizationId: string,
   locale: Locale,
+  dependencies: { runtimeReleaseReader?: RuntimeReleaseReader } = {},
 ): Promise<OrganizationFactDto[]> {
   await assertCanAccessOrganization(userId, organizationId);
 
-  const rows = await db
-    .select({
-      id: organizationFactValues.id,
-      organizationId: organizationFactValues.organizationId,
-      factKey: organizationFactValues.factKey,
-      value: organizationFactValues.value,
-      sourceType: organizationFactValues.sourceType,
-      sourceRevisionId: organizationFactValues.sourceRevisionId,
-      confidence: organizationFactValues.confidence,
-      isCurrent: organizationFactValues.isCurrent,
-      createdAt: organizationFactValues.createdAt,
-      definitionKey: organizationFactDefinitions.key,
-      definitionLabel: organizationFactDefinitions.label,
-      translatedDefinitionLabel: organizationFactDefinitionTranslations.label,
-      definitionDataType: organizationFactDefinitions.dataType,
-      definitionDescription: organizationFactDefinitions.description,
-      translatedDefinitionDescription:
-        organizationFactDefinitionTranslations.description,
-      definitionCreatedAt: organizationFactDefinitions.createdAt,
-      optionLabel: questionOptions.label,
-      translatedOptionLabel: questionOptionTranslations.label,
-    })
-    .from(organizationFactValues)
-    .innerJoin(
-      organizationFactDefinitions,
-      eq(organizationFactValues.factKey, organizationFactDefinitions.key),
-    )
-    .leftJoin(
-      organizationFactDefinitionTranslations,
-      and(
-        eq(
-          organizationFactDefinitionTranslations.factKey,
-          organizationFactDefinitions.key,
-        ),
-        eq(organizationFactDefinitionTranslations.locale, locale),
-      ),
-    )
-    .leftJoin(
-      questionFactMappings,
-      eq(questionFactMappings.factKey, organizationFactValues.factKey),
-    )
-    .leftJoin(
-      assessmentAnswers,
-      and(
-        eq(
-          assessmentAnswers.assessmentRevisionId,
-          organizationFactValues.sourceRevisionId,
-        ),
-        eq(assessmentAnswers.questionId, questionFactMappings.questionId),
-        sql`${assessmentAnswers.answerValue} = ${organizationFactValues.value}`,
-      ),
-    )
-    .leftJoin(
-      questionOptions,
-      and(
-        eq(questionOptions.questionId, assessmentAnswers.questionId),
-        sql`${assessmentAnswers.answerValue} = to_jsonb(${questionOptions.stableValue})`,
-      ),
-    )
-    .leftJoin(
-      questionOptionTranslations,
-      and(
-        eq(questionOptionTranslations.questionOptionId, questionOptions.id),
-        eq(questionOptionTranslations.locale, locale),
-      ),
-    )
-    .where(
-      and(
-        eq(organizationFactValues.organizationId, organizationId),
-        eq(organizationFactValues.isCurrent, true),
-      ),
-    )
-    .orderBy(asc(organizationFactValues.factKey), desc(organizationFactValues.createdAt));
-
-  const factsById = new Map<string, OrganizationFactDto>();
-
+  const rows = await db.select({
+    value: organizationFactValues,
+    definition: organizationFactDefinitions,
+    checkReleaseId: assessments.checkReleaseId,
+  }).from(organizationFactValues)
+    .innerJoin(organizationFactDefinitions, eq(organizationFactValues.factKey, organizationFactDefinitions.key))
+    .innerJoin(assessmentRevisions, eq(organizationFactValues.sourceRevisionId, assessmentRevisions.id))
+    .innerJoin(assessments, eq(assessmentRevisions.assessmentId, assessments.id))
+    .where(and(
+      eq(organizationFactValues.organizationId, organizationId),
+      eq(organizationFactValues.isCurrent, true),
+    ))
+    .orderBy(desc(organizationFactValues.createdAt));
+  if (rows.length === 0) return [];
+  const optionRows = await db.select({
+    valueId: organizationFactValueOptions.organizationFactValueId,
+    stableValue: factOptions.stableValue,
+  }).from(organizationFactValueOptions)
+    .innerJoin(factOptions, eq(organizationFactValueOptions.factOptionId, factOptions.id))
+    .where(inArray(organizationFactValueOptions.organizationFactValueId, rows.map((row) => row.value.id)));
+  const releases = await loadPublishedReleasesById(
+    dependencies.runtimeReleaseReader ?? nextCachedRuntimeReleaseReader,
+    rows.flatMap((row) =>
+      row.checkReleaseId ? [row.checkReleaseId] : [],
+    ),
+    locale,
+  );
+  const optionsByValueId = new Map<string, string[]>();
+  for (const option of optionRows) {
+    const values = optionsByValueId.get(option.valueId) ?? [];
+    values.push(option.stableValue);
+    optionsByValueId.set(option.valueId, values);
+  }
+  const result: OrganizationFactDto[] = [];
   for (const row of rows) {
-    const existingFact = factsById.get(row.id);
-    const valueLabel = row.translatedOptionLabel ?? row.optionLabel ?? null;
-
-    if (existingFact) {
-      if (!existingFact.valueLabel && valueLabel) {
-        existingFact.valueLabel = valueLabel;
-      }
-
-      continue;
-    }
-
-    factsById.set(row.id, {
-      id: row.id,
-      organizationId: row.organizationId,
-      factKey: row.factKey,
-      value: row.value,
-      sourceType: row.sourceType,
-      sourceRevisionId: row.sourceRevisionId,
-      confidence: row.confidence,
-      isCurrent: row.isCurrent,
-      createdAt: row.createdAt,
-      valueLabel,
+    const release = row.checkReleaseId
+      ? releases.get(row.checkReleaseId)
+      : undefined;
+    const questionIndex = release?.questionIndexByFactKey[row.value.factKey];
+    const question = questionIndex === undefined
+      ? undefined
+      : release?.questions[questionIndex];
+    const stableValues = optionsByValueId.get(row.value.id) ?? [];
+    const labels = stableValues.map((stableValue) => {
+      if (!release || !question) return stableValue;
+      const optionIndex = release.optionIndexByQuestionAndValue[
+        `${question.id}\u0000${stableValue}`
+      ];
+      return optionIndex
+        ? release.questions[optionIndex.questionIndex]?.options[
+            optionIndex.optionIndex
+          ]?.label ?? stableValue
+        : stableValue;
+    });
+    result.push({
+      ...row.value,
+      value: stableValues.length > 1 ? stableValues : stableValues[0] ?? row.value.textValue ?? row.value.numberValue ?? row.value.booleanValue ?? row.value.structuredValue,
+      valueLabel: labels.length > 0 ? labels.join(", ") : null,
       definition: {
-        key: row.definitionKey,
-        label: row.translatedDefinitionLabel ?? row.definitionLabel,
-        dataType: row.definitionDataType,
-        description:
-          row.translatedDefinitionDescription ?? row.definitionDescription,
-        createdAt: row.definitionCreatedAt,
+        ...row.definition,
+        label: question?.questionText ?? row.definition.key,
+        description: question?.helpText ?? null,
       },
     });
   }
-
-  return Array.from(factsById.values());
+  return result;
 }
 
 export async function listOrganizationInvitations(
@@ -383,10 +344,21 @@ export async function assertCanManageOrganization(
 ) {
   const membership = await assertCanAccessOrganization(userId, organizationId);
 
-  if (!organizationManagerRoles.includes(membership.role)) {
+  if (!canManageOrganizationWorkflow(membership.role)) {
     throw new ApiError(403, "You cannot manage this organization");
   }
 
+  return membership;
+}
+
+export async function assertCanContributeToOrganization(
+  userId: string,
+  organizationId: string,
+) {
+  const membership = await assertCanAccessOrganization(userId, organizationId);
+  if (!canContributeToOrganizationWorkflow(membership.role)) {
+    throw new ApiError(403, "You cannot change this organization workflow");
+  }
   return membership;
 }
 
