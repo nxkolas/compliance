@@ -130,7 +130,6 @@ export type SubmissionPersistenceTransaction = {
   findLatestArtifactRevision(
     artifactId: string,
   ): Promise<ArtifactRevisionRecord | null>;
-  supersedeArtifactRevision(revisionId: string): Promise<void>;
   createArtifactRevision(input: {
     artifactId: string;
     revisionNumber: number;
@@ -143,6 +142,7 @@ export type SubmissionPersistenceTransaction = {
     evaluatedAt: Date;
     inputHash: string;
     createdBy: string;
+    status: "approved";
   }): Promise<ArtifactRevisionRecord>;
   findProfileVersion(input: {
     checkReleaseId: string;
@@ -473,9 +473,6 @@ export async function persistApplicabilitySubmission(
     const latestArtifactRevision = await tx.findLatestArtifactRevision(
       artifact.id,
     );
-    if (artifact.currentRevisionId) {
-      await tx.supersedeArtifactRevision(artifact.currentRevisionId);
-    }
 
     const result: StoredRuleEvaluationResult = {
       ...command.evaluation,
@@ -498,6 +495,7 @@ export async function persistApplicabilitySubmission(
       evaluatedAt: command.now,
       inputHash: command.inputHash,
       createdBy: command.userId,
+      status: "approved",
     });
     const jurisdictionProfileVersionId = command.evaluation.jurisdiction
       .countryCode
@@ -663,19 +661,14 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
             },
           })) ?? null;
         },
-        async supersedeArtifactRevision(revisionId) {
-          await tx
-            .update(generatedArtifactRevisions)
-            .set({ status: "superseded" })
-            .where(eq(generatedArtifactRevisions.id, revisionId));
-        },
         async createArtifactRevision(input) {
           const [created] = await tx
             .insert(generatedArtifactRevisions)
             .values({
               ...input,
-              status: "generated",
               generatedBy: "system",
+              approvedBy: input.createdBy,
+              approvedAt: input.evaluatedAt,
             })
             .returning({
               id: generatedArtifactRevisions.id,

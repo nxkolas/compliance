@@ -1,55 +1,43 @@
-import { ProductModuleContent } from "@/components/product-module-content";
+import { ActionPlanWorkflow } from "@/components/action-plans/action-plan-workflow";
+import { PageHeader } from "@/components/page-header";
 import { getDictionary } from "@/lib/i18n";
+import { requireAuth } from "@/lib/supabase/require-auth";
+import {
+  getCurrentActionPlan,
+  getCurrentApprovedGapRevision,
+} from "@/src/server/action-plans/service";
+import { assertCanAccessOrganization } from "@/src/server/organizations/service";
+import { connection } from "next/server";
 
-export default async function ActionPlanPage() {
+export default async function ActionPlanPage({
+  params,
+}: {
+  params: Promise<{ organizationId: string }>;
+}) {
+  await connection();
+  const user = await requireAuth();
   const dictionary = await getDictionary();
+  const { organizationId } = await params;
+  const membership = await assertCanAccessOrganization(user.id, organizationId);
+  const [current, approvedRevision] = await Promise.all([
+    getCurrentActionPlan(user.id, organizationId),
+    getCurrentApprovedGapRevision(user.id, organizationId),
+  ]);
 
   return (
-    <ProductModuleContent
-      title={dictionary.modules.actionPlan.title}
-      description={dictionary.modules.actionPlan.description}
-      metrics={dictionary.modules.actionPlan.metrics}
-      cards={[
-        {
-          title: "Priorisierte Aufgaben",
-          description: "Beispiele fuer konkrete NIS2-Schritte.",
-          items: [
-            "Zugriffskontrollen dokumentieren",
-            "Notfallmanagement definieren",
-            "Mitarbeiterschulungen nachweisen",
-          ],
-        },
-        {
-          title: "Aufgabenfelder",
-          description: "Informationen, die jede spaetere Aufgabe tragen soll.",
-          items: [
-            "Prioritaet",
-            "Status",
-            "Fortschritt",
-            "Faelligkeit",
-            "Verantwortliche Person",
-          ],
-        },
-        {
-          title: "Quellen",
-          description: "Massnahmen koennen aus mehreren Modulen entstehen.",
-          items: [
-            "Gap-Analyse",
-            "Dokumentenpruefung",
-            "Sicherheitsanforderungen",
-            "Hochgeladene Nachweise",
-          ],
-        },
-        {
-          title: "Ziel",
-          description: "Die Seite soll operative Klarheit geben.",
-          items: [
-            "Was muss ich jetzt konkret tun?",
-            "Was ist kritisch?",
-            "Was ist bereits erledigt?",
-          ],
-        },
-      ]}
-    />
+    <section className="flex w-full flex-col gap-8">
+      <PageHeader
+        title={dictionary.modules.actionPlan.title}
+        subtitle={dictionary.modules.actionPlan.description}
+      />
+      <ActionPlanWorkflow
+        organizationId={organizationId}
+        current={current}
+        approvedGapRevisionId={approvedRevision?.id ?? null}
+        canManage={membership.role === "owner" || membership.role === "admin"}
+        canContribute={membership.role !== "auditor"}
+        labels={dictionary.modules.actionPlan.workflow}
+      />
+    </section>
   );
 }

@@ -30,9 +30,12 @@ import type {
   OrganizationRole,
   UpdateOrganizationInput,
 } from "./types";
+import {
+  canContributeToOrganizationWorkflow,
+  canManageOrganizationWorkflow,
+} from "./workflow-permissions";
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
-const organizationManagerRoles: OrganizationRole[] = ["owner", "admin"];
 
 export async function listOrganizationsForUser(
   userId: string,
@@ -151,7 +154,9 @@ export async function listCurrentOrganizationFactsForUser(
     .where(inArray(organizationFactValueOptions.organizationFactValueId, rows.map((row) => row.value.id)));
   const releases = await loadPublishedReleasesById(
     dependencies.runtimeReleaseReader ?? nextCachedRuntimeReleaseReader,
-    rows.map((row) => row.checkReleaseId),
+    rows.flatMap((row) =>
+      row.checkReleaseId ? [row.checkReleaseId] : [],
+    ),
     locale,
   );
   const optionsByValueId = new Map<string, string[]>();
@@ -162,7 +167,9 @@ export async function listCurrentOrganizationFactsForUser(
   }
   const result: OrganizationFactDto[] = [];
   for (const row of rows) {
-    const release = releases.get(row.checkReleaseId);
+    const release = row.checkReleaseId
+      ? releases.get(row.checkReleaseId)
+      : undefined;
     const questionIndex = release?.questionIndexByFactKey[row.value.factKey];
     const question = questionIndex === undefined
       ? undefined
@@ -337,10 +344,21 @@ export async function assertCanManageOrganization(
 ) {
   const membership = await assertCanAccessOrganization(userId, organizationId);
 
-  if (!organizationManagerRoles.includes(membership.role)) {
+  if (!canManageOrganizationWorkflow(membership.role)) {
     throw new ApiError(403, "You cannot manage this organization");
   }
 
+  return membership;
+}
+
+export async function assertCanContributeToOrganization(
+  userId: string,
+  organizationId: string,
+) {
+  const membership = await assertCanAccessOrganization(userId, organizationId);
+  if (!canContributeToOrganizationWorkflow(membership.role)) {
+    throw new ApiError(403, "You cannot change this organization workflow");
+  }
   return membership;
 }
 

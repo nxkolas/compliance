@@ -1,6 +1,58 @@
 # Gap Analysis, Evidence, and Action Plan
 
-Status: approved for implementation on 2026-07-17.
+Status: implemented on 2026-07-17.
+
+## Implementation Status
+
+All six phases are implemented in the repository and the configured database:
+
+- the schema now contains immutable gap releases and requirements, document
+  versions and index generations, durable AI runs, normalized findings and
+  evidence, review resolutions, action plans, and append-only audit events;
+- deterministic applicability results are automatically approved, and a gap
+  assessment pins both the active gap release and the exact compatible approved
+  applicability artifact revision;
+- `nis2-gap/demo-v1` publishes four explicitly demo-labeled requirements and
+  four questions, validates completeness and prompt metadata, and activates
+  through an append-only history;
+- text PDF, DOCX, TXT, and Markdown uploads use a private bucket, immutable
+  source metadata, extraction/chunk generations, one 1,536-dimension embedding
+  space, and organization/selection-scoped hybrid retrieval;
+- gap generation uses the code-defined hashed prompt, strict Zod output,
+  supplied-citation validation, fail-closed transactional persistence, immutable
+  corrections, owner/admin approval, and dependency-derived staleness;
+- approved findings generate a deterministic action plan without a second AI
+  call, and explicit regeneration archives instead of merging the previous
+  plan; and
+- the organization Gap-Analyse and Maßnahmenplan routes expose the minimal
+  dictionary-backed German/English workflow described below.
+
+Automated verification completed with 82 passing tests, 8 passing AI prompt
+evals, lint, TypeScript through the production build, and a successful Next.js
+production build. The configured database passed `db:push`, demo publication,
+activation, RLS/setup SQL, and `db:smoke:gap`.
+
+The live model evaluation remains intentionally opt-in and was not run. An
+authenticated browser upload/generation pass also remains an operational manual
+check because the local environment needs `SUPABASE_SERVICE_ROLE_KEY` for the
+private storage bucket. These are verification/configuration items, not deferred
+product scope.
+
+Operational sequence:
+
+```powershell
+# Before and after db:push, run supabase/sql-editor/004_gap_evidence_infrastructure.sql.
+npm.cmd run db:push
+# Then run 001_server_only_definition_rls.sql and 002_server_only_application_data_rls.sql.
+npm.cmd run db:publish:gap -- --release nis2-gap/demo-v1
+npm.cmd run db:activate:gap -- --release nis2-gap/demo-v1
+npm.cmd run db:smoke:gap
+
+# Explicitly opt in to a paid live model evaluation:
+$env:RUN_LIVE_GAP_EVAL = "1"
+npm.cmd run eval:gap:live
+Remove-Item Env:RUN_LIVE_GAP_EVAL
+```
 
 This plan completes the unfinished Gap-Analyse, Dokumentenanalyse, Maßnahmenplan,
 and audit portions of `docs/architecture/db-schema-plan.md`. It preserves the

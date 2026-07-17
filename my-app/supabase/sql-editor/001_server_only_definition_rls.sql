@@ -19,7 +19,11 @@ declare
     'jurisdiction_profile_effective_states', 'rule_sets', 'compliance_check_releases',
     'compliance_check_release_profiles', 'compliance_check_release_fact_versions',
     'compliance_check_release_content_revisions', 'active_compliance_check_releases',
-    'compliance_check_release_activations'
+    'compliance_check_release_activations',
+    'gap_requirement_sets', 'gap_requirement_versions',
+    'gap_requirement_set_versions', 'gap_requirement_set_members',
+    'gap_analysis_releases', 'active_gap_analysis_releases',
+    'gap_analysis_release_activations', 'gap_analysis_release_applicability_rules'
   ];
 begin
   foreach table_name in array definition_tables loop

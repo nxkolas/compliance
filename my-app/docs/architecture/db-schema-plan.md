@@ -1,9 +1,14 @@
-> Status update (2026-07-17): the NIS2 applicability portion of this earlier
-> schema plan is implemented by the immutable compliance-release architecture in
-> `docs/plans/immutable-compliance-release-architecture.md`. The remaining
-> Gap-Analyse, document-evidence, Maßnahmenplan, and audit execution is governed
-> by `docs/plans/gap-analysis-evidence-and-action-plan.md`. The current schema
-> source of truth remains `src/db/schema.ts`.
+> Status update (2026-07-17): this historical design is now implemented and
+> refined by two approved plans. The NIS2 applicability portion uses the
+> immutable compliance-release architecture in
+> `docs/plans/immutable-compliance-release-architecture.md`; Gap-Analyse,
+> document evidence, Maßnahmenplan, AI runs, review, staleness, and audit use
+> `docs/plans/gap-analysis-evidence-and-action-plan.md`. The implemented design
+> deliberately supersedes the illustrative SQL sketches below where they differ:
+> requirements and releases are immutable sibling aggregates, document analysis
+> is evidence inside Gap-Analyse, findings and citations are normalized, and
+> action plans pin an approved gap artifact revision. The schema source of truth
+> is `src/db/schema.ts`.
 
 Yes — you need a **flexible, versioned questionnaire/compliance engine**, not a fixed schema like `betroffenheitscheck_question_1`, `question_2`, etc.
 

@@ -3,6 +3,7 @@ import {
   type AnyPgColumn,
   boolean,
   check,
+  customType,
   date,
   foreignKey,
   integer,
@@ -18,6 +19,28 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+
+const vector = customType<{ data: number[]; driverData: string }>({
+  dataType() {
+    return "vector(1536)";
+  },
+  toDriver(value) {
+    return `[${value.join(",")}]`;
+  },
+  fromDriver(value) {
+    return value
+      .slice(1, -1)
+      .split(",")
+      .filter(Boolean)
+      .map(Number);
+  },
+});
+
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 export const organizationRoleEnum = pgEnum("organization_role", [
   "owner",
@@ -126,6 +149,71 @@ export const artifactRevisionSourceTypeEnum = pgEnum(
     "organization_fact_snapshot",
   ],
 );
+
+export const gapAnalysisReleaseStatusEnum = pgEnum(
+  "gap_analysis_release_status",
+  ["draft", "published", "retired", "superseded"],
+);
+
+export const gapRequirementCriticalityEnum = pgEnum(
+  "gap_requirement_criticality",
+  ["low", "medium", "high", "critical"],
+);
+
+export const documentStatusEnum = pgEnum("document_status", [
+  "active",
+  "archived",
+]);
+
+export const processingStatusEnum = pgEnum("processing_status", [
+  "pending",
+  "processing",
+  "succeeded",
+  "failed",
+]);
+
+export const aiOperationKindEnum = pgEnum("ai_operation_kind", [
+  "gap_analysis",
+  "live_gap_evaluation",
+]);
+
+export const gapFindingStatusEnum = pgEnum("gap_finding_status", [
+  "fulfilled",
+  "partially_fulfilled",
+  "not_fulfilled",
+  "insufficient_evidence",
+]);
+
+export const evidenceSufficiencyEnum = pgEnum("evidence_sufficiency", [
+  "sufficient",
+  "partial",
+  "none",
+]);
+
+export const gapFindingEvidenceSourceTypeEnum = pgEnum(
+  "gap_finding_evidence_source_type",
+  ["assessment_answer", "document_chunk"],
+);
+
+export const actionPlanStatusEnum = pgEnum("action_plan_status", [
+  "active",
+  "stale",
+  "archived",
+]);
+
+export const actionPlanItemStatusEnum = pgEnum("action_plan_item_status", [
+  "open",
+  "in_progress",
+  "done",
+  "cancelled",
+]);
+
+export const actionPlanPriorityEnum = pgEnum("action_plan_priority", [
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
 
 export const organizations = pgTable(
   "organizations",
@@ -1006,11 +1094,21 @@ export const assessments = pgTable(
     organizationId: uuid("organization_id").notNull(),
     moduleId: uuid("module_id").notNull(),
     questionnaireId: uuid("questionnaire_id").notNull(),
-    checkReleaseId: uuid("check_release_id")
-      .notNull()
-      .references((): AnyPgColumn => complianceCheckReleases.id, {
+    checkReleaseId: uuid("check_release_id").references(
+      (): AnyPgColumn => complianceCheckReleases.id,
+      {
         onDelete: "restrict",
-      }),
+      },
+    ),
+    gapAnalysisReleaseId: uuid("gap_analysis_release_id").references(
+      (): AnyPgColumn => gapAnalysisReleases.id,
+      { onDelete: "restrict" },
+    ),
+    applicabilityArtifactRevisionId: uuid(
+      "applicability_artifact_revision_id",
+    ).references((): AnyPgColumn => generatedArtifactRevisions.id, {
+      onDelete: "restrict",
+    }),
     currentRevisionId: uuid("current_revision_id").references(
       (): AnyPgColumn => assessmentRevisions.id,
     ),
@@ -1038,11 +1136,30 @@ export const assessments = pgTable(
     }).onDelete("restrict"),
     uniqueIndex("assessments_active_org_module_release_unique")
       .on(table.organizationId, table.moduleId, table.checkReleaseId)
-      .where(sql`${table.status} = 'active'`),
+      .where(sql`${table.status} = 'active' AND ${table.checkReleaseId} IS NOT NULL`),
+    uniqueIndex("assessments_active_org_module_gap_release_unique")
+      .on(table.organizationId, table.moduleId, table.gapAnalysisReleaseId)
+      .where(sql`${table.status} = 'active' AND ${table.gapAnalysisReleaseId} IS NOT NULL`),
+    check(
+      "assessments_release_kind_check",
+      sql`(
+        ${table.checkReleaseId} IS NOT NULL
+        AND ${table.gapAnalysisReleaseId} IS NULL
+        AND ${table.applicabilityArtifactRevisionId} IS NULL
+      ) OR (
+        ${table.checkReleaseId} IS NULL
+        AND ${table.gapAnalysisReleaseId} IS NOT NULL
+        AND ${table.applicabilityArtifactRevisionId} IS NOT NULL
+      )`,
+    ),
     index("assessments_organization_idx").on(table.organizationId),
     index("assessments_module_idx").on(table.moduleId),
     index("assessments_current_revision_idx").on(table.currentRevisionId),
     index("assessments_check_release_idx").on(table.checkReleaseId),
+    index("assessments_gap_release_idx").on(table.gapAnalysisReleaseId),
+    index("assessments_applicability_artifact_idx").on(
+      table.applicabilityArtifactRevisionId,
+    ),
   ],
 );
 
@@ -1382,6 +1499,7 @@ export const generatedArtifactRevisions = pgTable(
     promptVersion: text("prompt_version"),
     ruleSetId: uuid("rule_set_id"),
     checkReleaseId: uuid("check_release_id"),
+    gapAnalysisReleaseId: uuid("gap_analysis_release_id"),
     evaluatorKind: text("evaluator_kind"),
     outcomeCode: text("outcome_code"),
     evaluatedAt: timestamp("evaluated_at", { withTimezone: true }),
@@ -1390,6 +1508,8 @@ export const generatedArtifactRevisions = pgTable(
       .default("system")
       .notNull(),
     createdBy: uuid("created_by"),
+    approvedBy: uuid("approved_by"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1406,6 +1526,7 @@ export const generatedArtifactRevisions = pgTable(
       foreignColumns: [ruleSets.id],
     }).onDelete("restrict"),
     foreignKey({ name: "generated_artifact_revisions_release_fk", columns: [table.checkReleaseId], foreignColumns: [complianceCheckReleases.id] }).onDelete("restrict"),
+    foreignKey({ name: "generated_artifact_revisions_gap_release_fk", columns: [table.gapAnalysisReleaseId], foreignColumns: [gapAnalysisReleases.id] }).onDelete("restrict"),
     uniqueIndex("generated_artifact_revisions_artifact_number_unique").on(
       table.artifactId,
       table.revisionNumber,
@@ -1414,6 +1535,9 @@ export const generatedArtifactRevisions = pgTable(
     index("generated_artifact_revisions_status_idx").on(table.status),
     index("generated_artifact_revisions_rule_set_idx").on(table.ruleSetId),
     index("generated_artifact_revisions_release_idx").on(table.checkReleaseId),
+    index("generated_artifact_revisions_gap_release_idx").on(
+      table.gapAnalysisReleaseId,
+    ),
     index("generated_artifact_revisions_outcome_idx").on(table.outcomeCode),
     index("generated_artifact_revisions_evaluated_at_idx").on(table.evaluatedAt),
   ],
@@ -1459,6 +1583,736 @@ export const artifactRevisionSources = pgTable(
       table.sourceType,
       table.sourceId,
     ),
+  ],
+);
+
+export const gapRequirementSets = pgTable(
+  "gap_requirement_sets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: text("code").notNull(),
+    title: text("title").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [uniqueIndex("gap_requirement_sets_code_unique").on(table.code)],
+);
+
+export const gapRequirementVersions = pgTable(
+  "gap_requirement_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: text("code").notNull(),
+    versionLabel: text("version_label").notNull(),
+    criticality: gapRequirementCriticalityEnum("criticality").notNull(),
+    title: jsonb("title").notNull(),
+    requirementText: jsonb("requirement_text").notNull(),
+    recommendation: jsonb("recommendation").notNull(),
+    legalReferences: jsonb("legal_references").notNull(),
+    contentHash: text("content_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("gap_requirement_versions_code_version_unique").on(
+      table.code,
+      table.versionLabel,
+    ),
+    uniqueIndex("gap_requirement_versions_hash_unique").on(table.contentHash),
+  ],
+);
+
+export const gapRequirementSetVersions = pgTable(
+  "gap_requirement_set_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    requirementSetId: uuid("requirement_set_id").notNull(),
+    versionLabel: text("version_label").notNull(),
+    status: immutableComponentStatusEnum("status").notNull(),
+    contentHash: text("content_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_requirement_set_versions_set_fk",
+      columns: [table.requirementSetId],
+      foreignColumns: [gapRequirementSets.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_requirement_set_versions_label_unique").on(
+      table.requirementSetId,
+      table.versionLabel,
+    ),
+    uniqueIndex("gap_requirement_set_versions_hash_unique").on(
+      table.contentHash,
+    ),
+  ],
+);
+
+export const gapRequirementSetMembers = pgTable(
+  "gap_requirement_set_members",
+  {
+    requirementSetVersionId: uuid("requirement_set_version_id").notNull(),
+    requirementVersionId: uuid("requirement_version_id").notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.requirementSetVersionId, table.requirementVersionId],
+    }),
+    foreignKey({
+      name: "gap_requirement_set_members_set_version_fk",
+      columns: [table.requirementSetVersionId],
+      foreignColumns: [gapRequirementSetVersions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_requirement_set_members_requirement_fk",
+      columns: [table.requirementVersionId],
+      foreignColumns: [gapRequirementVersions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_requirement_set_members_position_unique").on(
+      table.requirementSetVersionId,
+      table.position,
+    ),
+  ],
+);
+
+export const gapAnalysisReleases = pgTable(
+  "gap_analysis_releases",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    releaseCode: text("release_code").notNull(),
+    versionLabel: text("version_label").notNull(),
+    moduleId: uuid("module_id").notNull(),
+    questionnaireVersionId: uuid("questionnaire_version_id").notNull(),
+    requirementSetVersionId: uuid("requirement_set_version_id").notNull(),
+    compatibleCheckReleaseId: uuid("compatible_check_release_id").notNull(),
+    promptName: text("prompt_name").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    promptTemplateHash: text("prompt_template_hash").notNull(),
+    responseSchemaVersion: text("response_schema_version").notNull(),
+    evaluatorKind: text("evaluator_kind").notNull(),
+    evaluatorVersion: integer("evaluator_version").notNull(),
+    modelPolicy: jsonb("model_policy").notNull(),
+    defaultLocale: text("default_locale").default("de").notNull(),
+    status: gapAnalysisReleaseStatusEnum("status").notNull(),
+    aggregateHash: text("aggregate_hash").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_analysis_releases_module_fk",
+      columns: [table.moduleId],
+      foreignColumns: [complianceModules.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_analysis_releases_questionnaire_fk",
+      columns: [table.questionnaireVersionId],
+      foreignColumns: [questionnaireVersions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_analysis_releases_requirement_set_fk",
+      columns: [table.requirementSetVersionId],
+      foreignColumns: [gapRequirementSetVersions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_analysis_releases_check_release_fk",
+      columns: [table.compatibleCheckReleaseId],
+      foreignColumns: [complianceCheckReleases.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_analysis_releases_code_version_unique").on(
+      table.releaseCode,
+      table.versionLabel,
+    ),
+    uniqueIndex("gap_analysis_releases_hash_unique").on(table.aggregateHash),
+    index("gap_analysis_releases_status_idx").on(table.status),
+  ],
+);
+
+export const activeGapAnalysisReleases = pgTable(
+  "active_gap_analysis_releases",
+  {
+    releaseCode: text("release_code").primaryKey(),
+    gapAnalysisReleaseId: uuid("gap_analysis_release_id").notNull(),
+    activatedBy: uuid("activated_by").notNull(),
+    activatedAt: timestamp("activated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "active_gap_analysis_releases_release_fk",
+      columns: [table.gapAnalysisReleaseId],
+      foreignColumns: [gapAnalysisReleases.id],
+    }).onDelete("restrict"),
+    uniqueIndex("active_gap_analysis_releases_release_unique").on(
+      table.gapAnalysisReleaseId,
+    ),
+  ],
+);
+
+export const gapAnalysisReleaseActivations = pgTable(
+  "gap_analysis_release_activations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    releaseCode: text("release_code").notNull(),
+    previousReleaseId: uuid("previous_release_id"),
+    activatedReleaseId: uuid("activated_release_id").notNull(),
+    activatedBy: uuid("activated_by").notNull(),
+    activatedAt: timestamp("activated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_analysis_release_activations_previous_fk",
+      columns: [table.previousReleaseId],
+      foreignColumns: [gapAnalysisReleases.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_analysis_release_activations_active_fk",
+      columns: [table.activatedReleaseId],
+      foreignColumns: [gapAnalysisReleases.id],
+    }).onDelete("restrict"),
+    index("gap_analysis_release_activations_code_idx").on(
+      table.releaseCode,
+      table.activatedAt,
+    ),
+  ],
+);
+
+export const gapAnalysisReleaseApplicabilityRules = pgTable(
+  "gap_analysis_release_applicability_rules",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    gapAnalysisReleaseId: uuid("gap_analysis_release_id").notNull(),
+    requirementVersionId: uuid("requirement_version_id").notNull(),
+    conditions: jsonb("conditions").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_analysis_release_rules_release_fk",
+      columns: [table.gapAnalysisReleaseId],
+      foreignColumns: [gapAnalysisReleases.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_analysis_release_rules_requirement_fk",
+      columns: [table.requirementVersionId],
+      foreignColumns: [gapRequirementVersions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_analysis_release_rules_requirement_unique").on(
+      table.gapAnalysisReleaseId,
+      table.requirementVersionId,
+    ),
+  ],
+);
+
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    title: text("title").notNull(),
+    status: documentStatusEnum("status").default("active").notNull(),
+    currentVersionId: uuid("current_version_id").references(
+      (): AnyPgColumn => documentVersions.id,
+      { onDelete: "restrict" },
+    ),
+    createdBy: uuid("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "documents_organization_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("restrict"),
+    index("documents_organization_idx").on(table.organizationId),
+    index("documents_status_idx").on(table.status),
+  ],
+);
+
+export const documentVersions = pgTable(
+  "document_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentId: uuid("document_id").notNull(),
+    versionNumber: integer("version_number").notNull(),
+    fileName: text("file_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    storageBucket: text("storage_bucket").notNull(),
+    storagePath: text("storage_path").notNull(),
+    contentHash: text("content_hash").notNull(),
+    uploadedBy: uuid("uploaded_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "document_versions_document_fk",
+      columns: [table.documentId],
+      foreignColumns: [documents.id],
+    }).onDelete("restrict"),
+    uniqueIndex("document_versions_document_number_unique").on(
+      table.documentId,
+      table.versionNumber,
+    ),
+    uniqueIndex("document_versions_storage_path_unique").on(
+      table.storageBucket,
+      table.storagePath,
+    ),
+    index("document_versions_document_idx").on(table.documentId),
+    index("document_versions_hash_idx").on(table.contentHash),
+    check("document_versions_byte_size_positive", sql`${table.byteSize} > 0`),
+  ],
+);
+
+export const documentExtractions = pgTable(
+  "document_extractions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    documentVersionId: uuid("document_version_id").notNull(),
+    parserKind: text("parser_kind").notNull(),
+    parserVersion: text("parser_version").notNull(),
+    status: processingStatusEnum("status").notNull(),
+    extractedText: text("extracted_text"),
+    extractedTextHash: text("extracted_text_hash"),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`).notNull(),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "document_extractions_version_fk",
+      columns: [table.documentVersionId],
+      foreignColumns: [documentVersions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("document_extractions_parser_unique").on(
+      table.documentVersionId,
+      table.parserKind,
+      table.parserVersion,
+    ),
+    index("document_extractions_status_idx").on(table.status),
+  ],
+);
+
+export const documentChunks = pgTable(
+  "document_chunks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    extractionId: uuid("extraction_id").notNull(),
+    chunkIndex: integer("chunk_index").notNull(),
+    content: text("content").notNull(),
+    contentHash: text("content_hash").notNull(),
+    pageNumber: integer("page_number"),
+    sectionLabel: text("section_label"),
+    tokenCount: integer("token_count"),
+    searchVector: tsvector("search_vector"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "document_chunks_extraction_fk",
+      columns: [table.extractionId],
+      foreignColumns: [documentExtractions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("document_chunks_extraction_index_unique").on(
+      table.extractionId,
+      table.chunkIndex,
+    ),
+    index("document_chunks_extraction_idx").on(table.extractionId),
+    index("document_chunks_search_idx").using("gin", table.searchVector),
+  ],
+);
+
+export const documentEmbeddingGenerations = pgTable(
+  "document_embedding_generations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    extractionId: uuid("extraction_id").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    dimensions: integer("dimensions").notNull(),
+    chunkingVersion: text("chunking_version").notNull(),
+    status: processingStatusEnum("status").notNull(),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "document_embedding_generations_extraction_fk",
+      columns: [table.extractionId],
+      foreignColumns: [documentExtractions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("document_embedding_generations_config_unique").on(
+      table.extractionId,
+      table.provider,
+      table.model,
+      table.dimensions,
+      table.chunkingVersion,
+    ),
+    index("document_embedding_generations_status_idx").on(table.status),
+    check(
+      "document_embedding_generations_dimensions_positive",
+      sql`${table.dimensions} > 0`,
+    ),
+  ],
+);
+
+export const documentChunkEmbeddings = pgTable(
+  "document_chunk_embeddings",
+  {
+    generationId: uuid("generation_id").notNull(),
+    chunkId: uuid("chunk_id").notNull(),
+    embedding: vector("embedding").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.generationId, table.chunkId] }),
+    foreignKey({
+      name: "document_chunk_embeddings_generation_fk",
+      columns: [table.generationId],
+      foreignColumns: [documentEmbeddingGenerations.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "document_chunk_embeddings_chunk_fk",
+      columns: [table.chunkId],
+      foreignColumns: [documentChunks.id],
+    }).onDelete("restrict"),
+  ],
+);
+
+export const aiProcessingRuns = pgTable(
+  "ai_processing_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    assessmentRevisionId: uuid("assessment_revision_id").notNull(),
+    operationKind: aiOperationKindEnum("operation_kind").notNull(),
+    status: processingStatusEnum("status").default("pending").notNull(),
+    inputHash: text("input_hash").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    provider: text("provider"),
+    model: text("model"),
+    promptName: text("prompt_name").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    promptTemplateHash: text("prompt_template_hash").notNull(),
+    renderedInputHash: text("rendered_input_hash").notNull(),
+    responseSchemaVersion: text("response_schema_version").notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    outputArtifactRevisionId: uuid("output_artifact_revision_id").references(
+      (): AnyPgColumn => generatedArtifactRevisions.id,
+      { onDelete: "restrict" },
+    ),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdBy: uuid("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "ai_processing_runs_organization_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "ai_processing_runs_assessment_revision_fk",
+      columns: [table.assessmentRevisionId],
+      foreignColumns: [assessmentRevisions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("ai_processing_runs_idempotency_unique").on(
+      table.organizationId,
+      table.operationKind,
+      table.idempotencyKey,
+    ),
+    index("ai_processing_runs_status_idx").on(table.status),
+  ],
+);
+
+export const aiProcessingRunInputs = pgTable(
+  "ai_processing_run_inputs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    runId: uuid("run_id").notNull(),
+    sourceType: artifactRevisionSourceTypeEnum("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "ai_processing_run_inputs_run_fk",
+      columns: [table.runId],
+      foreignColumns: [aiProcessingRuns.id],
+    }).onDelete("cascade"),
+    uniqueIndex("ai_processing_run_inputs_source_unique").on(
+      table.runId,
+      table.sourceType,
+      table.sourceId,
+    ),
+  ],
+);
+
+export const gapFindings = pgTable(
+  "gap_findings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    artifactRevisionId: uuid("artifact_revision_id").notNull(),
+    requirementVersionId: uuid("requirement_version_id").notNull(),
+    status: gapFindingStatusEnum("status").notNull(),
+    evidenceSufficiency: evidenceSufficiencyEnum(
+      "evidence_sufficiency",
+    ).notNull(),
+    severity: actionPlanPriorityEnum("severity").notNull(),
+    rationale: jsonb("rationale").notNull(),
+    recommendation: jsonb("recommendation").notNull(),
+    assumptions: jsonb("assumptions").default(sql`'[]'::jsonb`).notNull(),
+    requiresReview: boolean("requires_review").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_findings_artifact_revision_fk",
+      columns: [table.artifactRevisionId],
+      foreignColumns: [generatedArtifactRevisions.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "gap_findings_requirement_fk",
+      columns: [table.requirementVersionId],
+      foreignColumns: [gapRequirementVersions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_findings_revision_requirement_unique").on(
+      table.artifactRevisionId,
+      table.requirementVersionId,
+    ),
+    index("gap_findings_status_idx").on(table.status),
+  ],
+);
+
+export const gapFindingEvidence = pgTable(
+  "gap_finding_evidence",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    findingId: uuid("finding_id").notNull(),
+    citationId: text("citation_id").notNull(),
+    sourceType: gapFindingEvidenceSourceTypeEnum("source_type").notNull(),
+    assessmentAnswerId: uuid("assessment_answer_id"),
+    documentChunkId: uuid("document_chunk_id"),
+    excerpt: text("excerpt").notNull(),
+    pageNumber: integer("page_number"),
+    sectionLabel: text("section_label"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_finding_evidence_finding_fk",
+      columns: [table.findingId],
+      foreignColumns: [gapFindings.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "gap_finding_evidence_answer_fk",
+      columns: [table.assessmentAnswerId],
+      foreignColumns: [assessmentAnswers.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_finding_evidence_chunk_fk",
+      columns: [table.documentChunkId],
+      foreignColumns: [documentChunks.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_finding_evidence_citation_unique").on(
+      table.findingId,
+      table.citationId,
+    ),
+    check(
+      "gap_finding_evidence_source_check",
+      sql`(
+        ${table.sourceType} = 'assessment_answer'
+        AND ${table.assessmentAnswerId} IS NOT NULL
+        AND ${table.documentChunkId} IS NULL
+      ) OR (
+        ${table.sourceType} = 'document_chunk'
+        AND ${table.assessmentAnswerId} IS NULL
+        AND ${table.documentChunkId} IS NOT NULL
+      )`,
+    ),
+  ],
+);
+
+export const gapFindingReviewResolutions = pgTable(
+  "gap_finding_review_resolutions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    artifactRevisionId: uuid("artifact_revision_id").notNull(),
+    findingId: uuid("finding_id").notNull(),
+    reason: text("reason").notNull(),
+    resolvedBy: uuid("resolved_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_finding_review_resolutions_revision_fk",
+      columns: [table.artifactRevisionId],
+      foreignColumns: [generatedArtifactRevisions.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "gap_finding_review_resolutions_finding_fk",
+      columns: [table.findingId],
+      foreignColumns: [gapFindings.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_finding_review_resolutions_finding_unique").on(
+      table.artifactRevisionId,
+      table.findingId,
+    ),
+  ],
+);
+
+export const actionPlans = pgTable(
+  "action_plans",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    sourceGapArtifactRevisionId: uuid(
+      "source_gap_artifact_revision_id",
+    ).notNull(),
+    status: actionPlanStatusEnum("status").default("active").notNull(),
+    createdBy: uuid("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "action_plans_organization_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "action_plans_source_gap_revision_fk",
+      columns: [table.sourceGapArtifactRevisionId],
+      foreignColumns: [generatedArtifactRevisions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("action_plans_active_organization_unique")
+      .on(table.organizationId)
+      .where(sql`${table.status} = 'active'`),
+    uniqueIndex("action_plans_source_revision_unique").on(
+      table.sourceGapArtifactRevisionId,
+    ),
+  ],
+);
+
+export const actionPlanItems = pgTable(
+  "action_plan_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    actionPlanId: uuid("action_plan_id").notNull(),
+    sourceFindingId: uuid("source_finding_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    priority: actionPlanPriorityEnum("priority").notNull(),
+    status: actionPlanItemStatusEnum("status").default("open").notNull(),
+    ownerUserId: uuid("owner_user_id"),
+    dueDate: date("due_date"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "action_plan_items_plan_fk",
+      columns: [table.actionPlanId],
+      foreignColumns: [actionPlans.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "action_plan_items_finding_fk",
+      columns: [table.sourceFindingId],
+      foreignColumns: [gapFindings.id],
+    }).onDelete("restrict"),
+    uniqueIndex("action_plan_items_finding_unique").on(
+      table.actionPlanId,
+      table.sourceFindingId,
+    ),
+    index("action_plan_items_status_idx").on(table.status),
+  ],
+);
+
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    actorUserId: uuid("actor_user_id"),
+    eventType: text("event_type").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    metadata: jsonb("metadata").default(sql`'{}'::jsonb`).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "audit_events_organization_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("restrict"),
+    index("audit_events_organization_created_idx").on(
+      table.organizationId,
+      table.createdAt,
+    ),
+    index("audit_events_entity_idx").on(table.entityType, table.entityId),
   ],
 );
 

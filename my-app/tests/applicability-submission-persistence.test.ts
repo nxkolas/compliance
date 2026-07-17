@@ -93,7 +93,6 @@ describe("applicability submission persistence", () => {
       "fact-option-joins",
       "find-artifact",
       "find-latest-artifact-revision",
-      "supersede-artifact-revision",
       "create-artifact-revision",
       "find-profile-version",
       "insert-result-projection",
@@ -134,6 +133,23 @@ describe("applicability submission persistence", () => {
     expect(calls.indexOf("claim-guest-check")).toBeLessThan(
       calls.indexOf("transaction-commit"),
     );
+  });
+
+  it("automatically approves a deterministic applicability result", async () => {
+    const calls: string[] = [];
+    let persistedStatus: string | undefined;
+    const adapter = fixturePersistenceAdapter(calls, {
+      onCreateArtifactRevision(input) {
+        persistedStatus = input.status;
+      },
+    });
+
+    await persistApplicabilitySubmission(
+      fixturePersistenceCommand(12),
+      adapter,
+    );
+
+    expect(persistedStatus).toBe("approved");
   });
 });
 
@@ -273,7 +289,7 @@ function fixturePersistenceCommand(
 
 function fixturePersistenceAdapter(
   calls: string[],
-  options: { missingFactOption?: boolean } = {},
+  options: FixturePersistenceOptions = {},
 ): SubmissionPersistenceAdapter {
   return {
     async transaction(work) {
@@ -294,7 +310,7 @@ function fixturePersistenceAdapter(
 
 function fixturePersistenceTransaction(
   calls: string[],
-  options: { missingFactOption?: boolean },
+  options: FixturePersistenceOptions,
 ): SubmissionPersistenceTransaction {
   return {
     async findActiveAssessment() {
@@ -355,11 +371,9 @@ function fixturePersistenceTransaction(
         createdAt: new Date("2025-01-01T00:00:00.000Z"),
       };
     },
-    async supersedeArtifactRevision() {
-      calls.push("supersede-artifact-revision");
-    },
     async createArtifactRevision(input) {
       calls.push("create-artifact-revision");
+      options.onCreateArtifactRevision?.(input);
       return {
         id: "artifact-revision-2",
         revisionNumber: input.revisionNumber,
@@ -384,3 +398,12 @@ function fixturePersistenceTransaction(
     },
   };
 }
+
+type FixturePersistenceOptions = {
+  missingFactOption?: boolean;
+  onCreateArtifactRevision?: (
+    input: Parameters<
+      SubmissionPersistenceTransaction["createArtifactRevision"]
+    >[0],
+  ) => void;
+};

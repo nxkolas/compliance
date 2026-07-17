@@ -12,6 +12,10 @@
     "db:activate:compliance": "tsx scripts/activate-compliance-release.ts",
     "db:smoke:nis2": "tsx scripts/smoke-nis2-scope.ts",
     "db:benchmark:compliance": "tsx scripts/benchmark-compliance-runtime.ts",
+    "db:publish:gap": "tsx scripts/publish-gap-release.ts",
+    "db:activate:gap": "tsx scripts/activate-gap-release.ts",
+    "db:smoke:gap": "tsx scripts/smoke-gap-analysis.ts",
+    "eval:gap:live": "tsx scripts/evaluate-gap-prompt-live.ts",
     "test:ai": "vitest run evals",
     "test:ai:watch": "vitest evals"
   },

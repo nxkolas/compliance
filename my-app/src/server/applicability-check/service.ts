@@ -302,7 +302,7 @@ export async function getApplicabilityAnswersForUser(
   await assertCanAccessOrganization(userId, organizationId);
   const assessment = await getLatestAssessment(organizationId);
 
-  if (!assessment?.currentRevisionId) {
+  if (!assessment?.currentRevisionId || !assessment.checkReleaseId) {
     return null;
   }
   const pinnedRelease = await nextCachedRuntimeReleaseReader.getPublished({
