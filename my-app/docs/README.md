@@ -23,6 +23,8 @@ Compliance Checker app.
 
 ## Implementation Plans
 
+- [Authoritative legal corpus and grounded AI](./plans/authoritative-legal-corpus-and-grounded-ai.md)
+- [Internal API and client/server service completion](./plans/internal-api-and-service-completion.md)
 - [Gap analysis, evidence, and action plan](./plans/gap-analysis-evidence-and-action-plan.md)
 - [Document management, gap reassessment, and plan reconciliation](./plans/document-management-reassessment-and-plan-reconciliation.md)
 - [Immutable compliance-release architecture](./plans/immutable-compliance-release-architecture.md)

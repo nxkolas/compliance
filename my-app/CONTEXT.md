@@ -35,3 +35,35 @@ _Avoid_: Form value, UI state, metadata
 **Clarification Required**:
 An outcome stating that the pinned release lacks a reliable decisive fact or supported legal path and therefore cannot make a positive or negative classification.
 _Avoid_: Unknown, error, unsupported
+
+**Authoritative Legal Corpus**:
+A centrally curated, versioned collection of legal and regulatory sources shared across organizations and used to support compliance claims.
+_Avoid_: Reference documents, global documents, AI knowledge
+
+**Legal Corpus Release**:
+An immutable, published selection of authoritative legal-source versions that can be pinned by a compliance workflow and reproduced later.
+_Avoid_: Latest sources, active documents, corpus snapshot
+
+**Corpus Family**:
+A framework-and-jurisdiction boundary within the Authoritative Legal Corpus whose releases can be composed by a compliance workflow.
+_Avoid_: Folder, bucket, global corpus
+
+**Authority Tier**:
+The declared legal weight of a corpus source: primary authority, official guidance, or curated secondary material. The tier expresses provenance and binding force rather than retrieval relevance.
+_Avoid_: Source score, priority, trust score
+
+**Language Rendition**:
+A language-specific expression of a legal source labeled as official, reviewed internal, or machine-assisted and linked to its authoritative-language source when it is not official.
+_Avoid_: Copy, locale, translated document
+
+**Platform Administrator**:
+An internal operator authorized to curate, publish, and activate shared legal-corpus content independently of any organization membership.
+_Avoid_: Organization owner, corpus user, super admin
+
+**Organization Evidence**:
+Private, organization-scoped material supplied to demonstrate or assess that organization's compliance state.
+_Avoid_: Legal corpus, uploaded context, customer knowledge
+
+**Grounded Synthesis**:
+AI-generated comparison, explanation, or recommendation whose material claims are supported by explicitly supplied and validated corpus or organization-evidence citations.
+_Avoid_: Model knowledge, unsourced answer, extractive answer
