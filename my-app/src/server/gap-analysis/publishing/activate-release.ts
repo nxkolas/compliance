@@ -3,6 +3,7 @@ import {
   activeGapAnalysisReleases,
   gapAnalysisReleaseActivations,
   gapAnalysisReleaseApplicabilityRules,
+  gapAnalysisReleaseCorpusReleases,
   gapAnalysisReleases,
   gapRequirementSetMembers,
   gapRequirementSetVersions,
@@ -17,6 +18,7 @@ export type GapActivationSnapshot = {
   requirementCount: number;
   applicabilityRuleCount: number;
   promptMetadataComplete: boolean;
+  corpusPinsComplete?: boolean;
 };
 
 export function assertGapActivationCompleteness(
@@ -38,6 +40,9 @@ export function assertGapActivationCompleteness(
   if (!snapshot.promptMetadataComplete) {
     throw new Error("Gap release prompt metadata is incomplete");
   }
+  if (snapshot.corpusPinsComplete === false) {
+    throw new Error("Gap release corpus pins are incomplete");
+  }
 }
 
 export async function activateGapAnalysisRelease(
@@ -53,7 +58,7 @@ export async function activateGapAnalysisRelease(
       ),
     });
     if (!release) throw new Error(`Gap release ${releaseCode}/${versionLabel} is missing`);
-    const [questionnaire, requirementSet, members, rules] = await Promise.all([
+    const [questionnaire, requirementSet, members, rules, corpusPins] = await Promise.all([
       tx.query.questionnaireVersions.findFirst({
         where: eq(questionnaireVersions.id, release.questionnaireVersionId),
       }),
@@ -71,6 +76,9 @@ export async function activateGapAnalysisRelease(
           gapAnalysisReleaseApplicabilityRules.gapAnalysisReleaseId,
           release.id,
         ),
+      }),
+      tx.query.gapAnalysisReleaseCorpusReleases.findMany({
+        where: eq(gapAnalysisReleaseCorpusReleases.gapAnalysisReleaseId, release.id),
       }),
     ]);
     assertGapActivationCompleteness({
@@ -92,6 +100,7 @@ export async function activateGapAnalysisRelease(
           release.evaluatorKind &&
           release.evaluatorVersion,
       ),
+      corpusPinsComplete: Boolean(release.corpusReleaseSetHash && corpusPins.length > 0),
     });
     const current = await tx.query.activeGapAnalysisReleases.findFirst({
       where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),

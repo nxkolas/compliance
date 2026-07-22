@@ -11,6 +11,8 @@ describe("hallucination guardrails", () => {
         name: "Example GmbH",
         legalName: null,
         country: "DE",
+        archivedAt: null,
+        version: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

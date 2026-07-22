@@ -27,6 +27,7 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
   versionLabel: "demo-v1",
   title: { de: "NIS2-Gap-Analyse (Demo)", en: "NIS2 gap analysis (demo)" },
   compatibleCheck: { checkCode: "nis2_applicability", versionLabel: "2026-v1" },
+  requiredCorpusFamilies: ["nis2-eu-primary", "nis2-de-primary"],
   defaultLocale: "de",
   prompt: {
     name: GAP_PROMPT_NAME,

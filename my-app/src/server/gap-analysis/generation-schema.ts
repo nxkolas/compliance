@@ -18,28 +18,57 @@ const localizedTextSchema = z.object({
   en: z.string().trim().min(1),
 });
 
-export const gapModelResponseSchema = z.object({
-  findings: z.array(
-    z.object({
-      requirementCode: z.string().trim().min(1),
-      status: gapFindingStatusSchema,
-      evidenceSufficiency: evidenceSufficiencySchema,
-      rationale: localizedTextSchema,
-      recommendation: localizedTextSchema,
-      assumptions: z.array(z.string().trim().min(1)),
-      citations: z.array(z.string().trim().min(1)),
-      contradictions: z.array(z.string().trim().min(1)),
-      requiresReview: z.boolean(),
-    }),
-  ),
+export const gapModelFindingSchema = z.object({
+  requirementCode: z.string().trim().min(1),
+  status: gapFindingStatusSchema,
+  evidenceSufficiency: evidenceSufficiencySchema,
+  rationale: localizedTextSchema,
+  recommendation: localizedTextSchema,
+  assumptions: z.array(z.string().trim().min(1)),
+  citations: z.array(z.string().trim().min(1)),
+  contradictions: z.array(z.string().trim().min(1)),
+  requiresReview: z.boolean(),
 });
+
+export const gapModelResponseSchema = z.object({
+  findings: z.array(gapModelFindingSchema),
+});
+
+const groundedGapModelFindingSchema = gapModelFindingSchema.omit({
+  requirementCode: true,
+});
+
+export type GroundedGapModelResponse = {
+  findings: Record<string, z.infer<typeof groundedGapModelFindingSchema>>;
+};
+
+export function buildGapModelResponseSchema(requirementCodes: string[]) {
+  if (requirementCodes.length === 0) throw new Error("At least one requirement code is required");
+  const findings = Object.fromEntries(
+    requirementCodes.map((requirementCode) => [requirementCode, groundedGapModelFindingSchema]),
+  );
+  return z.object({
+    findings: z.object(findings).strict(),
+  }) as z.ZodType<GroundedGapModelResponse>;
+}
+
+export function normalizeGroundedGapModelResponse(
+  value: GroundedGapModelResponse,
+): GapModelResponse {
+  return {
+    findings: Object.entries(value.findings).map(([requirementCode, finding]) => ({
+      requirementCode,
+      ...finding,
+    })),
+  };
+}
 
 export type GapModelResponse = z.infer<typeof gapModelResponseSchema>;
 export type GapModelFinding = GapModelResponse["findings"][number];
 
 export type SuppliedCitation = {
   id: string;
-  sourceType: "assessment_answer" | "document_chunk";
+  sourceType: "assessment_answer" | "document_chunk" | "legal_source_chunk";
   sourceId: string;
   excerpt: string;
   pageNumber: number | null;

@@ -25,6 +25,7 @@ import type {
 } from "@/src/server/organizations/types";
 import { Loader2, Send } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { organizationsClient } from "@/src/client/organizations";
 
 type SerializedInvitation = SerializeDates<OrganizationInvitationDto>;
 
@@ -82,33 +83,15 @@ export function OrganizationInvitePanel({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch(
-        `/api/organizations/${organizationId}/invitations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(inviteForm),
-        },
-      );
-
-      const body = (await response.json()) as {
-        invitation?: SerializedInvitation;
-        error?: string;
-      };
-
-      if (!response.ok || !body.invitation) {
-        throw new Error(body.error ?? labels.createError);
-      }
-
-      setInvitations((current) => [body.invitation!, ...current]);
+      const result = await organizationsClient.invite(organizationId, inviteForm);
+      const invitation = result.data.invitation as SerializedInvitation;
+      setInvitations((current) => [invitation, ...current]);
       setInviteForm((current) => ({
         email: "",
         role: current.role,
       }));
       setNotice({
-        message: `${labels.successPrefix} ${body.invitation.email} ${labels.successSuffix}`,
+        message: `${labels.successPrefix} ${invitation.email} ${labels.successSuffix}`,
         tone: "success",
       });
     } catch (error) {

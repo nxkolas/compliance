@@ -114,6 +114,7 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
     versionLabel: release.versionLabel,
     evaluatorKind: release.evaluatorKind,
     evaluatorVersion: release.evaluatorVersion,
+    requiredCorpusFamilies: release.requiredCorpusFamilies,
     components: hashes,
   });
 

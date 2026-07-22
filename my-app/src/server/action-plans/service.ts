@@ -10,7 +10,8 @@ import {
   organizationMemberships,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import * as z from "zod";
 import { ApiError } from "../api/errors";
 import { getGapRevisionStaleness } from "../gap-analysis/staleness";
 import {
@@ -18,6 +19,7 @@ import {
   assertCanContributeToOrganization,
   assertCanManageOrganization,
 } from "../organizations/service";
+import { getCursorCodec } from "../api/pagination";
 
 type PlanSourceFinding = {
   id: string;
@@ -191,25 +193,54 @@ export async function getActionPlanHistory(
   userId: string,
   organizationId: string,
 ) {
-  await assertCanAccessOrganization(userId, organizationId);
+  return (await getActionPlanHistoryPage({ userId, organizationId, limit: 50 })).plans;
+}
+
+const actionPlanCursorSchema = z.tuple([z.number().int().nonnegative(), z.uuid()]);
+export async function getActionPlanHistoryPage(input: { userId: string; organizationId: string; limit: number; cursor?: string }) {
+  await assertCanAccessOrganization(input.userId, input.organizationId);
+  const scope = `action-plan-history:${input.organizationId}`;
+  const cursor = input.cursor ? actionPlanCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const plans = await db.query.actionPlans.findMany({
     where: and(
-      eq(actionPlans.organizationId, organizationId),
+      eq(actionPlans.organizationId, input.organizationId),
       inArray(actionPlans.status, ["superseded", "archived"]),
+      cursor ? or(lt(actionPlans.revisionNumber, cursor[0]), and(eq(actionPlans.revisionNumber, cursor[0]), lt(actionPlans.id, cursor[1]))) : undefined,
     ),
-    orderBy: [desc(actionPlans.revisionNumber)],
+    orderBy: [desc(actionPlans.revisionNumber), desc(actionPlans.id)],
+    limit: input.limit + 1,
   });
-  if (!plans.length) return [];
+  const page = plans.slice(0, input.limit);
+  if (!page.length) return { plans: [], nextCursor: undefined };
   const items = await db.query.actionPlanItems.findMany({
     where: inArray(
       actionPlanItems.actionPlanId,
-      plans.map((plan) => plan.id),
+      page.map((plan) => plan.id),
     ),
   });
-  return plans.map((plan) => ({
+  const result = page.map((plan) => ({
     plan,
     items: items.filter((item) => item.actionPlanId === plan.id),
   }));
+  const last = page.at(-1);
+  return { plans: result, nextCursor: plans.length > input.limit && last ? getCursorCodec().encode(scope, [last.revisionNumber, last.id]) : undefined };
+}
+
+export async function getActionPlanDetail(
+  userId: string,
+  organizationId: string,
+  planId: string,
+) {
+  await assertCanAccessOrganization(userId, organizationId);
+  const plan = await db.query.actionPlans.findFirst({
+    where: and(eq(actionPlans.id, planId), eq(actionPlans.organizationId, organizationId)),
+  });
+  if (!plan) throw new ApiError(404, "Action plan not found", undefined, "ACTION_PLAN_NOT_FOUND");
+  const items = await db.query.actionPlanItems.findMany({
+    where: eq(actionPlanItems.actionPlanId, plan.id),
+    orderBy: [desc(actionPlanItems.priority), actionPlanItems.createdAt],
+  });
+  return { plan, items };
 }
 
 export async function updateActionPlanItem(input: {
@@ -219,6 +250,7 @@ export async function updateActionPlanItem(input: {
   status?: "open" | "in_progress" | "done" | "cancelled";
   ownerUserId?: string | null;
   dueDate?: string | null;
+  expectedVersion: number;
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const row = await db
@@ -256,22 +288,25 @@ export async function updateActionPlanItem(input: {
     updatedAt,
   };
   return db.transaction(async (tx) => {
-    const [lockedPlan] = await tx
-      .update(actionPlans)
-      .set({ updatedAt })
-      .where(
-        and(
-          eq(actionPlans.id, current.plan.id),
-          eq(actionPlans.status, "active"),
-        ),
-      )
-      .returning({ id: actionPlans.id });
-    if (!lockedPlan) throw new ApiError(409, "The action plan is no longer active");
     const [updated] = await tx
       .update(actionPlanItems)
-      .set(changes)
-      .where(eq(actionPlanItems.id, input.itemId))
+      .set({ ...changes, version: sql`${actionPlanItems.version} + 1` })
+      .where(
+        and(
+          eq(actionPlanItems.id, input.itemId),
+          eq(actionPlanItems.version, input.expectedVersion),
+        ),
+      )
       .returning();
+    if (!updated) {
+      throw new ApiError(412, "The action-plan item changed", { currentVersion: current.item.version }, "PRECONDITION_FAILED");
+    }
+    const [lockedPlan] = await tx
+      .update(actionPlans)
+      .set({ updatedAt, version: sql`${actionPlans.version} + 1` })
+      .where(and(eq(actionPlans.id, current.plan.id), eq(actionPlans.status, "active")))
+      .returning({ id: actionPlans.id });
+    if (!lockedPlan) throw new ApiError(409, "The action plan is no longer active", undefined, "ACTION_PLAN_NOT_ACTIVE");
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,

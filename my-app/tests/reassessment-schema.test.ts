@@ -6,6 +6,7 @@ import {
   actionPlanReconciliations,
   gapReassessmentDraftDocuments,
   gapReassessmentDrafts,
+  gapFindingEvidenceSourceTypeEnum,
   gapRequirements,
 } from "@/src/db/schema";
 
@@ -22,5 +23,11 @@ describe("reassessment schema", () => {
     for (const table of tables) {
       expect(getTableConfig(table).enableRLS).toBe(true);
     }
+  });
+
+  it("links a reassessment to its durable generation job and supports legal citations", () => {
+    const config = getTableConfig(gapReassessmentDrafts);
+    expect(config.columns.some((column) => column.name === "generation_job_id")).toBe(true);
+    expect(gapFindingEvidenceSourceTypeEnum.enumValues).toContain("legal_source_chunk");
   });
 });

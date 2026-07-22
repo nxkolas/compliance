@@ -128,3 +128,12 @@ export async function createOrOpenGapAssessment(
     return assessment;
   });
 }
+
+export async function getGapAssessment(userId: string, organizationId: string, assessmentId: string) {
+  await assertCanContributeToOrganization(userId, organizationId);
+  const assessment = await db.query.assessments.findFirst({ where: and(
+    eq(assessments.id, assessmentId), eq(assessments.organizationId, organizationId),
+  ) });
+  if (!assessment) throw new ApiError(404, "Gap assessment not found", undefined, "GAP_ASSESSMENT_NOT_FOUND");
+  return assessment;
+}

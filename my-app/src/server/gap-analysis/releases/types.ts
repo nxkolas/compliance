@@ -36,6 +36,7 @@ export type GapAnalysisReleaseDefinition = {
   versionLabel: string;
   title: LocalizedText;
   compatibleCheck: { checkCode: string; versionLabel: string };
+  requiredCorpusFamilies: string[];
   defaultLocale: "de" | "en";
   prompt: {
     name: string;

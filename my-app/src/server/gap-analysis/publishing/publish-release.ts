@@ -6,6 +6,7 @@ import {
   contentRevisions,
   contentTranslations,
   gapAnalysisReleaseApplicabilityRules,
+  gapAnalysisReleaseCorpusReleases,
   gapAnalysisReleases,
   gapRequirements,
   gapRequirementSetMembers,
@@ -21,6 +22,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { contentHash } from "../../compliance/publishing/canonical-json";
 import type { GapAnalysisReleaseDefinition, LocalizedText } from "../releases/types";
 import { compileGapAnalysisRelease } from "./compile-release";
+import { resolvePublishableCorpusPins } from "../../corpus/pinning";
 
 export async function publishGapAnalysisRelease(
   definition: GapAnalysisReleaseDefinition,
@@ -39,6 +41,10 @@ export async function publishGapAnalysisRelease(
   }
 
   return db.transaction(async (tx) => {
+    const corpus = await resolvePublishableCorpusPins(
+      tx,
+      definition.requiredCorpusFamilies,
+    );
     const compatibleRelease = await tx.query.complianceCheckReleases.findFirst({
       where: and(
         eq(complianceCheckReleases.checkCode, definition.compatibleCheck.checkCode),
@@ -273,10 +279,18 @@ export async function publishGapAnalysisRelease(
         defaultLocale: definition.defaultLocale,
         status: "published",
         aggregateHash: compiled.hashes.aggregate,
+        corpusReleaseSetHash: corpus.releaseSetHash,
         publishedAt: new Date(),
       })
       .returning();
     if (!release) throw new Error("Could not create gap release");
+    await tx.insert(gapAnalysisReleaseCorpusReleases).values(
+      corpus.pins.map((pin) => ({
+        gapAnalysisReleaseId: release.id,
+        familyId: pin.familyId,
+        corpusReleaseId: pin.releaseId,
+      })),
+    );
     await tx.insert(gapAnalysisReleaseApplicabilityRules).values(
       definition.requirementSet.requirements.map((source) => ({
         gapAnalysisReleaseId: release.id,

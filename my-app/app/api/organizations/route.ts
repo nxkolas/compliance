@@ -1,36 +1,34 @@
+import { connection } from "next/server";
+import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
-import { getErrorResponse } from "@/src/server/api/errors";
-import { readJsonBody } from "@/src/server/api/request";
-import {
-  createOrganizationForUser,
-  listOrganizationsForUser,
-} from "@/src/server/organizations/service";
-import { createOrganizationSchema } from "@/src/server/organizations/validation";
-import { connection, NextResponse } from "next/server";
+import { parseInput, readJsonBody } from "@/src/server/api/request";
+import { createOrganizationForUser, getOrganizationForUser, listOrganizationsForUserPage } from "@/src/server/organizations/service";
+import { paginationQuerySchema } from "@/src/contracts/common/pagination";
+import { organizationInputSchema } from "@/src/contracts/organizations";
+import { runIdempotentCommand } from "@/src/server/api/idempotency";
+import { databaseIdempotencyRepository } from "@/src/server/idempotency/repository";
+import { ApiError } from "@/src/server/api/errors";
 
-export async function GET() {
+export const GET = apiRoute(async ({ request }: { request: Request }) => {
   await connection();
+  const user = await requireApiUser();
+  const query = parseInput(paginationQuerySchema, Object.fromEntries(new URL(request.url).searchParams));
+  const result = await listOrganizationsForUserPage({ userId: user.id, ...query });
+  return { data: { organizations: result.organizations }, meta: { nextCursor: result.nextCursor } };
+});
 
-  try {
-    const user = await requireApiUser();
-    const organizations = await listOrganizationsForUser(user.id);
-
-    return NextResponse.json({ organizations });
-  } catch (error) {
-    const response = getErrorResponse(error);
-    return NextResponse.json(response.body, { status: response.status });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const user = await requireApiUser();
-    const body = await readJsonBody(request, createOrganizationSchema);
-    const organization = await createOrganizationForUser(user.id, body);
-
-    return NextResponse.json({ organization }, { status: 201 });
-  } catch (error) {
-    const response = getErrorResponse(error);
-    return NextResponse.json(response.body, { status: response.status });
-  }
-}
+export const POST = apiRoute(async ({ request }) => {
+  const user = await requireApiUser();
+  const body = await readJsonBody(request, organizationInputSchema);
+  const result = await runIdempotentCommand({
+    repository: databaseIdempotencyRepository, request, actorKey: user.id, scope: "organizations", operation: "organization.create",
+    requestInput: body, resultType: "organization", responseStatus: 201,
+    execute: () => createOrganizationForUser(user.id, body), resultId: (organization) => organization.id,
+    replay: async (id) => {
+      const organization = await getOrganizationForUser(user.id, id);
+      if (!organization) throw new ApiError(409, "Created organization is unavailable", undefined, "IDEMPOTENCY_RESULT_UNAVAILABLE");
+      return organization;
+    },
+  });
+  return { status: 201, data: { organization: result.value, reused: result.reused }, meta: { version: result.value.version } };
+});

@@ -9,7 +9,24 @@ export async function readJsonBody<T>(
 
   return parseInput(schema, body, "Invalid request body");
 }
-
+export async function readOptionalJsonBody<T>(
+  request: Request,
+  schema: z.ZodType<T>,
+): Promise<T> {
+  let text: string;
+  try {
+    text = await request.text();
+  } catch {
+    throw new ApiError(400, "Invalid request body");
+  }
+  if (!text.trim()) return parseInput(schema, {}, "Invalid request body");
+  try {
+    return parseInput(schema, JSON.parse(text), "Invalid request body");
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(400, "Invalid JSON body");
+  }
+}
 export function parseInput<T>(
   schema: z.ZodType<T>,
   input: unknown,
@@ -30,12 +47,4 @@ async function readRawJsonBody(request: Request): Promise<unknown> {
   } catch {
     throw new ApiError(400, "Invalid JSON body");
   }
-}
-
-export function requireString(value: unknown, fieldName: string) {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    throw new ApiError(400, `${fieldName} is required`);
-  }
-
-  return value.trim();
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildGapModelResponseSchema,
   deriveFindingSeverity,
+  normalizeGroundedGapModelResponse,
   validateGapModelResponse,
   type SuppliedCitation,
 } from "@/src/server/gap-analysis/generation-schema";
@@ -26,6 +28,17 @@ function finding(overrides: Record<string, unknown> = {}) {
 }
 
 describe("gap generation validation", () => {
+  it("constrains structured output to every requested requirement", () => {
+    const schema = buildGapModelResponseSchema(["R1", "R2"]);
+    const payload: Record<string, unknown> = finding();
+    delete payload.requirementCode;
+    expect(() => schema.parse({ findings: { R1: payload } })).toThrow();
+    expect(() => schema.parse({ findings: { R1: payload, R2: payload, R3: payload } })).toThrow();
+    const parsed = schema.parse({ findings: { R1: payload, R2: payload } });
+    expect(normalizeGroundedGapModelResponse(parsed).findings.map((item) => item.requirementCode))
+      .toEqual(["R1", "R2"]);
+  });
+
   it("accepts exact coverage and supplied immutable citations", () => {
     expect(
       validateGapModelResponse({

@@ -10,13 +10,13 @@ import {
   gapRequirementVersions,
   generatedArtifactRevisions,
   generatedArtifacts,
-  organizationMemberships,
   questionOptions,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getOrganizationDocumentLibrary } from "../documents/service";
-import { assertCanAccessOrganization } from "../organizations/service";
+import { requireOrganizationCapability } from "../auth/capability-service";
+import { hasOrganizationCapability } from "../auth/capabilities";
 import { getActiveGapAnalysisRelease } from "./release-loader";
 import { getGapReassessmentDraft } from "./reassessment-service";
 import { getGapRevisionStaleness } from "./staleness";
@@ -27,18 +27,15 @@ export async function getGapAnalysisWorkflow(input: {
   organizationId: string;
   locale: Locale;
 }) {
-  await assertCanAccessOrganization(input.userId, input.organizationId);
-  const membership = await db.query.organizationMemberships.findFirst({
-    where: and(
-      eq(organizationMemberships.organizationId, input.organizationId),
-      eq(organizationMemberships.userId, input.userId),
-      eq(organizationMemberships.status, "active"),
-    ),
-  });
+  const membership = await requireOrganizationCapability(
+    input.userId,
+    input.organizationId,
+    "gap:read",
+  );
   const permissions = {
-    role: membership?.role ?? "auditor" as const,
-    canContribute: membership?.role !== "auditor",
-    canManage: membership?.role === "owner" || membership?.role === "admin",
+    role: membership.role,
+    canContribute: hasOrganizationCapability(membership.role, "gap:contribute"),
+    canManage: hasOrganizationCapability(membership.role, "gap:approve"),
   };
   const documentLibrary = await getOrganizationDocumentLibrary(
     input.userId,
@@ -142,6 +139,11 @@ export async function getGapAnalysisWorkflow(input: {
     ? await db.query.aiProcessingRuns.findFirst({
         where: eq(aiProcessingRuns.id, reassessment.draft.aiProcessingRunId),
       })
+    : reassessment?.draft.generationJobId
+      ? await db.query.aiProcessingRuns.findFirst({
+          where: eq(aiProcessingRuns.jobId, reassessment.draft.generationJobId),
+          orderBy: [desc(aiProcessingRuns.createdAt)],
+        })
     : assessment?.currentRevisionId
       ? await db.query.aiProcessingRuns.findFirst({
           where: and(
@@ -209,6 +211,33 @@ export async function getGapAnalysisWorkflow(input: {
     candidateStaleness,
     staleness: candidateRevision ? candidateStaleness : acceptedStaleness,
   };
+}
+
+export async function getGapAnalysisRevision(input: {
+  userId: string;
+  organizationId: string;
+  revisionId: string;
+}) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "gap:read");
+  const [row] = await db.select({ revision: generatedArtifactRevisions })
+    .from(generatedArtifactRevisions)
+    .innerJoin(generatedArtifacts, eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id))
+    .where(and(
+      eq(generatedArtifactRevisions.id, input.revisionId),
+      eq(generatedArtifacts.organizationId, input.organizationId),
+      eq(generatedArtifacts.artifactType, "gap_analysis_result"),
+    ))
+    .limit(1);
+  if (!row) return null;
+  const [findings, staleness] = await Promise.all([
+    loadFindings(row.revision.id),
+    getGapRevisionStaleness({
+      userId: input.userId,
+      organizationId: input.organizationId,
+      revisionId: row.revision.id,
+    }),
+  ]);
+  return { revision: row.revision, findings, staleness };
 }
 
 async function loadFindings(revisionId: string | null | undefined) {

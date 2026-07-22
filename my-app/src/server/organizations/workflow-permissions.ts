@@ -1,13 +1,14 @@
 import type { OrganizationRole } from "./types";
+import { hasOrganizationCapability } from "../auth/capabilities";
 
 export function canManageOrganizationWorkflow(role: OrganizationRole) {
-  return role === "owner" || role === "admin";
+  return hasOrganizationCapability(role, "plans:manage");
 }
 
 export function canContributeToOrganizationWorkflow(role: OrganizationRole) {
-  return canManageOrganizationWorkflow(role) || role === "member";
+  return hasOrganizationCapability(role, "plans:contribute");
 }
 
 export function canReviewOrganizationWorkflow(role: OrganizationRole) {
-  return role === "owner" || role === "admin" || role === "auditor";
+  return hasOrganizationCapability(role, "gap:review");
 }

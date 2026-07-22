@@ -8,7 +8,8 @@ import {
   getActionPlanHistory,
 } from "@/src/server/action-plans/service";
 import { getActionPlanReconciliation } from "@/src/server/action-plans/reconciliation-service";
-import { assertCanAccessOrganization } from "@/src/server/organizations/service";
+import { assertCanAccessOrganization, listOrganizationMembers } from "@/src/server/organizations/service";
+import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
 import { connection } from "next/server";
 
 export default async function ActionPlanPage({
@@ -21,11 +22,12 @@ export default async function ActionPlanPage({
   const dictionary = await getDictionary();
   const { organizationId } = await params;
   const membership = await assertCanAccessOrganization(user.id, organizationId);
-  const [current, approvedRevision, reconciliation, history] = await Promise.all([
+  const [current, approvedRevision, reconciliation, history, members] = await Promise.all([
     getCurrentActionPlan(user.id, organizationId),
     getCurrentApprovedGapRevision(user.id, organizationId),
     getActionPlanReconciliation(user.id, organizationId),
     getActionPlanHistory(user.id, organizationId),
+    listOrganizationMembers(user.id, organizationId),
   ]);
 
   return (
@@ -40,9 +42,10 @@ export default async function ActionPlanPage({
         reconciliation={reconciliation}
         history={history}
         approvedGapRevisionId={approvedRevision?.id ?? null}
-        canManage={membership.role === "owner" || membership.role === "admin"}
-        canContribute={membership.role !== "auditor"}
+        canManage={hasOrganizationCapability(membership.role, "plans:manage")}
+        canContribute={hasOrganizationCapability(membership.role, "plans:contribute")}
         labels={dictionary.modules.actionPlan.workflow}
+        members={members.map(({ userId, status }) => ({ userId, status }))}
       />
     </section>
   );

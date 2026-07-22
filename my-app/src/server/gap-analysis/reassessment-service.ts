@@ -5,6 +5,7 @@ import {
   assessmentRevisions,
   assessments,
   auditEvents,
+  backgroundJobs,
   documentEmbeddingGenerations,
   documentExtractions,
   documentVersions,
@@ -13,6 +14,7 @@ import {
   gapReassessmentDrafts,
   generatedArtifactRevisions,
   generatedArtifacts,
+  idempotencyRecords,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
@@ -22,15 +24,11 @@ import {
   assertCanContributeToOrganization,
 } from "../organizations/service";
 import { generateGapAnalysis } from "./generation-service";
-import type { DocumentEmbeddingProvider } from "../documents/embeddings";
-import type { GapGenerationModel } from "./model";
 import { loadGapAnalysisRelease } from "./release-loader";
 import { buildReassessmentEvidenceSelection } from "./reassessment-selection";
-
-type GenerationDependencies = {
-  model?: GapGenerationModel;
-  embeddingProvider?: DocumentEmbeddingProvider;
-};
+import { fingerprintRequest } from "../api/idempotency";
+import { toJobDto } from "../jobs/service";
+import { retryableGapReassessmentStatuses } from "@/src/contracts/gap-analysis/generation";
 
 export async function prepareGapReassessment(input: {
   userId: string;
@@ -327,12 +325,11 @@ export async function generateGapReassessment(
     draftId: string;
     expectedLockVersion: number;
     locale: Locale;
+    idempotencyKey: string;
   },
-  dependencies: GenerationDependencies = {},
 ) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
-  const draft = await lockDraftForGeneration(input);
-  return runLockedDraft(draft, input, dependencies);
+  return enqueueDraftGeneration({ ...input, operation: "generate" });
 }
 
 export async function retryGapReassessment(
@@ -342,63 +339,78 @@ export async function retryGapReassessment(
     draftId: string;
     locale: Locale;
     retryNonce: string;
+    idempotencyKey: string;
   },
-  dependencies: GenerationDependencies = {},
 ) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const failedDraft = await db.query.gapReassessmentDrafts.findFirst({
     where: and(
       eq(gapReassessmentDrafts.id, input.draftId),
       eq(gapReassessmentDrafts.organizationId, input.organizationId),
-      eq(gapReassessmentDrafts.status, "failed"),
+      inArray(gapReassessmentDrafts.status, [...retryableGapReassessmentStatuses]),
     ),
   });
   if (!failedDraft) {
-    throw new ApiError(409, "Only a failed reassessment can be retried");
+    throw new ApiError(409, "Only a failed or cancelled reassessment can be retried");
   }
-  const draft = await db.transaction(async (tx) => {
-    await lockAssessmentGenerationSlot(tx, failedDraft);
-    const [locked] = await tx
-      .update(gapReassessmentDrafts)
-      .set({ status: "locked", lockedAt: new Date(), updatedAt: new Date() })
-      .where(
-        and(
-          eq(gapReassessmentDrafts.id, input.draftId),
-          eq(gapReassessmentDrafts.organizationId, input.organizationId),
-          eq(gapReassessmentDrafts.status, "failed"),
-        ),
-      )
-      .returning();
-    if (!locked) return null;
-    await tx.insert(auditEvents).values({
-      organizationId: input.organizationId,
-      actorUserId: input.userId,
-      eventType: "gap_reassessment.retry_started",
-      entityType: "gap_reassessment_draft",
-      entityId: input.draftId,
-      metadata: { retryNonce: input.retryNonce },
-    });
-    return locked;
-  });
-  if (!draft) throw new ApiError(409, "Only a failed reassessment can be retried");
-  return runLockedDraft(draft, input, dependencies, input.retryNonce);
+  return enqueueDraftGeneration({ ...input, operation: "retry", failedDraft });
 }
 
-async function lockDraftForGeneration(input: {
+async function enqueueDraftGeneration(input: {
   userId: string;
   organizationId: string;
   draftId: string;
-  expectedLockVersion: number;
+  expectedLockVersion?: number;
+  locale: Locale;
+  idempotencyKey: string;
+  operation: "generate" | "retry";
+  retryNonce?: string;
+  failedDraft?: typeof gapReassessmentDrafts.$inferSelect;
 }) {
-  const openDraft = await db.query.gapReassessmentDrafts.findFirst({
+  const candidate = input.failedDraft ?? await db.query.gapReassessmentDrafts.findFirst({
     where: and(
       eq(gapReassessmentDrafts.id, input.draftId),
       eq(gapReassessmentDrafts.organizationId, input.organizationId),
     ),
   });
-  if (!openDraft) throw new ApiError(404, "Reassessment draft not found");
-  const draft = await db.transaction(async (tx) => {
-    await lockAssessmentGenerationSlot(tx, openDraft);
+  if (!candidate) throw new ApiError(404, "Reassessment draft not found");
+  const requestFingerprint = fingerprintRequest({
+    draftId: input.draftId,
+    expectedLockVersion: input.expectedLockVersion,
+    retryNonce: input.retryNonce,
+  });
+  return db.transaction(async (tx) => {
+    const claimValues = {
+      actorKey: input.userId,
+      organizationId: input.organizationId,
+      scope: `organization:${input.organizationId}:gap-reassessment`,
+      operation: input.operation,
+      key: input.idempotencyKey,
+      requestFingerprint,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    };
+    const [claimed] = await tx.insert(idempotencyRecords).values(claimValues).onConflictDoNothing().returning();
+    if (!claimed) {
+      const existing = await tx.query.idempotencyRecords.findFirst({
+        where: and(
+          eq(idempotencyRecords.actorKey, claimValues.actorKey),
+          eq(idempotencyRecords.scope, claimValues.scope),
+          eq(idempotencyRecords.operation, claimValues.operation),
+          eq(idempotencyRecords.key, claimValues.key),
+        ),
+      });
+      if (!existing || existing.requestFingerprint !== requestFingerprint) {
+        throw new ApiError(409, "Idempotency key was reused with different input", undefined, "IDEMPOTENCY_KEY_REUSED");
+      }
+      if (existing.state !== "succeeded" || existing.resultType !== "background_job" || !existing.resultId) {
+        throw new ApiError(409, "Generation enqueue is still in progress", undefined, "IDEMPOTENCY_IN_PROGRESS");
+      }
+      const replayJob = await tx.query.backgroundJobs.findFirst({ where: eq(backgroundJobs.id, existing.resultId) });
+      const replayDraft = await tx.query.gapReassessmentDrafts.findFirst({ where: eq(gapReassessmentDrafts.id, input.draftId) });
+      if (!replayJob || !replayDraft) throw new ApiError(409, "Generation replay target is unavailable", undefined, "IDEMPOTENCY_RESULT_MISSING");
+      return { draft: replayDraft, job: toJobDto(replayJob), reused: true };
+    }
+    await lockAssessmentGenerationSlot(tx, candidate);
     const [locked] = await tx
       .update(gapReassessmentDrafts)
       .set({ status: "locked", lockedAt: new Date(), updatedAt: new Date() })
@@ -406,24 +418,45 @@ async function lockDraftForGeneration(input: {
         and(
           eq(gapReassessmentDrafts.id, input.draftId),
           eq(gapReassessmentDrafts.organizationId, input.organizationId),
-          eq(gapReassessmentDrafts.status, "open"),
-          eq(gapReassessmentDrafts.lockVersion, input.expectedLockVersion),
+          input.operation === "generate"
+            ? eq(gapReassessmentDrafts.status, "open")
+            : inArray(gapReassessmentDrafts.status, [...retryableGapReassessmentStatuses]),
+          ...(input.operation === "generate" && input.expectedLockVersion
+            ? [eq(gapReassessmentDrafts.lockVersion, input.expectedLockVersion)]
+            : []),
         ),
       )
       .returning();
-    if (!locked) return null;
+    if (!locked) throw new ApiError(409, "Reassessment draft changed before generation");
+    const [job] = await tx.insert(backgroundJobs).values({
+      organizationId: input.organizationId,
+      requestedByUserId: input.userId,
+      kind: "gap-generation",
+      payload: { draftId: locked.id, locale: input.locale, retryNonce: input.retryNonce },
+      cancellable: true,
+      cancellationCapability: "gap:contribute",
+      maxAttempts: 1,
+    }).returning();
+    const [linkedDraft] = await tx.update(gapReassessmentDrafts).set({
+      generationJobId: job.id,
+      aiProcessingRunId: null,
+      outputGapRevisionId: null,
+      completedAt: null,
+      updatedAt: new Date(),
+    }).where(eq(gapReassessmentDrafts.id, locked.id)).returning();
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
-      eventType: "gap_reassessment.locked",
+      eventType: input.operation === "retry" ? "gap_reassessment.retry_enqueued" : "gap_reassessment.generation_enqueued",
       entityType: "gap_reassessment_draft",
       entityId: input.draftId,
-      metadata: { lockVersion: input.expectedLockVersion },
+      metadata: { lockVersion: input.expectedLockVersion, retryNonce: input.retryNonce, jobId: job.id },
     });
-    return locked;
+    await tx.update(idempotencyRecords).set({
+      state: "succeeded", responseStatus: 202, resultType: "background_job", resultId: job.id, updatedAt: new Date(),
+    }).where(eq(idempotencyRecords.id, claimed.id));
+    return { draft: linkedDraft, job: toJobDto(job), reused: false };
   });
-  if (!draft) throw new ApiError(409, "Reassessment draft changed before generation");
-  return draft;
 }
 
 async function lockAssessmentGenerationSlot(
@@ -525,8 +558,9 @@ async function lockEligibleEvidenceSelection(
 async function runLockedDraft(
   draft: typeof gapReassessmentDrafts.$inferSelect,
   input: { userId: string; organizationId: string; locale: Locale },
-  dependencies: GenerationDependencies,
   retryNonce?: string,
+  jobId?: string,
+  deferFailure = false,
 ) {
   const selected = await db.query.gapReassessmentDraftDocuments.findMany({
     where: eq(gapReassessmentDraftDocuments.draftId, draft.id),
@@ -541,13 +575,14 @@ async function runLockedDraft(
         selectedDocumentVersionIds: selected.map((item) => item.documentVersionId),
         locale: input.locale,
         retryNonce,
+        jobId,
+        asOfDate: draft.lockedAt?.toISOString().slice(0, 10),
       },
-      dependencies,
     );
     if (!result.artifactRevision) {
       throw new ApiError(409, "Generation did not produce a candidate revision");
     }
-    await db.transaction(async (tx) => {
+    if (!jobId) await db.transaction(async (tx) => {
       await tx
         .update(gapReassessmentDrafts)
         .set({
@@ -557,7 +592,7 @@ async function runLockedDraft(
           completedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(gapReassessmentDrafts.id, draft.id));
+        .where(and(eq(gapReassessmentDrafts.id, draft.id), eq(gapReassessmentDrafts.status, "locked")));
       await tx.insert(auditEvents).values({
         organizationId: input.organizationId,
         actorUserId: input.userId,
@@ -572,6 +607,7 @@ async function runLockedDraft(
     });
     return result;
   } catch (error) {
+    if (deferFailure) throw error;
     const run = await db.query.aiProcessingRuns.findFirst({
       where: and(
         eq(aiProcessingRuns.organizationId, input.organizationId),
@@ -601,6 +637,30 @@ async function runLockedDraft(
     });
     throw error;
   }
+}
+
+export async function executeGapGenerationJob(input: {
+  jobId: string;
+  draftId: string;
+  userId: string;
+  organizationId: string;
+  locale: Locale;
+  retryNonce?: string;
+}) {
+  const draft = await db.query.gapReassessmentDrafts.findFirst({
+    where: and(
+      eq(gapReassessmentDrafts.id, input.draftId),
+      eq(gapReassessmentDrafts.organizationId, input.organizationId),
+      eq(gapReassessmentDrafts.generationJobId, input.jobId),
+    ),
+  });
+  if (!draft) throw new ApiError(404, "Gap generation draft not found", undefined, "GAP_DRAFT_NOT_FOUND");
+  if (draft.status === "generated" && draft.outputGapRevisionId) {
+    return { type: "generated_artifact_revision", id: draft.outputGapRevisionId };
+  }
+  if (draft.status !== "locked") throw new ApiError(409, "Gap generation draft is not locked", undefined, "GAP_DRAFT_NOT_LOCKED");
+  const result = await runLockedDraft(draft, input, input.retryNonce, input.jobId, true);
+  return { type: "generated_artifact_revision", id: result.artifactRevision!.id };
 }
 
 async function loadPreparationContext(organizationId: string, assessmentId: string) {

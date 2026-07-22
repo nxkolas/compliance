@@ -26,6 +26,9 @@ export function buildGapPrompt(requirements: GapPromptRequirement[]) {
       requirementText: requirement.requirementText,
       criticality: requirement.criticality,
       legalReferences: requirement.legalReferences,
+      legalAuthority: requirement.citations
+        .filter((citation) => citation.sourceType === "legal_source_chunk")
+        .map(toPromptCitation),
       questionnaireAssertions: requirement.citations
         .filter((citation) => citation.sourceType === "assessment_answer")
         .map(toPromptCitation),

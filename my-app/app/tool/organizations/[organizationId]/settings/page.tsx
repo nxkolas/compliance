@@ -14,6 +14,10 @@ import {
 } from "@/src/server/organizations/service";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { OrganizationAiProviderPolicyForm } from "@/components/organizations/organization-ai-provider-policy-form";
+import { getOrganizationAiProviderPolicy } from "@/src/server/organizations/ai-provider-policy-service";
+import { resolveOrganizationCapabilities } from "@/src/server/auth/capability-service";
+import { organizationAiProviderPolicySchema } from "@/src/contracts/organizations";
 
 type OrganizationSettingsPageProps = {
   params: Promise<{
@@ -40,6 +44,10 @@ export default async function OrganizationSettingsPage({
     organizationId,
     locale,
   );
+  const [aiProviderPolicy, authorization] = await Promise.all([
+    getOrganizationAiProviderPolicy(user.id, organizationId),
+    resolveOrganizationCapabilities(user.id, organizationId),
+  ]);
   const settingsLabels = dictionary.organizationSettings;
 
   return (
@@ -55,6 +63,12 @@ export default async function OrganizationSettingsPage({
       <OrganizationSettingsForm
         organization={serializeForClient(organization)}
         labels={dictionary.organizationForm}
+      />
+      <OrganizationAiProviderPolicyForm
+        organizationId={organizationId}
+        policy={organizationAiProviderPolicySchema.parse(serializeForClient(aiProviderPolicy))}
+        canManage={authorization.capabilities.has("organizations:update")}
+        labels={settingsLabels}
       />
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="rounded-lg shadow-sm">

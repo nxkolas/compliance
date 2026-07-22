@@ -14,6 +14,7 @@ import type { OrganizationMailboxInvitationDto } from "@/src/server/organization
 import { Check, Inbox, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { organizationsClient } from "@/src/client/organizations";
 
 type SerializedMailboxInvitation =
   SerializeDates<OrganizationMailboxInvitationDto>;
@@ -63,17 +64,7 @@ export function OrganizationInbox({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch(
-        `/api/organization-invitations/${invitationId}/accept`,
-        {
-          method: "POST",
-        },
-      );
-      const body = (await response.json()) as { error?: string };
-
-      if (!response.ok) {
-        throw new Error(body.error ?? labels.acceptError);
-      }
+      await organizationsClient.acceptInvitation(invitationId);
 
       setInvitations((current) =>
         current.filter((invitation) => invitation.id !== invitationId),

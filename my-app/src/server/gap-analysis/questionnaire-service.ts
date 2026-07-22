@@ -131,6 +131,15 @@ export async function submitGapQuestionnaire(input: {
   });
 }
 
+export async function getGapQuestionnaireRevision(userId: string, organizationId: string, revisionId: string) {
+  await assertCanContributeToOrganization(userId, organizationId);
+  const [row] = await db.select({ revision: assessmentRevisions }).from(assessmentRevisions)
+    .innerJoin(assessments, eq(assessmentRevisions.assessmentId, assessments.id))
+    .where(and(eq(assessmentRevisions.id, revisionId), eq(assessments.organizationId, organizationId))).limit(1);
+  if (!row) throw new ApiError(404, "Gap questionnaire revision not found", undefined, "GAP_QUESTIONNAIRE_REVISION_NOT_FOUND");
+  return row.revision;
+}
+
 function requireQuestion(
   questionsById: Map<string, typeof questions.$inferSelect>,
   id: string,

@@ -13,6 +13,7 @@ import type {
   getActionPlanHistory,
   getCurrentActionPlan,
 } from "@/src/server/action-plans/service";
+import { actionPlansClient } from "@/src/client/action-plans";
 
 type CurrentPlan = Awaited<ReturnType<typeof getCurrentActionPlan>>;
 type Reconciliation = Awaited<ReturnType<typeof getActionPlanReconciliation>>;
@@ -28,6 +29,7 @@ export function ActionPlanWorkflow({
   canManage,
   canContribute,
   labels,
+  members,
 }: {
   organizationId: string;
   current: CurrentPlan;
@@ -37,11 +39,11 @@ export function ActionPlanWorkflow({
   canManage: boolean;
   canContribute: boolean;
   labels: Labels;
+  members: Array<{ userId: string; status: "active" | "suspended" }>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const baseUrl = `/api/organizations/${organizationId}/action-plan`;
   const updateAvailable = Boolean(
     current &&
       approvedGapRevisionId &&
@@ -54,13 +56,11 @@ export function ActionPlanWorkflow({
       ? reconciliation
       : null;
 
-  async function mutate(key: string, url: string, init: RequestInit) {
+  async function mutate(key: string, action: () => Promise<unknown>) {
     setBusy(key);
     setError(null);
     try {
-      const response = await fetch(url, init);
-      const body = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(body.error ?? labels.error);
+      await action();
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : labels.error);
@@ -89,11 +89,7 @@ export function ActionPlanWorkflow({
               <Button
                 disabled={busy !== null}
                 onClick={() =>
-                  mutate("generate", baseUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ approvedGapRevisionId }),
-                  })
+                  mutate("generate", () => actionPlansClient.generate(organizationId, { approvedGapRevisionId }))
                 }
               >
                 {busy === "generate" ? <Loader2 className="animate-spin" /> : <RefreshCw />}
@@ -117,11 +113,7 @@ export function ActionPlanWorkflow({
                   size="sm"
                   disabled={busy !== null}
                   onClick={() =>
-                    mutate("reconcile", `${baseUrl}/reconciliation`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ targetGapRevisionId: approvedGapRevisionId }),
-                    })
+                    mutate("reconcile", () => actionPlansClient.prepareReconciliation(organizationId, { targetGapRevisionId: approvedGapRevisionId! }))
                   }
                 >
                   {busy === "reconcile" ? <Loader2 className="animate-spin" /> : <RefreshCw />}
@@ -146,12 +138,9 @@ export function ActionPlanWorkflow({
                   labels={labels}
                   canContribute={canContribute}
                   busy={busy}
+                  members={members}
                   save={(changes) =>
-                    mutate(`item-${item.id}`, `${baseUrl}/items/${item.id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(changes),
-                    })
+                    mutate(`item-${item.id}`, () => actionPlansClient.updateItem(organizationId, item.id, changes, item.version))
                   }
                 />
               ))
@@ -166,7 +155,7 @@ export function ActionPlanWorkflow({
           labels={labels}
           canManage={canManage}
           busy={busy}
-          baseUrl={baseUrl}
+          organizationId={organizationId}
           mutate={mutate}
         />
       ) : null}
@@ -190,6 +179,7 @@ export function ActionPlanWorkflow({
                       labels={labels}
                       canContribute={false}
                       busy={busy}
+                      members={members}
                       save={async () => undefined}
                     />
                   ))}
@@ -203,13 +193,13 @@ export function ActionPlanWorkflow({
   );
 }
 
-function ReconciliationCard({ reconciliation, labels, canManage, busy, baseUrl, mutate }: {
+function ReconciliationCard({ reconciliation, labels, canManage, busy, organizationId, mutate }: {
   reconciliation: NonNullable<Reconciliation>;
   labels: Labels;
   canManage: boolean;
   busy: string | null;
-  baseUrl: string;
-  mutate: (key: string, url: string, init: RequestInit) => Promise<void>;
+  organizationId: string;
+  mutate: (key: string, action: () => Promise<unknown>) => Promise<void>;
 }) {
   return (
     <Card>
@@ -226,15 +216,9 @@ function ReconciliationCard({ reconciliation, labels, canManage, busy, baseUrl, 
             canManage={canManage}
             busy={busy}
             save={(decision, reason) =>
-              mutate(
-                `decision-${record.id}`,
-                `${baseUrl}/reconciliation/items/${record.id}`,
-                {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ decision, reason }),
-                },
-              )
+              mutate(`decision-${record.id}`, () => actionPlansClient.decide(
+                organizationId, record.id, { decision, reason }, reconciliation.reconciliation.version,
+              ))
             }
           />
         ))}
@@ -243,13 +227,11 @@ function ReconciliationCard({ reconciliation, labels, canManage, busy, baseUrl, 
             className="self-start"
             disabled={busy !== null}
             onClick={() =>
-              mutate("activate", `${baseUrl}/reconciliation/activate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  reconciliationId: reconciliation.reconciliation.id,
-                }),
-              })
+              mutate("activate", () => actionPlansClient.activate(
+                organizationId,
+                { reconciliationId: reconciliation.reconciliation.id },
+                reconciliation.reconciliation.version,
+              ))
             }
           >
             {busy === "activate" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
@@ -335,11 +317,12 @@ function ReconciliationItem({ record, labels, canManage, busy, save }: {
   );
 }
 
-function ActionItem({ item, labels, canContribute, busy, save }: {
+function ActionItem({ item, labels, canContribute, busy, save, members }: {
   item: NonNullable<CurrentPlan>["items"][number];
   labels: Labels;
   canContribute: boolean;
   busy: string | null;
+  members: Array<{ userId: string; status: "active" | "suspended" }>;
   save: (changes: { status: typeof item.status; ownerUserId: string | null; dueDate: string | null }) => Promise<void>;
 }) {
   const [status, setStatus] = useState(item.status);
@@ -367,7 +350,10 @@ function ActionItem({ item, labels, canContribute, busy, save }: {
         </label>
         <label className="grid gap-1 text-sm">
           {labels.owner}
-          <Input value={ownerUserId} onChange={(event) => setOwnerUserId(event.target.value)} disabled={!canContribute} />
+          <select className="h-10 rounded-md border bg-background px-3" value={ownerUserId} onChange={(event) => setOwnerUserId(event.target.value)} disabled={!canContribute}>
+            <option value="">—</option>
+            {members.filter((member) => member.status === "active").map((member) => <option key={member.userId} value={member.userId}>{member.userId}</option>)}
+          </select>
         </label>
         <label className="grid gap-1 text-sm">
           {labels.dueDate}

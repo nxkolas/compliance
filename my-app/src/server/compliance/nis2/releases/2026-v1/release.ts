@@ -456,6 +456,7 @@ export const nis2ReleaseDefinition: Nis2ReleaseDefinition = {
   evaluatorVersion: 3,
   defaultLocale: "de",
   effectiveFrom: "2026-03-17",
+  requiredCorpusFamilies: ["nis2-eu-primary", "nis2-de-primary"],
   content: [...content.values()],
   legalInstruments,
   sectors,

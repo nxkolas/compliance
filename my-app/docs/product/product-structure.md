@@ -40,7 +40,8 @@ als gemeinsame Evidenzquelle für Gap-Neubewertungen.
 - Unterstützt werden Text-PDF, DOCX, TXT und Markdown bis 10 MB.
 - Ein Dokument besitzt unveränderliche Versionen und genau einen aktuellen
   Versionszeiger.
-- Upload, Textextraktion, Chunking und Embeddings laufen derzeit synchron.
+- Direkte Upload-Sessions verifizieren die private Speicherung; unveränderliche
+  Versionen werden anschließend verarbeitet und indexiert.
 - Neue Versionen ersetzen historische Versionen nicht.
 - Archivierung entfernt ein Dokument aus zukünftigen Auswahlen, löscht aber
   keine bereits zitierte Evidenz.
@@ -65,10 +66,11 @@ Betroffenheitscheck.
    Assessment-Revision.
 3. Er bereitet einen gemeinsamen Neubewertungsentwurf mit den vollständigen
    Dokumentversionen vor.
-4. Erst die ausdrückliche Generierung sperrt die Eingaben und ruft das Modell
-   auf.
-5. Die KI bewertet nur die serverseitig ausgewählten Anforderungen und darf
-   weder Anwendbarkeit noch Priorität bestimmen.
+4. Erst die ausdrückliche Generierung sperrt die Eingaben und stellt einen
+   dauerhaften Worker-Job in die Warteschlange.
+5. Der Grounding Gateway recherchiert ausschließlich in gepinnten, freigegebenen
+   Rechtsquellen und Organisationsevidenz. Die KI darf weder Anwendbarkeit noch
+   Priorität bestimmen und jede Rechtsbehauptung benötigt ein gültiges Zitat.
 6. Owner/Admins korrigieren und genehmigen die Kandidatenrevision.
 
 Das zuletzt genehmigte Ergebnis bleibt über
@@ -103,14 +105,11 @@ erzeugt; dafür erfolgt kein weiterer KI-Aufruf.
 Die Daten liegen in `action_plans`, `action_plan_items`,
 `action_plan_reconciliations` und `action_plan_item_reconciliations`.
 
-## Noch nicht umgesetzt
+## Weitere Ausbaustufen
 
 - ein fachlich vollständiger und rechtlich geprüfter NIS2-Anforderungskatalog;
 - OCR und Unterstützung gescannter PDFs oder Bildnachweise;
-- Hintergrundjobs für Extraktion, Embeddings und Gap-Generierung;
 - automatische KI-Aufrufe nach Upload oder Dokumentänderungen;
-- Dashboard-Auswertungen über den aktuellen Basisumfang hinaus;
-- PDF-Berichtsexport;
 - Benachrichtigungen, Kommentare und eine komfortable Benutzer-Auswahl für
   Maßnahmenverantwortliche; und
 - ein Gastzugang für die Gap-Analyse.

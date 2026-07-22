@@ -5,6 +5,7 @@ import {
   complianceCheckReleaseContentRevisions,
   complianceCheckReleaseFactVersions,
   complianceCheckReleaseProfiles,
+  complianceCheckReleaseCorpusReleases,
   complianceCheckReleases,
   jurisdictionEntityTypeMappings,
   jurisdictionEntityTypeVersions,
@@ -34,7 +35,7 @@ export async function activateComplianceRelease(
       throw new Error(`Release ${checkCode}/${versionLabel} is not complete and published`);
     }
 
-    const [ruleSet, questionnaireVersion, scopeModelVersion, thresholdSet, profileLinks, factLinks, contentLinks] = await Promise.all([
+    const [ruleSet, questionnaireVersion, scopeModelVersion, thresholdSet, profileLinks, factLinks, contentLinks, corpusPins] = await Promise.all([
       tx.query.ruleSets.findFirst({ where: eq(ruleSets.id, release.ruleSetId) }),
       tx.query.questionnaireVersions.findFirst({ where: eq(questionnaireVersions.id, release.questionnaireVersionId) }),
       tx.query.scopeModelVersions.findFirst({ where: eq(scopeModelVersions.id, release.scopeModelVersionId) }),
@@ -42,6 +43,7 @@ export async function activateComplianceRelease(
       tx.query.complianceCheckReleaseProfiles.findMany({ where: eq(complianceCheckReleaseProfiles.checkReleaseId, release.id) }),
       tx.query.complianceCheckReleaseFactVersions.findMany({ where: eq(complianceCheckReleaseFactVersions.checkReleaseId, release.id) }),
       tx.query.complianceCheckReleaseContentRevisions.findMany({ where: eq(complianceCheckReleaseContentRevisions.checkReleaseId, release.id) }),
+      tx.query.complianceCheckReleaseCorpusReleases.findMany({ where: eq(complianceCheckReleaseCorpusReleases.checkReleaseId, release.id) }),
     ]);
     const profileVersionIds = profileLinks.map((link) => link.jurisdictionProfileVersionId);
     const [profileVersions, nationalVersions, effectiveStates] = profileVersionIds.length > 0
@@ -75,6 +77,7 @@ export async function activateComplianceRelease(
       thresholdSetPublished: thresholdSet?.status === "published" && Boolean(thresholdSet.publishedAt),
       factVersionCount: factLinks.length,
       contentRevisionCount: contentLinks.length,
+      corpusPinsComplete: Boolean(release.corpusReleaseSetHash && corpusPins.length > 0),
       profiles: profileLinks.map((link) => {
         const profileVersion = profileVersions.find((version) => version.id === link.jurisdictionProfileVersionId);
         const profileNationalVersions = nationalVersions.filter((version) => version.jurisdictionProfileVersionId === link.jurisdictionProfileVersionId);

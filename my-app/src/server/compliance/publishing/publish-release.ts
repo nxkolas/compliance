@@ -3,6 +3,7 @@ import {
   complianceCheckReleaseFactVersions,
   complianceCheckReleaseContentRevisions,
   complianceCheckReleaseProfiles,
+  complianceCheckReleaseCorpusReleases,
   complianceCheckReleases,
   complianceFrameworkVersions,
   complianceFrameworks,
@@ -47,6 +48,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 import { contentHash } from "./canonical-json";
 import { compileRelease } from "./compile-release";
+import { resolvePublishableCorpusPins } from "../../corpus/pinning";
 
 export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
   const compiled = compileRelease(release);
@@ -59,6 +61,10 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
   if (existing) throw new Error(`Release ${release.checkCode}/${release.versionLabel} already exists and cannot be republished`);
 
   return db.transaction(async (tx) => {
+    const corpus = await resolvePublishableCorpusPins(
+      tx,
+      release.requiredCorpusFamilies,
+    );
     const revisionByContentKey = new Map<string, string>();
     for (const source of release.content) {
       await tx.insert(contentItems).values({ stableKey: source.stableKey, format: source.format }).onConflictDoNothing();
@@ -540,8 +546,16 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       effectiveFrom: release.effectiveFrom,
       status: "published",
       aggregateHash: compiled.hashes.aggregate,
+      corpusReleaseSetHash: corpus.releaseSetHash,
       publishedAt: new Date(),
     }).returning();
+    await tx.insert(complianceCheckReleaseCorpusReleases).values(
+      corpus.pins.map((pin) => ({
+        checkReleaseId: checkRelease.id,
+        familyId: pin.familyId,
+        corpusReleaseId: pin.releaseId,
+      })),
+    );
     await tx.insert(complianceCheckReleaseFactVersions).values(
       factVersionIds.map((factDefinitionVersionId) => ({ checkReleaseId: checkRelease.id, factDefinitionVersionId })),
     );

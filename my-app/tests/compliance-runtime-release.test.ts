@@ -225,6 +225,7 @@ function fixtureHeader(): RuntimeReleaseHeader {
       effectiveTo: null,
       status: "published",
       aggregateHash: "hash",
+      corpusReleaseSetHash: null,
       publishedAt: new Date("2026-01-01T00:00:00Z"),
       createdAt: new Date("2026-01-01T00:00:00Z"),
     },

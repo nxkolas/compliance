@@ -130,6 +130,7 @@ export type Nis2ReleaseDefinition = {
   evaluatorVersion: 2 | 3;
   defaultLocale: RequiredLocale;
   effectiveFrom: string;
+  requiredCorpusFamilies: string[];
   content: LocalizedContentSource[];
   legalInstruments: LegalInstrumentSource[];
   sectors: Array<{ code: string; labelContentKey: string }>;

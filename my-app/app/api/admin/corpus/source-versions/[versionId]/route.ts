@@ -1,0 +1,2 @@
+import { requireApiUser } from "@/src/server/api/auth"; import { apiRoute } from "@/src/server/api/handler"; import { getLegalSourceVersion } from "@/src/server/corpus/admin-service";
+export const GET = apiRoute(async ({ routeContext }: { request: Request; routeContext: { params: Promise<{ versionId: string }> } }) => { const user = await requireApiUser(); const { versionId } = await routeContext.params; return { data: await getLegalSourceVersion(user.id, versionId) }; });

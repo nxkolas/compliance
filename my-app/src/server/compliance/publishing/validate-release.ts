@@ -9,6 +9,8 @@ const GENERIC_DESCRIPTION_PATTERNS = [
 
 export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
   const errors: string[] = [];
+  if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
+  if (new Set(release.requiredCorpusFamilies).size !== release.requiredCorpusFamilies.length) errors.push("Required corpus families must be unique");
   const contentByKey = uniqueMap(release.content, (item) => item.stableKey, "content", errors);
   const legalProvisionKeys = new Set<string>();
   const entityCodes = uniqueSet(release.entityTypes.map((item) => item.code), "entity type", errors);

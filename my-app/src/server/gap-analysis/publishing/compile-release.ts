@@ -9,6 +9,8 @@ export function compileGapAnalysisRelease(
   requireNonEmpty(release.releaseCode, "release code", errors);
   requireNonEmpty(release.versionLabel, "version label", errors);
   requireNonEmpty(release.compatibleCheck.checkCode, "compatible check code", errors);
+  unique(release.requiredCorpusFamilies, "required corpus family", errors);
+  if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
   if (release.prompt.templateHash !== GAP_PROMPT_TEMPLATE_HASH) {
     errors.push("Prompt template hash does not match the code-defined prompt");
   }

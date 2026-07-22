@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import type { Dictionary } from "@/lib/i18n";
 import type { getOrganizationDocumentLibrary } from "@/src/server/documents/service";
 import type { getGapReassessmentDraft } from "@/src/server/gap-analysis/reassessment-service";
+import { documentsClient } from "@/src/client/documents";
+import { gapAnalysisClient } from "@/src/client/gap-analysis";
 
 type Library = Awaited<ReturnType<typeof getOrganizationDocumentLibrary>>;
 type Reassessment = Awaited<ReturnType<typeof getGapReassessmentDraft>>;
@@ -58,13 +60,11 @@ export function OrganizationDocumentManager({
   }, [library.documents, query, showArchived]);
   const editingOpenDraft = reassessment?.draft.status === "open";
 
-  async function mutate(key: string, url: string, init: RequestInit) {
+  async function mutate(key: string, action: () => Promise<unknown>) {
     setBusy(key);
     setError(null);
     try {
-      const response = await fetch(url, init);
-      const body = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(body.error ?? labels.error);
+      const body = await action();
       router.refresh();
       return body;
     } catch (caught) {
@@ -77,25 +77,16 @@ export function OrganizationDocumentManager({
 
   async function prepareReassessment() {
     if (!assessmentId) return;
-    const url = `/api/organizations/${organizationId}/gap-analysis/reassessment`;
     const result = editingOpenDraft
-      ? await mutate("prepare", `${url}/evidence`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      ? await mutate("prepare", () => gapAnalysisClient.updateReassessmentEvidence(organizationId, {
             draftId: reassessment.draft.id,
             expectedLockVersion: reassessment.draft.lockVersion,
             selectedDocumentVersionIds: selected,
-          }),
-        })
-      : await mutate("prepare", url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          }))
+      : await mutate("prepare", () => gapAnalysisClient.prepareReassessment(organizationId, {
             assessmentId,
             selectedDocumentVersionIds: selected,
-          }),
-        });
+          }));
     if (result) router.push(`/tool/organizations/${organizationId}/gap-analysis`);
   }
 
@@ -205,11 +196,8 @@ export function OrganizationDocumentManager({
                           size="sm"
                           disabled={busy !== null}
                           onClick={() =>
-                            void mutate(
-                              `archive-${entry.document.id}`,
-                              `/api/organizations/${organizationId}/documents/${entry.document.id}/archive`,
-                              { method: "POST" },
-                            )
+                            void mutate(`archive-${entry.document.id}`, () =>
+                              documentsClient.archive(organizationId, entry.document.id, entry.document.version))
                           }
                         >
                           <Archive /> {labels.archive}
@@ -322,25 +310,24 @@ function ProcessingBadge({
 async function submitNewDocument(
   event: FormEvent<HTMLFormElement>,
   organizationId: string,
-  mutate: (key: string, url: string, init: RequestInit) => Promise<unknown>,
+  mutate: (key: string, action: () => Promise<unknown>) => Promise<unknown>,
 ) {
   event.preventDefault();
-  await mutate("upload", `/api/organizations/${organizationId}/documents`, {
-    method: "POST",
-    body: new FormData(event.currentTarget),
-  });
+  const form = new FormData(event.currentTarget);
+  const file = form.get("file");
+  const title = form.get("title");
+  if (!(file instanceof File) || typeof title !== "string") return;
+  await mutate("upload", () => documentsClient.uploadNew(organizationId, title, file));
 }
 
 async function submitVersion(
   event: FormEvent<HTMLFormElement>,
   organizationId: string,
   documentId: string,
-  mutate: (key: string, url: string, init: RequestInit) => Promise<unknown>,
+  mutate: (key: string, action: () => Promise<unknown>) => Promise<unknown>,
 ) {
   event.preventDefault();
-  await mutate(
-    `version-${documentId}`,
-    `/api/organizations/${organizationId}/documents/${documentId}/versions`,
-    { method: "POST", body: new FormData(event.currentTarget) },
-  );
+  const file = new FormData(event.currentTarget).get("file");
+  if (!(file instanceof File)) return;
+  await mutate(`version-${documentId}`, () => documentsClient.uploadVersion(organizationId, documentId, file));
 }

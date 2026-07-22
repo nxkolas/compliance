@@ -1,21 +1,14 @@
-import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { actionPlanItemUpdateSchema } from "@/src/contracts/action-plans";
 import { requireApiUser } from "@/src/server/api/auth";
-import { getErrorResponse } from "@/src/server/api/errors";
+import { formatEtag, requireIfMatch } from "@/src/server/api/concurrency";
+import { apiRoute } from "@/src/server/api/handler";
 import { readJsonBody } from "@/src/server/api/request";
 import { updateActionPlanItem } from "@/src/server/action-plans/service";
-import { actionPlanItemUpdateSchema } from "@/src/server/gap-analysis/validation";
-
-export async function PATCH(request: Request, context: { params: Promise<{ organizationId: string; itemId: string }> }) {
-  try {
-    const user = await requireApiUser();
-    const { organizationId, itemId } = await context.params;
-    const body = await readJsonBody(request, actionPlanItemUpdateSchema);
-    const item = await updateActionPlanItem({ userId: user.id, organizationId, itemId, ...body });
-    revalidatePath(`/tool/organizations/${organizationId}/action-plan`);
-    return NextResponse.json({ item });
-  } catch (error) {
-    const response = getErrorResponse(error);
-    return NextResponse.json(response.body, { status: response.status });
-  }
-}
+export const PATCH = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string; itemId: string }> } }) => {
+  const user = await requireApiUser(); const params = await routeContext.params;
+  const body = await readJsonBody(request, actionPlanItemUpdateSchema);
+  const item = await updateActionPlanItem({ userId: user.id, ...params, ...body, expectedVersion: requireIfMatch(request) });
+  revalidatePath(`/tool/organizations/${params.organizationId}/action-plan`);
+  return { data: { item }, meta: { version: item!.version }, headers: { etag: formatEtag(item!.version) } };
+});

@@ -2,16 +2,19 @@ import { db } from "@/src/db";
 import {
   assessmentRevisions,
   assessments,
+  auditEvents,
   factOptions,
   organizationFactDefinitions,
   organizationFactValueOptions,
   organizationFactValues,
   organizationInvitations,
+  organizationAiProviderPolicies,
   organizationMemberships,
   organizations,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql } from "drizzle-orm";
+import * as z from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { ApiError } from "../api/errors";
@@ -31,26 +34,36 @@ import type {
   UpdateOrganizationInput,
 } from "./types";
 import {
-  canContributeToOrganizationWorkflow,
-  canManageOrganizationWorkflow,
-} from "./workflow-permissions";
+  requireOrganizationCapability,
+} from "../auth/capability-service";
+import { getCursorCodec } from "../api/pagination";
+import { defaultOrganizationAiProviderPolicy } from "../ai/grounding/provider-policy";
+
+const dateCursorSchema = z.tuple([z.iso.datetime(), z.uuid()]);
 
 const assignableRoles: OrganizationRole[] = ["admin", "member", "auditor"];
 
 export async function listOrganizationsForUser(
   userId: string,
 ): Promise<OrganizationDto[]> {
-  const memberships = await db.query.organizationMemberships.findMany({
-    where: and(
-      eq(organizationMemberships.userId, userId),
-      eq(organizationMemberships.status, "active"),
-    ),
-    with: {
-      organization: true,
-    },
-  });
+  return (await listOrganizationsForUserPage({ userId, limit: 50 })).organizations;
+}
 
-  return memberships.map((membership) => membership.organization);
+export async function listOrganizationsForUserPage(input: { userId: string; limit: number; cursor?: string }) {
+  const scope = `organizations:${input.userId}`;
+  const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
+  const rows = await db.select({ organization: organizations }).from(organizationMemberships)
+    .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
+    .where(and(
+      eq(organizationMemberships.userId, input.userId),
+      eq(organizationMemberships.status, "active"),
+      cursor ? or(lt(organizations.createdAt, new Date(cursor[0])), and(eq(organizations.createdAt, new Date(cursor[0])), lt(organizations.id, cursor[1]))) : undefined,
+    ))
+    .orderBy(desc(organizations.createdAt), desc(organizations.id))
+    .limit(input.limit + 1);
+  const page = rows.slice(0, input.limit).map((row) => row.organization);
+  const last = page.at(-1);
+  return { organizations: page, nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
 }
 
 export async function createOrganizationForUser(
@@ -76,6 +89,23 @@ export async function createOrganizationForUser(
       status: "active",
     });
 
+    await tx.insert(organizationAiProviderPolicies).values({
+      organizationId: organization.id,
+      ...defaultOrganizationAiProviderPolicy,
+      updatedBy: userId,
+    });
+
+    await tx.insert(auditEvents).values({
+      organizationId: organization.id,
+      actorUserId: userId,
+      eventType: "organization.created",
+      entityType: "organization",
+      entityId: organization.id,
+      metadata: {
+        aiProviderPolicy: defaultOrganizationAiProviderPolicy,
+      },
+    });
+
     return organization;
   });
 }
@@ -84,6 +114,7 @@ export async function updateOrganizationForUser(
   userId: string,
   organizationId: string,
   input: UpdateOrganizationInput,
+  expectedVersion: number,
 ): Promise<OrganizationDto> {
   await assertCanManageOrganization(userId, organizationId);
   const name = normalizeRequiredString(input.name, "name");
@@ -94,13 +125,14 @@ export async function updateOrganizationForUser(
       name,
       legalName: normalizeOptionalString(input.legalName),
       country: normalizeCountry(input.country),
+      version: expectedVersion + 1,
       updatedAt: new Date(),
     })
-    .where(eq(organizations.id, organizationId))
+    .where(and(eq(organizations.id, organizationId), eq(organizations.version, expectedVersion)))
     .returning();
 
   if (!organization) {
-    throw new ApiError(404, "Organization not found");
+    throw new ApiError(412, "The organization changed", undefined, "PRECONDITION_FAILED");
   }
 
   return organization;
@@ -122,6 +154,106 @@ export async function getOrganizationForUser(
   });
 
   return membership?.organization ?? null;
+}
+
+export async function archiveOrganization(input: { userId: string; organizationId: string; expectedVersion: number }) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "organizations:archive");
+  const now = new Date();
+  const [organization] = await db.update(organizations).set({
+    archivedAt: now, version: input.expectedVersion + 1, updatedAt: now,
+  }).where(and(eq(organizations.id, input.organizationId), eq(organizations.version, input.expectedVersion))).returning();
+  if (!organization) throw new ApiError(412, "The organization changed", undefined, "PRECONDITION_FAILED");
+  return organization;
+}
+
+export async function restoreOrganization(input: { userId: string; organizationId: string; expectedVersion: number }) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "organizations:archive");
+  const [organization] = await db.update(organizations).set({
+    archivedAt: null, version: input.expectedVersion + 1, updatedAt: new Date(),
+  }).where(and(eq(organizations.id, input.organizationId), eq(organizations.version, input.expectedVersion))).returning();
+  if (!organization) throw new ApiError(412, "The organization changed", undefined, "PRECONDITION_FAILED");
+  return organization;
+}
+
+export async function listOrganizationMembers(userId: string, organizationId: string) {
+  return (await listOrganizationMembersPage({ userId, organizationId, limit: 100 })).members;
+}
+export async function listOrganizationMembersPage(input: { userId: string; organizationId: string; limit: number; cursor?: string }) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "members:read");
+  const scope = `organization-members:${input.organizationId}`;
+  const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
+  const rows = await db.query.organizationMemberships.findMany({
+    where: and(eq(organizationMemberships.organizationId, input.organizationId), cursor ? or(gt(organizationMemberships.createdAt, new Date(cursor[0])), and(eq(organizationMemberships.createdAt, new Date(cursor[0])), gt(organizationMemberships.id, cursor[1]))) : undefined),
+    orderBy: [asc(organizationMemberships.createdAt), asc(organizationMemberships.id)],
+    limit: input.limit + 1,
+  });
+  const members = rows.slice(0, input.limit); const last = members.at(-1);
+  return { members, nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
+}
+
+export async function updateOrganizationMember(input: {
+  userId: string;
+  organizationId: string;
+  memberUserId: string;
+  role: OrganizationRole;
+  status: "active" | "suspended";
+  expectedVersion: number;
+}) {
+  await requireOrganizationCapability(
+    input.userId,
+    input.organizationId,
+    input.userId === input.memberUserId && input.status === "suspended" ? "organizations:read" : "members:manage",
+  );
+  return db.transaction(async (tx) => {
+    // Serialize membership lifecycle changes for one organization. Without this
+    // lock, two owners could each observe the other owner and concurrently
+    // demote/leave, violating the final-owner invariant.
+    const [lockedOrganization] = await tx
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.id, input.organizationId))
+      .for("update");
+    if (!lockedOrganization) {
+      throw new ApiError(404, "Organization not found", undefined, "ORGANIZATION_NOT_FOUND");
+    }
+    const current = await tx.query.organizationMemberships.findFirst({
+      where: and(eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.userId, input.memberUserId)),
+    });
+    if (!current) throw new ApiError(404, "Organization member not found", undefined, "MEMBER_NOT_FOUND");
+    if (current.role === "owner" && current.status === "active" && (input.role !== "owner" || input.status !== "active")) {
+      const [owners] = await tx.select({ count: sql<number>`count(*)::int` }).from(organizationMemberships).where(and(
+        eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.role, "owner"),
+        eq(organizationMemberships.status, "active"), ne(organizationMemberships.userId, input.memberUserId),
+      ));
+      if (owners.count < 1) throw new ApiError(409, "An organization must retain an active owner", undefined, "LAST_OWNER_REQUIRED");
+    }
+    const [member] = await tx.update(organizationMemberships).set({
+      role: input.role, status: input.status, version: input.expectedVersion + 1, updatedAt: new Date(),
+    }).where(and(eq(organizationMemberships.id, current.id), eq(organizationMemberships.version, input.expectedVersion))).returning();
+    if (!member) throw new ApiError(412, "The membership changed", undefined, "PRECONDITION_FAILED");
+    await tx.insert(auditEvents).values({ organizationId: input.organizationId, actorUserId: input.userId, eventType: "organization_member.updated", entityType: "organization_membership", entityId: member.id, metadata: { role: member.role, status: member.status } });
+    return member;
+  });
+}
+
+export async function leaveOrganization(input: { userId: string; organizationId: string; expectedVersion: number }) {
+  const membership = await requireOrganizationCapability(input.userId, input.organizationId, "organizations:read");
+  return updateOrganizationMember({
+    userId: input.userId, organizationId: input.organizationId, memberUserId: input.userId,
+    role: membership.role, status: "suspended", expectedVersion: input.expectedVersion,
+  });
+}
+
+export async function setOrganizationMemberStatus(input: {
+  userId: string; organizationId: string; memberUserId: string;
+  status: "active" | "suspended"; expectedVersion: number;
+}) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
+  const current = await db.query.organizationMemberships.findFirst({
+    where: and(eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.userId, input.memberUserId)),
+  });
+  if (!current) throw new ApiError(404, "Organization member not found", undefined, "MEMBER_NOT_FOUND");
+  return updateOrganizationMember({ ...input, role: current.role });
 }
 
 export async function listCurrentOrganizationFactsForUser(
@@ -204,38 +336,50 @@ export async function listOrganizationInvitations(
   userId: string,
   organizationId: string,
 ): Promise<OrganizationInvitationDto[]> {
-  await assertCanManageOrganization(userId, organizationId);
+  return (await listOrganizationInvitationsPage({ userId, organizationId, limit: 100 })).invitations;
+}
 
-  const invitations = await db.query.organizationInvitations.findMany({
-    where: eq(organizationInvitations.organizationId, organizationId),
-    orderBy: (invitation, { desc }) => [desc(invitation.createdAt)],
-  });
-
-  return invitations.map(toInvitationDto);
+export async function listOrganizationInvitationsPage(input: { userId: string; organizationId: string; limit: number; cursor?: string }) {
+  await assertCanManageOrganization(input.userId, input.organizationId);
+  const scope = `organization-invitations:${input.organizationId}`;
+  const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
+  const rows = await db.query.organizationInvitations.findMany({ where: and(eq(organizationInvitations.organizationId, input.organizationId), cursor ? or(lt(organizationInvitations.createdAt, new Date(cursor[0])), and(eq(organizationInvitations.createdAt, new Date(cursor[0])), lt(organizationInvitations.id, cursor[1]))) : undefined), orderBy: [desc(organizationInvitations.createdAt), desc(organizationInvitations.id)], limit: input.limit + 1 });
+  const page = rows.slice(0, input.limit); const last = page.at(-1);
+  return { invitations: page.map(toInvitationDto), nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
 }
 
 export async function listMailboxInvitationsForUser(
   user: User,
 ): Promise<OrganizationMailboxInvitationDto[]> {
-  if (!user.email) {
-    return [];
-  }
+  return (await listMailboxInvitationsForUserPage({ user, limit: 100 })).invitations;
+}
 
-  const invitations = await db.query.organizationInvitations.findMany({
+export async function listMailboxInvitationsForUserPage(input: { user: User; limit: number; cursor?: string }) {
+  const { user } = input;
+  if (!user.email) {
+    return { invitations: [], nextCursor: undefined };
+  }
+  const scope = `invitation-mailbox:${user.id}`;
+  const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
+  const rows = await db.query.organizationInvitations.findMany({
     where: and(
       eq(organizationInvitations.email, normalizeEmail(user.email)),
       eq(organizationInvitations.status, "pending"),
+      cursor ? or(lt(organizationInvitations.createdAt, new Date(cursor[0])), and(eq(organizationInvitations.createdAt, new Date(cursor[0])), lt(organizationInvitations.id, cursor[1]))) : undefined,
     ),
     with: {
       organization: true,
     },
-    orderBy: (invitation, { desc }) => [desc(invitation.createdAt)],
+    orderBy: [desc(organizationInvitations.createdAt), desc(organizationInvitations.id)],
+    limit: input.limit + 1,
   });
-
-  return invitations.map((invitation) => ({
+  const page = rows.slice(0, input.limit);
+  const invitations = page.map((invitation) => ({
     ...toInvitationDto(invitation),
     organization: invitation.organization,
   }));
+  const last = page.at(-1);
+  return { invitations, nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
 }
 
 export async function createOrganizationInvitation(
@@ -323,43 +467,51 @@ export async function assertCanAccessOrganization(
   userId: string,
   organizationId: string,
 ) {
-  const membership = await db.query.organizationMemberships.findFirst({
-    where: and(
-      eq(organizationMemberships.userId, userId),
-      eq(organizationMemberships.organizationId, organizationId),
-      eq(organizationMemberships.status, "active"),
-    ),
+  return requireOrganizationCapability(userId, organizationId, "organizations:read");
+}
+
+export async function getOrganizationInvitation(userId: string, organizationId: string, invitationId: string) {
+  await requireOrganizationCapability(userId, organizationId, "members:read");
+  const invitation = await db.query.organizationInvitations.findFirst({ where: and(
+    eq(organizationInvitations.id, invitationId), eq(organizationInvitations.organizationId, organizationId),
+  ) });
+  if (!invitation) throw new ApiError(404, "Invitation not found", undefined, "INVITATION_NOT_FOUND");
+  return toInvitationDto(invitation);
+}
+
+export async function revokeOrganizationInvitation(input: { userId: string; organizationId: string; invitationId: string }) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "members:invite");
+  const [invitation] = await db.update(organizationInvitations).set({ status: "revoked", updatedAt: new Date() }).where(and(
+    eq(organizationInvitations.id, input.invitationId), eq(organizationInvitations.organizationId, input.organizationId),
+    eq(organizationInvitations.status, "pending"),
+  )).returning();
+  if (!invitation) throw new ApiError(409, "Only a pending invitation can be revoked", undefined, "INVITATION_NOT_PENDING");
+  return toInvitationDto(invitation);
+}
+
+export async function resendOrganizationInvitation(input: { userId: string; organizationId: string; invitationId: string }) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "members:invite");
+  const invitation = await db.query.organizationInvitations.findFirst({ where: and(
+    eq(organizationInvitations.id, input.invitationId), eq(organizationInvitations.organizationId, input.organizationId),
+  ) });
+  if (!invitation || invitation.status === "accepted") throw new ApiError(409, "Invitation cannot be resent", undefined, "INVITATION_NOT_RESENDABLE");
+  return createOrganizationInvitation(input.userId, input.organizationId, {
+    email: invitation.email, role: invitation.role === "owner" ? "admin" : invitation.role, expiresInDays: 14,
   });
-
-  if (!membership) {
-    throw new ApiError(404, "Organization not found");
-  }
-
-  return membership;
 }
 
 export async function assertCanManageOrganization(
   userId: string,
   organizationId: string,
 ) {
-  const membership = await assertCanAccessOrganization(userId, organizationId);
-
-  if (!canManageOrganizationWorkflow(membership.role)) {
-    throw new ApiError(403, "You cannot manage this organization");
-  }
-
-  return membership;
+  return requireOrganizationCapability(userId, organizationId, "plans:manage");
 }
 
 export async function assertCanContributeToOrganization(
   userId: string,
   organizationId: string,
 ) {
-  const membership = await assertCanAccessOrganization(userId, organizationId);
-  if (!canContributeToOrganizationWorkflow(membership.role)) {
-    throw new ApiError(403, "You cannot change this organization workflow");
-  }
-  return membership;
+  return requireOrganizationCapability(userId, organizationId, "plans:contribute");
 }
 
 async function acceptInvitationRecord(

@@ -12,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
-import type { OrganizationDto } from "@/src/server/organizations/types";
+import { organizationsClient } from "@/src/client/organizations";
 import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { applicabilityCheckClient } from "@/src/client/applicability-check";
 
 type CreateOrganizationState = {
   name: string;
@@ -26,11 +27,6 @@ type CreateOrganizationState = {
 type RequestState = {
   message: string | null;
   tone: "default" | "success" | "error";
-};
-
-type CreateOrganizationResponse = {
-  organization?: OrganizationDto;
-  error?: string;
 };
 
 type RedirectAfterCreate = "organization" | "assessment";
@@ -71,50 +67,18 @@ export function OrganizationCreateForm({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch("/api/organizations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result = await organizationsClient.create({
           name: organizationForm.name,
           legalName: organizationForm.legalName || null,
           country: organizationForm.country || "DE",
-        }),
       });
-
-      const body = (await response.json()) as CreateOrganizationResponse;
-
-      if (!response.ok || !body.organization) {
-        throw new Error(body.error ?? labels.createError);
-      }
-
-      const organizationHref = `/tool/organizations/${body.organization.id}`;
+      const organizationHref = `/tool/organizations/${result.data.organization.id}`;
       if (guestApplicabilityClaim) {
-        const claimResponse = await fetch(
-          "/api/guest/applicability-check/claim",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(guestApplicabilityClaim.token
-                ? {
-                    "x-guest-applicability-token":
-                      guestApplicabilityClaim.token,
-                  }
-                : {}),
-            },
-            body: JSON.stringify({
-              organizationId: body.organization.id,
-              checkId: guestApplicabilityClaim.checkId,
-            }),
-          },
-        );
-        const claimBody = (await claimResponse.json()) as { error?: string };
-
-        if (!claimResponse.ok) {
-          throw new Error(claimBody.error ?? labels.createErrorFallback);
-        }
+        await applicabilityCheckClient.claim({
+          organizationId: result.data.organization.id,
+          checkId: guestApplicabilityClaim.checkId,
+          token: guestApplicabilityClaim.token,
+        });
 
         router.push(`${organizationHref}/applicability-check/result`);
         router.refresh();

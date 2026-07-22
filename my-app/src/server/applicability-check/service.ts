@@ -429,6 +429,16 @@ export async function submitApplicabilityCheckForUser(
   });
 }
 
+export async function getApplicabilityResultRevisionForUser(
+  userId: string,
+  organizationId: string,
+  artifactRevisionId: string,
+  dependencies: ApplicabilityRuntimeDependencies = {},
+) {
+  await assertCanAccessOrganization(userId, organizationId);
+  return getCurrentResult(organizationId, dependencies.runtimeReleaseReader, artifactRevisionId);
+}
+
 export async function submitApplicabilityCheckForGuest(
   input: SubmitApplicabilityCheckInput,
   dependencies: ApplicabilityRuntimeDependencies = {},
@@ -825,6 +835,7 @@ function createGuestStartedExpiryDate(from: Date): Date {
 async function getCurrentResult(
   organizationId: string,
   reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
+  artifactRevisionId?: string,
 ): Promise<ApplicabilityResultDto | null> {
   const row = await db
     .select({
@@ -838,7 +849,7 @@ async function getCurrentResult(
     .from(generatedArtifacts)
     .innerJoin(
       generatedArtifactRevisions,
-      eq(generatedArtifacts.currentRevisionId, generatedArtifactRevisions.id),
+      eq(generatedArtifacts.id, generatedArtifactRevisions.artifactId),
     )
     .leftJoin(ruleSets, eq(generatedArtifactRevisions.ruleSetId, ruleSets.id))
     .innerJoin(complianceCheckReleases, eq(generatedArtifactRevisions.checkReleaseId, complianceCheckReleases.id))
@@ -847,6 +858,9 @@ async function getCurrentResult(
         eq(generatedArtifacts.organizationId, organizationId),
         eq(generatedArtifacts.artifactType, "affectedness_result"),
         eq(complianceCheckReleases.checkCode, NIS2_CHECK_CODE),
+        artifactRevisionId
+          ? eq(generatedArtifactRevisions.id, artifactRevisionId)
+          : eq(generatedArtifacts.currentRevisionId, generatedArtifactRevisions.id),
       ),
     )
     .orderBy(desc(generatedArtifactRevisions.evaluatedAt))

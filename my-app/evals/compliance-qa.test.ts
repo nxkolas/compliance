@@ -7,6 +7,8 @@ const organization = {
   name: "Example GmbH",
   legalName: "Example GmbH",
   country: "DE",
+  archivedAt: null,
+  version: 1,
   createdAt: new Date(),
   updatedAt: new Date(),
 } as const;

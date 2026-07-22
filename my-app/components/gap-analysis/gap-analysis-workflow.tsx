@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, Loader2, Play } from "lucide-react";
 import { OrganizationDocumentManager } from "@/components/documents/organization-document-manager";
@@ -9,6 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import type { getGapAnalysisWorkflow } from "@/src/server/gap-analysis/workflow-reader";
 import type { Dictionary, Locale } from "@/lib/i18n";
+import { gapAnalysisClient } from "@/src/client/gap-analysis";
+import { jobsClient } from "@/src/client/jobs";
+import { pollJob } from "@/src/client/job-polling";
+import { isRetryableGapReassessmentStatus } from "@/src/contracts/gap-analysis/generation";
 
 type Workflow = Awaited<ReturnType<typeof getGapAnalysisWorkflow>>;
 type Labels = Dictionary["modules"]["gapAnalysis"]["workflow"];
@@ -31,15 +35,68 @@ export function GapAnalysisWorkflow({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>(workflow.answers);
-  const baseUrl = `/api/organizations/${organizationId}/gap-analysis`;
+  const [pollingJobId, setPollingJobId] = useState<string | null>(
+    workflow.reassessment?.draft.status === "locked"
+      ? workflow.reassessment.draft.generationJobId
+      : null,
+  );
 
-  async function mutate(key: string, url: string, init: RequestInit = {}) {
+  useEffect(() => {
+    if (!pollingJobId) return;
+    const controller = new AbortController();
+    void pollJob({ jobId: pollingJobId, signal: controller.signal, finalRefresh: () => { setPollingJobId(null); router.refresh(); } }).catch((caught) => {
+      if (!controller.signal.aborted) { setError(caught instanceof Error ? caught.message : labels.error); setPollingJobId(null); }
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [labels.error, pollingJobId, router]);
+
+  async function enqueueGeneration(kind: "generate" | "retry") {
+    const reassessment = workflow.reassessment!;
+    setBusy(kind);
+    setError(null);
+    try {
+      const idempotencyKey = crypto.randomUUID();
+      const result = kind === "generate"
+        ? await gapAnalysisClient.generate(organizationId, {
+            draftId: reassessment.draft.id,
+            expectedLockVersion: reassessment.draft.lockVersion,
+          }, idempotencyKey)
+        : await gapAnalysisClient.retry(organizationId, {
+            draftId: reassessment.draft.id,
+            retryNonce: idempotencyKey,
+          }, idempotencyKey);
+      setPollingJobId(result.data.job.id);
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : labels.error);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function cancelGeneration() {
+    const jobId = workflow.reassessment?.draft.generationJobId;
+    if (!jobId) return;
+    setBusy("cancel-generation");
+    setError(null);
+    try {
+      const result = await jobsClient.cancel(jobId);
+      setPollingJobId(result.data.job.state === "cancelled" ? null : jobId);
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : labels.error);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function mutate(key: string, action: () => Promise<unknown>) {
     setBusy(key);
     setError(null);
     try {
-      const response = await fetch(url, init);
-      const body = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(body.error ?? labels.error);
+      await action();
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : labels.error);
@@ -65,7 +122,7 @@ export function GapAnalysisWorkflow({
             {workflow.canContribute ? (
               <Button
                 disabled={busy !== null}
-                onClick={() => mutate("create", `${baseUrl}/assessments`, { method: "POST" })}
+                onClick={() => mutate("create", () => gapAnalysisClient.createAssessment(organizationId))}
               >
                 {busy === "create" ? <Loader2 className="animate-spin" /> : <Play />}
                 {labels.create}
@@ -85,17 +142,13 @@ export function GapAnalysisWorkflow({
                 className="flex flex-col gap-5"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void mutate("questionnaire", `${baseUrl}/questionnaire`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
+                  void mutate("questionnaire", () => gapAnalysisClient.submitQuestionnaire(organizationId, {
                       assessmentId: workflow.assessment!.id,
                       answers: workflow.release!.questions.map((question) => ({
                         questionId: question.id,
                         optionId: answers[question.id],
                       })),
-                    }),
-                  });
+                    }));
                 }}
               >
                 {workflow.release.questions.map((question) => (
@@ -162,8 +215,8 @@ export function GapAnalysisWorkflow({
               workflow={workflow}
               labels={labels}
               busy={busy}
-              mutate={mutate}
-              baseUrl={baseUrl}
+              enqueueGeneration={enqueueGeneration}
+              cancelGeneration={cancelGeneration}
             />
           ) : null}
         </>
@@ -178,7 +231,7 @@ export function GapAnalysisWorkflow({
         labels={labels}
         locale={locale}
         canManage={workflow.canManage}
-        baseUrl={baseUrl}
+        organizationId={organizationId}
         busy={busy}
         mutate={mutate}
         candidate
@@ -192,7 +245,7 @@ export function GapAnalysisWorkflow({
         labels={labels}
         locale={locale}
         canManage={false}
-        baseUrl={baseUrl}
+        organizationId={organizationId}
         busy={busy}
         mutate={mutate}
       />
@@ -200,12 +253,12 @@ export function GapAnalysisWorkflow({
   );
 }
 
-function ConfirmationCard({ workflow, labels, busy, mutate, baseUrl }: {
+function ConfirmationCard({ workflow, labels, busy, enqueueGeneration, cancelGeneration }: {
   workflow: Workflow;
   labels: Labels;
   busy: string | null;
-  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
-  baseUrl: string;
+  enqueueGeneration: (kind: "generate" | "retry") => Promise<void>;
+  cancelGeneration: () => Promise<void>;
 }) {
   const reassessment = workflow.reassessment!;
   const summary = reassessment.summary;
@@ -215,7 +268,7 @@ function ConfirmationCard({ workflow, labels, busy, mutate, baseUrl }: {
       .find((item) => item.version.id === id)?.version.fileName ?? id;
   const status = reassessment.draft.status;
   const canGenerate = workflow.canContribute && status === "open";
-  const canRetry = workflow.canContribute && status === "failed";
+  const canRetry = workflow.canContribute && isRetryableGapReassessmentStatus(status);
   return (
     <Card>
       <CardHeader>
@@ -254,14 +307,7 @@ function ConfirmationCard({ workflow, labels, busy, mutate, baseUrl }: {
             className="self-start"
             disabled={busy !== null}
             onClick={() =>
-              mutate("generate", `${baseUrl}/reassessment/generate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  draftId: reassessment.draft.id,
-                  expectedLockVersion: reassessment.draft.lockVersion,
-                }),
-              })
+              void enqueueGeneration("generate")
             }
           >
             {busy === "generate" ? <Loader2 className="animate-spin" /> : <Play />}
@@ -272,18 +318,21 @@ function ConfirmationCard({ workflow, labels, busy, mutate, baseUrl }: {
             className="self-start"
             disabled={busy !== null}
             onClick={() =>
-              mutate("retry", `${baseUrl}/reassessment/retry`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  draftId: reassessment.draft.id,
-                  retryNonce: crypto.randomUUID(),
-                }),
-              })
+              void enqueueGeneration("retry")
             }
           >
             {busy === "retry" ? <Loader2 className="animate-spin" /> : <Play />}
             {labels.retry}
+          </Button>
+        ) : status === "locked" && reassessment.draft.generationJobId ? (
+          <Button
+            className="self-start"
+            variant="outline"
+            disabled={busy !== null}
+            onClick={() => void cancelGeneration()}
+          >
+            {busy === "cancel-generation" ? <Loader2 className="animate-spin" /> : null}
+            {labels.cancelGeneration}
           </Button>
         ) : null}
         {workflow.run?.status === "failed" ? (
@@ -303,7 +352,7 @@ function RevisionCard({
   labels,
   locale,
   canManage,
-  baseUrl,
+  organizationId,
   busy,
   mutate,
   candidate = false,
@@ -316,9 +365,9 @@ function RevisionCard({
   labels: Labels;
   locale: Locale;
   canManage: boolean;
-  baseUrl: string;
+  organizationId: string;
   busy: string | null;
-  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
+  mutate: (key: string, action: () => Promise<unknown>) => Promise<void>;
   candidate?: boolean;
 }) {
   if (!revision && !empty) return null;
@@ -342,7 +391,7 @@ function RevisionCard({
               locale={locale}
               canManage={canManage}
               revisionId={revision.id}
-              baseUrl={baseUrl}
+              organizationId={organizationId}
               busy={busy}
               mutate={mutate}
             />
@@ -352,9 +401,7 @@ function RevisionCard({
               className="self-start"
               disabled={busy !== null || findings.some((row) => row.finding.requiresReview)}
               onClick={() =>
-                mutate("approve", `${baseUrl}/revisions/${revision.id}/approve`, {
-                  method: "POST",
-                })
+                mutate("approve", () => gapAnalysisClient.approveRevision(organizationId, revision.id))
               }
             >
               {busy === "approve" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
@@ -369,15 +416,15 @@ function RevisionCard({
   );
 }
 
-function FindingCard({ row, labels, locale, canManage, revisionId, baseUrl, busy, mutate }: {
+function FindingCard({ row, labels, locale, canManage, revisionId, organizationId, busy, mutate }: {
   row: Workflow["findings"][number];
   labels: Labels;
   locale: Locale;
   canManage: boolean;
   revisionId: string;
-  baseUrl: string;
+  organizationId: string;
   busy: string | null;
-  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
+  mutate: (key: string, action: () => Promise<unknown>) => Promise<void>;
 }) {
   const [status, setStatus] = useState(row.finding.status);
   const [reason, setReason] = useState("");
@@ -426,10 +473,7 @@ function FindingCard({ row, labels, locale, canManage, revisionId, baseUrl, busy
             className="justify-self-start"
             disabled={busy !== null || !reason.trim() || (row.finding.requiresReview && !resolutionReason.trim())}
             onClick={() =>
-              mutate(`correct-${row.finding.id}`, `${baseUrl}/revisions/${revisionId}/correct`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+              mutate(`correct-${row.finding.id}`, () => gapAnalysisClient.correctRevision(organizationId, revisionId, {
                   corrections: [{
                     findingId: row.finding.id,
                     status,
@@ -438,8 +482,7 @@ function FindingCard({ row, labels, locale, canManage, revisionId, baseUrl, busy
                       ? { requiresReview: false, resolutionReason }
                       : {}),
                   }],
-                }),
-              })
+                }))
             }
           >
             {labels.saveCorrection}

@@ -33,7 +33,7 @@ export function assertGapRevisionApprovable(input: {
   evidence: Array<{
     findingId: string;
     citationId: string;
-    sourceType: "assessment_answer" | "document_chunk";
+    sourceType: "assessment_answer" | "document_chunk" | "legal_source_chunk";
   }>;
 }) {
   const expected = new Set(input.expectedRequirementVersionIds);

@@ -29,6 +29,7 @@ import type {
 import { CheckCircle2, Loader2, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { applicabilityCheckClient } from "@/src/client/applicability-check";
 
 type ApplicabilityQuestionnaireFormProps = {
   submitUrl: string;
@@ -127,12 +128,7 @@ export function ApplicabilityQuestionnaireForm({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch(submitUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const response = await applicabilityCheckClient.submit(submitUrl, {
           guestSession: questionnaire.guestSession,
           answers: visibleQuestions
             .filter((question) => isAnswered(answers[question.id]))
@@ -140,19 +136,8 @@ export function ApplicabilityQuestionnaireForm({
               questionId: question.id,
               value: answers[question.id],
             })),
-        }),
-      });
-      const body = (await response.json()) as {
-        result?: unknown;
-        resultUrl?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !body.result) {
-        throw new Error(body.error ?? labels.submitError);
-      }
-
-      const nextUrl = body.resultUrl ?? successUrl;
+        }, questionnaire.guestSession?.token);
+      const nextUrl = response.data.resultUrl ?? successUrl;
 
       if (navigationMode === "document") {
         window.location.assign(nextUrl);

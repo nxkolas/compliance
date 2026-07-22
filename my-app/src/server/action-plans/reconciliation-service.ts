@@ -12,7 +12,7 @@ import {
   generatedArtifacts,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import {
   assertCanAccessOrganization,
@@ -324,6 +324,7 @@ export async function decideActionPlanReconciliationItem(input: {
   itemReconciliationId: string;
   decision: ReconciliationDecision;
   reason: string;
+  expectedVersion: number;
 }) {
   await assertCanManageOrganization(input.userId, input.organizationId);
   const rows = await db
@@ -367,16 +368,20 @@ export async function decideActionPlanReconciliationItem(input: {
   await db.transaction(async (tx) => {
     const [lockedReconciliation] = await tx
       .update(actionPlanReconciliations)
-      .set({ status: row.reconciliation.status })
+      .set({
+        status: row.reconciliation.status,
+        version: sql`${actionPlanReconciliations.version} + 1`,
+      })
       .where(
         and(
           eq(actionPlanReconciliations.id, row.reconciliation.id),
           inArray(actionPlanReconciliations.status, ["draft", "ready"]),
+          eq(actionPlanReconciliations.version, input.expectedVersion),
         ),
       )
       .returning();
     if (!lockedReconciliation) {
-      throw new ApiError(409, "Reconciliation changed before the decision was saved");
+      throw new ApiError(412, "Reconciliation changed before the decision was saved", { currentVersion: row.reconciliation.version }, "PRECONDITION_FAILED");
     }
     await tx
       .update(actionPlanItemReconciliations)
@@ -433,6 +438,7 @@ export async function activateActionPlanReconciliation(input: {
   userId: string;
   organizationId: string;
   reconciliationId: string;
+  expectedVersion: number;
 }) {
   await assertCanManageOrganization(input.userId, input.organizationId);
   const reconciliation = await db.query.actionPlanReconciliations.findFirst({
@@ -454,11 +460,12 @@ export async function activateActionPlanReconciliation(input: {
           eq(actionPlanReconciliations.id, reconciliation.id),
           eq(actionPlanReconciliations.organizationId, input.organizationId),
           eq(actionPlanReconciliations.status, "ready"),
+          eq(actionPlanReconciliations.version, input.expectedVersion),
         ),
       )
       .returning();
     if (!lockedReconciliation) {
-      throw new ApiError(409, "Reconciliation changed before activation");
+      throw new ApiError(412, "Reconciliation changed before activation", { currentVersion: reconciliation.version }, "PRECONDITION_FAILED");
     }
     const [acceptedArtifact] = await tx
       .update(generatedArtifacts)
