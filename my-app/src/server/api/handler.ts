@@ -1,7 +1,7 @@
-import { requestIdSchema } from "@/src/contracts/common/envelopes";
 import { ApiError } from "./errors";
 import { emptyResponse, jsonError, jsonSuccess } from "./response";
 import { entityIdSchema } from "@/src/contracts/common/ids";
+import { resolveRequestId } from "./request-id";
 
 export type ApiRouteContext<TContext = unknown> = {
   request: Request;
@@ -72,12 +72,6 @@ async function validateRouteParams(routeContext: unknown) {
       throw new ApiError(400, "Invalid route parameter", { field: name }, "INVALID_ROUTE_PARAMETER");
     }
   }
-}
-
-export function resolveRequestId(request: Request) {
-  const supplied = request.headers.get("x-request-id");
-  const parsed = requestIdSchema.safeParse(supplied);
-  return parsed.success ? parsed.data : crypto.randomUUID();
 }
 
 function handleRouteError(error: unknown, requestId: string) {

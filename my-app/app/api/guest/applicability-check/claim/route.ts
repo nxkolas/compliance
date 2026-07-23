@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveRequestId } from "@/src/server/api/handler";
+import { resolveRequestId } from "@/src/server/api/request-id";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError } from "@/src/server/api/errors";
 import { readJsonBody } from "@/src/server/api/request";

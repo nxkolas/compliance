@@ -1,32 +1,69 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { hasEnvVars } from "../utils";
+import {
+  isApiRoute,
+  isGuestOnlyAuthRoute,
+  isPublicRoute,
+  parseSafeToolNext,
+} from "../auth/route-policy";
+import { resolveRequestId } from "@/src/server/api/request-id";
+import { jsonError } from "@/src/server/api/response";
 
-/**
- * Identifies routes that can be visited without an authenticated session.
- */
-function isPublicRoute(pathname: string) {
-  return (
-    pathname === "/" ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/check") ||
-    pathname === "/api/guest/applicability-check/submissions" ||
-    pathname === "/api/guest/applicability-check/result"
-  );
+function copySessionCookies(
+  response: NextResponse,
+  sessionResponse: NextResponse,
+) {
+  sessionResponse.cookies
+    .getAll()
+    .forEach((cookie) => response.cookies.set(cookie));
+  return response;
 }
 
 /**
  * Preserves the requested path in `next` while sending unauthenticated users to login.
  */
-function redirectToLogin(request: NextRequest) {
+function redirectToLogin(
+  request: NextRequest,
+  sessionResponse: NextResponse,
+) {
   const url = request.nextUrl.clone();
   const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
 
   url.pathname = "/auth/login";
   url.search = "";
-  url.searchParams.set("next", next);
+  url.searchParams.set("next", parseSafeToolNext(next));
 
-  return NextResponse.redirect(url);
+  return copySessionCookies(NextResponse.redirect(url), sessionResponse);
+}
+
+function redirectFromGuestOnlyRoute(
+  request: NextRequest,
+  sessionResponse: NextResponse,
+) {
+  const destination = parseSafeToolNext(
+    request.nextUrl.searchParams.get("next"),
+  );
+  return copySessionCookies(
+    NextResponse.redirect(new URL(destination, request.url)),
+    sessionResponse,
+  );
+}
+
+function apiError(
+  request: NextRequest,
+  sessionResponse: NextResponse,
+  input: { status: number; code: string; message: string },
+) {
+  const standardResponse = jsonError(
+    input,
+    resolveRequestId(request),
+  );
+  const response = new NextResponse(standardResponse.body, {
+    status: standardResponse.status,
+    statusText: standardResponse.statusText,
+    headers: standardResponse.headers,
+  });
+  return copySessionCookies(response, sessionResponse);
 }
 
 /**
@@ -37,12 +74,26 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  if (!hasEnvVars) {
-    if (!isPublicRoute(request.nextUrl.pathname)) {
-      return redirectToLogin(request);
+  const pathname = request.nextUrl.pathname;
+  const hasSupabaseConfiguration = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  );
+
+  if (!hasSupabaseConfiguration) {
+    if (isPublicRoute(pathname)) {
+      return supabaseResponse;
     }
 
-    return supabaseResponse;
+    if (isApiRoute(pathname)) {
+      return apiError(request, supabaseResponse, {
+        status: 503,
+        code: "SERVICE_UNAVAILABLE",
+        message: "Authentication service unavailable",
+      });
+    }
+
+    return redirectToLogin(request, supabaseResponse);
   }
 
   // With Fluid compute, don't put this client in a global environment
@@ -75,17 +126,27 @@ export async function updateSession(request: NextRequest) {
   // issues with users being randomly logged out.
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (!user && !isPublicRoute(request.nextUrl.pathname)) {
-    return redirectToLogin(request);
+  const isAuthenticated = Boolean(
+    !userError && user && !user.is_anonymous,
+  );
+
+  if (!isAuthenticated && !isPublicRoute(pathname)) {
+    if (isApiRoute(pathname)) {
+      return apiError(request, supabaseResponse, {
+        status: 401,
+        code: "AUTHENTICATION_REQUIRED",
+        message: "Authentication required",
+      });
+    }
+
+    return redirectToLogin(request, supabaseResponse);
   }
 
-  if (user?.is_anonymous && request.nextUrl.pathname.startsWith("/tool")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    url.search = "";
-    return NextResponse.redirect(url);
+  if (isAuthenticated && isGuestOnlyAuthRoute(pathname)) {
+    return redirectFromGuestOnlyRoute(request, supabaseResponse);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

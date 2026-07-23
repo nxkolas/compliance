@@ -3,6 +3,10 @@
 import { AccountEmailField } from "@/components/auth/account-email-field";
 import { AccountPasswordField } from "@/components/auth/account-password-field";
 import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_TOOL_DESTINATION,
+  parseSafeToolNext,
+} from "@/lib/auth/route-policy";
 import type { Dictionary } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -57,12 +61,9 @@ function isTooManyAttemptsError(error: unknown) {
 }
 
 function getNextPath() {
-  if (typeof window === "undefined") return "/tool/organizations";
+  if (typeof window === "undefined") return DEFAULT_TOOL_DESTINATION;
   const next = new URLSearchParams(window.location.search).get("next");
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/tool/organizations";
-  }
-  return next;
+  return parseSafeToolNext(next);
 }
 
 export function LoginForm({
@@ -247,7 +248,7 @@ export function LoginForm({
             <span className="font-normal">{labels.noAccount}</span>
             <Link
               href={
-                getNextPath() !== "/tool/organizations"
+                getNextPath() !== DEFAULT_TOOL_DESTINATION
                   ? `/auth/sign-up?next=${encodeURIComponent(getNextPath())}`
                   : "/auth/sign-up"
               }
