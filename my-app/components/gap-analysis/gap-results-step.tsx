@@ -136,8 +136,8 @@ export function GapResultsStep({
         {announcement}
       </div>
       {workflow.lifecycle.locked ? (
-        <div className="flex items-start gap-2 rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm text-blue-950">
-          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-2 rounded-lg border border-primary/35 bg-primary/10 p-4 text-sm text-foreground">
+          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <span>{labels.lockedByActionPlan}</span>
         </div>
       ) : null}
@@ -365,9 +365,9 @@ function FindingCard({
             {row.hasOrganizationDocument ? (
               <Badge>{labels.supportHasDocument}</Badge>
             ) : (
-              <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs text-amber-900">
+              <span className="flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2.5 py-1 text-xs text-muted-foreground">
                 <AlertTriangle
-                  className="h-3.5 w-3.5"
+                  className="h-3.5 w-3.5 text-primary"
                   aria-hidden="true"
                 />
                 {labels.supportNoDocument}
@@ -390,12 +390,12 @@ function FindingCard({
         ) : null}
       </div>
       {row.finding.requiresReview ? (
-        <p className="mt-3 flex items-center gap-2 text-sm text-amber-700">
+        <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4" /> {labels.reviewRequired}
         </p>
       ) : null}
       {row.questionnaireDisagreements.length ? (
-        <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+        <div className="mt-3 rounded-md border border-primary/35 bg-primary/10 p-3 text-sm text-foreground">
           <p className="font-medium">{labels.questionnaireDisagreement}</p>
           <p className="mt-1">
             {localized(row.finding.rationale, locale)}
@@ -490,7 +490,7 @@ function FindingCard({
             </label>
           ) : null}
           {fieldError ? (
-            <p className="text-sm text-red-700">{fieldError}</p>
+            <p className="text-sm text-destructive">{fieldError}</p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -568,7 +568,7 @@ function localized(value: unknown, locale: GapLocale) {
 
 function Notice({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+    <div className="rounded-lg border border-border bg-muted/60 p-4 text-sm text-foreground">
       {children}
     </div>
   );

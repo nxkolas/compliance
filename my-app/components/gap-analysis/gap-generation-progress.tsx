@@ -17,11 +17,11 @@ export function GapGenerationProgress({
 }) {
   return (
     <div
-      className="rounded-lg border border-blue-200 bg-blue-50 p-5 text-blue-950"
+      className="rounded-lg border border-primary/35 bg-primary/10 p-5 text-foreground"
       aria-live="polite"
     >
       <div className="flex items-center gap-3">
-        <Loader2 className="animate-spin" />
+        <Loader2 className="animate-spin text-primary" />
         <div>
           <p className="font-semibold">{labels.generating}</p>
           <p className="mt-1 text-sm">{labels.generationProgress}</p>

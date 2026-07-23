@@ -53,7 +53,7 @@ export function GapInputsUsed({
                 className="flex items-start gap-3 rounded-md border p-4"
               >
                 {document.unavailable ? (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-700" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive" />
                 ) : (
                   <FileText className="mt-0.5 h-4 w-4" />
                 )}
@@ -68,7 +68,7 @@ export function GapInputsUsed({
                       : ""}
                   </p>
                   {document.archived ? (
-                    <p className="mt-1 text-xs text-amber-800">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {labels.archivedSnapshotDocument}
                     </p>
                   ) : null}

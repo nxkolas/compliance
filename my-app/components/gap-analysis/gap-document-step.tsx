@@ -78,7 +78,7 @@ export function GapDocumentStep({
                     {current.version.fileName}
                   </span>
                   {!eligible ? (
-                    <span className="mt-1 block text-xs text-amber-700">
+                    <span className="mt-1 block text-xs text-muted-foreground">
                       {labels.notReady}
                     </span>
                   ) : null}

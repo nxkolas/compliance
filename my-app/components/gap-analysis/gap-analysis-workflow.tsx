@@ -535,8 +535,8 @@ function Notice({
     <div
       className={`rounded-md border px-4 py-3 text-sm ${
         tone === "error"
-          ? "border-red-300 bg-red-50 text-red-900"
-          : "border-amber-300 bg-amber-50 text-amber-900"
+          ? "border-destructive/40 bg-destructive/10 text-foreground"
+          : "border-primary/35 bg-primary/10 text-foreground"
       }`}
     >
       {children}

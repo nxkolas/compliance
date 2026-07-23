@@ -138,7 +138,7 @@ export function GapReviewStep({
         </dl>
       </details>
       {workflow.candidateRevision ? (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+        <div className="rounded-lg border border-border bg-muted/60 p-4 text-sm text-foreground">
           {labels.replaceWarning}
         </div>
       ) : null}
@@ -153,7 +153,7 @@ export function GapReviewStep({
         />
       ) : failed ? (
         <div className="grid gap-3">
-          <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground">
             {labels.runFailed}
           </p>
           <Button
