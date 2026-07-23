@@ -13,7 +13,7 @@ import {
   ruleSets,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { ApiError } from "../api/errors";
 import { assertCanAccessOrganization } from "../organizations/service";
@@ -40,6 +40,11 @@ import {
   type LocalizedRuleEvaluationResult,
 } from "./localize-evaluation";
 import { persistApplicabilitySubmission } from "./submission-persistence";
+import {
+  assertApplicabilityRecalculationUnlocked,
+  deriveApplicabilityRecalculationLock,
+  type ApplicabilityRecalculationLock,
+} from "./recalculation-lock";
 import {
   submitApplicabilityCheckSchema,
   type SubmitApplicabilityCheckInput,
@@ -271,6 +276,14 @@ export async function getApplicabilityQuestionnaireForGuest(
   };
 }
 
+export async function getApplicabilityRecalculationLockForUser(
+  userId: string,
+  organizationId: string,
+): Promise<ApplicabilityRecalculationLock> {
+  await assertCanAccessOrganization(userId, organizationId);
+  return getApplicabilityRecalculationLock(organizationId);
+}
+
 export async function getApplicabilityOverviewForUser(
   userId: string,
   organizationId: string,
@@ -398,6 +411,7 @@ export async function submitApplicabilityCheckForUser(
   },
 ): Promise<ApplicabilityResultDto> {
   await assertCanAccessOrganization(userId, organizationId);
+  await assertApplicabilityRecalculationMutable(organizationId);
   const prepared = await prepareApplicabilitySubmission(
     input,
     options?.checkReleaseId,
@@ -427,6 +441,26 @@ export async function submitApplicabilityCheckForUser(
     now: prepared.now,
     claimGuestCheckId: options?.claimGuestCheckId,
   });
+}
+
+async function assertApplicabilityRecalculationMutable(
+  organizationId: string,
+) {
+  const lock = await getApplicabilityRecalculationLock(organizationId);
+  assertApplicabilityRecalculationUnlocked(lock);
+}
+
+async function getApplicabilityRecalculationLock(
+  organizationId: string,
+): Promise<ApplicabilityRecalculationLock> {
+  const gapAssessment = await db.query.assessments.findFirst({
+    where: and(
+      eq(assessments.organizationId, organizationId),
+      isNotNull(assessments.gapAnalysisReleaseId),
+    ),
+    columns: { id: true },
+  });
+  return deriveApplicabilityRecalculationLock(gapAssessment?.id);
 }
 
 export async function getApplicabilityResultRevisionForUser(

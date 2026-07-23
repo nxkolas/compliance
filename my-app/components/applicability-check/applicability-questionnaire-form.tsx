@@ -30,6 +30,7 @@ import { CheckCircle2, Loader2, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
+import { ApiClientError } from "@/src/client/api-client";
 
 type ApplicabilityQuestionnaireFormProps = {
   submitUrl: string;
@@ -54,6 +55,7 @@ type ApplicabilityQuestionnaireFormLabels = {
   submit: string;
   submitting: string;
   submitError: string;
+  recalculationLocked: string;
   allRequired: string;
 };
 
@@ -148,7 +150,13 @@ export function ApplicabilityQuestionnaireForm({
       router.refresh();
     } catch (error) {
       setNotice({
-        message: error instanceof Error ? error.message : labels.submitError,
+        message:
+          error instanceof ApiClientError &&
+          error.code === "APPLICABILITY_RECALCULATION_LOCKED"
+            ? labels.recalculationLocked
+            : error instanceof Error
+              ? error.message
+              : labels.submitError,
         tone: "error",
       });
     } finally {
@@ -163,7 +171,7 @@ export function ApplicabilityQuestionnaireForm({
           className={cn(
             "rounded-md border px-4 py-3 text-sm",
             notice.tone === "error" &&
-              "border-red-200 bg-red-50 text-red-900",
+              "border-destructive/40 bg-destructive/10 text-foreground",
           )}
         >
           {notice.message}

@@ -2,7 +2,11 @@ import { ApplicabilityQuestionnaireForm } from "@/components/applicability-check
 import { PageHeader } from "@/components/page-header";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getApplicabilityQuestionnaireForUser } from "@/src/server/applicability-check/service";
+import {
+  getApplicabilityQuestionnaireForUser,
+  getApplicabilityRecalculationLockForUser,
+} from "@/src/server/applicability-check/service";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 type NewApplicabilityCheckPageProps = {
@@ -19,11 +23,13 @@ export default async function NewApplicabilityCheckPage({
   const dictionary = await getDictionary();
   const locale = await getLocale();
   const { organizationId } = await params;
-  const questionnaire = await getApplicabilityQuestionnaireForUser(
-    user.id,
-    organizationId,
-    locale,
-  );
+  const [questionnaire, recalculationLock] = await Promise.all([
+    getApplicabilityQuestionnaireForUser(user.id, organizationId, locale),
+    getApplicabilityRecalculationLockForUser(user.id, organizationId),
+  ]);
+  if (recalculationLock.locked) {
+    redirect(`/tool/organizations/${organizationId}/applicability-check`);
+  }
 
   return (
     <section className="flex w-full flex-col gap-8">

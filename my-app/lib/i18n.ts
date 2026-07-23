@@ -391,6 +391,8 @@ const dictionaries = {
         title: "Betroffenheitscheck",
         description:
           "Prüfen Sie, ob Ihr Unternehmen unter die NIS2-Richtlinie fällt.",
+        recalculationLocked:
+          "Der Betroffenheitscheck ist gesperrt, weil dieser Ergebnisstand als Eingabe für die Gap-Analyse verwendet wird.",
         metrics: [
           { label: "Ergebnisoptionen", value: "4" },
           { label: "Eingabebereiche", value: "4" },
@@ -489,6 +491,8 @@ const dictionaries = {
           submitting: "Wird berechnet...",
           submitError:
             "Der Betroffenheitscheck konnte nicht berechnet werden.",
+          recalculationLocked:
+            "Der Betroffenheitscheck wurde inzwischen durch die Gap-Analyse gesperrt.",
           allRequired: "Bitte beantworten Sie alle Pflichtfragen.",
         },
         guest: {
@@ -1373,6 +1377,8 @@ const dictionaries = {
         title: "Applicability check",
         description:
           "Check whether your organization falls under the NIS2 Directive.",
+        recalculationLocked:
+          "The applicability check is locked because this result is being used as an input to the Gap Analysis.",
         metrics: [
           { label: "Result options", value: "4" },
           { label: "Input areas", value: "4" },
@@ -1470,6 +1476,8 @@ const dictionaries = {
           submit: "Calculate applicability check",
           submitting: "Calculating...",
           submitError: "The applicability check could not be calculated.",
+          recalculationLocked:
+            "The applicability check has now been locked by the Gap Analysis.",
           allRequired: "Please answer all required questions.",
         },
         guest: {

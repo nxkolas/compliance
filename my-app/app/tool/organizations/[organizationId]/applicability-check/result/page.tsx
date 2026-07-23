@@ -3,8 +3,16 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getApplicabilityResultForUser } from "@/src/server/applicability-check/service";
-import { ArrowLeft, ClipboardList, RefreshCw } from "lucide-react";
+import {
+  getApplicabilityRecalculationLockForUser,
+  getApplicabilityResultForUser,
+} from "@/src/server/applicability-check/service";
+import {
+  ArrowLeft,
+  ClipboardList,
+  LockKeyhole,
+  RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -23,7 +31,10 @@ export default async function ApplicabilityResultPage({
   const dictionary = await getDictionary();
   const locale = await getLocale();
   const { organizationId } = await params;
-  const result = await getApplicabilityResultForUser(user.id, organizationId);
+  const [result, recalculationLock] = await Promise.all([
+    getApplicabilityResultForUser(user.id, organizationId),
+    getApplicabilityRecalculationLockForUser(user.id, organizationId),
+  ]);
 
   if (!result) {
     redirect(`/tool/organizations/${organizationId}/applicability-check/new`);
@@ -43,6 +54,13 @@ export default async function ApplicabilityResultPage({
         subtitle={dictionary.modules.applicabilityCheck.description}
       />
 
+      {recalculationLock.locked ? (
+        <div className="flex items-start gap-2 rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm">
+          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span>{dictionary.modules.applicabilityCheck.recalculationLocked}</span>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline">
           <Link href={baseHref}>
@@ -56,12 +74,19 @@ export default async function ApplicabilityResultPage({
             {labels.answers}
           </Link>
         </Button>
-        <Button asChild variant="secondary">
-          <Link href={`${baseHref}/new`}>
-            <RefreshCw />
+        {recalculationLock.locked ? (
+          <Button disabled variant="secondary">
+            <LockKeyhole />
             {labels.recalculate}
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button asChild variant="secondary">
+            <Link href={`${baseHref}/new`}>
+              <RefreshCw />
+              {labels.recalculate}
+            </Link>
+          </Button>
+        )}
       </div>
 
       <ApplicabilityResultCard
@@ -70,6 +95,7 @@ export default async function ApplicabilityResultPage({
         labels={labels}
         title={resultTitle}
         startCurrentHref={`${baseHref}/new`}
+        recalculationLocked={recalculationLock.locked}
       />
     </section>
   );

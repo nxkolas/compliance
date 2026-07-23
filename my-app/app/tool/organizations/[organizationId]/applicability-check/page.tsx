@@ -9,8 +9,17 @@ import {
 } from "@/components/ui/card";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getApplicabilityOverviewForUser } from "@/src/server/applicability-check/service";
-import { ArrowRight, ClipboardList, FileText, RefreshCw } from "lucide-react";
+import {
+  getApplicabilityOverviewForUser,
+  getApplicabilityRecalculationLockForUser,
+} from "@/src/server/applicability-check/service";
+import {
+  ArrowRight,
+  ClipboardList,
+  FileText,
+  LockKeyhole,
+  RefreshCw,
+} from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -29,10 +38,10 @@ export default async function ApplicabilityCheckPage({
   const dictionary = await getDictionary();
   const locale = await getLocale();
   const { organizationId } = await params;
-  const overview = await getApplicabilityOverviewForUser(
-    user.id,
-    organizationId,
-  );
+  const [overview, recalculationLock] = await Promise.all([
+    getApplicabilityOverviewForUser(user.id, organizationId),
+    getApplicabilityRecalculationLockForUser(user.id, organizationId),
+  ]);
 
   if (!overview) {
     redirect(`/tool/organizations/${organizationId}/applicability-check/new`);
@@ -52,6 +61,13 @@ export default async function ApplicabilityCheckPage({
         title={dictionary.modules.applicabilityCheck.title}
         subtitle={dictionary.modules.applicabilityCheck.description}
       />
+
+      {recalculationLock.locked ? (
+        <div className="flex items-start gap-2 rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm">
+          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span>{dictionary.modules.applicabilityCheck.recalculationLocked}</span>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-md border bg-card px-4 py-3">
@@ -107,12 +123,19 @@ export default async function ApplicabilityCheckPage({
                 {labels.viewAnswers}
               </Link>
             </Button>
-            <Button asChild variant="secondary">
-              <Link href={`${baseHref}/new`}>
-                <RefreshCw />
+            {recalculationLock.locked ? (
+              <Button disabled variant="secondary">
+                <LockKeyhole />
                 {labels.recalculate}
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button asChild variant="secondary">
+                <Link href={`${baseHref}/new`}>
+                  <RefreshCw />
+                  {labels.recalculate}
+                </Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

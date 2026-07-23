@@ -41,6 +41,7 @@ type ApplicabilityResultCardProps = {
   };
   title: string;
   startCurrentHref: string;
+  recalculationLocked?: boolean;
 };
 
 export function ApplicabilityResultCard({
@@ -49,6 +50,7 @@ export function ApplicabilityResultCard({
   labels,
   title,
   startCurrentHref,
+  recalculationLocked = false,
 }: ApplicabilityResultCardProps) {
   const evaluation = result.result;
   const presentation = getOutcomePresentation(evaluation.outcome);
@@ -76,9 +78,11 @@ export function ApplicabilityResultCard({
         {result.release.isOutdated ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
             <span>{labels.outdated}</span>
-            <Button asChild size="sm">
-              <Link href={startCurrentHref}>{labels.startCurrent}</Link>
-            </Button>
+            {!recalculationLocked ? (
+              <Button asChild size="sm">
+                <Link href={startCurrentHref}>{labels.startCurrent}</Link>
+              </Button>
+            ) : null}
           </div>
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
