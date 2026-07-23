@@ -1,6 +1,6 @@
 # Gap-analysis query-performance first pass
 
-Status: Proposed on 2026-07-23; awaiting approval.
+Status: Completed on 2026-07-23.
 
 ## Objective and user-visible outcome
 
@@ -44,6 +44,39 @@ The target for this first pass is:
 The existing sub-500 ms read target remains aspirational for this first pass. If
 the measured result remains above one second, a separate consolidated workflow
 reader can be considered.
+
+## Verification results
+
+The completed read-only benchmark used the configured remote Supabase database
+and an auto-discovered active Gap fixture with one document, four findings, and
+an open reassessment. It recorded one cold sample and three warm samples while
+checking that the response shape remained stable:
+
+| Operation | Cold wall time | Warm samples | Warm median | Warm SQL calls | PostgreSQL execution |
+| --- | ---: | --- | ---: | ---: | ---: |
+| Complete Gap workflow | 1.458 s | 948.3 / 974.0 / 987.8 ms | 974.0 ms | 34 | 2.3 ms median |
+| Document library | 334.5 ms | 326.5 / 314.3 / 342.5 ms | 326.5 ms | 6 | 0.3 ms median |
+| Active Gap release | 480.0 ms | 55.4 / 51.5 / 42.7 ms | 51.5 ms | 1 | below 0.1 ms median |
+| Reassessment draft | 554.2 ms | 555.7 / 563.8 / 562.2 ms | 562.2 ms | 16 | 0.8 ms median |
+| Revision staleness | 468.0 ms | 465.1 / 471.9 / 465.8 ms | 465.8 ms | 9 | 0.5 ms median |
+
+The workflow warm median improved by 60.7% from the 2.48-second baseline and is
+below the 1.5-second target. The cold workflow made 50 SQL calls and assembled
+one immutable release bundle. Every warm workflow made 34 SQL calls, resolved
+the active pointer dynamically, and made zero immutable release-assembly
+queries. The total organization-specific query count did not increase.
+
+PostgreSQL execution time was measured through `pg_stat_statements`; SQL-call,
+active-pointer, and immutable-assembly counts were captured by the benchmark's
+read-only query observer. Run the benchmark with:
+
+```text
+npm run db:benchmark:gap
+```
+
+Deterministic performance tests, the related workflow/staleness tests, the full
+250-test suite, type checking, and linting all passed. Manual browser rendering
+was not performed because no authenticated browser session was available.
 
 ## Non-goals
 
@@ -187,6 +220,13 @@ flaky CI assertions.
 - `tests/gap-query-performance.test.ts`
   - cover cache identity, active-pointer freshness, release reuse, mismatch
     behavior, and concurrency.
+- `scripts/benchmark-gap-workflow.ts`
+  - provide permanent read-only cold/warm latency, SQL-call, query-shape, and
+    PostgreSQL execution measurements.
+- `src/db/index.ts`
+  - expose the dormant query observer used only by the benchmark.
+- `package.json`
+  - expose the `db:benchmark:gap` command.
 - `docs/plans/gap-analysis-query-performance.md`
   - record the accepted scope, baseline, and verification results.
 
@@ -263,4 +303,3 @@ Rollback is code-only:
 No data migration, cache purge, or infrastructure rollback is required. Cached
 immutable bundles become unreachable when the adapter is removed or a new build
 is deployed.
-

@@ -63,15 +63,42 @@ export type LoadedGapRelease = {
   }>;
 };
 
-export async function getActiveGapAnalysisRelease(
+export type GapReleaseReader = {
+  getPublished: (input: {
+    releaseId: string;
+    locale: Locale;
+  }) => Promise<LoadedGapRelease | null>;
+  getActive: (input: {
+    releaseCode: string;
+    locale: Locale;
+  }) => Promise<LoadedGapRelease | null>;
+};
+
+export function createGapReleaseReader(input: {
+  loadPublished: GapReleaseReader["getPublished"];
+  loadActivePointer: (
+    releaseCode: string,
+  ) => Promise<{ gapAnalysisReleaseId: string } | null | undefined>;
+}): GapReleaseReader {
+  return {
+    getPublished: input.loadPublished,
+    async getActive({ releaseCode, locale }) {
+      const pointer = await input.loadActivePointer(releaseCode);
+      if (!pointer) return null;
+      return input.loadPublished({
+        releaseId: pointer.gapAnalysisReleaseId,
+        locale,
+      });
+    },
+  };
+}
+
+export async function loadActiveGapAnalysisReleasePointer(
   releaseCode: string,
-  locale: Locale,
 ) {
-  const active = await db.query.activeGapAnalysisReleases.findFirst({
+  return db.query.activeGapAnalysisReleases.findFirst({
     where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),
   });
-  if (!active) return null;
-  return loadGapAnalysisRelease(active.gapAnalysisReleaseId, locale);
 }
 
 export async function loadGapAnalysisRelease(
@@ -236,4 +263,17 @@ function parseConditions(value: unknown) {
         )
       : [],
   };
+}
+
+export const directGapReleaseReader = createGapReleaseReader({
+  loadPublished: ({ releaseId, locale }) =>
+    loadGapAnalysisRelease(releaseId, locale),
+  loadActivePointer: loadActiveGapAnalysisReleasePointer,
+});
+
+export async function getActiveGapAnalysisRelease(
+  releaseCode: string,
+  locale: Locale,
+) {
+  return directGapReleaseReader.getActive({ releaseCode, locale });
 }

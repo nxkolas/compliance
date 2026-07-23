@@ -29,6 +29,7 @@ import { buildReassessmentEvidenceSelection } from "./reassessment-selection";
 import { fingerprintRequest } from "../api/idempotency";
 import { toJobDto } from "../jobs/service";
 import { retryableGapReassessmentStatuses } from "@/src/contracts/gap-analysis/generation";
+import type { LoadedGapRelease } from "./release-loader";
 
 export async function prepareGapReassessment(input: {
   userId: string;
@@ -233,6 +234,209 @@ export async function updateGapReassessmentEvidence(input: {
   return updated;
 }
 
+type GapReassessmentDraftLookup = {
+  organizationId: string;
+  draftId?: string;
+  assessmentId?: string;
+};
+
+type GapReassessmentDraftReadInput = GapReassessmentDraftLookup & {
+  locale: Locale;
+  release?: LoadedGapRelease;
+};
+
+type AuthorizedGapReassessmentDraftReadInput =
+  GapReassessmentDraftReadInput & {
+    userId: string;
+  };
+
+type GapReassessmentDraftRow = typeof gapReassessmentDrafts.$inferSelect;
+type GapReassessmentDraftDocumentRow =
+  typeof gapReassessmentDraftDocuments.$inferSelect;
+type GeneratedArtifactRevisionRow =
+  typeof generatedArtifactRevisions.$inferSelect;
+type AssessmentRevisionRow = typeof assessmentRevisions.$inferSelect;
+type AssessmentRow = typeof assessments.$inferSelect;
+
+export function createGapReassessmentDraftReader<
+  TDraft extends {
+    id: string;
+    assessmentId: string;
+    assessmentRevisionId: string;
+    gapAnalysisReleaseId: string;
+    baseAcceptedGapRevisionId: string | null;
+  },
+  TSelected extends {
+    documentId: string;
+    documentVersionId: string;
+    selectionOrigin:
+      | "approved_carryover"
+      | "version_replacement"
+      | "explicit_addition";
+  },
+  TBaseRevision extends { revisionNumber: number } | null | undefined,
+  TAssessmentRevision extends { revisionNumber: number } | null | undefined,
+  TAssessment extends {
+    applicabilityArtifactRevisionId: string | null;
+  } | null | undefined,
+  TApplicabilityRevision extends { result: unknown } | null | undefined,
+>(dependencies: {
+  authorize: (input: {
+    userId: string;
+    organizationId: string;
+  }) => Promise<void>;
+  findDraft: (
+    input: GapReassessmentDraftLookup,
+  ) => Promise<TDraft | null | undefined>;
+  loadSelected: (draftId: string) => Promise<TSelected[]>;
+  loadAcceptedEvidence: (
+    acceptedRevisionId: string | null,
+  ) => Promise<Array<{ versionId: string; documentId: string }>>;
+  loadRelease: (
+    releaseId: string,
+    locale: Locale,
+  ) => Promise<LoadedGapRelease | null>;
+  loadBaseRevision: (
+    revisionId: string | null,
+  ) => Promise<TBaseRevision>;
+  loadAssessmentRevision: (
+    revisionId: string,
+  ) => Promise<TAssessmentRevision>;
+  loadAssessment: (assessmentId: string) => Promise<TAssessment>;
+  loadApplicabilityRevision: (
+    revisionId: string | null,
+  ) => Promise<TApplicabilityRevision>;
+}) {
+  const getPreauthorized = async (input: GapReassessmentDraftReadInput) => {
+    const draft = await dependencies.findDraft(input);
+    if (!draft) return null;
+    const release =
+      input.release?.id === draft.gapAnalysisReleaseId
+        ? Promise.resolve(input.release)
+        : dependencies.loadRelease(draft.gapAnalysisReleaseId, input.locale);
+    const [
+      selected,
+      base,
+      resolvedRelease,
+      baseRevision,
+      assessmentRevision,
+      assessment,
+    ] = await Promise.all([
+      dependencies.loadSelected(draft.id),
+      dependencies.loadAcceptedEvidence(draft.baseAcceptedGapRevisionId),
+      release,
+      dependencies.loadBaseRevision(draft.baseAcceptedGapRevisionId),
+      dependencies.loadAssessmentRevision(draft.assessmentRevisionId),
+      dependencies.loadAssessment(draft.assessmentId),
+    ]);
+    const selectedIds = new Set(
+      selected.map((item) => item.documentVersionId),
+    );
+    const selectedDocumentIds = new Set(
+      selected.map((item) => item.documentId),
+    );
+    const applicability = assessment?.applicabilityArtifactRevisionId
+      ? await dependencies.loadApplicabilityRevision(
+          assessment.applicabilityArtifactRevisionId,
+        )
+      : null;
+    let requirementCount = 0;
+    const outcome = (applicability?.result as { outcome?: unknown } | undefined)
+      ?.outcome;
+    if (resolvedRelease && typeof outcome === "string") {
+      requirementCount = resolvedRelease.requirements.filter((requirement) =>
+        requirement.applicabilityOutcomeCodes.includes(outcome),
+      ).length;
+    }
+    return {
+      draft,
+      selected,
+      summary: {
+        baseAcceptedGapRevisionId: draft.baseAcceptedGapRevisionId,
+        baseAcceptedGapRevisionNumber: baseRevision?.revisionNumber ?? null,
+        assessmentRevisionId: draft.assessmentRevisionId,
+        assessmentRevisionNumber: assessmentRevision?.revisionNumber ?? null,
+        gapAnalysisReleaseId: draft.gapAnalysisReleaseId,
+        gapAnalysisReleaseVersion: resolvedRelease?.versionLabel ?? null,
+        requirementCount,
+        carried: selected
+          .filter((item) => item.selectionOrigin === "approved_carryover")
+          .map((item) => item.documentVersionId),
+        replaced: selected
+          .filter((item) => item.selectionOrigin === "version_replacement")
+          .map((item) => item.documentVersionId),
+        added: selected
+          .filter((item) => item.selectionOrigin === "explicit_addition")
+          .map((item) => item.documentVersionId),
+        removed: base
+          .filter((item) => !selectedDocumentIds.has(item.documentId))
+          .map((item) => item.versionId),
+        selectedDocumentVersionIds: [...selectedIds],
+      },
+    };
+  };
+
+  return {
+    getPreauthorized,
+    async getAuthorized(input: AuthorizedGapReassessmentDraftReadInput) {
+      await dependencies.authorize(input);
+      return getPreauthorized(input);
+    },
+  };
+}
+
+const gapReassessmentDraftReader = createGapReassessmentDraftReader<
+  GapReassessmentDraftRow,
+  GapReassessmentDraftDocumentRow,
+  GeneratedArtifactRevisionRow | null | undefined,
+  AssessmentRevisionRow | null | undefined,
+  AssessmentRow | null | undefined,
+  GeneratedArtifactRevisionRow | null | undefined
+>({
+  authorize: async ({ userId, organizationId }) => {
+    await assertCanAccessOrganization(userId, organizationId);
+  },
+  findDraft: (input) =>
+    db.query.gapReassessmentDrafts.findFirst({
+      where: and(
+        eq(gapReassessmentDrafts.organizationId, input.organizationId),
+        ...(input.draftId
+          ? [eq(gapReassessmentDrafts.id, input.draftId)]
+          : []),
+        ...(input.assessmentId
+          ? [eq(gapReassessmentDrafts.assessmentId, input.assessmentId)]
+          : []),
+      ),
+      orderBy: [desc(gapReassessmentDrafts.createdAt)],
+    }),
+  loadSelected: (draftId) =>
+    db.query.gapReassessmentDraftDocuments.findMany({
+      where: eq(gapReassessmentDraftDocuments.draftId, draftId),
+    }),
+  loadAcceptedEvidence,
+  loadRelease: loadGapAnalysisRelease,
+  loadBaseRevision: (revisionId) =>
+    revisionId
+      ? db.query.generatedArtifactRevisions.findFirst({
+          where: eq(generatedArtifactRevisions.id, revisionId),
+        })
+      : Promise.resolve(null),
+  loadAssessmentRevision: (revisionId) =>
+    db.query.assessmentRevisions.findFirst({
+      where: eq(assessmentRevisions.id, revisionId),
+    }),
+  loadAssessment: (assessmentId) =>
+    db.query.assessments.findFirst({
+      where: eq(assessments.id, assessmentId),
+    }),
+  loadApplicabilityRevision: (revisionId) =>
+    revisionId
+      ? db.query.generatedArtifactRevisions.findFirst({
+          where: eq(generatedArtifactRevisions.id, revisionId),
+        })
+      : Promise.resolve(null),
+});
+
 export async function getGapReassessmentDraft(input: {
   userId: string;
   organizationId: string;
@@ -240,82 +444,13 @@ export async function getGapReassessmentDraft(input: {
   assessmentId?: string;
   locale: Locale;
 }) {
-  await assertCanAccessOrganization(input.userId, input.organizationId);
-  const draft = await db.query.gapReassessmentDrafts.findFirst({
-    where: and(
-      eq(gapReassessmentDrafts.organizationId, input.organizationId),
-      ...(input.draftId ? [eq(gapReassessmentDrafts.id, input.draftId)] : []),
-      ...(input.assessmentId
-        ? [eq(gapReassessmentDrafts.assessmentId, input.assessmentId)]
-        : []),
-    ),
-    orderBy: [desc(gapReassessmentDrafts.createdAt)],
-  });
-  if (!draft) return null;
-  const selected = await db.query.gapReassessmentDraftDocuments.findMany({
-    where: eq(gapReassessmentDraftDocuments.draftId, draft.id),
-  });
-  const base = await loadAcceptedEvidence(draft.baseAcceptedGapRevisionId);
-  const selectedIds = new Set(selected.map((item) => item.documentVersionId));
-  const selectedDocumentIds = new Set(selected.map((item) => item.documentId));
-  const release = await loadGapAnalysisRelease(draft.gapAnalysisReleaseId, input.locale);
-  const [baseRevision, assessmentRevision] = await Promise.all([
-    draft.baseAcceptedGapRevisionId
-      ? db.query.generatedArtifactRevisions.findFirst({
-          where: eq(
-            generatedArtifactRevisions.id,
-            draft.baseAcceptedGapRevisionId,
-          ),
-        })
-      : null,
-    db.query.assessmentRevisions.findFirst({
-      where: eq(assessmentRevisions.id, draft.assessmentRevisionId),
-    }),
-  ]);
-  const assessment = await db.query.assessments.findFirst({
-    where: eq(assessments.id, draft.assessmentId),
-  });
-  let requirementCount = 0;
-  if (release && assessment?.applicabilityArtifactRevisionId) {
-    const applicability = await db.query.generatedArtifactRevisions.findFirst({
-      where: eq(
-        generatedArtifactRevisions.id,
-        assessment.applicabilityArtifactRevisionId,
-      ),
-    });
-    const outcome = (applicability?.result as { outcome?: unknown })?.outcome;
-    if (typeof outcome === "string") {
-      requirementCount = release.requirements.filter((requirement) =>
-        requirement.applicabilityOutcomeCodes.includes(outcome),
-      ).length;
-    }
-  }
-  return {
-    draft,
-    selected,
-    summary: {
-      baseAcceptedGapRevisionId: draft.baseAcceptedGapRevisionId,
-      baseAcceptedGapRevisionNumber: baseRevision?.revisionNumber ?? null,
-      assessmentRevisionId: draft.assessmentRevisionId,
-      assessmentRevisionNumber: assessmentRevision?.revisionNumber ?? null,
-      gapAnalysisReleaseId: draft.gapAnalysisReleaseId,
-      gapAnalysisReleaseVersion: release?.versionLabel ?? null,
-      requirementCount,
-      carried: selected
-        .filter((item) => item.selectionOrigin === "approved_carryover")
-        .map((item) => item.documentVersionId),
-      replaced: selected
-        .filter((item) => item.selectionOrigin === "version_replacement")
-        .map((item) => item.documentVersionId),
-      added: selected
-        .filter((item) => item.selectionOrigin === "explicit_addition")
-        .map((item) => item.documentVersionId),
-      removed: base
-        .filter((item) => !selectedDocumentIds.has(item.documentId))
-        .map((item) => item.versionId),
-      selectedDocumentVersionIds: [...selectedIds],
-    },
-  };
+  return gapReassessmentDraftReader.getAuthorized(input);
+}
+
+export async function getGapReassessmentDraftPreauthorized(
+  input: GapReassessmentDraftReadInput,
+) {
+  return gapReassessmentDraftReader.getPreauthorized(input);
 }
 
 export async function generateGapReassessment(

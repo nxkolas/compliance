@@ -16,6 +16,7 @@
     "db:activate:compliance": "tsx scripts/activate-compliance-release.ts",
     "db:smoke:nis2": "tsx scripts/smoke-nis2-scope.ts",
     "db:benchmark:compliance": "tsx scripts/benchmark-compliance-runtime.ts",
+    "db:benchmark:gap": "tsx scripts/benchmark-gap-workflow.ts",
     "db:bootstrap:platform-admin": "tsx scripts/bootstrap-platform-administrator.ts",
     "db:verify:server-only": "tsx scripts/verify-server-only-grants.ts",
     "storage:setup:legal-corpus": "tsx scripts/setup-legal-corpus-storage.ts",
