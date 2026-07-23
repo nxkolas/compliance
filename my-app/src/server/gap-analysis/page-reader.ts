@@ -9,6 +9,8 @@ import { ApiError } from "../api/errors";
 import { postgresGapPageData } from "./postgres-page-data";
 import { nextCachedGapReleaseReader } from "./next-cached-release-loader";
 import type { GapReleaseReader, LoadedGapRelease } from "./release-loader";
+import { loadGapHistoryPreauthorized } from "./history-reader";
+import { readGeneratedGapInputsPreauthorized } from "./generated-inputs-reader";
 
 export type GapPageReadInput = {
   userId: string;
@@ -42,6 +44,7 @@ export function createGapPageReader<
   TPlan extends { sourceGapArtifactRevisionId: string | null },
   TRun,
   TRunContext,
+  TGeneratedInputs,
 >(dependencies: {
   authorize: (
     input: GapPageReadInput,
@@ -68,6 +71,13 @@ export function createGapPageReader<
       TRunContext
     >
   >;
+  loadPrerequisite: (
+    input: GapPageReadInput,
+    release: TRelease,
+  ) => Promise<{ satisfied: boolean; destination: string }>;
+  loadHistory: (
+    input: GapPageReadInput,
+  ) => ReturnType<typeof loadGapHistoryPreauthorized>;
   loadAnswers: (
     assessment: TAssessment | null,
   ) => Promise<Record<string, string>>;
@@ -96,6 +106,11 @@ export function createGapPageReader<
     input: GapPageReadInput,
     runContext: TRunContext,
   ) => Promise<TRun | null>;
+  loadGeneratedInputs: (
+    input: GapPageReadInput,
+    revision: TRevision,
+    release: TRelease,
+  ) => Promise<TGeneratedInputs>;
 }) {
   return {
     async readDocuments(input: GapPageReadInput) {
@@ -163,6 +178,12 @@ export function createGapPageReader<
           candidateFindings: [],
           activePlan: null,
           reassessment: null,
+          prerequisite: {
+            satisfied: false,
+            destination: `/tool/organizations/${input.organizationId}/applicability-check`,
+          },
+          history: [],
+          generatedInputs: null,
           reviewBlockers: [],
           planUpdateAvailable: false,
           acceptedStaleness: null,
@@ -171,17 +192,28 @@ export function createGapPageReader<
         };
       }
 
-      const [documentLibrary, snapshot] = await Promise.all([
-        documentLibraryPromise,
-        dependencies.loadWorkflowSnapshot(input, release),
-      ]);
+      const [documentLibrary, snapshot, prerequisite, history] =
+        await Promise.all([
+          documentLibraryPromise,
+          dependencies.loadWorkflowSnapshot(input, release),
+          dependencies.loadPrerequisite(input, release),
+          dependencies.loadHistory(input),
+        ]);
       const documents = dependencies.getCurrentDocuments(documentLibrary);
       const acceptedRevision = snapshot.acceptedRevision;
       const candidateRevision =
         snapshot.currentRevision?.id !== acceptedRevision?.id
           ? snapshot.currentRevision
           : null;
-      const [answers, findings, reassessment, staleness, run] =
+      const revision = candidateRevision ?? acceptedRevision;
+      const [
+        answers,
+        findings,
+        reassessment,
+        staleness,
+        run,
+        generatedInputs,
+      ] =
         await Promise.all([
           dependencies.loadAnswers(snapshot.assessment),
           dependencies.loadFindingsBatch({
@@ -200,8 +232,10 @@ export function createGapPageReader<
             activeGapReleaseId: release.id,
           }),
           dependencies.loadRun(input, snapshot.runContext),
+          revision
+            ? dependencies.loadGeneratedInputs(input, revision, release)
+            : Promise.resolve(null),
         ]);
-      const revision = candidateRevision ?? acceptedRevision;
       const currentFindings = candidateRevision
         ? findings.candidate
         : findings.accepted;
@@ -222,6 +256,9 @@ export function createGapPageReader<
         candidateFindings: findings.candidate,
         activePlan: snapshot.activePlan,
         reassessment,
+        prerequisite,
+        history,
+        generatedInputs,
         reviewBlockers: findings.candidate
           .filter((row) => row.finding.requiresReview)
           .map((row) => row.finding.id),
@@ -318,6 +355,9 @@ type ProductionStaleness = NonNullable<
 type ProductionRun = NonNullable<
   Awaited<ReturnType<typeof postgresGapPageData.loadRun>>
 >;
+type ProductionGeneratedInputs = Awaited<
+  ReturnType<typeof readGeneratedGapInputsPreauthorized>
+>;
 
 export function createDatabaseGapPageReader(releaseReader: GapReleaseReader) {
   return createGapPageReader<
@@ -332,7 +372,8 @@ export function createDatabaseGapPageReader(releaseReader: GapReleaseReader) {
     ProductionStaleness,
     ProductionPlan,
     ProductionRun,
-    ProductionSnapshot["runContext"]
+    ProductionSnapshot["runContext"],
+    ProductionGeneratedInputs
   >({
     authorize: authorizePageRead,
     loadDocumentLibrary: (input, membership) =>
@@ -359,11 +400,25 @@ export function createDatabaseGapPageReader(releaseReader: GapReleaseReader) {
       }),
     loadDocumentsAssessment: postgresGapPageData.loadDocumentsAssessment,
     loadWorkflowSnapshot: postgresGapPageData.loadWorkflowSnapshot,
+    loadPrerequisite: postgresGapPageData.loadGapPrerequisiteState,
+    loadHistory: (input) =>
+      loadGapHistoryPreauthorized({
+        organizationId: input.organizationId,
+        currentUserId: input.userId,
+        locale: input.locale,
+      }),
     loadAnswers: postgresGapPageData.loadAnswers,
     loadFindingsBatch: postgresGapPageData.loadFindingsBatch,
     loadReassessment: postgresGapPageData.loadReassessment,
     loadStalenessBatch: postgresGapPageData.loadStalenessBatch,
     loadRun: postgresGapPageData.loadRun,
+    loadGeneratedInputs: (input, revision, release) =>
+      readGeneratedGapInputsPreauthorized({
+        organizationId: input.organizationId,
+        locale: input.locale,
+        revision,
+        release,
+      }),
   });
 }
 

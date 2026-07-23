@@ -17,6 +17,10 @@ import {
 import { getGapReassessmentDraft } from "../src/server/gap-analysis/reassessment-service";
 import { getGapRevisionStaleness } from "../src/server/gap-analysis/staleness";
 import { createDatabaseGapPageReader } from "../src/server/gap-analysis/page-reader";
+import { getGapAnalysisWorkflow } from "../src/server/gap-analysis/workflow-reader";
+import { readGeneratedGapInputs } from "../src/server/gap-analysis/generated-inputs-reader";
+import { loadGapHistoryPreauthorized } from "../src/server/gap-analysis/history-reader";
+import { postgresGapPageData } from "../src/server/gap-analysis/postgres-page-data";
 
 type Fixture = {
   organizationId: string;
@@ -38,8 +42,18 @@ async function main() {
   if (!Number.isInteger(sampleCount) || sampleCount < 1) {
     throw new Error("Invalid sample count");
   }
+  if (argumentsByName.has("assert") && sampleCount < 3) {
+    throw new Error("Assertion mode requires at least three warm samples");
+  }
   const fixture = await resolveFixture();
-  const operations = createOperations(fixture);
+  const requestedOperation = argumentsByName.get("operation");
+  const operations = createOperations(fixture).filter(
+    (operation) =>
+      !requestedOperation || operation.name === requestedOperation,
+  );
+  if (!operations.length) {
+    throw new Error(`Unknown benchmark operation: ${requestedOperation}`);
+  }
   const results = [];
   for (const operation of operations) {
     const run = operation.create();
@@ -72,25 +86,54 @@ async function main() {
     });
   }
 
-  console.log(
-    JSON.stringify(
-      {
-        mode: "read-only",
-        fixtureSource:
-          argumentsByName.has("organization-id") &&
-          argumentsByName.has("user-id")
-            ? "arguments"
-            : "auto-discovered",
-        samples: sampleCount,
-        databaseExecutionStats: databaseStatsAvailable
-          ? "pg_stat_statements"
-          : "unavailable",
-        results,
-      },
-      null,
-      2,
-    ),
-  );
+  const report = {
+    mode: "read-only",
+    fixtureSource:
+      argumentsByName.has("organization-id") &&
+      argumentsByName.has("user-id")
+        ? "arguments"
+        : "auto-discovered",
+    samples: sampleCount,
+    databaseExecutionStats: databaseStatsAvailable
+      ? "pg_stat_statements"
+      : "unavailable",
+    results,
+  };
+  console.log(JSON.stringify(report, null, 2));
+  if (argumentsByName.has("assert")) {
+    const completeWorkflow = results.find(
+      (result) => result.operation === "completeWorkflow",
+    );
+    if (!completeWorkflow) {
+      throw new Error("Complete Gap workflow result is unavailable");
+    }
+    if (completeWorkflow.warmMedianMs > 500) {
+      throw new Error(
+        `Complete Gap workflow warm median ${completeWorkflow.warmMedianMs} ms exceeds 500 ms`,
+      );
+    }
+    for (const sample of completeWorkflow.warm) {
+      if (sample.sqlCalls > 17) {
+        throw new Error(
+          `Complete Gap workflow used ${sample.sqlCalls} SQL calls; expected at most 17`,
+        );
+      }
+      if ((sample.sequentialLayers ?? Number.POSITIVE_INFINITY) > 5) {
+        throw new Error(
+          `Complete Gap workflow used ${sample.sequentialLayers} dependency layers; expected at most 5`,
+        );
+      }
+      if (
+        sample.authorizationCalls !== 1 ||
+        sample.activePointerCalls !== 1 ||
+        sample.immutableReleaseAssemblies !== 0
+      ) {
+        throw new Error(
+          "Complete Gap workflow violated authorization, active-pointer, or immutable-release reuse budgets",
+        );
+      }
+    }
+  }
 }
 
 function createOperations(fixture: Fixture) {
@@ -124,18 +167,21 @@ function createOperations(fixture: Fixture) {
       sequentialLayers: 4,
     },
     {
-      name: "workflowCompatibility",
+      name: "completeWorkflow",
       create() {
         const reader = createBenchmarkReleaseReader();
         const pageReader = createDatabaseGapPageReader(reader);
         return () =>
-          pageReader.readGap({
-            userId: fixture.userId,
-            organizationId: fixture.organizationId,
-            locale: "de",
-          });
+          getGapAnalysisWorkflow(
+            {
+              userId: fixture.userId,
+              organizationId: fixture.organizationId,
+              locale: "de",
+            },
+            pageReader,
+          );
       },
-      sequentialLayers: 4,
+      sequentialLayers: 5,
     },
     {
       name: "documentLibrary",
@@ -146,6 +192,53 @@ function createOperations(fixture: Fixture) {
         ),
       sequentialLayers: 3,
     },
+    {
+      name: "gapPrerequisite",
+      create() {
+        const reader = createBenchmarkReleaseReader();
+        let release: LoadedGapRelease | null = null;
+        return async () => {
+          release ??= await reader.getActive({
+            releaseCode: "nis2-gap",
+            locale: "de",
+          });
+          return release
+            ? postgresGapPageData.loadGapPrerequisiteState(
+                {
+                  organizationId: fixture.organizationId,
+                  locale: "de",
+                },
+                release,
+              )
+            : null;
+        };
+      },
+      sequentialLayers: 1,
+    },
+    {
+      name: "gapHistory",
+      create: () => () =>
+        loadGapHistoryPreauthorized({
+          organizationId: fixture.organizationId,
+          currentUserId: fixture.userId,
+          locale: "de",
+        }),
+      sequentialLayers: 1,
+    },
+    ...(fixture.revisionId
+      ? [
+          {
+            name: "generatedInputs",
+            create: () => () =>
+              readGeneratedGapInputs({
+                organizationId: fixture.organizationId,
+                revisionId: fixture.revisionId!,
+                locale: "de",
+              }),
+      sequentialLayers: 4,
+          },
+        ]
+      : []),
     {
       name: "activeRelease",
       create() {
@@ -310,7 +403,7 @@ async function readDatabaseStats(): Promise<DatabaseStats | null> {
 }
 
 function summarize(name: string, value: unknown) {
-  if (name === "gapPage" || name === "workflowCompatibility") {
+  if (name === "gapPage" || name === "completeWorkflow") {
     const workflow = value as {
       release: unknown;
       assessment: unknown;

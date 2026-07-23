@@ -288,11 +288,14 @@ describe("Gap page reader", () => {
       getCurrentDocuments: vi.fn(() => []),
       loadDocumentsAssessment,
       loadWorkflowSnapshot,
+      loadPrerequisite: vi.fn(),
+      loadHistory: vi.fn(),
       loadAnswers,
       loadFindingsBatch,
       loadReassessment,
       loadStalenessBatch,
       loadRun,
+      loadGeneratedInputs: vi.fn(),
     });
 
     await expect(
@@ -374,6 +377,17 @@ describe("Gap page reader", () => {
           runContext: { assessmentRevisionId: "assessment-revision" },
         };
       }),
+      loadPrerequisite: vi.fn(async () => {
+        queryCount += 1;
+        return {
+          satisfied: true,
+          destination: "/applicability-check",
+        };
+      }),
+      loadHistory: vi.fn(async () => {
+        queryCount += 1;
+        return [];
+      }),
       loadAnswers: vi.fn(async () => {
         queryCount += 1;
         return { question: "option" };
@@ -399,6 +413,10 @@ describe("Gap page reader", () => {
       loadRun: vi.fn(async () => {
         queryCount += 1;
         return run;
+      }),
+      loadGeneratedInputs: vi.fn(async () => {
+        queryCount += 3;
+        return { revisionId: "candidate" };
       }),
     });
 
@@ -426,13 +444,19 @@ describe("Gap page reader", () => {
       candidateFindings,
       activePlan: { sourceGapArtifactRevisionId: "older-revision" },
       reassessment,
+      prerequisite: {
+        satisfied: true,
+        destination: "/applicability-check",
+      },
+      history: [],
+      generatedInputs: { revisionId: "candidate" },
       reviewBlockers: ["candidate-finding"],
       planUpdateAvailable: true,
       acceptedStaleness,
       candidateStaleness,
       staleness: candidateStaleness,
     });
-    expect(queryCount).toBe(12);
+    expect(queryCount).toBe(17);
   });
 
   it("starts every peer in a dependency phase before awaiting a peer", async () => {
@@ -447,16 +471,25 @@ describe("Gap page reader", () => {
     const activeRelease = pending<LoadedGapRelease>();
     const snapshot = pending<{
       assessment: { id: string };
-      acceptedRevision: null;
+      acceptedRevision: {
+        id: string;
+        gapAnalysisReleaseId: string;
+      };
       currentRevision: null;
       activePlan: null;
       runContext: null;
     }>();
+    const prerequisite = pending<{
+      satisfied: boolean;
+      destination: string;
+    }>();
+    const history = pending<[]>();
     const answers = pending<Record<string, string>>();
     const findings = pending<{ accepted: []; candidate: [] }>();
     const reassessment = pending<null>();
     const staleness = pending<{ accepted: null; candidate: null }>();
     const run = pending<null>();
+    const generatedInputs = pending<{ revisionId: string }>();
     const dependencies = {
       authorize: vi.fn(async () => ({ role: "owner" as const })),
       loadDocumentLibrary: vi.fn(() => library.promise),
@@ -464,11 +497,14 @@ describe("Gap page reader", () => {
       getCurrentDocuments: vi.fn(() => []),
       loadDocumentsAssessment: vi.fn(),
       loadWorkflowSnapshot: vi.fn(() => snapshot.promise),
+      loadPrerequisite: vi.fn(() => prerequisite.promise),
+      loadHistory: vi.fn(() => history.promise),
       loadAnswers: vi.fn(() => answers.promise),
       loadFindingsBatch: vi.fn(() => findings.promise),
       loadReassessment: vi.fn(() => reassessment.promise),
       loadStalenessBatch: vi.fn(() => staleness.promise),
       loadRun: vi.fn(() => run.promise),
+      loadGeneratedInputs: vi.fn(() => generatedInputs.promise),
     };
     const reader = createGapPageReader(dependencies);
     const result = reader.readGap({
@@ -486,16 +522,26 @@ describe("Gap page reader", () => {
 
     await vi.waitFor(() => {
       expect(dependencies.loadWorkflowSnapshot).toHaveBeenCalledOnce();
+      expect(dependencies.loadPrerequisite).toHaveBeenCalledOnce();
+      expect(dependencies.loadHistory).toHaveBeenCalledOnce();
     });
     snapshot.resolve({
       assessment: { id: "assessment" },
-      acceptedRevision: null,
+      acceptedRevision: {
+        id: "revision",
+        gapAnalysisReleaseId: "release-a",
+      },
       currentRevision: null,
       activePlan: null,
       runContext: null,
     });
     expect(dependencies.loadAnswers).not.toHaveBeenCalled();
     library.resolve({ documents: [] });
+    prerequisite.resolve({
+      satisfied: true,
+      destination: "/applicability-check",
+    });
+    history.resolve([]);
 
     await vi.waitFor(() => {
       expect(dependencies.loadAnswers).toHaveBeenCalledOnce();
@@ -503,14 +549,30 @@ describe("Gap page reader", () => {
       expect(dependencies.loadReassessment).toHaveBeenCalledOnce();
       expect(dependencies.loadStalenessBatch).toHaveBeenCalledOnce();
       expect(dependencies.loadRun).toHaveBeenCalledOnce();
+      expect(dependencies.loadGeneratedInputs).toHaveBeenCalledOnce();
+      expect(dependencies.loadGeneratedInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId: "organization",
+          locale: "de",
+        }),
+        {
+          id: "revision",
+          gapAnalysisReleaseId: "release-a",
+        },
+        expect.objectContaining({ id: "release-a" }),
+      );
     });
     answers.resolve({});
     findings.resolve({ accepted: [], candidate: [] });
     reassessment.resolve(null);
     staleness.resolve({ accepted: null, candidate: null });
     run.resolve(null);
+    generatedInputs.resolve({ revisionId: "revision" });
     await expect(result).resolves.toMatchObject({
       assessment: { id: "assessment" },
+      prerequisite: { satisfied: true },
+      history: [],
+      generatedInputs: { revisionId: "revision" },
     });
   });
 
@@ -526,11 +588,14 @@ describe("Gap page reader", () => {
       getCurrentDocuments: vi.fn(),
       loadDocumentsAssessment: vi.fn(),
       loadWorkflowSnapshot: vi.fn(),
+      loadPrerequisite: vi.fn(),
+      loadHistory: vi.fn(),
       loadAnswers: vi.fn(),
       loadFindingsBatch: vi.fn(),
       loadReassessment: vi.fn(),
       loadStalenessBatch: vi.fn(),
       loadRun: vi.fn(),
+      loadGeneratedInputs: vi.fn(),
     });
 
     await expect(

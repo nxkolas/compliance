@@ -8,43 +8,25 @@ import {
 } from "@/src/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { requireOrganizationCapability } from "../auth/capability-service";
-import { gapPageReader, type GapPageReadInput } from "./page-reader";
+import {
+  gapPageReader,
+  type GapPageReadInput,
+  type GapPageReader,
+} from "./page-reader";
 import { loadActiveGapAnalysisReleasePointer } from "./release-loader";
 import { getGapRevisionStalenessBatchPreauthorized } from "./staleness";
-import { loadGapHistoryPreauthorized } from "./history-reader";
-import { postgresGapPageData } from "./postgres-page-data";
 import {
   compareGapFindings,
   countGapStatuses,
   deriveGapLifecycleCapabilities,
   deriveGapLifecycleMode,
 } from "./workflow-state";
-import { readGeneratedGapInputs } from "./generated-inputs-reader";
 
-export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
-  const workflow = await gapPageReader.readGap(input);
-  const [prerequisite, history, generatedInputs] = await Promise.all([
-    workflow.release
-      ? postgresGapPageData.loadGapPrerequisiteState(input, workflow.release)
-      : Promise.resolve({
-          satisfied: false,
-          destination: `/tool/organizations/${input.organizationId}/applicability-check`,
-        }),
-    workflow.release
-      ? loadGapHistoryPreauthorized({
-          organizationId: input.organizationId,
-          currentUserId: input.userId,
-          locale: input.locale,
-        })
-      : Promise.resolve([]),
-    workflow.revision
-      ? readGeneratedGapInputs({
-          organizationId: input.organizationId,
-          revisionId: workflow.revision.id,
-          locale: input.locale,
-        })
-      : Promise.resolve(null),
-  ]);
+export async function getGapAnalysisWorkflow(
+  input: GapPageReadInput,
+  reader: Pick<GapPageReader, "readGap"> = gapPageReader,
+) {
+  const workflow = await reader.readGap(input);
   const correctedIds = (result: unknown) =>
     new Set(
       Array.isArray(
@@ -179,10 +161,8 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
 
   return {
     ...workflow,
-    prerequisite,
     lifecycleMode,
     lifecycle: deriveGapLifecycleCapabilities(lifecycleMode),
-    generatedInputs,
     answerSummary,
     selectedDocuments,
     findings,
@@ -193,8 +173,7 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
       workflow.candidateRevision && workflow.acceptedRevision
         ? compareGapFindings(acceptedFindings, candidateFindings)
         : [],
-    history,
-    lastWorkflowChange: history[0] ?? null,
+    lastWorkflowChange: workflow.history[0] ?? null,
   };
 }
 

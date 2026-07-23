@@ -2,6 +2,60 @@
 
 Status: Implemented and verified on 2026-07-23.
 
+## Complete-workflow regression correction
+
+A later Gap-analysis simplification added prerequisite, history, and generated
+input-provenance reads to `getGapAnalysisWorkflow` after the optimized page
+reader had completed. The permanent benchmark's former
+`workflowCompatibility` operation still called `pageReader.readGap` directly,
+so it could not detect the user-facing regression.
+
+The corrected benchmark now exercises the complete
+`getGapAnalysisWorkflow` page/API boundary and supports a focused assertion
+loop:
+
+```text
+npm run db:benchmark:gap -- --operation completeWorkflow --samples 3 --assert
+```
+
+The first corrected run reproduced a 953.2 ms warm median with 26 SQL calls and
+one immutable release assembly on every warm request. The generated-input
+reader accounted for a 653.0 ms warm median, 13 SQL calls, six dependency
+layers, and the repeated release assembly.
+
+The fix:
+
+- reuses the already-authorized generated revision and already-loaded matching
+  release;
+- preserves the pinned-release fallback when revision and active release IDs
+  differ;
+- joins answers and selected options in one read;
+- starts assessment, answer, document, and fallback-release reads together
+  after source IDs are known; and
+- schedules prerequisite/history reads with the workflow snapshot and generated
+  provenance with the page reader's final query phase.
+
+The final full read-only benchmark recorded complete-workflow warm samples of
+281.4 / 546.1 / 256.9 ms, a 281.4 ms median and a 70.5% improvement from the
+corrected 953.2 ms regression baseline. Warm requests used 16 / 17 / 16 SQL
+calls, five dependency layers, one authorization lookup, one fresh active
+pointer lookup, and zero immutable release assemblies. The complete payload,
+authorization, mutable-data freshness, UI behavior, and database schema remain
+unchanged.
+
+The benchmark assertion now enforces at least three warm samples, a median at
+or below 500 ms, at most 17 SQL calls and five dependency layers per warm
+sample, one authorization lookup, one active-pointer lookup, and zero warm
+immutable release assemblies.
+
+Verification passed:
+
+- 55 test files and 279 tests;
+- type checking;
+- linting;
+- the optimized production build; and
+- the full live read-only benchmark in assertion mode.
+
 ## Implementation results
 
 The second pass is complete. The final remote read-only benchmark used the
