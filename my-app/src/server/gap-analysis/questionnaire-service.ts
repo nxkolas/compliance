@@ -12,6 +12,7 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
+import { assertGapInputsMutable } from "./lifecycle-guards";
 
 export async function submitGapQuestionnaire(input: {
   userId: string;
@@ -30,6 +31,10 @@ export async function submitGapQuestionnaire(input: {
   if (!assessment?.gapAnalysisReleaseId) {
     throw new ApiError(404, "Gap assessment not found");
   }
+  await assertGapInputsMutable({
+    organizationId: input.organizationId,
+    moduleId: assessment.moduleId,
+  });
   const release = await db.query.gapAnalysisReleases.findFirst({
     where: eq(gapAnalysisReleases.id, assessment.gapAnalysisReleaseId),
   });

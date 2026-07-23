@@ -2,10 +2,46 @@ import { describe, expect, it } from "vitest";
 import {
   compareGapFindings,
   countGapStatuses,
+  deriveGapLifecycleCapabilities,
+  deriveGapLifecycleMode,
   deriveGapWorkflowNavigation,
+  resolveGapPostGenerationView,
   selectGapWorkflowRevisions,
   sortGapFindings,
 } from "@/src/server/gap-analysis/workflow-state";
+
+describe("single gap lifecycle", () => {
+  it.each([
+    [{ hasGeneratedRevision: false, hasActiveActionPlan: false, generationActive: false }, "collecting_inputs"],
+    [{ hasGeneratedRevision: false, hasActiveActionPlan: false, generationActive: true }, "generating"],
+    [{ hasGeneratedRevision: true, hasActiveActionPlan: false, generationActive: false }, "generated_editable"],
+    [{ hasGeneratedRevision: true, hasActiveActionPlan: true, generationActive: false }, "locked_by_action_plan"],
+  ] as const)("derives the authoritative mode", (input, expected) => {
+    expect(deriveGapLifecycleMode(input)).toBe(expected);
+  });
+
+  it("allows corrections and finalization only before the action plan exists", () => {
+    expect(deriveGapLifecycleCapabilities("generated_editable")).toMatchObject({
+      showGeneratedViews: true,
+      findingsEditable: true,
+      canFinalize: true,
+      locked: false,
+    });
+    expect(deriveGapLifecycleCapabilities("locked_by_action_plan")).toMatchObject({
+      showGeneratedViews: true,
+      findingsEditable: false,
+      canFinalize: false,
+      locked: true,
+    });
+  });
+
+  it("defaults generated navigation to results", () => {
+    expect(resolveGapPostGenerationView()).toBe("results");
+    expect(resolveGapPostGenerationView("unknown")).toBe("results");
+    expect(resolveGapPostGenerationView("inputs")).toBe("inputs");
+    expect(resolveGapPostGenerationView("history")).toBe("history");
+  });
+});
 
 describe("selectGapWorkflowRevisions", () => {
   it("keeps the accepted revision authoritative while a newer candidate is current", () => {
@@ -26,7 +62,7 @@ describe("selectGapWorkflowRevisions", () => {
 });
 
 describe("guided gap workflow navigation", () => {
-  it("lands existing analyses on gaps and validates requested steps", () => {
+  it("keeps the legacy step resolver scoped to pre-generation navigation", () => {
     expect(
       deriveGapWorkflowNavigation({
         prerequisiteSatisfied: true,

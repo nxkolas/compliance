@@ -34,8 +34,8 @@ Wichtige Tabellen sind `assessments`, `assessment_revisions`,
 
 ## Dokumente
 
-Die Dokumentenbibliothek ist ein eigenständiges Organisationsmodul. Sie dient
-als gemeinsame Evidenzquelle für Gap-Neubewertungen.
+Die Dokumentenbibliothek ist ein eigenständiges Organisationsmodul. Vor der
+einmaligen Gap-Analyse kann sie als optionale Evidenzquelle dienen.
 
 - Unterstützt werden Text-PDF, DOCX, TXT und Markdown bis 10 MB.
 - Ein Dokument besitzt unveränderliche Versionen und genau einen aktuellen
@@ -45,9 +45,9 @@ als gemeinsame Evidenzquelle für Gap-Neubewertungen.
 - Neue Versionen ersetzen historische Versionen nicht.
 - Archivierung entfernt ein Dokument aus zukünftigen Auswahlen, löscht aber
   keine bereits zitierte Evidenz.
-- Nutzungskennzeichen zeigen, ob eine Version noch nicht bewertet wurde, in
-  einem Entwurf oder neuen Analyseergebnis steckt, ein bestätigtes Ergebnis
-  stützt oder den aktiven Maßnahmenplan unterstützt.
+- Die Dokumentenseite zeigt keine Gap- oder Maßnahmenplan-Beziehungen. Gepinnte
+  Quellen bleiben intern für den unveränderlichen Eingabeschnappschuss und die
+  Audit-Historie erhalten.
 
 Die privaten Quelldateien liegen im Supabase-Bucket `organization-evidence`.
 Metadaten und Suchdaten liegen in `documents`, `document_versions`,
@@ -60,15 +60,20 @@ Die Gap-Analyse ist ein KI-gestützter, aber serverseitig begrenzter
 Organisationsworkflow. Sie ist ein eigener Prozess neben dem deterministischen
 Betroffenheitscheck.
 
-Die normale Oberfläche führt durch vier Aufgaben:
+Vor der Generierung führt die Oberfläche durch vier nummerierte Aufgaben:
 
 1. **Fragen beantworten** speichert einen unveränderlichen Antwortstand.
 2. **Dokumente auswählen** pinnt optional die neuesten verwendbaren Versionen;
    eine leere Auswahl ist gültig und entfernt übernommene Dokumente.
 3. **Angaben prüfen** zeigt alle Antworten und Dateinamen vor dem ausdrücklichen
    KI-Aufruf.
-4. **Ihre Lücken** trennt den Umsetzungsstatus von der Dokumentunterstützung,
-   bietet Filter, manuelle Änderungen, Vergleich, Verlauf und Bestätigung.
+4. **Gap-Analyse-Ergebnis** trennt den Umsetzungsstatus von der
+   Dokumentunterstützung und bietet Filter und manuelle Änderungen.
+
+Nach der ersten erfolgreichen Generierung wird der Assistent durch
+**Gap-Analyse-Ergebnis** und **Verwendete Eingaben** ersetzt. Die Eingaben
+stammen aus den exakt gepinnten Antwort- und Dokumentversionen. Eine zweite
+KI-Generierung ist nicht möglich.
 
 Der Grounding Gateway recherchiert ausschließlich in gepinnten, freigegebenen
 Rechtsquellen und ausgewählten Organisationsevidenzen. Fragebogenangaben können
@@ -77,14 +82,10 @@ Organisationsdokument bleiben davon unabhängig. Die KI darf weder
 Anwendbarkeit noch Priorität bestimmen und jede Rechtsbehauptung benötigt ein
 gültiges Zitat.
 
-Das zuletzt bestätigte Ergebnis bleibt über
-`generated_artifacts.accepted_revision_id` verbindlich, während
-`current_revision_id` ein neueres, noch unbestätigtes Analyseergebnis zeigen
-kann.
-Dadurch überschreibt eine neue Analyse das bestätigte Ergebnis nicht vorzeitig.
-In der Oberfläche heißen diese Zustände **Bestätigter Stand** und **Neues
-Analyseergebnis**; Revisionsbegriffe erscheinen nur in technischen
-Auditdetails.
+Bis zur Erstellung des Maßnahmenplans können Owner und Admins Findings manuell
+korrigieren. Die atomare Planerstellung bestätigt den aktuellen Stand, setzt
+`generated_artifacts.accepted_revision_id`, erstellt Plan und Maßnahmen und
+sperrt die Gap-Analyse dauerhaft. Ein Fehler rollt alle Teilschritte zurück.
 
 Anforderungen, Releases, KI-Läufe und Ergebnisse liegen unter anderem in
 `gap_requirements`, `gap_requirement_versions`, `gap_analysis_releases`,
@@ -93,25 +94,22 @@ Anforderungen, Releases, KI-Läufe und Ergebnisse liegen unter anderem in
 
 ## Maßnahmenplan
 
-Ein Maßnahmenplan wird deterministisch aus einer genehmigten Gap-Revision
-erzeugt; dafür erfolgt kein weiterer KI-Aufruf.
+Ein Maßnahmenplan wird deterministisch beim Abschluss der aktuellen
+Gap-Revision erzeugt; dafür erfolgt kein weiterer KI-Aufruf.
 
 - Nicht oder nur teilweise erfüllte Anforderungen sowie unzureichende Evidenz
   erzeugen Aufgaben.
 - Mitglieder können Status, verantwortliche Benutzer-ID und Fälligkeitsdatum
   pflegen.
-- Nach einer neu genehmigten Gap-Revision bleibt der aktive Plan zunächst
-  vollständig nutzbar.
-- Ein persistierter Planabgleich ordnet alte und neue Findings über stabile
-  Anforderungsidentitäten zu.
-- Unveränderte Aufgaben werden automatisch übernommen. Schließung,
-  Wiedereröffnung, Folgemaßnahmen, geänderte Anforderungen und entfernte
-  Anforderungen können eine Owner/Admin-Entscheidung mit Begründung verlangen.
-- Erst die ausdrückliche Aktivierung ersetzt den aktiven Plan atomar. Der
-  Vorgänger und seine Maßnahmen bleiben als schreibgeschützte Historie erhalten.
+- Pro Organisation existiert höchstens ein Plan mit einer festen
+  Maßnahmenmenge.
+- Es gibt keine Neugenerierung, keinen Planabgleich und keinen Ersatzplan.
+- Status, Verantwortliche und Fälligkeitsdatum bleiben mit Audit-Historie
+  bearbeitbar.
 
-Die Daten liegen in `action_plans`, `action_plan_items`,
-`action_plan_reconciliations` und `action_plan_item_reconciliations`.
+Die aktiven Daten liegen in `action_plans` und `action_plan_items`.
+Historische Reconciliation-Tabellen können vorübergehend im Schema verbleiben,
+sind aber über keine Anwendungsroute erreichbar.
 
 ## Weitere Ausbaustufen
 

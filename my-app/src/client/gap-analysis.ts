@@ -64,12 +64,6 @@ export const gapAnalysisClient = {
     });
   },
 
-  approveRevision(organizationId: string, revisionId: string, signal?: AbortSignal) {
-    return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/approve`, {
-      method: "POST", idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ revision: gapEntitySchema }), signal,
-    });
-  },
-
   generate(organizationId: string, input: z.infer<typeof generationInputSchema>, idempotencyKey: string, signal?: AbortSignal) {
     return request(`${reassessmentBase(organizationId)}/generate`, {
       method: "POST",

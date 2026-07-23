@@ -103,7 +103,7 @@ async function main() {
         ) duplicate) as duplicate_active_plans
     `;
     if (!consistency || Object.values(consistency).some((count) => count > 0)) {
-      throw new Error("Reassessment or reconciliation consistency checks failed");
+      throw new Error("Gap and action-plan workflow consistency checks failed");
     }
     console.log(`Gap smoke test passed for ${release.release_code}/${release.version_label}.`);
   } finally {

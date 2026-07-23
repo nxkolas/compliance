@@ -1,8 +1,8 @@
 import { OrganizationDocumentManager } from "@/components/documents/organization-document-manager";
 import { PageHeader } from "@/components/page-header";
-import { getDictionary, getLocale } from "@/lib/i18n";
+import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { gapPageReader } from "@/src/server/gap-analysis/page-reader";
+import { getOrganizationDocumentLibrary } from "@/src/server/documents/service";
 import { connection } from "next/server";
 
 export default async function DocumentsPage({
@@ -13,13 +13,12 @@ export default async function DocumentsPage({
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
-  const locale = await getLocale();
   const { organizationId } = await params;
-  const page = await gapPageReader.readDocuments({
-    userId: user.id,
+  const library = await getOrganizationDocumentLibrary(
+    user.id,
     organizationId,
-    locale,
-  });
+    { includeUsage: false },
+  );
 
   return (
     <section className="flex w-full flex-col gap-8">
@@ -29,9 +28,7 @@ export default async function DocumentsPage({
       />
       <OrganizationDocumentManager
         organizationId={organizationId}
-        assessmentId={page.assessmentId}
-        library={page.documentLibrary}
-        reassessment={page.reassessment}
+        library={library}
         labels={dictionary.modules.documents.workflow}
       />
     </section>

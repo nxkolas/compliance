@@ -31,6 +31,7 @@ import { fingerprintRequest } from "../api/idempotency";
 import { toJobDto } from "../jobs/service";
 import { retryableGapReassessmentStatuses } from "@/src/contracts/gap-analysis/generation";
 import type { LoadedGapRelease } from "./release-loader";
+import { assertGapInputsMutable } from "./lifecycle-guards";
 
 export async function prepareGapReassessment(input: {
   userId: string;
@@ -41,6 +42,10 @@ export async function prepareGapReassessment(input: {
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const context = await loadPreparationContext(input.organizationId, input.assessmentId);
+  await assertGapInputsMutable({
+    organizationId: input.organizationId,
+    moduleId: context.assessment.moduleId,
+  });
   const existing = await db.query.gapReassessmentDrafts.findFirst({
     where: and(
       eq(gapReassessmentDrafts.assessmentId, context.assessment.id),
@@ -175,6 +180,17 @@ export async function updateGapReassessmentEvidence(input: {
       "GAP_DRAFT_NOT_OPEN",
     );
   }
+  const assessment = await db.query.assessments.findFirst({
+    where: and(
+      eq(assessments.id, draft.assessmentId),
+      eq(assessments.organizationId, input.organizationId),
+    ),
+  });
+  if (!assessment) throw new ApiError(404, "Gap assessment not found");
+  await assertGapInputsMutable({
+    organizationId: input.organizationId,
+    moduleId: assessment.moduleId,
+  });
   const baseDocuments = await loadAcceptedEvidence(draft.baseAcceptedGapRevisionId);
   const selection = await resolveEvidenceSelection({
     organizationId: input.organizationId,
@@ -647,6 +663,17 @@ async function enqueueDraftGeneration(input: {
     ),
   });
   if (!candidate) throw new ApiError(404, "Reassessment draft not found");
+  const candidateAssessment = await db.query.assessments.findFirst({
+    where: and(
+      eq(assessments.id, candidate.assessmentId),
+      eq(assessments.organizationId, input.organizationId),
+    ),
+  });
+  if (!candidateAssessment) throw new ApiError(404, "Gap assessment not found");
+  await assertGapInputsMutable({
+    organizationId: input.organizationId,
+    moduleId: candidateAssessment.moduleId,
+  });
   const requestFingerprint = fingerprintRequest({
     draftId: input.draftId,
     expectedLockVersion: input.expectedLockVersion,
@@ -765,11 +792,13 @@ async function lockAssessmentGenerationSlot(
       eq(generatedArtifacts.artifactType, "gap_analysis_result"),
     ),
   });
-  if (
-    artifact?.currentRevisionId &&
-    artifact.currentRevisionId !== artifact.acceptedRevisionId
-  ) {
-    throw new ApiError(409, "Review the current candidate before generating another one");
+  if (artifact?.currentRevisionId) {
+    throw new ApiError(
+      409,
+      "A Gap Analysis has already been generated",
+      undefined,
+      "GAP_ALREADY_GENERATED",
+    );
   }
 }
 

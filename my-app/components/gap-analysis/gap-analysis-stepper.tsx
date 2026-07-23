@@ -1,6 +1,5 @@
 "use client";
 
-import { Check } from "lucide-react";
 import type { GapWorkflowStep } from "@/src/server/gap-analysis/workflow-state";
 import type { GapLabels } from "./types";
 
@@ -51,7 +50,7 @@ export function GapAnalysisStepper({
                         : ""
                   }`}
                 >
-                  {completed ? <Check className="h-4 w-4" /> : index + 1}
+                  {index + 1}
                 </span>
                 <span className="font-medium">{labels.steps[step]}</span>
               </button>

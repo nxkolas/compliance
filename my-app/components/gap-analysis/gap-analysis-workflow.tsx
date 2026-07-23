@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Play } from "lucide-react";
+import { History, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,6 +23,8 @@ import { jobsClient } from "@/src/client/jobs";
 import { pollJob } from "@/src/client/job-polling";
 import {
   deriveGapWorkflowNavigation,
+  resolveGapPostGenerationView,
+  type GapPostGenerationView,
   type GapWorkflowStep,
 } from "@/src/server/gap-analysis/workflow-state";
 import { GapAnalysisStepper } from "./gap-analysis-stepper";
@@ -32,6 +34,8 @@ import { GapQuestionnaireStep } from "./gap-questionnaire-step";
 import { GapResultsStep } from "./gap-results-step";
 import { GapReviewStep } from "./gap-review-step";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
+import { GapInputsUsed } from "./gap-inputs-used";
+import { GapHistory } from "./gap-history";
 
 export function GapAnalysisWorkflow({
   organizationId,
@@ -39,16 +43,20 @@ export function GapAnalysisWorkflow({
   labels,
   locale,
   initialStep,
+  initialView,
 }: {
   organizationId: string;
   workflow: GapWorkflow;
   labels: GapLabels;
   locale: GapLocale;
   initialStep: GapWorkflowStep;
+  initialView: GapPostGenerationView;
 }) {
   const router = useRouter();
   const [activeStep, setActiveStep] =
     useState<GapWorkflowStep>(initialStep);
+  const [activeView, setActiveView] =
+    useState<GapPostGenerationView>(initialView);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>(
@@ -105,6 +113,8 @@ export function GapAnalysisWorkflow({
     hasResult: Boolean(workflow.revision),
     requestedStep: activeStep,
   });
+  const renderedStep =
+    workflow.lifecycleMode === "generating" ? "review" : activeStep;
 
   const navigate = useCallback(
     (step: GapWorkflowStep, replace = false) => {
@@ -139,6 +149,19 @@ export function GapAnalysisWorkflow({
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [navigation.allowedSteps, navigation.defaultStep]);
+
+  useEffect(() => {
+    if (!workflow.lifecycle.showGeneratedViews) return;
+    const onPopState = () => {
+      setActiveView(
+        resolveGapPostGenerationView(
+          new URL(window.location.href).searchParams.get("view"),
+        ),
+      );
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [workflow.lifecycle.showGeneratedViews]);
 
   useEffect(() => {
     document.getElementById("gap-step-heading")?.focus();
@@ -331,7 +354,7 @@ export function GapAnalysisWorkflow({
       </Card>
     );
   }
-  if (!workflow.assessment) {
+  if (!workflow.assessment && !workflow.lifecycle.showGeneratedViews) {
     return (
       <Card>
         <CardHeader>
@@ -359,18 +382,90 @@ export function GapAnalysisWorkflow({
     );
   }
 
+  if (workflow.lifecycle.showGeneratedViews) {
+    const navigateView = (view: GapPostGenerationView) => {
+      setActiveView(view);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("step");
+      url.searchParams.set("view", view);
+      window.history.pushState({}, "", url);
+    };
+    return (
+      <div className="grid gap-6">
+        {error ? <Notice tone="error">{error}</Notice> : null}
+        <nav
+          aria-label={labels.generatedViews}
+          className="flex flex-wrap gap-2 border-b pb-3"
+          role="tablist"
+        >
+          <Button
+            variant={activeView === "results" ? "default" : "outline"}
+            onClick={() => navigateView("results")}
+            role="tab"
+            aria-selected={activeView === "results"}
+          >
+            {labels.resultsView}
+          </Button>
+          <Button
+            variant={activeView === "inputs" ? "default" : "outline"}
+            onClick={() => navigateView("inputs")}
+            role="tab"
+            aria-selected={activeView === "inputs"}
+          >
+            {labels.inputsUsed}
+          </Button>
+          <Button
+            className="ml-auto"
+            size="icon-sm"
+            variant={activeView === "history" ? "default" : "outline"}
+            onClick={() => navigateView("history")}
+            role="tab"
+            aria-selected={activeView === "history"}
+            aria-label={labels.history}
+            title={labels.history}
+          >
+            <History className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </nav>
+        <Card role="tabpanel">
+          <CardContent className="pt-6">
+            {activeView === "history" ? (
+              <GapHistory
+                history={workflow.history}
+                labels={labels}
+                locale={locale}
+              />
+            ) : activeView === "inputs" ? (
+              <GapInputsUsed workflow={workflow} labels={labels} />
+            ) : (
+              <GapResultsStep
+                organizationId={organizationId}
+                workflow={workflow}
+                labels={labels}
+                locale={locale}
+                onError={setError}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6">
       {error ? <Notice tone="error">{error}</Notice> : null}
-      <GapAnalysisStepper
-        activeStep={activeStep}
-        availableSteps={navigation.allowedSteps}
-        labels={labels}
-        onNavigate={navigate}
-      />
+      {workflow.lifecycleMode !== "generating" ? (
+        <GapAnalysisStepper
+          activeStep={activeStep}
+          availableSteps={navigation.allowedSteps}
+          labels={labels}
+          onNavigate={navigate}
+        />
+      ) : null}
       <Card>
         <CardContent className="pt-0">
-          {activeStep === "questions" ? (
+          {renderedStep === "questions" ? (
             <GapQuestionnaireStep
               workflow={workflow}
               labels={labels}
@@ -384,7 +479,7 @@ export function GapAnalysisWorkflow({
               }
               onContinue={() => void saveQuestionnaire()}
             />
-          ) : activeStep === "documents" ? (
+          ) : renderedStep === "documents" ? (
             <GapDocumentStep
               organizationId={organizationId}
               workflow={workflow}
@@ -400,7 +495,7 @@ export function GapAnalysisWorkflow({
               }
               onContinue={() => void saveDocuments()}
             />
-          ) : activeStep === "review" ? (
+          ) : renderedStep === "review" ? (
             <GapReviewStep
               workflow={workflow}
               labels={labels}
@@ -408,6 +503,7 @@ export function GapAnalysisWorkflow({
               selected={selectedDocuments}
               busy={busy}
               generating={Boolean(pollingJobId)}
+              editable={workflow.lifecycle.inputsEditable}
               onNavigate={navigate}
               onGenerate={() => void enqueueGeneration("generate")}
               onRetry={() => void enqueueGeneration("retry")}
@@ -419,7 +515,6 @@ export function GapAnalysisWorkflow({
               workflow={workflow}
               labels={labels}
               locale={locale}
-              onNavigate={navigate}
               onError={setError}
             />
           )}

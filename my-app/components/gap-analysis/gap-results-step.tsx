@@ -4,42 +4,47 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
-  CheckCircle2,
-  ChevronRight,
+  ListChecks,
+  LockKeyhole,
   Loader2,
   Pencil,
-  RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { gapAnalysisClient } from "@/src/client/gap-analysis";
+import { actionPlansClient } from "@/src/client/action-plans";
 import { ApiClientError } from "@/src/client/api-client";
 import {
   countGapStatuses,
   sortGapFindings,
   type GapStatus,
-  type GapWorkflowStep,
 } from "@/src/server/gap-analysis/workflow-state";
-import { GapHistory } from "./gap-history";
 import { localizeGapError } from "./gap-error";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-type Filter = "all" | Exclude<GapStatus, "fulfilled">;
+type Filter = "all" | GapStatus;
 
 export function GapResultsStep({
   organizationId,
   workflow,
   labels,
   locale,
-  onNavigate,
   onError,
 }: {
   organizationId: string;
   workflow: GapWorkflow;
   labels: GapLabels;
   locale: GapLocale;
-  onNavigate: (step: GapWorkflowStep) => void;
   onError: (message: string | null) => void;
 }) {
   const router = useRouter();
@@ -48,7 +53,7 @@ export function GapResultsStep({
   const [announcement, setAnnouncement] = useState("");
   const [overrides, setOverrides] = useState<Record<string, GapStatus>>({});
   const [manualOverrides, setManualOverrides] = useState<string[]>([]);
-  const [showComparison, setShowComparison] = useState(false);
+  const [showFinalization, setShowFinalization] = useState(false);
   const displayed = workflow.findings.map((row) => ({
     ...row,
     finding: {
@@ -61,24 +66,22 @@ export function GapResultsStep({
   const counts = countGapStatuses(displayed);
   const gaps = sortGapFindings(displayed).filter(
     (row) =>
-      row.finding.status !== "fulfilled" &&
-      (filter === "all" || row.finding.status === filter),
-  );
-  const fulfilled = sortGapFindings(displayed).filter(
-    (row) => row.finding.status === "fulfilled",
+      filter === "all"
+        ? row.finding.status !== "fulfilled"
+        : row.finding.status === filter,
   );
 
-  async function confirmResult() {
-    if (!workflow.candidateRevision) return;
-    setBusy("confirm");
+  async function finalizeAnalysis() {
+    if (!workflow.revision) return;
+    setBusy("finalize");
     onError(null);
     try {
-      await gapAnalysisClient.approveRevision(
-        organizationId,
-        workflow.candidateRevision.id,
-      );
-      setAnnouncement(labels.confirmed);
-      router.refresh();
+      await actionPlansClient.generate(organizationId, {
+        gapRevisionId: workflow.revision.id,
+      });
+      setAnnouncement(labels.actionPlanGenerated);
+      setShowFinalization(false);
+      router.push(`/tool/organizations/${organizationId}/action-plan`);
     } catch (error) {
       onError(localizeGapError(error, labels));
     } finally {
@@ -128,16 +131,14 @@ export function GapResultsStep({
             </p>
           ) : null}
         </div>
-        <Button variant="outline" onClick={() => onNavigate("questions")}>
-          <RefreshCw /> {labels.updateAnalysis}
-        </Button>
       </div>
       <div aria-live="polite" className="sr-only">
         {announcement}
       </div>
-      {workflow.candidateRevision && workflow.acceptedRevision ? (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm text-blue-950">
-          {labels.newResultBanner}
+      {workflow.lifecycle.locked ? (
+        <div className="flex items-start gap-2 rounded-lg border border-blue-300 bg-blue-50 p-4 text-sm text-blue-950">
+          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{labels.lockedByActionPlan}</span>
         </div>
       ) : null}
       {workflow.staleness?.stale ? (
@@ -148,7 +149,7 @@ export function GapResultsStep({
       ) : null}
       <div>
         <h3 className="mb-3 font-semibold">{labels.statusSummary}</h3>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
           <FilterButton
             active={filter === "all"}
             label={labels.filterAll}
@@ -160,6 +161,7 @@ export function GapResultsStep({
               "not_fulfilled",
               "partially_fulfilled",
               "insufficient_evidence",
+              "fulfilled",
             ] as const
           ).map((status) => (
             <FilterButton
@@ -181,7 +183,9 @@ export function GapResultsStep({
             row={row}
             labels={labels}
             locale={locale}
-            canManage={workflow.canManage}
+            canManage={
+              workflow.canManage && workflow.lifecycle.findingsEditable
+            }
             busy={busy}
             setBusy={setBusy}
             onSaved={(status) => {
@@ -205,42 +209,7 @@ export function GapResultsStep({
           </p>
         ) : null}
       </div>
-      {fulfilled.length ? (
-        <details className="rounded-lg border p-4">
-          <summary className="cursor-pointer font-semibold">
-            {labels.fulfilledSection} ({fulfilled.length})
-          </summary>
-          <div className="mt-4 grid gap-3">
-            {fulfilled.map((row) => (
-              <FindingCard
-                key={row.finding.id}
-                organizationId={organizationId}
-                revisionId={workflow.revision!.id}
-                row={row}
-                labels={labels}
-                locale={locale}
-                canManage={workflow.canManage}
-                busy={busy}
-                setBusy={setBusy}
-                onSaved={(status) => {
-                  setOverrides((current) => ({
-                    ...current,
-                    [row.finding.id]: status,
-                  }));
-                  setManualOverrides((current) => [
-                    ...new Set([...current, row.finding.id]),
-                  ]);
-                  setAnnouncement(labels.assessmentSaved);
-                  onError(null);
-                  router.refresh();
-                }}
-                onError={onError}
-              />
-            ))}
-          </div>
-        </details>
-      ) : null}
-      {workflow.candidateRevision ? (
+      {workflow.lifecycle.canFinalize ? (
         <div className="grid gap-3">
           {workflow.canManage ? (
             <Button
@@ -248,45 +217,61 @@ export function GapResultsStep({
               disabled={
                 Boolean(busy) || workflow.reviewBlockers.length > 0
               }
-              onClick={() => void confirmResult()}
+              onClick={() => setShowFinalization(true)}
             >
-              {busy === "confirm" ? (
+              {busy === "finalize" ? (
                 <Loader2 className="animate-spin" />
               ) : (
-                <CheckCircle2 />
+                <ListChecks />
               )}
-              {labels.confirmResult}
+              {labels.generateActionPlan}
             </Button>
           ) : (
             <p className="text-sm text-muted-foreground">{labels.ownerOnly}</p>
           )}
         </div>
       ) : null}
-      {workflow.acceptedRevision && workflow.candidateRevision ? (
-        <div>
-          <Button
-            variant="outline"
-            onClick={() => setShowComparison((current) => !current)}
-          >
-            {labels.compare} <ChevronRight />
-          </Button>
-          {showComparison ? (
-            <Comparison workflow={workflow} labels={labels} locale={locale} />
-          ) : null}
-        </div>
-      ) : null}
-      {workflow.planUpdateAvailable ? (
+      {workflow.lifecycle.locked ? (
         <Button asChild className="justify-self-start" variant="outline">
           <Link href={`/tool/organizations/${organizationId}/action-plan`}>
-            {labels.updateActionPlan}
+            {labels.openActionPlan}
           </Link>
         </Button>
       ) : null}
-      <GapHistory
-        history={workflow.history}
-        labels={labels}
-        locale={locale}
-      />
+      <Dialog open={showFinalization} onOpenChange={setShowFinalization}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{labels.finalizeTitle}</DialogTitle>
+            <DialogDescription>
+              {labels.finalizeDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="grid list-disc gap-2 pl-5 text-sm">
+            <li>{labels.finalizeConfirms}</li>
+            <li>{labels.finalizeCreatesPlan}</li>
+            <li>{labels.finalizeFixedMeasures}</li>
+            <li>{labels.finalizeLocks}</li>
+          </ul>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={Boolean(busy)}>
+                {labels.cancelEdit}
+              </Button>
+            </DialogClose>
+            <Button
+              disabled={Boolean(busy)}
+              onClick={() => void finalizeAnalysis()}
+            >
+              {busy === "finalize" ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <ListChecks />
+              )}
+              {labels.generateActionPlan}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
@@ -377,11 +362,17 @@ function FindingCard({
           </h3>
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge>{labels.statuses[row.finding.status]}</Badge>
-            <Badge>
-              {row.hasOrganizationDocument
-                ? labels.supportHasDocument
-                : labels.supportNoDocument}
-            </Badge>
+            {row.hasOrganizationDocument ? (
+              <Badge>{labels.supportHasDocument}</Badge>
+            ) : (
+              <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs text-amber-900">
+                <AlertTriangle
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
+                />
+                {labels.supportNoDocument}
+              </span>
+            )}
             {row.manuallyChanged ? (
               <Badge>{labels.manuallyChanged}</Badge>
             ) : null}
@@ -402,6 +393,14 @@ function FindingCard({
         <p className="mt-3 flex items-center gap-2 text-sm text-amber-700">
           <AlertTriangle className="h-4 w-4" /> {labels.reviewRequired}
         </p>
+      ) : null}
+      {row.questionnaireDisagreements.length ? (
+        <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+          <p className="font-medium">{labels.questionnaireDisagreement}</p>
+          <p className="mt-1">
+            {localized(row.finding.rationale, locale)}
+          </p>
+        </div>
       ) : null}
       <dl className="mt-4 grid gap-3 text-sm">
         <Summary
@@ -542,48 +541,6 @@ function FilterButton({
       <span className="block text-2xl font-semibold">{count}</span>
       <span className="text-sm text-muted-foreground">{label}</span>
     </button>
-  );
-}
-
-function Comparison({
-  workflow,
-  labels,
-  locale,
-}: {
-  workflow: GapWorkflow;
-  labels: GapLabels;
-  locale: GapLocale;
-}) {
-  const changes = workflow.comparison.filter((item) => item.changed);
-  return (
-    <div className="mt-4 rounded-lg border p-4">
-      <h3 className="font-semibold">{labels.compareTitle}</h3>
-      {changes.length ? (
-        <div className="mt-3 grid gap-3">
-          {changes.map((item) => (
-            <div
-              key={item.stableRequirementId}
-              className="grid gap-2 rounded-md bg-muted/30 p-3 sm:grid-cols-[1fr_auto_auto]"
-            >
-              <p className="font-medium">{localized(item.title, locale)}</p>
-              <Badge>
-                {labels.previousStatus}:{" "}
-                {item.previousStatus
-                  ? labels.statuses[item.previousStatus]
-                  : "—"}
-              </Badge>
-              <Badge>
-                {labels.currentStatus}: {labels.statuses[item.currentStatus]}
-              </Badge>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {labels.noChanges}
-        </p>
-      )}
-    </div>
   );
 }
 

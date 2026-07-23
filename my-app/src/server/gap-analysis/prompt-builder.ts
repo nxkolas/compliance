@@ -40,6 +40,8 @@ export function buildGapPrompt(requirements: GapPromptRequirement[]) {
       findings: "exactly one per requested requirement",
       citations: "only citation IDs supplied above",
       contradictions: "surface and set requiresReview=true",
+      questionnaireDisagreements:
+        "explain interpreted questionnaire/status differences; informational only",
     },
   };
   const prompt = canonicalJson(renderedInput);

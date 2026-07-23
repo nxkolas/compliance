@@ -10,10 +10,10 @@ export function GapHistory({
   locale: "de" | "en";
 }) {
   return (
-    <details className="rounded-lg border p-4">
-      <summary className="cursor-pointer font-semibold">
+    <section aria-labelledby="gap-history-heading">
+      <h2 id="gap-history-heading" className="text-xl font-semibold">
         {labels.history}
-      </summary>
+      </h2>
       {history.length ? (
         <ol className="mt-4 grid gap-4">
           {history.map((event) => (
@@ -35,6 +35,6 @@ export function GapHistory({
           {labels.historyEmpty}
         </p>
       )}
-    </details>
+    </section>
   );
 }

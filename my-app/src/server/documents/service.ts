@@ -313,7 +313,12 @@ export async function listOrganizationDocuments(
 export async function getOrganizationDocumentLibrary(
   userId: string,
   organizationId: string,
-  options: { limit?: number; cursor?: string; documentId?: string } = {},
+  options: {
+    limit?: number;
+    cursor?: string;
+    documentId?: string;
+    includeUsage?: boolean;
+  } = {},
 ) {
   const membership = await assertCanAccessOrganization(userId, organizationId);
   return getOrganizationDocumentLibraryPreauthorized(
@@ -326,7 +331,12 @@ export async function getOrganizationDocumentLibrary(
 export async function getOrganizationDocumentLibraryPreauthorized(
   membership: Awaited<ReturnType<typeof assertCanAccessOrganization>>,
   organizationId: string,
-  options: { limit?: number; cursor?: string; documentId?: string } = {},
+  options: {
+    limit?: number;
+    cursor?: string;
+    documentId?: string;
+    includeUsage?: boolean;
+  } = {},
 ) {
   if (
     membership.organizationId !== organizationId ||
@@ -378,7 +388,9 @@ export async function getOrganizationDocumentLibraryPreauthorized(
         desc(documents.createdAt),
         desc(documentVersions.versionNumber),
       ),
-    loadDocumentUsageRows(organizationId, documentIds),
+    options.includeUsage === false
+      ? Promise.resolve([])
+      : loadDocumentUsageRows(organizationId, documentIds),
   ]);
 
   const artifactSources = usageRows

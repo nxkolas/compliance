@@ -35,6 +35,7 @@ import {
 import type { GapPromptRequirement } from "./prompt-builder";
 import { loadGapAnalysisRelease } from "./release-loader";
 import { runGroundedOperation } from "../ai/grounding/gateway";
+import { assertGapInputsMutable } from "./lifecycle-guards";
 
 export async function generateGapAnalysis(input: {
   userId: string;
@@ -61,6 +62,12 @@ export async function generateGapAnalysis(input: {
     !(input.assessmentRevisionId ?? assessment.currentRevisionId)
   ) {
     throw new ApiError(409, "Submit the pinned gap questionnaire before generation");
+  }
+  if (!input.jobId) {
+    await assertGapInputsMutable({
+      organizationId: input.organizationId,
+      moduleId: assessment.moduleId,
+    });
   }
   const assessmentRevisionId = input.assessmentRevisionId ?? assessment.currentRevisionId!;
   const assessmentRevision = await db.query.assessmentRevisions.findFirst({
@@ -134,6 +141,7 @@ export async function generateGapAnalysis(input: {
   }
   const sourceInputHash = contentHash({
     gapAnalysisReleaseId: release.id,
+    locale: input.locale,
     assessmentRevisionId,
     applicabilityArtifactRevisionId: applicability.id,
     applicabilityInputHash: applicability.inputHash,
@@ -225,6 +233,7 @@ async function generateGroundedGapResult(input: {
     operation: "gap_analysis",
     actor: { userId: input.input.userId },
     organizationId: input.input.organizationId,
+    outputLocale: input.input.locale,
     workflowReleaseId: input.release.id,
     asOfDate: input.input.asOfDate ?? new Date().toISOString().slice(0, 10),
     organizationEvidenceVersionIds: input.selectedVersionIds,
@@ -378,6 +387,24 @@ async function persistGeneratedGapResult(input: {
       }
       if (job.state !== "running") throw new Error("Gap generation job no longer owns persistence");
     }
+    const [lockedAssessment] = await tx
+      .select({ id: assessments.id })
+      .from(assessments)
+      .innerJoin(
+        assessmentRevisions,
+        eq(assessmentRevisions.assessmentId, assessments.id),
+      )
+      .where(eq(assessmentRevisions.id, input.assessmentRevisionId))
+      .limit(1)
+      .for("update");
+    if (!lockedAssessment) {
+      throw new ApiError(
+        409,
+        "The generated Gap questionnaire snapshot is unavailable",
+        undefined,
+        "GAP_INPUT_SNAPSHOT_INVALID",
+      );
+    }
     let artifact = await tx.query.generatedArtifacts.findFirst({
       where: and(
         eq(generatedArtifacts.organizationId, input.organizationId),
@@ -385,6 +412,14 @@ async function persistGeneratedGapResult(input: {
         eq(generatedArtifacts.artifactType, "gap_analysis_result"),
       ),
     });
+    if (artifact?.currentRevisionId) {
+      throw new ApiError(
+        409,
+        "A Gap Analysis has already been generated",
+        undefined,
+        "GAP_ALREADY_GENERATED",
+      );
+    }
     if (!artifact) {
       [artifact] = await tx
         .insert(generatedArtifacts)
@@ -417,6 +452,7 @@ async function persistGeneratedGapResult(input: {
           recommendation: finding.recommendation,
           assumptions: finding.assumptions,
           contradictions: finding.contradictions,
+          questionnaireDisagreements: finding.questionnaireDisagreements,
           requiresReview: finding.requiresReview,
           citationIds: finding.citations,
         };

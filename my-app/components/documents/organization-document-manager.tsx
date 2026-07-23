@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, FilePlus2, FileText, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,12 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import type { Dictionary } from "@/lib/i18n";
 import type { getOrganizationDocumentLibrary } from "@/src/server/documents/service";
-import type { getGapReassessmentDraft } from "@/src/server/gap-analysis/reassessment-service";
 import { documentsClient } from "@/src/client/documents";
-import { gapAnalysisClient } from "@/src/client/gap-analysis";
 
 type Library = Awaited<ReturnType<typeof getOrganizationDocumentLibrary>>;
-type Reassessment = Awaited<ReturnType<typeof getGapReassessmentDraft>>;
 type Labels = Dictionary["modules"]["documents"]["workflow"];
 
 const ACCEPTED_FILES =
@@ -22,29 +18,18 @@ const ACCEPTED_FILES =
 
 export function OrganizationDocumentManager({
   organizationId,
-  assessmentId,
   library,
-  reassessment,
   labels,
-  compact = false,
 }: {
   organizationId: string;
-  assessmentId: string | null;
   library: Library;
-  reassessment: Reassessment;
   labels: Labels;
-  compact?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [selected, setSelected] = useState<string[]>(
-    reassessment?.draft.status === "open"
-      ? reassessment.selected.map((item) => item.documentVersionId)
-      : [],
-  );
   const visibleDocuments = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase();
     return library.documents.filter((entry) => {
@@ -58,7 +43,6 @@ export function OrganizationDocumentManager({
       );
     });
   }, [library.documents, query, showArchived]);
-  const editingOpenDraft = reassessment?.draft.status === "open";
 
   async function mutate(key: string, action: () => Promise<unknown>) {
     setBusy(key);
@@ -75,36 +59,14 @@ export function OrganizationDocumentManager({
     }
   }
 
-  async function prepareReassessment() {
-    if (!assessmentId) return;
-    const result = editingOpenDraft
-      ? await mutate("prepare", () => gapAnalysisClient.updateReassessmentEvidence(organizationId, {
-            draftId: reassessment.draft.id,
-            expectedLockVersion: reassessment.draft.lockVersion,
-            selectedDocumentVersionIds: selected,
-          }))
-      : await mutate("prepare", () => gapAnalysisClient.prepareReassessment(organizationId, {
-            assessmentId,
-            selectedDocumentVersionIds: selected,
-          }));
-    if (result) router.push(`/tool/organizations/${organizationId}/gap-analysis`);
-  }
-
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>{compact ? labels.selectEvidence : labels.newDocument}</CardTitle>
+            <CardTitle>{labels.newDocument}</CardTitle>
             <CardDescription>{labels.search}</CardDescription>
           </div>
-          {compact ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/tool/organizations/${organizationId}/documents`}>
-                {labels.library}
-              </Link>
-            </Button>
-          ) : null}
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
@@ -134,8 +96,7 @@ export function OrganizationDocumentManager({
             </Button>
           </form>
         ) : null}
-        {!compact ? (
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -150,8 +111,7 @@ export function OrganizationDocumentManager({
               />
               {labels.showArchived}
             </label>
-          </div>
-        ) : null}
+        </div>
         <div className="grid gap-3">
           {visibleDocuments.length ? (
             visibleDocuments.map((entry) => {
@@ -173,23 +133,6 @@ export function OrganizationDocumentManager({
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      {current?.eligibleForReassessment ? (
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={selected.includes(current.version.id)}
-                            disabled={!library.canContribute}
-                            onChange={(event) =>
-                              setSelected((values) =>
-                                event.target.checked
-                                  ? [...new Set([...values, current.version.id])]
-                                  : values.filter((id) => id !== current.version.id),
-                              )
-                            }
-                          />
-                          {labels.selectEvidence}
-                        </label>
-                      ) : null}
                       {library.canContribute && entry.document.status === "active" ? (
                         <Button
                           variant="outline"
@@ -208,15 +151,9 @@ export function OrganizationDocumentManager({
                   {current ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       <ProcessingBadge item={current} labels={labels} />
-                      {current.usage.map((usage) => (
-                        <span key={usage} className="rounded-full border px-2 py-1 text-xs">
-                          {labels.usage[usage]}
-                        </span>
-                      ))}
                     </div>
                   ) : null}
-                  {!compact ? (
-                    <details className="mt-4">
+                  <details className="mt-4">
                       <summary className="cursor-pointer text-sm font-medium">
                         {labels.version} ({entry.versions.length})
                       </summary>
@@ -233,11 +170,6 @@ export function OrganizationDocumentManager({
                             </div>
                             <div className="mt-2 flex flex-wrap gap-2">
                               <ProcessingBadge item={item} labels={labels} />
-                              {item.usage.map((usage) => (
-                                <span key={usage} className="rounded-full border px-2 py-1 text-xs">
-                                  {labels.usage[usage]}
-                                </span>
-                              ))}
                             </div>
                           </div>
                         ))}
@@ -267,8 +199,7 @@ export function OrganizationDocumentManager({
                           </form>
                         ) : null}
                       </div>
-                    </details>
-                  ) : null}
+                  </details>
                 </article>
               );
             })
@@ -276,16 +207,6 @@ export function OrganizationDocumentManager({
             <p className="text-sm text-muted-foreground">{labels.noDocuments}</p>
           )}
         </div>
-        {assessmentId && library.canContribute ? (
-          <Button
-            className="self-start"
-            disabled={busy !== null}
-            onClick={() => void prepareReassessment()}
-          >
-            {busy === "prepare" ? <Loader2 className="animate-spin" /> : <FilePlus2 />}
-            {editingOpenDraft ? labels.openDraft : labels.prepare}
-          </Button>
-        ) : null}
       </CardContent>
     </Card>
   );

@@ -1,5 +1,6 @@
 import { contentHash } from "../../compliance/publishing/canonical-json";
 import { GAP_PROMPT_TEMPLATE_HASH } from "../prompt-contract";
+import { GAP_PROMPT_V2_TEMPLATE_HASH } from "../prompt-contract-v2";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -11,7 +12,11 @@ export function compileGapAnalysisRelease(
   requireNonEmpty(release.compatibleCheck.checkCode, "compatible check code", errors);
   unique(release.requiredCorpusFamilies, "required corpus family", errors);
   if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
-  if (release.prompt.templateHash !== GAP_PROMPT_TEMPLATE_HASH) {
+  if (
+    ![GAP_PROMPT_V2_TEMPLATE_HASH, GAP_PROMPT_TEMPLATE_HASH].includes(
+      release.prompt.templateHash,
+    )
+  ) {
     errors.push("Prompt template hash does not match the code-defined prompt");
   }
   if (release.modelPolicy.maxRequirementsPerBatch < 1) {

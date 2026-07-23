@@ -14,6 +14,7 @@ export function GapReviewStep({
   selected,
   busy,
   generating,
+  editable = true,
   onNavigate,
   onGenerate,
   onRetry,
@@ -25,6 +26,7 @@ export function GapReviewStep({
   selected: string[];
   busy: string | null;
   generating: boolean;
+  editable?: boolean;
   onNavigate: (step: GapWorkflowStep) => void;
   onGenerate: () => void;
   onRetry: () => void;
@@ -63,6 +65,7 @@ export function GapReviewStep({
         title={labels.reviewQuestions}
         editLabel={labels.edit}
         onEdit={() => onNavigate("questions")}
+        editable={editable}
       >
         <dl className="grid gap-3">
           {release.questions.map((question) => {
@@ -84,6 +87,7 @@ export function GapReviewStep({
         title={labels.reviewDocuments}
         editLabel={labels.edit}
         onEdit={() => onNavigate("documents")}
+        editable={editable}
       >
         {selectedDocuments.length ? (
           <ul className="grid gap-2 text-sm">
@@ -184,19 +188,23 @@ function SummarySection({
   editLabel,
   onEdit,
   children,
+  editable,
 }: {
   title: string;
   editLabel: string;
   onEdit: () => void;
   children: ReactNode;
+  editable: boolean;
 }) {
   return (
     <section className="rounded-lg border p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="font-semibold">{title}</h3>
-        <Button variant="link" size="sm" onClick={onEdit}>
-          {editLabel}
-        </Button>
+        {editable ? (
+          <Button variant="link" size="sm" onClick={onEdit}>
+            {editLabel}
+          </Button>
+        ) : null}
       </div>
       {children}
     </section>

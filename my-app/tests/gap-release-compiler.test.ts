@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compileGapAnalysisRelease } from "@/src/server/gap-analysis/publishing/compile-release";
 import { demoGapRelease } from "@/src/server/gap-analysis/releases/demo-v1/release";
 import { guidedGapRelease } from "@/src/server/gap-analysis/releases/guided-v2/release";
+import { singleLifecycleGapRelease } from "@/src/server/gap-analysis/releases/guided-v3/release";
 
 describe("gap-analysis release compiler", () => {
   it("compiles the four-requirement demo release deterministically", () => {
@@ -36,6 +37,11 @@ describe("gap-analysis release compiler", () => {
     expect(() => compileGapAnalysisRelease(guidedGapRelease)).not.toThrow();
     expect(guidedGapRelease.versionLabel).toBe("guided-v2");
     expect(guidedGapRelease.prompt.version).toBe("2");
+    expect(() =>
+      compileGapAnalysisRelease(singleLifecycleGapRelease),
+    ).not.toThrow();
+    expect(singleLifecycleGapRelease.versionLabel).toBe("guided-v3");
+    expect(singleLifecycleGapRelease.prompt.version).toBe("3");
     expect(
       guidedGapRelease.questionnaire.questions[0].options.map(
         (option) => option.label.en,

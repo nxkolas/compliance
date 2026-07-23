@@ -20,6 +20,47 @@ export const gapWorkflowSteps = [
 
 export type GapWorkflowStep = (typeof gapWorkflowSteps)[number];
 
+export type GapLifecycleMode =
+  | "collecting_inputs"
+  | "generating"
+  | "generated_editable"
+  | "locked_by_action_plan";
+
+export type GapPostGenerationView = "results" | "inputs" | "history";
+
+export function deriveGapLifecycleMode(input: {
+  hasGeneratedRevision: boolean;
+  hasActiveActionPlan: boolean;
+  generationActive: boolean;
+}): GapLifecycleMode {
+  if (input.hasActiveActionPlan) return "locked_by_action_plan";
+  if (input.hasGeneratedRevision) return "generated_editable";
+  if (input.generationActive) return "generating";
+  return "collecting_inputs";
+}
+
+export function deriveGapLifecycleCapabilities(mode: GapLifecycleMode) {
+  return {
+    showInputWizard:
+      mode === "collecting_inputs" || mode === "generating",
+    showGeneratedViews:
+      mode === "generated_editable" || mode === "locked_by_action_plan",
+    inputsEditable: mode === "collecting_inputs",
+    findingsEditable: mode === "generated_editable",
+    canGenerate: mode === "collecting_inputs",
+    canFinalize: mode === "generated_editable",
+    locked: mode === "locked_by_action_plan",
+  };
+}
+
+export function resolveGapPostGenerationView(
+  requestedView?: string | null,
+): GapPostGenerationView {
+  return requestedView === "inputs" || requestedView === "history"
+    ? requestedView
+    : "results";
+}
+
 export function deriveGapWorkflowNavigation(input: {
   prerequisiteSatisfied: boolean;
   hasAssessment: boolean;

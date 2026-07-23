@@ -16,23 +16,35 @@ import { postgresGapPageData } from "./postgres-page-data";
 import {
   compareGapFindings,
   countGapStatuses,
+  deriveGapLifecycleCapabilities,
+  deriveGapLifecycleMode,
 } from "./workflow-state";
+import { readGeneratedGapInputs } from "./generated-inputs-reader";
 
 export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
   const workflow = await gapPageReader.readGap(input);
-  const prerequisite = workflow.release
-    ? await postgresGapPageData.loadGapPrerequisiteState(input, workflow.release)
-    : {
-        satisfied: false,
-        destination: `/tool/organizations/${input.organizationId}/applicability-check`,
-      };
-  const history = workflow.release
-    ? await loadGapHistoryPreauthorized({
-        organizationId: input.organizationId,
-        currentUserId: input.userId,
-        locale: input.locale,
-      })
-    : [];
+  const [prerequisite, history, generatedInputs] = await Promise.all([
+    workflow.release
+      ? postgresGapPageData.loadGapPrerequisiteState(input, workflow.release)
+      : Promise.resolve({
+          satisfied: false,
+          destination: `/tool/organizations/${input.organizationId}/applicability-check`,
+        }),
+    workflow.release
+      ? loadGapHistoryPreauthorized({
+          organizationId: input.organizationId,
+          currentUserId: input.userId,
+          locale: input.locale,
+        })
+      : Promise.resolve([]),
+    workflow.revision
+      ? readGeneratedGapInputs({
+          organizationId: input.organizationId,
+          revisionId: workflow.revision.id,
+          locale: input.locale,
+        })
+      : Promise.resolve(null),
+  ]);
   const correctedIds = (result: unknown) =>
     new Set(
       Array.isArray(
@@ -85,6 +97,13 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
           (value): value is string => typeof value === "string",
         )
       : [];
+    const questionnaireDisagreements =
+      !manuallyChangedIds.has(row.finding.requirementVersionId) &&
+      Array.isArray(metadata?.questionnaireDisagreements)
+        ? metadata.questionnaireDisagreements.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : [];
     return {
       ...row,
       requirement: {
@@ -100,6 +119,7 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
         row.finding.requirementVersionId,
       ),
       contradictions,
+      questionnaireDisagreements,
     };
   };
   const findings = workflow.findings.map((row) =>
@@ -147,10 +167,22 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
         };
       })
     : [];
+  const lifecycleMode = deriveGapLifecycleMode({
+    hasGeneratedRevision: Boolean(workflow.revision),
+    hasActiveActionPlan: Boolean(workflow.activePlan),
+    generationActive:
+      !workflow.revision &&
+      (workflow.reassessment?.draft.status === "locked" ||
+        workflow.run?.status === "pending" ||
+        workflow.run?.status === "processing"),
+  });
 
   return {
     ...workflow,
     prerequisite,
+    lifecycleMode,
+    lifecycle: deriveGapLifecycleCapabilities(lifecycleMode),
+    generatedInputs,
     answerSummary,
     selectedDocuments,
     findings,

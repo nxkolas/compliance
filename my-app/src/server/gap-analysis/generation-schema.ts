@@ -27,6 +27,7 @@ export const gapModelFindingSchema = z.object({
   assumptions: z.array(z.string().trim().min(1)),
   citations: z.array(z.string().trim().min(1)),
   contradictions: z.array(z.string().trim().min(1)),
+  questionnaireDisagreements: z.array(z.string().trim().min(1)),
   requiresReview: z.boolean(),
 });
 

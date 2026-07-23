@@ -6,6 +6,7 @@ import {
   validateGapModelResponse,
   type SuppliedCitation,
 } from "@/src/server/gap-analysis/generation-schema";
+import { gapOutputLocaleInstruction } from "@/src/server/gap-analysis/grounding-instruction";
 
 const citations: SuppliedCitation[] = [
   { id: "Q:a1", sourceType: "assessment_answer", sourceId: "a1", excerpt: "implemented", pageNumber: null, sectionLabel: null },
@@ -22,12 +23,21 @@ function finding(overrides: Record<string, unknown> = {}) {
     assumptions: [],
     citations: ["DOC:c1"],
     contradictions: [],
+    questionnaireDisagreements: [],
     requiresReview: false,
     ...overrides,
   };
 }
 
 describe("gap generation validation", () => {
+  it("instructs grounded free text to follow the active UI language", () => {
+    expect(gapOutputLocaleInstruction("de")).toContain("in German");
+    expect(gapOutputLocaleInstruction("en")).toContain("in English");
+    expect(gapOutputLocaleInstruction("de")).toContain(
+      "questionnaireDisagreements",
+    );
+  });
+
   it("constrains structured output to every requested requirement", () => {
     const schema = buildGapModelResponseSchema(["R1", "R2"]);
     const payload: Record<string, unknown> = finding();
@@ -97,5 +107,27 @@ describe("gap generation validation", () => {
     ).toThrow(/must require review/i);
     expect(deriveFindingSeverity("critical", "partially_fulfilled")).toBe("high");
     expect(deriveFindingSeverity("high", "not_fulfilled")).toBe("high");
+  });
+
+  it("keeps questionnaire disagreements informational", () => {
+    expect(
+      validateGapModelResponse({
+        value: {
+          findings: [
+            finding({
+              questionnaireDisagreements: [
+                "The assertion covers policy text but not operational testing.",
+              ],
+              requiresReview: false,
+            }),
+          ],
+        },
+        requestedRequirementCodes: ["R1"],
+        citations,
+      }).findings[0],
+    ).toMatchObject({
+      requiresReview: false,
+      questionnaireDisagreements: [expect.any(String)],
+    });
   });
 });

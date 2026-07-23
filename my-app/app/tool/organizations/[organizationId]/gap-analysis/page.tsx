@@ -4,14 +4,17 @@ import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis/workflow-reader";
 import { connection } from "next/server";
-import { deriveGapWorkflowNavigation } from "@/src/server/gap-analysis/workflow-state";
+import {
+  deriveGapWorkflowNavigation,
+  resolveGapPostGenerationView,
+} from "@/src/server/gap-analysis/workflow-state";
 
 export default async function GapAnalysisPage({
   params,
   searchParams,
 }: {
   params: Promise<{ organizationId: string }>;
-  searchParams: Promise<{ step?: string }>;
+  searchParams: Promise<{ step?: string; view?: string }>;
 }) {
   await connection();
   const user = await requireAuth();
@@ -23,7 +26,8 @@ export default async function GapAnalysisPage({
     organizationId,
     locale,
   });
-  const requestedStep = (await searchParams).step;
+  const requested = await searchParams;
+  const requestedStep = requested.step;
   const navigation = deriveGapWorkflowNavigation({
     prerequisiteSatisfied: workflow.prerequisite.satisfied,
     hasAssessment: Boolean(workflow.assessment),
@@ -57,6 +61,7 @@ export default async function GapAnalysisPage({
         labels={dictionary.modules.gapAnalysis.workflow}
         locale={locale}
         initialStep={navigation.activeStep}
+        initialView={resolveGapPostGenerationView(requested.view)}
       />
     </section>
   );

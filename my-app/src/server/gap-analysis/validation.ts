@@ -2,9 +2,6 @@ import { gapCorrectionInputSchema, gapQuestionnaireInputSchema } from "@/src/con
 export {
   actionPlanGenerationRequestSchema,
   actionPlanItemUpdateSchema,
-  actionPlanReconciliationActivateSchema,
-  actionPlanReconciliationDecisionSchema,
-  actionPlanReconciliationPrepareSchema,
 } from "@/src/contracts/action-plans";
 export {
   gapReassessmentEvidenceSchema,

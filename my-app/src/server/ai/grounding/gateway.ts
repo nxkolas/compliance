@@ -13,12 +13,16 @@ import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
 import { persistGroundingProvenance } from "./provenance";
 import type { GroundedOutputContract, GroundedProvider, GroundingContextItem, QueryUnit } from "./types";
 import { hasCompleteQueryUnitCoverage, validateGroundedClaims } from "./validation";
-import { GAP_GROUNDING_INSTRUCTION } from "../../gap-analysis/grounding-instruction";
+import {
+  GAP_GROUNDING_INSTRUCTION,
+  gapOutputLocaleInstruction,
+} from "../../gap-analysis/grounding-instruction";
 
 export async function runGroundedOperation<T>(input: {
   operation: "gap_analysis";
   actor: { userId: string };
   organizationId: string;
+  outputLocale: "de" | "en";
   workflowReleaseId: string;
   asOfDate: string;
   organizationEvidenceVersionIds: string[];
@@ -117,7 +121,7 @@ export async function runGroundedOperation<T>(input: {
   const context = [...retrievedContext, ...assertions];
   const prompt = buildGroundedPrompt(input.queryUnits, context);
   if (input.operation === "gap_analysis") {
-    prompt.system += ` ${GAP_GROUNDING_INSTRUCTION}`;
+    prompt.system += ` ${GAP_GROUNDING_INSTRUCTION} ${gapOutputLocaleInstruction(input.outputLocale)}`;
   }
   const promptHash = createHash("sha256").update(`${prompt.system}\n${prompt.prompt}`).digest("hex");
   const corpusReleaseSetHash = createHash("sha256").update(context.filter((item) => item.channel === "legal").map((item) => item.metadata.corpusReleaseId).sort().join("\n")).digest("hex");
@@ -131,10 +135,10 @@ export async function runGroundedOperation<T>(input: {
     provider: provider.provider,
     model: provider.model,
     promptName: "grounded-gap-analysis",
-    promptVersion: "v2",
+    promptVersion: "v3",
     promptTemplateHash: promptHash,
     renderedInputHash: promptHash,
-    responseSchemaVersion: "grounding-v2",
+    responseSchemaVersion: "grounding-v3",
     providerPolicyVersion: policy.providerPolicy.version,
     corpusReleaseSetHash,
     provenanceStatus: "complete",

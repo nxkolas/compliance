@@ -161,6 +161,7 @@ export function createGapPageReader<
           acceptedFindings: [],
           candidateRevision: null,
           candidateFindings: [],
+          activePlan: null,
           reassessment: null,
           reviewBlockers: [],
           planUpdateAvailable: false,
@@ -219,6 +220,7 @@ export function createGapPageReader<
         acceptedFindings: findings.accepted,
         candidateRevision,
         candidateFindings: findings.candidate,
+        activePlan: snapshot.activePlan,
         reassessment,
         reviewBlockers: findings.candidate
           .filter((row) => row.finding.requiresReview)

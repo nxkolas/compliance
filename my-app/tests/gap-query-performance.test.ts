@@ -424,6 +424,7 @@ describe("Gap page reader", () => {
       acceptedFindings,
       candidateRevision,
       candidateFindings,
+      activePlan: { sourceGapArtifactRevisionId: "older-revision" },
       reassessment,
       reviewBlockers: ["candidate-finding"],
       planUpdateAvailable: true,

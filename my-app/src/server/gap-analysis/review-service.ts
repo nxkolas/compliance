@@ -1,6 +1,7 @@
 import { db } from "@/src/db";
 import {
   artifactRevisionSources,
+  actionPlans,
   assessmentRevisions,
   assessments,
   auditEvents,
@@ -17,6 +18,7 @@ import { ApiError } from "../api/errors";
 import { assertCanManageOrganization } from "../organizations/service";
 import { deriveFindingSeverity } from "./generation-schema";
 import { loadGapAnalysisRelease } from "./release-loader";
+import { assertGapFindingsMutable } from "./lifecycle-guards";
 
 type LocalizedText = { de: string; en: string };
 
@@ -174,6 +176,7 @@ export async function correctGapRevision(input: {
   corrections: GapFindingCorrection[];
 }) {
   await assertCanManageOrganization(input.userId, input.organizationId);
+  await assertGapFindingsMutable(input.organizationId);
   const sourceRevision = await db.query.generatedArtifactRevisions.findFirst({
     where: eq(generatedArtifactRevisions.id, input.sourceRevisionId),
   });
@@ -263,6 +266,34 @@ export async function correctGapRevision(input: {
 
   try {
     return await db.transaction(async (tx) => {
+      const [lockedArtifact] = await tx
+        .select()
+        .from(generatedArtifacts)
+        .where(eq(generatedArtifacts.id, artifact.id))
+        .limit(1)
+        .for("update");
+      if (lockedArtifact?.currentRevisionId !== sourceRevision.id) {
+        throw new ApiError(
+          409,
+          "A newer gap result is already current",
+          undefined,
+          "GAP_REVISION_NOT_CURRENT",
+        );
+      }
+      const activePlan = await tx.query.actionPlans.findFirst({
+        where: and(
+          eq(actionPlans.organizationId, input.organizationId),
+          eq(actionPlans.status, "active"),
+        ),
+      });
+      if (activePlan) {
+        throw new ApiError(
+          409,
+          "The Gap Analysis is locked by its action plan",
+          undefined,
+          "GAP_LOCKED_BY_ACTION_PLAN",
+        );
+      }
       const revisedFindings = sourceFindings.map((source) => {
         const correction = correctionByFinding.get(source.id);
         const requirement = requirementById.get(source.requirementVersionId);

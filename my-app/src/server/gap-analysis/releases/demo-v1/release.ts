@@ -1,9 +1,9 @@
 import {
-  GAP_PROMPT_NAME,
-  GAP_PROMPT_TEMPLATE_HASH,
-  GAP_PROMPT_VERSION,
-  GAP_RESPONSE_SCHEMA_VERSION,
-} from "../../prompt-contract";
+  GAP_PROMPT_V2_NAME,
+  GAP_PROMPT_V2_TEMPLATE_HASH,
+  GAP_PROMPT_V2_VERSION,
+  GAP_RESPONSE_SCHEMA_V2_VERSION,
+} from "../../prompt-contract-v2";
 import type { GapAnalysisReleaseDefinition } from "../types";
 
 const options = [
@@ -30,10 +30,10 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
   requiredCorpusFamilies: ["nis2-eu-primary", "nis2-de-primary"],
   defaultLocale: "de",
   prompt: {
-    name: GAP_PROMPT_NAME,
-    version: GAP_PROMPT_VERSION,
-    templateHash: GAP_PROMPT_TEMPLATE_HASH,
-    responseSchemaVersion: GAP_RESPONSE_SCHEMA_VERSION,
+    name: GAP_PROMPT_V2_NAME,
+    version: GAP_PROMPT_V2_VERSION,
+    templateHash: GAP_PROMPT_V2_TEMPLATE_HASH,
+    responseSchemaVersion: GAP_RESPONSE_SCHEMA_V2_VERSION,
   },
   evaluator: { kind: "gap_evidence_v1", version: 1 },
   modelPolicy: {
