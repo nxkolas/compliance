@@ -55,4 +55,49 @@ describe("gap staleness", () => {
       }),
     ).toMatchObject({ stale: true, outdatedRelease: true, archived: false });
   });
+
+  it("preserves assessment, document, and artifact source semantics in one projection", () => {
+    expect(
+      calculateGapStaleness({
+        dependencies: [
+          {
+            kind: "assessment_revision",
+            selectedId: "assessment-v1",
+            currentId: "assessment-v1",
+          },
+          {
+            kind: "document_version",
+            selectedId: "document-v1",
+            currentId: "document-v2",
+          },
+          {
+            kind: "artifact_revision",
+            selectedId: "artifact-v1",
+            currentId: "artifact-v1",
+            archived: true,
+          },
+        ],
+        pinnedGapReleaseId: "release",
+        activeGapReleaseId: "release",
+        revisionArchived: false,
+      }),
+    ).toEqual({
+      stale: true,
+      outdatedRelease: false,
+      archived: false,
+      staleDependencies: [
+        {
+          kind: "document_version",
+          selectedId: "document-v1",
+          currentId: "document-v2",
+        },
+        {
+          kind: "artifact_revision",
+          selectedId: "artifact-v1",
+          currentId: "artifact-v1",
+          archived: true,
+        },
+      ],
+    });
+  });
 });

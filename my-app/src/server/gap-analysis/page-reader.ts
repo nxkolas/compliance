@@ -1,0 +1,383 @@
+import type { Locale } from "@/lib/i18n-config";
+import {
+  hasOrganizationCapability,
+  type OrganizationCapability,
+} from "../auth/capabilities";
+import type { OrganizationRole } from "../organizations/types";
+import { resolveOrganizationCapabilities } from "../auth/capability-service";
+import { ApiError } from "../api/errors";
+import { postgresGapPageData } from "./postgres-page-data";
+import { nextCachedGapReleaseReader } from "./next-cached-release-loader";
+import type { GapReleaseReader, LoadedGapRelease } from "./release-loader";
+
+export type GapPageReadInput = {
+  userId: string;
+  organizationId: string;
+  locale: Locale;
+};
+
+type GapWorkflowSnapshot<
+  TAssessment,
+  TRevision,
+  TPlan,
+  TRunContext,
+> = {
+  assessment: TAssessment | null;
+  acceptedRevision: TRevision | null;
+  currentRevision: TRevision | null;
+  activePlan: TPlan | null;
+  runContext: TRunContext;
+};
+
+export function createGapPageReader<
+  TMembership extends { role: OrganizationRole },
+  TRelease extends { id: string },
+  TDocumentLibrary,
+  TDocument,
+  TAssessment extends { id: string },
+  TRevision extends { id: string },
+  TFinding extends { finding: { id: string; requiresReview: boolean } },
+  TReassessment,
+  TStaleness,
+  TPlan extends { sourceGapArtifactRevisionId: string | null },
+  TRun,
+  TRunContext,
+>(dependencies: {
+  authorize: (
+    input: GapPageReadInput,
+    capabilities: OrganizationCapability[],
+  ) => Promise<TMembership>;
+  loadDocumentLibrary: (
+    input: GapPageReadInput,
+    membership: TMembership,
+  ) => Promise<TDocumentLibrary>;
+  loadActiveRelease: (input: GapPageReadInput) => Promise<TRelease | null>;
+  getCurrentDocuments: (library: TDocumentLibrary) => TDocument[];
+  loadDocumentsAssessment: (
+    input: GapPageReadInput,
+    release: TRelease,
+  ) => Promise<TAssessment | null>;
+  loadWorkflowSnapshot: (
+    input: GapPageReadInput,
+    release: TRelease,
+  ) => Promise<
+    GapWorkflowSnapshot<
+      TAssessment,
+      TRevision,
+      TPlan,
+      TRunContext
+    >
+  >;
+  loadAnswers: (
+    assessment: TAssessment | null,
+  ) => Promise<Record<string, string>>;
+  loadFindingsBatch: (input: {
+    acceptedRevisionId: string | null;
+    candidateRevisionId: string | null;
+  }) => Promise<{
+    accepted: TFinding[];
+    candidate: TFinding[];
+  }>;
+  loadReassessment: (
+    input: GapPageReadInput,
+    assessment: TAssessment | null,
+    release: TRelease,
+  ) => Promise<TReassessment | null>;
+  loadStalenessBatch: (input: {
+    organizationId: string;
+    acceptedRevisionId: string | null;
+    candidateRevisionId: string | null;
+    activeGapReleaseId: string;
+  }) => Promise<{
+    accepted: TStaleness | null;
+    candidate: TStaleness | null;
+  }>;
+  loadRun: (
+    input: GapPageReadInput,
+    runContext: TRunContext,
+  ) => Promise<TRun | null>;
+}) {
+  return {
+    async readDocuments(input: GapPageReadInput) {
+      const membership = await dependencies.authorize(input, [
+        "documents:read",
+        "gap:read",
+      ]);
+      const documentLibraryPromise = dependencies.loadDocumentLibrary(
+        input,
+        membership,
+      );
+      const release = await dependencies.loadActiveRelease(input);
+      const assessmentPromise = release
+        ? dependencies.loadDocumentsAssessment(input, release)
+        : Promise.resolve(null);
+      const [documentLibrary, assessment] = await Promise.all([
+        documentLibraryPromise,
+        assessmentPromise,
+      ]);
+      const reassessment =
+        release && assessment
+          ? await dependencies.loadReassessment(input, assessment, release)
+          : null;
+      return {
+        assessmentId: assessment?.id ?? null,
+        documentLibrary,
+        reassessment,
+      };
+    },
+
+    async readGap(input: GapPageReadInput) {
+      const membership = await dependencies.authorize(input, ["gap:read"]);
+      const permissions = {
+        role: membership.role,
+        canContribute: hasOrganizationCapability(
+          membership.role,
+          "gap:contribute",
+        ),
+        canManage: hasOrganizationCapability(
+          membership.role,
+          "gap:approve",
+        ),
+      };
+      const documentLibraryPromise = dependencies.loadDocumentLibrary(
+        input,
+        membership,
+      );
+      const release = await dependencies.loadActiveRelease(input);
+      if (!release) {
+        const documentLibrary = await documentLibraryPromise;
+        const documents = dependencies.getCurrentDocuments(documentLibrary);
+        return {
+          ...permissions,
+          release: null,
+          assessment: null,
+          answers: {},
+          documents,
+          documentLibrary,
+          run: null,
+          revision: null,
+          findings: [],
+          acceptedRevision: null,
+          acceptedFindings: [],
+          candidateRevision: null,
+          candidateFindings: [],
+          reassessment: null,
+          reviewBlockers: [],
+          planUpdateAvailable: false,
+          acceptedStaleness: null,
+          candidateStaleness: null,
+          staleness: null,
+        };
+      }
+
+      const [documentLibrary, snapshot] = await Promise.all([
+        documentLibraryPromise,
+        dependencies.loadWorkflowSnapshot(input, release),
+      ]);
+      const documents = dependencies.getCurrentDocuments(documentLibrary);
+      const acceptedRevision = snapshot.acceptedRevision;
+      const candidateRevision =
+        snapshot.currentRevision?.id !== acceptedRevision?.id
+          ? snapshot.currentRevision
+          : null;
+      const [answers, findings, reassessment, staleness, run] =
+        await Promise.all([
+          dependencies.loadAnswers(snapshot.assessment),
+          dependencies.loadFindingsBatch({
+            acceptedRevisionId: acceptedRevision?.id ?? null,
+            candidateRevisionId: candidateRevision?.id ?? null,
+          }),
+          dependencies.loadReassessment(
+            input,
+            snapshot.assessment,
+            release,
+          ),
+          dependencies.loadStalenessBatch({
+            organizationId: input.organizationId,
+            acceptedRevisionId: acceptedRevision?.id ?? null,
+            candidateRevisionId: candidateRevision?.id ?? null,
+            activeGapReleaseId: release.id,
+          }),
+          dependencies.loadRun(input, snapshot.runContext),
+        ]);
+      const revision = candidateRevision ?? acceptedRevision;
+      const currentFindings = candidateRevision
+        ? findings.candidate
+        : findings.accepted;
+
+      return {
+        ...permissions,
+        release,
+        assessment: snapshot.assessment,
+        answers,
+        documents,
+        documentLibrary,
+        run,
+        revision,
+        findings: currentFindings,
+        acceptedRevision,
+        acceptedFindings: findings.accepted,
+        candidateRevision,
+        candidateFindings: findings.candidate,
+        reassessment,
+        reviewBlockers: findings.candidate
+          .filter((row) => row.finding.requiresReview)
+          .map((row) => row.finding.id),
+        planUpdateAvailable: Boolean(
+          snapshot.activePlan &&
+            acceptedRevision &&
+            snapshot.activePlan.sourceGapArtifactRevisionId !==
+              acceptedRevision.id,
+        ),
+        acceptedStaleness: staleness.accepted,
+        candidateStaleness: staleness.candidate,
+        staleness: candidateRevision
+          ? staleness.candidate
+          : staleness.accepted,
+      };
+    },
+  };
+}
+
+async function authorizePageRead(
+  input: GapPageReadInput,
+  requiredCapabilities: OrganizationCapability[],
+) {
+  const resolved = await resolveOrganizationCapabilities(
+    input.userId,
+    input.organizationId,
+  );
+  if (!resolved.membership) {
+    throw new ApiError(
+      404,
+      "Organization not found",
+      undefined,
+      "ORGANIZATION_NOT_FOUND",
+    );
+  }
+  if (
+    requiredCapabilities.some(
+      (capability) => !resolved.capabilities.has(capability),
+    )
+  ) {
+    throw new ApiError(
+      403,
+      "You cannot perform this operation",
+      undefined,
+      "CAPABILITY_REQUIRED",
+    );
+  }
+  return resolved.membership;
+}
+
+type ProductionMembership = NonNullable<
+  Awaited<ReturnType<typeof resolveOrganizationCapabilities>>["membership"]
+>;
+type ProductionDocumentLibrary = Awaited<
+  ReturnType<
+    typeof postgresGapPageData.getOrganizationDocumentLibraryPreauthorized
+  >
+>;
+type ProductionDocument =
+  ProductionDocumentLibrary["documents"][number] extends infer TEntry
+    ? TEntry extends {
+        document: infer TDocument;
+        versions: Array<{
+          version: infer TVersion;
+          extraction: infer TExtraction;
+          embedding: infer TEmbedding;
+        }>;
+      }
+      ? {
+          document: TDocument;
+          version: TVersion | null;
+          extraction: TExtraction | null;
+          embedding: TEmbedding | null;
+        }
+      : never
+    : never;
+type ProductionSnapshot = Awaited<
+  ReturnType<typeof postgresGapPageData.loadWorkflowSnapshot>
+>;
+type ProductionAssessment = NonNullable<ProductionSnapshot["assessment"]>;
+type ProductionRevision = NonNullable<
+  ProductionSnapshot["acceptedRevision"]
+>;
+type ProductionPlan = NonNullable<ProductionSnapshot["activePlan"]>;
+type ProductionFinding = Awaited<
+  ReturnType<typeof postgresGapPageData.loadFindingsBatch>
+>["accepted"][number];
+type ProductionReassessment = NonNullable<
+  Awaited<ReturnType<typeof postgresGapPageData.loadReassessment>>
+>;
+type ProductionStaleness = NonNullable<
+  Awaited<ReturnType<typeof postgresGapPageData.loadStalenessBatch>>["accepted"]
+>;
+type ProductionRun = NonNullable<
+  Awaited<ReturnType<typeof postgresGapPageData.loadRun>>
+>;
+
+export function createDatabaseGapPageReader(releaseReader: GapReleaseReader) {
+  return createGapPageReader<
+    ProductionMembership,
+    LoadedGapRelease,
+    ProductionDocumentLibrary,
+    ProductionDocument,
+    ProductionAssessment,
+    ProductionRevision,
+    ProductionFinding,
+    ProductionReassessment,
+    ProductionStaleness,
+    ProductionPlan,
+    ProductionRun,
+    ProductionSnapshot["runContext"]
+  >({
+    authorize: authorizePageRead,
+    loadDocumentLibrary: (input, membership) =>
+      postgresGapPageData.getOrganizationDocumentLibraryPreauthorized(
+        membership,
+        input.organizationId,
+      ),
+    loadActiveRelease: (input) =>
+      releaseReader.getActive({
+        releaseCode: "nis2-gap",
+        locale: input.locale,
+      }),
+    getCurrentDocuments: (library) =>
+      library.documents.map((entry) => {
+        const current = entry.versions.find(
+          (item) => item.version.id === entry.document.currentVersionId,
+        );
+        return {
+          document: entry.document,
+          version: current?.version ?? null,
+          extraction: current?.extraction ?? null,
+          embedding: current?.embedding ?? null,
+        };
+      }),
+    loadDocumentsAssessment: postgresGapPageData.loadDocumentsAssessment,
+    loadWorkflowSnapshot: postgresGapPageData.loadWorkflowSnapshot,
+    loadAnswers: postgresGapPageData.loadAnswers,
+    loadFindingsBatch: postgresGapPageData.loadFindingsBatch,
+    loadReassessment: postgresGapPageData.loadReassessment,
+    loadStalenessBatch: postgresGapPageData.loadStalenessBatch,
+    loadRun: postgresGapPageData.loadRun,
+  });
+}
+
+export const gapPageReader = createDatabaseGapPageReader(
+  nextCachedGapReleaseReader,
+);
+
+export type GapAnalysisWorkflowDto = Awaited<
+  ReturnType<typeof gapPageReader.readGap>
+>;
+
+export type GapDocumentsPageDto = Awaited<
+  ReturnType<typeof gapPageReader.readDocuments>
+>;
+
+export type GapPageReader = {
+  readGap(input: GapPageReadInput): Promise<GapAnalysisWorkflowDto>;
+  readDocuments(input: GapPageReadInput): Promise<GapDocumentsPageDto>;
+};

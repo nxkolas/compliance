@@ -1,6 +1,49 @@
 # Gap-analysis query performance: page-reader deepening
 
-Status: Approved on 2026-07-23; ready for implementation.
+Status: Implemented and verified on 2026-07-23.
+
+## Implementation results
+
+The second pass is complete. The final remote read-only benchmark used the
+same auto-discovered fixture shape, one cold sample, and three warm samples.
+Response-shape summaries remained stable across every sample.
+
+| Operation | Cold | Warm samples | Warm median | Warm SQL | Layers |
+| --- | ---: | --- | ---: | ---: | ---: |
+| Gap page | 905.0 ms | 217.4 / 224.9 / 221.8 ms | 221.8 ms | 12 | 4 |
+| Documents page | 622.5 ms | 209.2 / 195.4 / 225.6 ms | 209.2 ms | 8 | 4 |
+| Workflow compatibility | 642.5 ms | 225.5 / 209.1 / 227.8 ms | 225.5 ms | 12 | 4 |
+| Document library | 149.4 ms | 163.0 / 149.2 / 156.3 ms | 156.3 ms | 4 | 3 |
+| Active release | 446.1 ms | 41.2 / 46.1 / 42.4 ms | 42.4 ms | 1 | 2 |
+| Reassessment draft | 493.8 ms | 488.7 / 511.7 / 496.1 ms | 496.1 ms | 11 | 3 |
+| Revision staleness | 175.4 ms | 198.5 / 185.0 / 163.0 ms | 185.0 ms | 3 | 3 |
+
+Both page readers performed one authorization lookup, one dynamic
+active-release lookup, and zero immutable release-assembly queries on every
+warm sample. Warm PostgreSQL execution medians remained a small fraction of
+wall time: 2.1 ms for Gap and 0.5 ms for Documents.
+
+The detailed before and after benchmark data is preserved in
+`gap-analysis-query-performance-second-pass-baseline.json` and
+`gap-analysis-query-performance-second-pass-final.json`.
+
+The four approved indexes are present in the configured database with the
+approved column orders. The unrestricted `npm run db:push` was attempted but
+encountered pre-existing unrelated schema drift at
+`legal_source_renditions_id_version_unique`. The four additive indexes were
+therefore applied narrowly through the application Drizzle connection and
+verified through `pg_index`, `pg_class`, and `pg_attribute`; no unapproved
+database object was changed.
+
+Verification completed:
+
+- focused query-performance, staleness, workflow-state, document-usage, and
+  schema tests passed;
+- `npm run typecheck` passed;
+- `npm run lint` passed;
+- `npm test` passed: 53 files and 255 tests;
+- `npm run build` passed; and
+- the final remote benchmark passed both wall-clock and deterministic budgets.
 
 ## Objective
 

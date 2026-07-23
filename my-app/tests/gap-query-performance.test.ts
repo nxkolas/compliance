@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 vi.mock("@/src/db", () => ({ db: {} }));
 
@@ -7,7 +9,7 @@ import {
   type LoadedGapRelease,
 } from "@/src/server/gap-analysis/release-loader";
 import { createGapReassessmentDraftReader } from "@/src/server/gap-analysis/reassessment-service";
-import { createGapAnalysisWorkflowReader } from "@/src/server/gap-analysis/workflow-reader";
+import { createGapPageReader } from "@/src/server/gap-analysis/page-reader";
 
 function release(id: string, locale: "de" | "en"): LoadedGapRelease {
   return {
@@ -244,56 +246,195 @@ describe("Gap reassessment reader", () => {
   });
 });
 
-describe("Gap workflow reader", () => {
-  it("starts independent document-library and active-release reads together", async () => {
-    let resolveDocuments!: (value: { documents: [] }) => void;
-    let resolveRelease!: (value: null) => void;
-    const documents = new Promise<{ documents: [] }>((resolve) => {
-      resolveDocuments = resolve;
+describe("Gap page reader", () => {
+  it("reads only the Documents page data after one combined authorization", async () => {
+    let queryCount = 0;
+    const authorize = vi.fn(async () => {
+      queryCount += 1;
+      return { role: "owner" as const };
     });
-    const activeRelease = new Promise<null>((resolve) => {
-      resolveRelease = resolve;
+    const loadDocumentLibrary = vi.fn(async () => {
+      queryCount += 3;
+      return {
+        role: "owner",
+        canContribute: true,
+        documents: [],
+      };
     });
-    const loadDocumentLibrary = vi.fn(() => documents);
-    const loadActiveRelease = vi.fn(() => activeRelease);
-    const readWorkflow = createGapAnalysisWorkflowReader({
-      authorize: vi.fn(async () => ({ role: "owner" as const })),
+    const loadActiveRelease = vi.fn(async () => {
+      queryCount += 1;
+      return release("release-a", "de");
+    });
+    const loadDocumentsAssessment = vi.fn(async () => {
+      queryCount += 1;
+      return {
+        id: "assessment",
+        currentRevisionId: "assessment-revision",
+      };
+    });
+    const loadReassessment = vi.fn(async () => {
+      queryCount += 2;
+      return { draft: { id: "draft" } };
+    });
+    const loadWorkflowSnapshot = vi.fn();
+    const loadAnswers = vi.fn();
+    const loadFindingsBatch = vi.fn();
+    const loadStalenessBatch = vi.fn();
+    const loadRun = vi.fn();
+    const reader = createGapPageReader({
+      authorize,
       loadDocumentLibrary,
       loadActiveRelease,
       getCurrentDocuments: vi.fn(() => []),
-      loadAssessment: vi.fn(),
-      loadArtifact: vi.fn(),
-      loadAnswerRows: vi.fn(),
-      loadArtifactRevisions: vi.fn(),
-      selectCandidate: vi.fn(),
-      loadAnswerOptions: vi.fn(),
-      loadFindings: vi.fn(),
-      loadReassessment: vi.fn(),
-      loadStaleness: vi.fn(),
-      loadActivePlan: vi.fn(),
-      loadRun: vi.fn(),
+      loadDocumentsAssessment,
+      loadWorkflowSnapshot,
+      loadAnswers,
+      loadFindingsBatch,
+      loadReassessment,
+      loadStalenessBatch,
+      loadRun,
     });
 
-    const result = readWorkflow({
-      userId: "user",
-      organizationId: "organization",
-      locale: "de",
-    });
-    await vi.waitFor(() => {
-      expect(loadDocumentLibrary).toHaveBeenCalledOnce();
-      expect(loadActiveRelease).toHaveBeenCalledOnce();
+    await expect(
+      reader.readDocuments({
+        userId: "user",
+        organizationId: "organization",
+        locale: "de",
+      }),
+    ).resolves.toEqual({
+      assessmentId: "assessment",
+      documentLibrary: {
+        role: "owner",
+        canContribute: true,
+        documents: [],
+      },
+      reassessment: { draft: { id: "draft" } },
     });
 
-    resolveDocuments({ documents: [] });
-    resolveRelease(null);
-
-    await expect(result).resolves.toMatchObject({
-      release: null,
-      documentLibrary: { documents: [] },
-    });
+    expect(authorize).toHaveBeenCalledOnce();
+    expect(authorize).toHaveBeenCalledWith(
+      expect.anything(),
+      ["documents:read", "gap:read"],
+    );
+    expect(loadWorkflowSnapshot).not.toHaveBeenCalled();
+    expect(loadAnswers).not.toHaveBeenCalled();
+    expect(loadFindingsBatch).not.toHaveBeenCalled();
+    expect(loadStalenessBatch).not.toHaveBeenCalled();
+    expect(loadRun).not.toHaveBeenCalled();
+    expect(queryCount).toBe(8);
   });
 
-  it("keeps later workflow reads inside their dependency-bounded phases", async () => {
+  it("preserves the complete Gap DTO within the warm query budget", async () => {
+    let queryCount = 0;
+    const activeRelease = release("release-a", "de");
+    const assessment = {
+      id: "assessment",
+      currentRevisionId: "assessment-revision",
+    };
+    const documentLibrary = {
+      role: "owner",
+      canContribute: true,
+      documents: [],
+    };
+    const documents = [{ document: { id: "document" } }];
+    const acceptedRevision = { id: "accepted" };
+    const candidateRevision = { id: "candidate" };
+    const acceptedFindings = [
+      { finding: { id: "accepted-finding", requiresReview: false } },
+    ];
+    const candidateFindings = [
+      { finding: { id: "candidate-finding", requiresReview: true } },
+    ];
+    const reassessment = { draft: { id: "draft" } };
+    const acceptedStaleness = { stale: false };
+    const candidateStaleness = { stale: true };
+    const run = { id: "run" };
+    const reader = createGapPageReader({
+      authorize: vi.fn(async () => {
+        queryCount += 1;
+        return { role: "owner" as const };
+      }),
+      loadDocumentLibrary: vi.fn(async () => {
+        queryCount += 3;
+        return documentLibrary;
+      }),
+      loadActiveRelease: vi.fn(async () => {
+        queryCount += 1;
+        return activeRelease;
+      }),
+      getCurrentDocuments: vi.fn(() => documents),
+      loadDocumentsAssessment: vi.fn(),
+      loadWorkflowSnapshot: vi.fn(async () => {
+        queryCount += 1;
+        return {
+          assessment,
+          acceptedRevision,
+          currentRevision: candidateRevision,
+          activePlan: { sourceGapArtifactRevisionId: "older-revision" },
+          runContext: { assessmentRevisionId: "assessment-revision" },
+        };
+      }),
+      loadAnswers: vi.fn(async () => {
+        queryCount += 1;
+        return { question: "option" };
+      }),
+      loadFindingsBatch: vi.fn(async () => {
+        queryCount += 1;
+        return {
+          accepted: acceptedFindings,
+          candidate: candidateFindings,
+        };
+      }),
+      loadReassessment: vi.fn(async () => {
+        queryCount += 2;
+        return reassessment;
+      }),
+      loadStalenessBatch: vi.fn(async () => {
+        queryCount += 1;
+        return {
+          accepted: acceptedStaleness,
+          candidate: candidateStaleness,
+        };
+      }),
+      loadRun: vi.fn(async () => {
+        queryCount += 1;
+        return run;
+      }),
+    });
+
+    await expect(
+      reader.readGap({
+        userId: "user",
+        organizationId: "organization",
+        locale: "de",
+      }),
+    ).resolves.toEqual({
+      role: "owner",
+      canContribute: true,
+      canManage: true,
+      release: activeRelease,
+      assessment,
+      answers: { question: "option" },
+      documents,
+      documentLibrary,
+      run,
+      revision: candidateRevision,
+      findings: candidateFindings,
+      acceptedRevision,
+      acceptedFindings,
+      candidateRevision,
+      candidateFindings,
+      reassessment,
+      reviewBlockers: ["candidate-finding"],
+      planUpdateAvailable: true,
+      acceptedStaleness,
+      candidateStaleness,
+      staleness: candidateStaleness,
+    });
+    expect(queryCount).toBe(12);
+  });
+
+  it("starts every peer in a dependency phase before awaiting a peer", async () => {
     function pending<T>() {
       let resolve!: (value: T) => void;
       const promise = new Promise<T>((complete) => {
@@ -301,79 +442,131 @@ describe("Gap workflow reader", () => {
       });
       return { promise, resolve };
     }
-    const assessment = pending<{
-      id: string;
-      currentRevisionId: string | null;
+    const library = pending<{ documents: [] }>();
+    const activeRelease = pending<LoadedGapRelease>();
+    const snapshot = pending<{
+      assessment: { id: string };
+      acceptedRevision: null;
+      currentRevision: null;
+      activePlan: null;
+      runContext: null;
     }>();
-    const artifact = pending<{ id: string }>();
-    const answers = pending<[]>();
-    const revisions = pending<{ accepted: null; working: null }>();
-    const answerOptions = pending<[]>();
-    const findings = pending<[]>();
+    const answers = pending<Record<string, string>>();
+    const findings = pending<{ accepted: []; candidate: [] }>();
     const reassessment = pending<null>();
-    const staleness = pending<null>();
-    const activePlan = pending<null>();
+    const staleness = pending<{ accepted: null; candidate: null }>();
     const run = pending<null>();
-    const deps = {
+    const dependencies = {
       authorize: vi.fn(async () => ({ role: "owner" as const })),
-      loadDocumentLibrary: vi.fn(async () => ({ documents: [] })),
-      loadActiveRelease: vi.fn(async () => release("release-a", "de")),
+      loadDocumentLibrary: vi.fn(() => library.promise),
+      loadActiveRelease: vi.fn(() => activeRelease.promise),
       getCurrentDocuments: vi.fn(() => []),
-      loadAssessment: vi.fn(() => assessment.promise),
-      loadArtifact: vi.fn(() => artifact.promise),
-      loadAnswerRows: vi.fn(() => answers.promise),
-      loadArtifactRevisions: vi.fn(() => revisions.promise),
-      selectCandidate: vi.fn(() => null),
-      loadAnswerOptions: vi.fn(() => answerOptions.promise),
-      loadFindings: vi.fn(() => findings.promise),
+      loadDocumentsAssessment: vi.fn(),
+      loadWorkflowSnapshot: vi.fn(() => snapshot.promise),
+      loadAnswers: vi.fn(() => answers.promise),
+      loadFindingsBatch: vi.fn(() => findings.promise),
       loadReassessment: vi.fn(() => reassessment.promise),
-      loadStaleness: vi.fn(() => staleness.promise),
-      loadActivePlan: vi.fn(() => activePlan.promise),
+      loadStalenessBatch: vi.fn(() => staleness.promise),
       loadRun: vi.fn(() => run.promise),
     };
-    const readWorkflow = createGapAnalysisWorkflowReader(deps);
-
-    const result = readWorkflow({
+    const reader = createGapPageReader(dependencies);
+    const result = reader.readGap({
       userId: "user",
       organizationId: "organization",
       locale: "de",
     });
-    await vi.waitFor(() => {
-      expect(deps.loadAssessment).toHaveBeenCalledOnce();
-      expect(deps.loadArtifact).toHaveBeenCalledOnce();
-    });
 
-    assessment.resolve({ id: "assessment", currentRevisionId: "revision" });
-    artifact.resolve({ id: "artifact" });
     await vi.waitFor(() => {
-      expect(deps.loadAnswerRows).toHaveBeenCalledOnce();
-      expect(deps.loadArtifactRevisions).toHaveBeenCalledOnce();
+      expect(dependencies.loadDocumentLibrary).toHaveBeenCalledOnce();
+      expect(dependencies.loadActiveRelease).toHaveBeenCalledOnce();
     });
+    expect(dependencies.loadWorkflowSnapshot).not.toHaveBeenCalled();
+    activeRelease.resolve(release("release-a", "de"));
 
-    answers.resolve([]);
-    revisions.resolve({ accepted: null, working: null });
     await vi.waitFor(() => {
-      expect(deps.loadAnswerOptions).toHaveBeenCalledOnce();
-      expect(deps.loadFindings).toHaveBeenCalledTimes(2);
-      expect(deps.loadReassessment).toHaveBeenCalledOnce();
-      expect(deps.loadStaleness).toHaveBeenCalledTimes(2);
-      expect(deps.loadActivePlan).toHaveBeenCalledOnce();
+      expect(dependencies.loadWorkflowSnapshot).toHaveBeenCalledOnce();
     });
-    expect(deps.loadRun).not.toHaveBeenCalled();
+    snapshot.resolve({
+      assessment: { id: "assessment" },
+      acceptedRevision: null,
+      currentRevision: null,
+      activePlan: null,
+      runContext: null,
+    });
+    expect(dependencies.loadAnswers).not.toHaveBeenCalled();
+    library.resolve({ documents: [] });
 
-    answerOptions.resolve([]);
-    findings.resolve([]);
+    await vi.waitFor(() => {
+      expect(dependencies.loadAnswers).toHaveBeenCalledOnce();
+      expect(dependencies.loadFindingsBatch).toHaveBeenCalledOnce();
+      expect(dependencies.loadReassessment).toHaveBeenCalledOnce();
+      expect(dependencies.loadStalenessBatch).toHaveBeenCalledOnce();
+      expect(dependencies.loadRun).toHaveBeenCalledOnce();
+    });
+    answers.resolve({});
+    findings.resolve({ accepted: [], candidate: [] });
     reassessment.resolve(null);
-    staleness.resolve(null);
-    activePlan.resolve(null);
-    await vi.waitFor(() => {
-      expect(deps.loadRun).toHaveBeenCalledOnce();
-    });
+    staleness.resolve({ accepted: null, candidate: null });
     run.resolve(null);
-
     await expect(result).resolves.toMatchObject({
       assessment: { id: "assessment" },
-      run: null,
     });
+  });
+
+  it("does not start organization data reads when authorization fails", async () => {
+    const loadDocumentLibrary = vi.fn();
+    const loadActiveRelease = vi.fn();
+    const reader = createGapPageReader({
+      authorize: vi.fn(async () => {
+        throw new Error("forbidden");
+      }),
+      loadDocumentLibrary,
+      loadActiveRelease,
+      getCurrentDocuments: vi.fn(),
+      loadDocumentsAssessment: vi.fn(),
+      loadWorkflowSnapshot: vi.fn(),
+      loadAnswers: vi.fn(),
+      loadFindingsBatch: vi.fn(),
+      loadReassessment: vi.fn(),
+      loadStalenessBatch: vi.fn(),
+      loadRun: vi.fn(),
+    });
+
+    await expect(
+      reader.readGap({
+        userId: "user",
+        organizationId: "organization",
+        locale: "de",
+      }),
+    ).rejects.toThrow("forbidden");
+    await expect(
+      reader.readDocuments({
+        userId: "user",
+        organizationId: "organization",
+        locale: "de",
+      }),
+    ).rejects.toThrow("forbidden");
+    expect(loadDocumentLibrary).not.toHaveBeenCalled();
+    expect(loadActiveRelease).not.toHaveBeenCalled();
+  });
+
+  it("keeps preauthorized helpers outside route and page modules", () => {
+    const appRoot = join(process.cwd(), "app");
+    const pending = [appRoot];
+    const applicationFiles: string[] = [];
+    while (pending.length) {
+      const directory = pending.pop()!;
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name);
+        if (entry.isDirectory()) pending.push(path);
+        else if (/\.(?:ts|tsx)$/.test(entry.name)) applicationFiles.push(path);
+      }
+    }
+
+    for (const path of applicationFiles) {
+      expect(readFileSync(path, "utf8")).not.toMatch(
+        /(?:DocumentLibrary|ReassessmentDraft|RevisionStalenessBatch)Preauthorized/,
+      );
+    }
   });
 });

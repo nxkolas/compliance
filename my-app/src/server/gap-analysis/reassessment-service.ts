@@ -18,6 +18,7 @@ import {
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { ApiError } from "../api/errors";
 import {
   assertCanAccessOrganization,
@@ -240,7 +241,7 @@ type GapReassessmentDraftLookup = {
   assessmentId?: string;
 };
 
-type GapReassessmentDraftReadInput = GapReassessmentDraftLookup & {
+export type GapReassessmentDraftReadInput = GapReassessmentDraftLookup & {
   locale: Locale;
   release?: LoadedGapRelease;
 };
@@ -249,14 +250,6 @@ type AuthorizedGapReassessmentDraftReadInput =
   GapReassessmentDraftReadInput & {
     userId: string;
   };
-
-type GapReassessmentDraftRow = typeof gapReassessmentDrafts.$inferSelect;
-type GapReassessmentDraftDocumentRow =
-  typeof gapReassessmentDraftDocuments.$inferSelect;
-type GeneratedArtifactRevisionRow =
-  typeof generatedArtifactRevisions.$inferSelect;
-type AssessmentRevisionRow = typeof assessmentRevisions.$inferSelect;
-type AssessmentRow = typeof assessments.$inferSelect;
 
 export function createGapReassessmentDraftReader<
   TDraft extends {
@@ -385,58 +378,6 @@ export function createGapReassessmentDraftReader<
   };
 }
 
-const gapReassessmentDraftReader = createGapReassessmentDraftReader<
-  GapReassessmentDraftRow,
-  GapReassessmentDraftDocumentRow,
-  GeneratedArtifactRevisionRow | null | undefined,
-  AssessmentRevisionRow | null | undefined,
-  AssessmentRow | null | undefined,
-  GeneratedArtifactRevisionRow | null | undefined
->({
-  authorize: async ({ userId, organizationId }) => {
-    await assertCanAccessOrganization(userId, organizationId);
-  },
-  findDraft: (input) =>
-    db.query.gapReassessmentDrafts.findFirst({
-      where: and(
-        eq(gapReassessmentDrafts.organizationId, input.organizationId),
-        ...(input.draftId
-          ? [eq(gapReassessmentDrafts.id, input.draftId)]
-          : []),
-        ...(input.assessmentId
-          ? [eq(gapReassessmentDrafts.assessmentId, input.assessmentId)]
-          : []),
-      ),
-      orderBy: [desc(gapReassessmentDrafts.createdAt)],
-    }),
-  loadSelected: (draftId) =>
-    db.query.gapReassessmentDraftDocuments.findMany({
-      where: eq(gapReassessmentDraftDocuments.draftId, draftId),
-    }),
-  loadAcceptedEvidence,
-  loadRelease: loadGapAnalysisRelease,
-  loadBaseRevision: (revisionId) =>
-    revisionId
-      ? db.query.generatedArtifactRevisions.findFirst({
-          where: eq(generatedArtifactRevisions.id, revisionId),
-        })
-      : Promise.resolve(null),
-  loadAssessmentRevision: (revisionId) =>
-    db.query.assessmentRevisions.findFirst({
-      where: eq(assessmentRevisions.id, revisionId),
-    }),
-  loadAssessment: (assessmentId) =>
-    db.query.assessments.findFirst({
-      where: eq(assessments.id, assessmentId),
-    }),
-  loadApplicabilityRevision: (revisionId) =>
-    revisionId
-      ? db.query.generatedArtifactRevisions.findFirst({
-          where: eq(generatedArtifactRevisions.id, revisionId),
-        })
-      : Promise.resolve(null),
-});
-
 export async function getGapReassessmentDraft(input: {
   userId: string;
   organizationId: string;
@@ -444,13 +385,197 @@ export async function getGapReassessmentDraft(input: {
   assessmentId?: string;
   locale: Locale;
 }) {
-  return gapReassessmentDraftReader.getAuthorized(input);
+  await assertCanAccessOrganization(input.userId, input.organizationId);
+  return readGapReassessmentDraftSnapshotPreauthorized(input);
 }
 
 export async function getGapReassessmentDraftPreauthorized(
   input: GapReassessmentDraftReadInput,
 ) {
-  return gapReassessmentDraftReader.getPreauthorized(input);
+  return readGapReassessmentDraftSnapshotPreauthorized(input);
+}
+
+async function readGapReassessmentDraftSnapshotPreauthorized(
+  input: GapReassessmentDraftReadInput,
+) {
+  const baseRevision = alias(
+    generatedArtifactRevisions,
+    "reassessment_base_revision",
+  );
+  const applicabilityRevision = alias(
+    generatedArtifactRevisions,
+    "reassessment_applicability_revision",
+  );
+  const draftWhere = and(
+    eq(gapReassessmentDrafts.organizationId, input.organizationId),
+    input.draftId
+      ? eq(gapReassessmentDrafts.id, input.draftId)
+      : undefined,
+    input.assessmentId
+      ? eq(gapReassessmentDrafts.assessmentId, input.assessmentId)
+      : undefined,
+  );
+  const metadataPromise = db
+    .select({
+      draft: gapReassessmentDrafts,
+      baseAcceptedGapRevisionNumber: baseRevision.revisionNumber,
+      assessmentRevisionNumber: assessmentRevisions.revisionNumber,
+      applicabilityResult: applicabilityRevision.result,
+    })
+    .from(gapReassessmentDrafts)
+    .leftJoin(
+      baseRevision,
+      eq(baseRevision.id, gapReassessmentDrafts.baseAcceptedGapRevisionId),
+    )
+    .leftJoin(
+      assessmentRevisions,
+      eq(
+        assessmentRevisions.id,
+        gapReassessmentDrafts.assessmentRevisionId,
+      ),
+    )
+    .leftJoin(
+      assessments,
+      eq(assessments.id, gapReassessmentDrafts.assessmentId),
+    )
+    .leftJoin(
+      applicabilityRevision,
+      eq(
+        applicabilityRevision.id,
+        assessments.applicabilityArtifactRevisionId,
+      ),
+    )
+    .where(draftWhere)
+    .orderBy(desc(gapReassessmentDrafts.createdAt))
+    .limit(1);
+  const evidencePromise = db.execute<{
+    row_kind: "selected" | "base";
+    draft_id: string | null;
+    organization_id: string | null;
+    document_id: string;
+    document_version_id: string;
+    selection_origin:
+      | "approved_carryover"
+      | "version_replacement"
+      | "explicit_addition"
+      | null;
+    selected_by: string | null;
+    selected_at: Date | null;
+  }>(sql`
+    with latest_draft as (
+      select draft.*
+      from gap_reassessment_drafts draft
+      where draft.organization_id = ${input.organizationId}
+        ${input.draftId ? sql`and draft.id = ${input.draftId}` : sql``}
+        ${input.assessmentId
+          ? sql`and draft.assessment_id = ${input.assessmentId}`
+          : sql``}
+      order by draft.created_at desc
+      limit 1
+    )
+    select
+      'selected'::text as row_kind,
+      selected.draft_id,
+      selected.organization_id,
+      selected.document_id,
+      selected.document_version_id,
+      selected.selection_origin::text as selection_origin,
+      selected.selected_by,
+      selected.selected_at
+    from latest_draft draft
+    inner join gap_reassessment_draft_documents selected
+      on selected.draft_id = draft.id
+    union all
+    select
+      'base'::text as row_kind,
+      null::uuid as draft_id,
+      null::uuid as organization_id,
+      version.document_id,
+      version.id as document_version_id,
+      null::text as selection_origin,
+      null::uuid as selected_by,
+      null::timestamptz as selected_at
+    from latest_draft draft
+    inner join artifact_revision_sources source
+      on source.artifact_revision_id = draft.base_accepted_gap_revision_id
+      and source.source_type = 'document_version'
+    inner join document_versions version
+      on version.id = source.source_id
+  `);
+  const [[metadata], evidenceRows] = await Promise.all([
+    metadataPromise,
+    evidencePromise,
+  ]);
+  if (!metadata) return null;
+
+  const draft = metadata.draft;
+  const resolvedRelease =
+    input.release?.id === draft.gapAnalysisReleaseId
+      ? input.release
+      : await loadGapAnalysisRelease(
+          draft.gapAnalysisReleaseId,
+          input.locale,
+        );
+  const selected = evidenceRows
+    .filter((row) => row.row_kind === "selected")
+    .map((row) => ({
+      draftId: row.draft_id!,
+      organizationId: row.organization_id!,
+      documentId: row.document_id,
+      documentVersionId: row.document_version_id,
+      selectionOrigin: row.selection_origin!,
+      selectedBy: row.selected_by!,
+      selectedAt: row.selected_at!,
+    }));
+  const base = evidenceRows
+    .filter((row) => row.row_kind === "base")
+    .map((row) => ({
+      versionId: row.document_version_id,
+      documentId: row.document_id,
+    }));
+  const selectedIds = new Set(
+    selected.map((item) => item.documentVersionId),
+  );
+  const selectedDocumentIds = new Set(
+    selected.map((item) => item.documentId),
+  );
+  const outcome = (
+    metadata.applicabilityResult as { outcome?: unknown } | null
+  )?.outcome;
+  const requirementCount =
+    resolvedRelease && typeof outcome === "string"
+      ? resolvedRelease.requirements.filter((requirement) =>
+          requirement.applicabilityOutcomeCodes.includes(outcome),
+        ).length
+      : 0;
+
+  return {
+    draft,
+    selected,
+    summary: {
+      baseAcceptedGapRevisionId: draft.baseAcceptedGapRevisionId,
+      baseAcceptedGapRevisionNumber:
+        metadata.baseAcceptedGapRevisionNumber ?? null,
+      assessmentRevisionId: draft.assessmentRevisionId,
+      assessmentRevisionNumber: metadata.assessmentRevisionNumber ?? null,
+      gapAnalysisReleaseId: draft.gapAnalysisReleaseId,
+      gapAnalysisReleaseVersion: resolvedRelease?.versionLabel ?? null,
+      requirementCount,
+      carried: selected
+        .filter((item) => item.selectionOrigin === "approved_carryover")
+        .map((item) => item.documentVersionId),
+      replaced: selected
+        .filter((item) => item.selectionOrigin === "version_replacement")
+        .map((item) => item.documentVersionId),
+      added: selected
+        .filter((item) => item.selectionOrigin === "explicit_addition")
+        .map((item) => item.documentVersionId),
+      removed: base
+        .filter((item) => !selectedDocumentIds.has(item.documentId))
+        .map((item) => item.versionId),
+      selectedDocumentVersionIds: [...selectedIds],
+    },
+  };
 }
 
 export async function generateGapReassessment(

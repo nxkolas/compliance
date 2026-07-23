@@ -39,6 +39,7 @@ import { parseDocument, validateDocumentUpload } from "./parser";
 import { createUploadSession, verifyUploadedObject } from "../uploads/service";
 import { MAX_DOCUMENT_BYTES, SUPPORTED_DOCUMENT_TYPES } from "./document-config";
 import { getCursorCodec } from "../api/pagination";
+import { unionAll } from "drizzle-orm/pg-core";
 import {
   deriveDocumentUsageLabels,
   type DocumentUsageLabel,
@@ -315,6 +316,24 @@ export async function getOrganizationDocumentLibrary(
   options: { limit?: number; cursor?: string; documentId?: string } = {},
 ) {
   const membership = await assertCanAccessOrganization(userId, organizationId);
+  return getOrganizationDocumentLibraryPreauthorized(
+    membership,
+    organizationId,
+    options,
+  );
+}
+
+export async function getOrganizationDocumentLibraryPreauthorized(
+  membership: Awaited<ReturnType<typeof assertCanAccessOrganization>>,
+  organizationId: string,
+  options: { limit?: number; cursor?: string; documentId?: string } = {},
+) {
+  if (
+    membership.organizationId !== organizationId ||
+    membership.status !== "active"
+  ) {
+    throw new ApiError(403, "Active organization membership required");
+  }
   const limit = Math.max(1, Math.min(100, options.limit ?? 100));
   const scope = `organization-documents:${organizationId}`;
   const cursor = options.cursor
@@ -331,76 +350,51 @@ export async function getOrganizationDocumentLibrary(
   });
   const documentPage = documentPageRows.slice(0, limit);
   const documentIds = documentPage.map((document) => document.id);
-  const rows = await db
-    .select({
-      document: documents,
-      version: documentVersions,
-      extraction: documentExtractions,
-      embedding: documentEmbeddingGenerations,
-    })
-    .from(documents)
-    .leftJoin(documentVersions, eq(documentVersions.documentId, documents.id))
-    .leftJoin(
-      documentExtractions,
-      eq(documentExtractions.documentVersionId, documentVersions.id),
-    )
-    .leftJoin(
-      documentEmbeddingGenerations,
-      eq(documentEmbeddingGenerations.extractionId, documentExtractions.id),
-    )
-    .where(documentIds.length ? inArray(documents.id, documentIds) : sql`false`)
-    .orderBy(desc(documents.createdAt), desc(documentVersions.versionNumber));
+  const [rows, usageRows] = await Promise.all([
+    db
+      .select({
+        document: documents,
+        version: documentVersions,
+        extraction: documentExtractions,
+        embedding: documentEmbeddingGenerations,
+      })
+      .from(documents)
+      .leftJoin(documentVersions, eq(documentVersions.documentId, documents.id))
+      .leftJoin(
+        documentExtractions,
+        eq(documentExtractions.documentVersionId, documentVersions.id),
+      )
+      .leftJoin(
+        documentEmbeddingGenerations,
+        eq(
+          documentEmbeddingGenerations.extractionId,
+          documentExtractions.id,
+        ),
+      )
+      .where(
+        documentIds.length ? inArray(documents.id, documentIds) : sql`false`,
+      )
+      .orderBy(
+        desc(documents.createdAt),
+        desc(documentVersions.versionNumber),
+      ),
+    loadDocumentUsageRows(organizationId, documentIds),
+  ]);
 
-  const artifactSources = await db
-    .select({
-      documentVersionId: artifactRevisionSources.sourceId,
-      revisionId: generatedArtifactRevisions.id,
-      currentRevisionId: generatedArtifacts.currentRevisionId,
-      acceptedRevisionId: generatedArtifacts.acceptedRevisionId,
-    })
-    .from(artifactRevisionSources)
-    .innerJoin(
-      generatedArtifactRevisions,
-      eq(artifactRevisionSources.artifactRevisionId, generatedArtifactRevisions.id),
-    )
-    .innerJoin(
-      generatedArtifacts,
-      eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id),
-    )
-    .where(
-      and(
-        eq(generatedArtifacts.organizationId, organizationId),
-        eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-        eq(artifactRevisionSources.sourceType, "document_version"),
-      ),
-    );
-  const draftSources = await db
-    .select({ documentVersionId: gapReassessmentDraftDocuments.documentVersionId })
-    .from(gapReassessmentDraftDocuments)
-    .innerJoin(
-      gapReassessmentDrafts,
-      eq(gapReassessmentDraftDocuments.draftId, gapReassessmentDrafts.id),
-    )
-    .where(
-      and(
-        eq(gapReassessmentDrafts.organizationId, organizationId),
-        inArray(gapReassessmentDrafts.status, ["open", "locked", "failed"]),
-      ),
-    );
-  const planSources = await db
-    .select({ documentVersionId: artifactRevisionSources.sourceId })
-    .from(actionPlans)
-    .innerJoin(
-      artifactRevisionSources,
-      eq(actionPlans.sourceGapArtifactRevisionId, artifactRevisionSources.artifactRevisionId),
-    )
-    .where(
-      and(
-        eq(actionPlans.organizationId, organizationId),
-        eq(actionPlans.status, "active"),
-        eq(artifactRevisionSources.sourceType, "document_version"),
-      ),
-    );
+  const artifactSources = usageRows
+    .filter((source) => source.usageKind === "artifact")
+    .map((source) => ({
+      documentVersionId: source.documentVersionId,
+      revisionId: source.revisionId!,
+      currentRevisionId: source.currentRevisionId,
+      acceptedRevisionId: source.acceptedRevisionId,
+    }));
+  const draftSources = usageRows.filter(
+    (source) => source.usageKind === "draft",
+  );
+  const planSources = usageRows.filter(
+    (source) => source.usageKind === "plan",
+  );
 
   const draftVersionIds = new Set(
     draftSources.map((source) => source.documentVersionId),
@@ -453,6 +447,99 @@ export async function getOrganizationDocumentLibrary(
       ? getCursorCodec().encode(scope, [documentPage.at(-1)!.createdAt.toISOString(), documentPage.at(-1)!.id])
       : undefined,
   };
+}
+
+async function loadDocumentUsageRows(
+  organizationId: string,
+  documentVersionIds: string[],
+) {
+  if (!documentVersionIds.length) {
+    return [] as Array<{
+      usageKind: "artifact" | "draft" | "plan";
+      documentVersionId: string;
+      revisionId: string | null;
+      currentRevisionId: string | null;
+      acceptedRevisionId: string | null;
+    }>;
+  }
+  const artifactUsage = db
+    .select({
+      usageKind: sql<"artifact" | "draft" | "plan">`'artifact'`,
+      documentVersionId: artifactRevisionSources.sourceId,
+      revisionId: sql<string | null>`${generatedArtifactRevisions.id}`,
+      currentRevisionId: generatedArtifacts.currentRevisionId,
+      acceptedRevisionId: generatedArtifacts.acceptedRevisionId,
+    })
+    .from(artifactRevisionSources)
+    .innerJoin(
+      generatedArtifactRevisions,
+      eq(
+        artifactRevisionSources.artifactRevisionId,
+        generatedArtifactRevisions.id,
+      ),
+    )
+    .innerJoin(
+      generatedArtifacts,
+      eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id),
+    )
+    .where(
+      and(
+        eq(generatedArtifacts.organizationId, organizationId),
+        eq(generatedArtifacts.artifactType, "gap_analysis_result"),
+        eq(artifactRevisionSources.sourceType, "document_version"),
+        inArray(artifactRevisionSources.sourceId, documentVersionIds),
+      ),
+    );
+  const draftUsage = db
+    .select({
+      usageKind: sql<"artifact" | "draft" | "plan">`'draft'`,
+      documentVersionId:
+        gapReassessmentDraftDocuments.documentVersionId,
+      revisionId: sql<string | null>`null`,
+      currentRevisionId: sql<string | null>`null`,
+      acceptedRevisionId: sql<string | null>`null`,
+    })
+    .from(gapReassessmentDraftDocuments)
+    .innerJoin(
+      gapReassessmentDrafts,
+      eq(gapReassessmentDraftDocuments.draftId, gapReassessmentDrafts.id),
+    )
+    .where(
+      and(
+        eq(gapReassessmentDrafts.organizationId, organizationId),
+        inArray(gapReassessmentDrafts.status, ["open", "locked", "failed"]),
+        inArray(
+          gapReassessmentDraftDocuments.documentVersionId,
+          documentVersionIds,
+        ),
+      ),
+    );
+  const planUsage = db
+    .select({
+      usageKind: sql<"artifact" | "draft" | "plan">`'plan'`,
+      documentVersionId: artifactRevisionSources.sourceId,
+      revisionId: sql<string | null>`null`,
+      currentRevisionId: sql<string | null>`null`,
+      acceptedRevisionId: sql<string | null>`null`,
+    })
+    .from(actionPlans)
+    .innerJoin(
+      artifactRevisionSources,
+      eq(
+        actionPlans.sourceGapArtifactRevisionId,
+        artifactRevisionSources.artifactRevisionId,
+      ),
+    )
+    .where(
+      and(
+        eq(actionPlans.organizationId, organizationId),
+        eq(actionPlans.status, "active"),
+        eq(artifactRevisionSources.sourceType, "document_version"),
+        inArray(artifactRevisionSources.sourceId, documentVersionIds),
+      ),
+    );
+
+  return unionAll(artifactUsage, draftUsage, planUsage);
 }
 
 export async function getOrganizationDocumentDetail(userId: string, organizationId: string, documentId: string) {

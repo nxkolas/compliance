@@ -16,7 +16,7 @@ import {
 } from "../src/server/gap-analysis/release-loader";
 import { getGapReassessmentDraft } from "../src/server/gap-analysis/reassessment-service";
 import { getGapRevisionStaleness } from "../src/server/gap-analysis/staleness";
-import { createDatabaseGapAnalysisWorkflowReader } from "../src/server/gap-analysis/workflow-reader";
+import { createDatabaseGapPageReader } from "../src/server/gap-analysis/page-reader";
 
 type Fixture = {
   organizationId: string;
@@ -60,11 +60,13 @@ async function main() {
     results.push({
       operation: operation.name,
       responseShape: expectedShape,
-      cold: reportSample(cold),
-      warm: warm.map(reportSample),
+      cold: reportSample(cold, operation.sequentialLayers),
+      warm: warm.map((sample) =>
+        reportSample(sample, operation.sequentialLayers),
+      ),
       warmMedianMs: round(percentile(sortedWall, 0.5)),
       warmImprovementPercent:
-        operation.name === "workflow"
+        operation.name === "gapPage"
           ? round(((2480 - percentile(sortedWall, 0.5)) / 2480) * 100)
           : null,
     });
@@ -94,17 +96,46 @@ async function main() {
 function createOperations(fixture: Fixture) {
   return [
     {
-      name: "workflow",
+      name: "gapPage",
       create() {
         const reader = createBenchmarkReleaseReader();
-        const readWorkflow = createDatabaseGapAnalysisWorkflowReader(reader);
+        const pageReader = createDatabaseGapPageReader(reader);
         return () =>
-          readWorkflow({
+          pageReader.readGap({
             userId: fixture.userId,
             organizationId: fixture.organizationId,
             locale: "de",
           });
       },
+      sequentialLayers: 4,
+    },
+    {
+      name: "documentsPage",
+      create() {
+        const reader = createBenchmarkReleaseReader();
+        const pageReader = createDatabaseGapPageReader(reader);
+        return () =>
+          pageReader.readDocuments({
+            userId: fixture.userId,
+            organizationId: fixture.organizationId,
+            locale: "de",
+          });
+      },
+      sequentialLayers: 4,
+    },
+    {
+      name: "workflowCompatibility",
+      create() {
+        const reader = createBenchmarkReleaseReader();
+        const pageReader = createDatabaseGapPageReader(reader);
+        return () =>
+          pageReader.readGap({
+            userId: fixture.userId,
+            organizationId: fixture.organizationId,
+            locale: "de",
+          });
+      },
+      sequentialLayers: 4,
     },
     {
       name: "documentLibrary",
@@ -113,6 +144,7 @@ function createOperations(fixture: Fixture) {
           fixture.userId,
           fixture.organizationId,
         ),
+      sequentialLayers: 3,
     },
     {
       name: "activeRelease",
@@ -121,6 +153,7 @@ function createOperations(fixture: Fixture) {
         return () =>
           reader.getActive({ releaseCode: "nis2-gap", locale: "de" });
       },
+      sequentialLayers: 2,
     },
     {
       name: "reassessmentDraft",
@@ -131,6 +164,7 @@ function createOperations(fixture: Fixture) {
           assessmentId: fixture.assessmentId,
           locale: "de",
         }),
+      sequentialLayers: 3,
     },
     ...(fixture.revisionId
       ? [
@@ -142,6 +176,7 @@ function createOperations(fixture: Fixture) {
                 organizationId: fixture.organizationId,
                 revisionId: fixture.revisionId!,
               }),
+            sequentialLayers: 3,
           },
         ]
       : []),
@@ -230,11 +265,15 @@ async function measure(run: () => Promise<unknown>) {
       value,
       wallMs,
       sqlCalls: queries.length,
+      authorizationCalls: queries.filter((query) =>
+        query.includes('"organization_memberships"'),
+      ).length,
       activePointerCalls: queries.filter((query) =>
         query.includes('"active_gap_analysis_releases"'),
       ).length,
       immutableReleaseAssemblies: queries.filter((query) =>
-        query.includes('from "gap_analysis_releases"'),
+        query.includes('from "gap_analysis_releases"') &&
+        !query.includes('left join "assessments"'),
       ).length,
       databaseExecutionMs:
         before && after ? Math.max(0, after.executionMs - before.executionMs) : null,
@@ -271,7 +310,7 @@ async function readDatabaseStats(): Promise<DatabaseStats | null> {
 }
 
 function summarize(name: string, value: unknown) {
-  if (name === "workflow") {
+  if (name === "gapPage" || name === "workflowCompatibility") {
     const workflow = value as {
       release: unknown;
       assessment: unknown;
@@ -287,6 +326,18 @@ function summarize(name: string, value: unknown) {
       hasReassessment: Boolean(workflow.reassessment),
     };
   }
+  if (name === "documentsPage") {
+    const page = value as {
+      assessmentId: string | null;
+      documentLibrary: { documents: unknown[] };
+      reassessment: unknown;
+    };
+    return {
+      hasAssessment: Boolean(page.assessmentId),
+      documentCount: page.documentLibrary.documents.length,
+      hasReassessment: Boolean(page.reassessment),
+    };
+  }
   if (name === "documentLibrary") {
     return {
       documentCount: (value as { documents: unknown[] }).documents.length,
@@ -295,15 +346,20 @@ function summarize(name: string, value: unknown) {
   return { available: value !== null && value !== undefined };
 }
 
-function reportSample(sample: Awaited<ReturnType<typeof measure>>) {
+function reportSample(
+  sample: Awaited<ReturnType<typeof measure>>,
+  sequentialLayers?: number,
+) {
   return {
     wallMs: round(sample.wallMs),
     sqlCalls: sample.sqlCalls,
+    sequentialLayers,
     postgresqlExecutionMs:
       sample.databaseExecutionMs === null
         ? null
         : round(sample.databaseExecutionMs),
     activePointerCalls: sample.activePointerCalls,
+    authorizationCalls: sample.authorizationCalls,
     immutableReleaseAssemblies: sample.immutableReleaseAssemblies,
   };
 }

@@ -1720,6 +1720,10 @@ export const artifactRevisionSources = pgTable(
     index("artifact_revision_sources_revision_idx").on(
       table.artifactRevisionId,
     ),
+    index("artifact_revision_sources_revision_type_idx").on(
+      table.artifactRevisionId,
+      table.sourceType,
+    ),
     index("artifact_revision_sources_source_idx").on(
       table.sourceType,
       table.sourceId,
@@ -2006,6 +2010,11 @@ export const documents = pgTable(
       foreignColumns: [organizations.id],
     }).onDelete("restrict"),
     index("documents_organization_idx").on(table.organizationId),
+    index("documents_organization_created_idx").on(
+      table.organizationId,
+      table.createdAt,
+      table.id,
+    ),
     index("documents_status_idx").on(table.status),
     check("documents_version_positive", sql`${table.version} > 0`),
     unique("documents_id_organization_unique").on(
@@ -2126,6 +2135,9 @@ export const gapReassessmentDrafts = pgTable(
       table.organizationId,
     ),
     index("gap_reassessment_drafts_organization_idx").on(table.organizationId),
+    index(
+      "gap_reassessment_drafts_organization_assessment_created_idx",
+    ).on(table.organizationId, table.assessmentId, table.createdAt),
     uniqueIndex("gap_reassessment_drafts_generation_job_unique").on(table.generationJobId),
     check("gap_reassessment_drafts_lock_version_positive", sql`${table.lockVersion} > 0`),
   ],
@@ -2355,6 +2367,14 @@ export const aiProcessingRuns = pgTable(
       table.idempotencyKey,
     ),
     index("ai_processing_runs_status_idx").on(table.status),
+    index(
+      "ai_processing_runs_org_assessment_operation_created_idx",
+    ).on(
+      table.organizationId,
+      table.assessmentRevisionId,
+      table.operationKind,
+      table.createdAt,
+    ),
     check("ai_processing_runs_provenance_status_check", sql`${table.provenanceStatus} in ('complete', 'historical_unknown')`),
   ],
 );

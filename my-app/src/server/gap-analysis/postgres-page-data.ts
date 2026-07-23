@@ -1,0 +1,297 @@
+import { db } from "@/src/db";
+import {
+  actionPlans,
+  aiProcessingRuns,
+  assessmentAnswerOptions,
+  assessmentAnswers,
+  assessments,
+  gapFindingEvidence,
+  gapFindings,
+  gapReassessmentDrafts,
+  gapRequirementVersions,
+  gapAnalysisReleases,
+  generatedArtifactRevisions,
+  generatedArtifacts,
+  questionOptions,
+} from "@/src/db/schema";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import {
+  getOrganizationDocumentLibraryPreauthorized,
+} from "../documents/service";
+import {
+  getGapReassessmentDraftPreauthorized,
+} from "./reassessment-service";
+import {
+  getGapRevisionStalenessBatchPreauthorized,
+} from "./staleness";
+import type { LoadedGapRelease } from "./release-loader";
+
+type PageInput = {
+  organizationId: string;
+  locale: "de" | "en";
+};
+
+export async function loadDocumentsAssessment(
+  input: PageInput,
+  release: LoadedGapRelease,
+) {
+  return (
+    (await db.query.assessments.findFirst({
+      where: and(
+        eq(assessments.organizationId, input.organizationId),
+        eq(assessments.moduleId, release.moduleId),
+        eq(assessments.gapAnalysisReleaseId, release.id),
+        eq(assessments.status, "active"),
+      ),
+    })) ?? null
+  );
+}
+
+export type GapWorkflowRunContext = {
+  aiProcessingRunId: string | null;
+  generationJobId: string | null;
+  assessmentRevisionId: string | null;
+};
+
+export async function loadWorkflowSnapshot(
+  input: PageInput,
+  release: LoadedGapRelease,
+) {
+  const acceptedRevision = alias(
+    generatedArtifactRevisions,
+    "accepted_gap_revision",
+  );
+  const currentRevision = alias(
+    generatedArtifactRevisions,
+    "current_gap_revision",
+  );
+  const [row] = await db
+    .select({
+      assessment: assessments,
+      acceptedRevision,
+      currentRevision,
+      activePlan: actionPlans,
+      draftAiProcessingRunId: gapReassessmentDrafts.aiProcessingRunId,
+      draftGenerationJobId: gapReassessmentDrafts.generationJobId,
+    })
+    .from(gapAnalysisReleases)
+    .leftJoin(
+      assessments,
+      and(
+        eq(assessments.organizationId, input.organizationId),
+        eq(assessments.moduleId, gapAnalysisReleases.moduleId),
+        eq(assessments.gapAnalysisReleaseId, gapAnalysisReleases.id),
+        eq(assessments.status, "active"),
+      ),
+    )
+    .leftJoin(
+      generatedArtifacts,
+      and(
+        eq(generatedArtifacts.organizationId, input.organizationId),
+        eq(generatedArtifacts.moduleId, gapAnalysisReleases.moduleId),
+        eq(generatedArtifacts.artifactType, "gap_analysis_result"),
+      ),
+    )
+    .leftJoin(
+      acceptedRevision,
+      and(
+        eq(acceptedRevision.id, generatedArtifacts.acceptedRevisionId),
+        eq(acceptedRevision.status, "approved"),
+      ),
+    )
+    .leftJoin(
+      currentRevision,
+      eq(currentRevision.id, generatedArtifacts.currentRevisionId),
+    )
+    .leftJoin(
+      actionPlans,
+      and(
+        eq(actionPlans.organizationId, input.organizationId),
+        eq(actionPlans.status, "active"),
+      ),
+    )
+    .leftJoin(
+      gapReassessmentDrafts,
+      and(
+        eq(gapReassessmentDrafts.organizationId, input.organizationId),
+        eq(gapReassessmentDrafts.assessmentId, assessments.id),
+      ),
+    )
+    .where(eq(gapAnalysisReleases.id, release.id))
+    .orderBy(desc(gapReassessmentDrafts.createdAt))
+    .limit(1);
+
+  return {
+    assessment: row?.assessment ?? null,
+    acceptedRevision: row?.acceptedRevision ?? null,
+    currentRevision: row?.currentRevision ?? null,
+    activePlan: row?.activePlan ?? null,
+    runContext: {
+      aiProcessingRunId: row?.draftAiProcessingRunId ?? null,
+      generationJobId: row?.draftGenerationJobId ?? null,
+      assessmentRevisionId: row?.assessment?.currentRevisionId ?? null,
+    },
+  };
+}
+
+export async function loadAnswers(
+  assessment: typeof assessments.$inferSelect | null,
+) {
+  if (!assessment?.currentRevisionId) return {};
+  const rows = await db
+    .select({
+      answerId: assessmentAnswers.id,
+      questionId: assessmentAnswers.questionId,
+      optionId: questionOptions.id,
+    })
+    .from(assessmentAnswers)
+    .leftJoin(
+      assessmentAnswerOptions,
+      eq(
+        assessmentAnswerOptions.assessmentAnswerId,
+        assessmentAnswers.id,
+      ),
+    )
+    .leftJoin(
+      questionOptions,
+      eq(assessmentAnswerOptions.questionOptionId, questionOptions.id),
+    )
+    .where(
+      eq(
+        assessmentAnswers.assessmentRevisionId,
+        assessment.currentRevisionId,
+      ),
+    );
+  const answers: Record<string, string> = {};
+  for (const row of rows) {
+    if (!(row.questionId in answers)) {
+      answers[row.questionId] = row.optionId ?? "";
+    }
+  }
+  return answers;
+}
+
+export async function loadFindingsBatch(input: {
+  acceptedRevisionId: string | null;
+  candidateRevisionId: string | null;
+}) {
+  const revisionIds = [
+    ...new Set(
+      [input.acceptedRevisionId, input.candidateRevisionId].filter(
+        (value): value is string => Boolean(value),
+      ),
+    ),
+  ];
+  if (!revisionIds.length) return { accepted: [], candidate: [] };
+  const rows = await db
+    .select({
+      finding: gapFindings,
+      requirement: gapRequirementVersions,
+      evidence: gapFindingEvidence,
+    })
+    .from(gapFindings)
+    .innerJoin(
+      gapRequirementVersions,
+      eq(gapFindings.requirementVersionId, gapRequirementVersions.id),
+    )
+    .leftJoin(
+      gapFindingEvidence,
+      eq(gapFindingEvidence.findingId, gapFindings.id),
+    )
+    .where(inArray(gapFindings.artifactRevisionId, revisionIds));
+
+  const findings = new Map<
+    string,
+    {
+      finding: typeof gapFindings.$inferSelect;
+      requirement: typeof gapRequirementVersions.$inferSelect;
+      evidence: Array<typeof gapFindingEvidence.$inferSelect>;
+    }
+  >();
+  for (const row of rows) {
+    const current = findings.get(row.finding.id) ?? {
+      finding: row.finding,
+      requirement: row.requirement,
+      evidence: [],
+    };
+    if (
+      row.evidence &&
+      !current.evidence.some((evidence) => evidence.id === row.evidence!.id)
+    ) {
+      current.evidence.push(row.evidence);
+    }
+    findings.set(row.finding.id, current);
+  }
+  const byRevision = (revisionId: string | null) =>
+    revisionId
+      ? [...findings.values()].filter(
+          (row) => row.finding.artifactRevisionId === revisionId,
+        )
+      : [];
+  return {
+    accepted: byRevision(input.acceptedRevisionId),
+    candidate: byRevision(input.candidateRevisionId),
+  };
+}
+
+export async function loadReassessment(
+  input: PageInput,
+  assessment: typeof assessments.$inferSelect | null,
+  release: LoadedGapRelease,
+) {
+  return assessment
+    ? getGapReassessmentDraftPreauthorized({
+        organizationId: input.organizationId,
+        assessmentId: assessment.id,
+        locale: input.locale,
+        release,
+      })
+    : null;
+}
+
+export async function loadRun(
+  input: PageInput,
+  context: GapWorkflowRunContext,
+) {
+  if (context.aiProcessingRunId) {
+    return (
+      (await db.query.aiProcessingRuns.findFirst({
+        where: eq(aiProcessingRuns.id, context.aiProcessingRunId),
+      })) ?? null
+    );
+  }
+  if (context.generationJobId) {
+    return (
+      (await db.query.aiProcessingRuns.findFirst({
+        where: eq(aiProcessingRuns.jobId, context.generationJobId),
+        orderBy: [desc(aiProcessingRuns.createdAt)],
+      })) ?? null
+    );
+  }
+  if (!context.assessmentRevisionId) return null;
+  return (
+    (await db.query.aiProcessingRuns.findFirst({
+      where: and(
+        eq(aiProcessingRuns.organizationId, input.organizationId),
+        eq(
+          aiProcessingRuns.assessmentRevisionId,
+          context.assessmentRevisionId,
+        ),
+        eq(aiProcessingRuns.operationKind, "gap_analysis"),
+      ),
+      orderBy: [desc(aiProcessingRuns.createdAt)],
+    })) ?? null
+  );
+}
+
+export const postgresGapPageData = {
+  getOrganizationDocumentLibraryPreauthorized,
+  loadDocumentsAssessment,
+  loadWorkflowSnapshot,
+  loadAnswers,
+  loadFindingsBatch,
+  loadReassessment,
+  loadStalenessBatch: getGapRevisionStalenessBatchPreauthorized,
+  loadRun,
+};
