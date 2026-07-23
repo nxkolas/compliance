@@ -54,11 +54,16 @@ async function main() {
       where relnamespace = 'public'::regnamespace
         and relname = any(${protectedTables})
     `;
-    if (
-      rlsRows.length !== protectedTables.length ||
-      rlsRows.some((row) => !row.relrowsecurity)
-    ) {
-      throw new Error("Server-only RLS is incomplete for gap-analysis tables");
+    const rlsByTable = new Map(
+      rlsRows.map((row) => [row.relname, row.relrowsecurity]),
+    );
+    const missingRls = protectedTables.filter(
+      (table) => rlsByTable.get(table) !== true,
+    );
+    if (missingRls.length) {
+      throw new Error(
+        `Server-only RLS is incomplete for: ${missingRls.join(", ")}`,
+      );
     }
     const triggerRows = await sql<{ tgname: string }[]>`
       select tgname from pg_trigger

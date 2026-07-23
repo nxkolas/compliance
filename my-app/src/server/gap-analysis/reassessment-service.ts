@@ -48,23 +48,13 @@ export async function prepareGapReassessment(input: {
     ),
   });
   if (existing) {
-    const current = await db.query.gapReassessmentDraftDocuments.findMany({
-      where: eq(gapReassessmentDraftDocuments.draftId, existing.id),
+    await updateGapReassessmentEvidence({
+      userId: input.userId,
+      organizationId: input.organizationId,
+      draftId: existing.id,
+      expectedLockVersion: existing.lockVersion,
+      selectedDocumentVersionIds: input.selectedDocumentVersionIds,
     });
-    if (input.selectedDocumentVersionIds.length) {
-      await updateGapReassessmentEvidence({
-        userId: input.userId,
-        organizationId: input.organizationId,
-        draftId: existing.id,
-        expectedLockVersion: existing.lockVersion,
-        selectedDocumentVersionIds: [
-          ...new Set([
-            ...current.map((row) => row.documentVersionId),
-            ...input.selectedDocumentVersionIds,
-          ]),
-        ],
-      });
-    }
     return getGapReassessmentDraft({
       userId: input.userId,
       organizationId: input.organizationId,
@@ -83,6 +73,8 @@ export async function prepareGapReassessment(input: {
     throw new ApiError(
       409,
       "Current versions of all selected evidence must be indexed before reassessment",
+      { documentVersionIds: selection.blocked },
+      "GAP_DOCUMENT_NOT_READY",
     );
   }
   const [draft] = await db.transaction(async (tx) => {
@@ -138,13 +130,20 @@ export async function prepareGapReassessment(input: {
         eq(gapReassessmentDrafts.status, "open"),
       ),
     });
-    if (!concurrent) throw new ApiError(409, "Reassessment draft changed concurrently");
-    return getGapReassessmentDraft({
-      userId: input.userId,
-      organizationId: input.organizationId,
-      draftId: concurrent.id,
-      locale: input.locale,
-    });
+    if (!concurrent) {
+      throw new ApiError(
+        409,
+        "The shared analysis inputs changed",
+        undefined,
+        "GAP_DRAFT_CHANGED",
+      );
+    }
+    throw new ApiError(
+      409,
+      "Another contributor prepared the shared analysis inputs",
+      { draftId: concurrent.id },
+      "GAP_DRAFT_CHANGED",
+    );
   }
   return getGapReassessmentDraft({
     userId: input.userId,
@@ -169,17 +168,26 @@ export async function updateGapReassessmentEvidence(input: {
     ),
   });
   if (!draft || draft.status !== "open") {
-    throw new ApiError(409, "Only an open reassessment draft can be edited");
+    throw new ApiError(
+      409,
+      "Only open analysis inputs can be edited",
+      undefined,
+      "GAP_DRAFT_NOT_OPEN",
+    );
   }
   const baseDocuments = await loadAcceptedEvidence(draft.baseAcceptedGapRevisionId);
   const selection = await resolveEvidenceSelection({
     organizationId: input.organizationId,
     accepted: baseDocuments,
     explicitAdditions: input.selectedDocumentVersionIds,
-    exactSelection: true,
   });
   if (selection.blocked.length) {
-    throw new ApiError(409, "Selected evidence must be an indexed current version");
+    throw new ApiError(
+      409,
+      "Selected documents must have a current indexed version",
+      { documentVersionIds: selection.blocked },
+      "GAP_DOCUMENT_NOT_READY",
+    );
   }
   const updated = await db.transaction(async (tx) => {
     const [locked] = await tx
@@ -197,7 +205,12 @@ export async function updateGapReassessmentEvidence(input: {
       )
       .returning();
     if (!locked) {
-      throw new ApiError(409, "Reassessment evidence changed in another session");
+      throw new ApiError(
+        409,
+        "The shared analysis inputs changed in another session",
+        undefined,
+        "GAP_DRAFT_CHANGED",
+      );
     }
     await lockEligibleEvidenceSelection(
       tx,
@@ -840,7 +853,12 @@ async function runLockedDraft(
       },
     );
     if (!result.artifactRevision) {
-      throw new ApiError(409, "Generation did not produce a candidate revision");
+      throw new ApiError(
+        409,
+        "Generation did not produce a new analysis result",
+        undefined,
+        "GAP_GENERATION_RESULT_MISSING",
+      );
     }
     if (!jobId) await db.transaction(async (tx) => {
       await tx
@@ -969,7 +987,6 @@ async function resolveEvidenceSelection(input: {
   organizationId: string;
   accepted: Array<{ versionId: string; documentId: string }>;
   explicitAdditions: string[];
-  exactSelection?: boolean;
 }) {
   const documentIds = new Set(input.accepted.map((item) => item.documentId));
   const explicitVersions = input.explicitAdditions.length
@@ -1033,47 +1050,6 @@ async function resolveEvidenceSelection(input: {
   );
   if (explicitVersions.length !== new Set(input.explicitAdditions).size) {
     return { selection: [], removed: [], blocked: input.explicitAdditions };
-  }
-  if (input.exactSelection) {
-    const candidateByVersion = new Map(
-      candidates.map((candidate) => [candidate.versionId, candidate]),
-    );
-    const blocked = [...new Set(input.explicitAdditions)].filter((versionId) => {
-      const candidate = candidateByVersion.get(versionId);
-      return (
-        !candidate ||
-        !candidate.active ||
-        !candidate.indexed ||
-        candidate.currentVersionId !== versionId
-      );
-    });
-    if (blocked.length) return { selection: [], removed: [], blocked };
-    const acceptedByDocument = new Map(
-      input.accepted.map((accepted) => [accepted.documentId, accepted]),
-    );
-    const selection = input.explicitAdditions.flatMap((versionId) => {
-      const candidate = candidateByVersion.get(versionId);
-      if (!candidate) return [];
-      const accepted = acceptedByDocument.get(candidate.documentId);
-      return [{
-        versionId,
-        documentId: candidate.documentId,
-        origin:
-          accepted?.versionId === versionId
-            ? "approved_carryover" as const
-            : accepted
-              ? "version_replacement" as const
-              : "explicit_addition" as const,
-      }];
-    });
-    const selectedIds = new Set(selection.map((item) => item.versionId));
-    return {
-      selection,
-      removed: input.accepted
-        .filter((accepted) => !selectedIds.has(accepted.versionId))
-        .map((accepted) => accepted.versionId),
-      blocked: [],
-    };
   }
   return buildReassessmentEvidenceSelection({
     accepted: input.accepted,

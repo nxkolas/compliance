@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { selectGapWorkflowRevisions } from "@/src/server/gap-analysis/workflow-state";
+import {
+  compareGapFindings,
+  countGapStatuses,
+  deriveGapWorkflowNavigation,
+  selectGapWorkflowRevisions,
+  sortGapFindings,
+} from "@/src/server/gap-analysis/workflow-state";
 
 describe("selectGapWorkflowRevisions", () => {
   it("keeps the accepted revision authoritative while a newer candidate is current", () => {
@@ -16,5 +22,84 @@ describe("selectGapWorkflowRevisions", () => {
     expect(
       selectGapWorkflowRevisions({ accepted, current: accepted }),
     ).toEqual({ accepted, candidate: null });
+  });
+});
+
+describe("guided gap workflow navigation", () => {
+  it("lands existing analyses on gaps and validates requested steps", () => {
+    expect(
+      deriveGapWorkflowNavigation({
+        prerequisiteSatisfied: true,
+        hasAssessment: true,
+        answeredQuestionCount: 4,
+        requiredQuestionCount: 4,
+        hasPreparedInputs: true,
+        hasResult: true,
+        requestedStep: "documents",
+      }),
+    ).toMatchObject({
+      defaultStep: "gaps",
+      activeStep: "documents",
+      allowedSteps: ["questions", "documents", "review", "gaps"],
+    });
+  });
+
+  it("does not let a direct URL skip required questions", () => {
+    expect(
+      deriveGapWorkflowNavigation({
+        prerequisiteSatisfied: true,
+        hasAssessment: true,
+        answeredQuestionCount: 1,
+        requiredQuestionCount: 4,
+        hasPreparedInputs: false,
+        hasResult: false,
+        requestedStep: "review",
+      }).activeStep,
+    ).toBe("questions");
+  });
+});
+
+describe("gap result presentation", () => {
+  const row = (
+    id: string,
+    status: "fulfilled" | "partially_fulfilled" | "not_fulfilled" | "insufficient_evidence",
+    position: number,
+  ) => ({
+    finding: { status },
+    requirement: { stableRequirementId: id, title: id, position },
+  });
+
+  it("counts and orders gap statuses with catalogue order inside a group", () => {
+    const findings = [
+      row("fulfilled", "fulfilled", 1),
+      row("partial-2", "partially_fulfilled", 20),
+      row("not", "not_fulfilled", 30),
+      row("partial-1", "partially_fulfilled", 10),
+    ];
+    expect(countGapStatuses(findings)).toMatchObject({
+      all: 3,
+      fulfilled: 1,
+      partially_fulfilled: 2,
+      not_fulfilled: 1,
+    });
+    expect(
+      sortGapFindings(findings).map(
+        (finding) => finding.requirement.stableRequirementId,
+      ),
+    ).toEqual(["not", "partial-1", "partial-2", "fulfilled"]);
+  });
+
+  it("compares results by stable requirement identity", () => {
+    expect(
+      compareGapFindings(
+        [row("access", "not_fulfilled", 1)],
+        [row("access", "partially_fulfilled", 1)],
+      )[0],
+    ).toMatchObject({
+      stableRequirementId: "access",
+      previousStatus: "not_fulfilled",
+      currentStatus: "partially_fulfilled",
+      changed: true,
+    });
   });
 });

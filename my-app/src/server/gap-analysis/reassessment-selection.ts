@@ -30,54 +30,42 @@ export function buildReassessmentEvidenceSelection(input: {
       )
       .map((candidate) => [candidate.documentId, candidate]),
   );
+  const acceptedByDocument = new Map(
+    input.accepted.map((accepted) => [accepted.documentId, accepted]),
+  );
   const selection = new Map<string, ReassessmentEvidenceSelection>();
-  const removed: string[] = [];
   const blocked: string[] = [];
 
-  for (const accepted of input.accepted) {
-    const current = currentByDocument.get(accepted.documentId);
-    const acceptedCandidate = candidateByVersion.get(accepted.versionId);
-    if (!current) {
-      if (acceptedCandidate && !acceptedCandidate.active) {
-        removed.push(accepted.versionId);
-      } else {
-        blocked.push(accepted.versionId);
-      }
-      continue;
-    }
-    selection.set(current.versionId, {
-      versionId: current.versionId,
-      documentId: current.documentId,
-      origin:
-        current.versionId === accepted.versionId
-          ? "approved_carryover"
-          : "version_replacement",
-    });
-  }
-
   for (const versionId of new Set(input.explicitAdditions)) {
-    const candidate = candidateByVersion.get(versionId);
-    if (
-      !candidate ||
-      !candidate.active ||
-      !candidate.indexed ||
-      candidate.currentVersionId !== candidate.versionId
-    ) {
+    const requested = candidateByVersion.get(versionId);
+    const current = requested
+      ? currentByDocument.get(requested.documentId)
+      : undefined;
+    if (!requested || !current) {
       blocked.push(versionId);
       continue;
     }
-    if (!selection.has(versionId)) {
-      selection.set(versionId, {
-        versionId,
-        documentId: candidate.documentId,
-        origin: "explicit_addition",
+    if (!selection.has(current.documentId)) {
+      const accepted = acceptedByDocument.get(current.documentId);
+      selection.set(current.documentId, {
+        versionId: current.versionId,
+        documentId: current.documentId,
+        origin:
+          accepted?.versionId === current.versionId
+            ? "approved_carryover"
+            : accepted
+              ? "version_replacement"
+              : "explicit_addition",
       });
     }
   }
 
+  const selectedDocuments = new Set(selection.keys());
   return {
     selection: [...selection.values()],
-    removed: [...new Set(removed)],
+    removed: input.accepted
+      .filter((accepted) => !selectedDocuments.has(accepted.documentId))
+      .map((accepted) => accepted.versionId),
     blocked: [...new Set(blocked)],
   };
 }

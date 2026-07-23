@@ -1,6 +1,8 @@
 # Guided Gap Analysis UX and Status Corrections
 
-Status: product decisions confirmed on 2026-07-23; implementation pending.
+Status: implemented on 2026-07-23; automated verification recorded in the
+delivery handoff. Environment-backed manual QA and release activation remain
+deployment activities.
 
 This plan replaces the current long, revision-oriented Gap-Analyse page with a
 guided workflow, fixes correction failures, and separates an organization's
@@ -776,4 +778,3 @@ The work is complete when:
 - history and technical details remain available without dominating the page;
 - automated tests, AI evals, build, and manual QA pass; and
 - current product documentation matches the shipped behavior.
-

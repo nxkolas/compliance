@@ -104,16 +104,6 @@ export function validateGapModelResponse(input: {
         );
       }
     }
-    if (
-      finding.status === "fulfilled" &&
-      !finding.citations.some(
-        (citationId) => citationById.get(citationId)?.sourceType === "document_chunk",
-      )
-    ) {
-      throw new Error(
-        `Fulfilled requirement ${finding.requirementCode} lacks documentary evidence`,
-      );
-    }
     if (finding.contradictions.length > 0 && !finding.requiresReview) {
       throw new Error(
         `Contradictory requirement ${finding.requirementCode} must require review`,

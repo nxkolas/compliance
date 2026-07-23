@@ -66,14 +66,25 @@ describe("gap generation validation", () => {
     ).toThrow(/unknown citation/i);
   });
 
-  it("prevents questionnaire-only fulfilled findings", () => {
-    expect(() =>
+  it("accepts a questionnaire-only fulfilled finding independently of document support", () => {
+    expect(
       validateGapModelResponse({
-        value: { findings: [finding({ citations: ["Q:a1"] })] },
+        value: {
+          findings: [
+            finding({
+              citations: ["Q:a1"],
+              evidenceSufficiency: "none",
+            }),
+          ],
+        },
         requestedRequirementCodes: ["R1"],
         citations,
-      }),
-    ).toThrow(/documentary evidence/i);
+      }).findings[0],
+    ).toMatchObject({
+      status: "fulfilled",
+      evidenceSufficiency: "none",
+      citations: ["Q:a1"],
+    });
   });
 
   it("forces contradictions into review and derives severity without AI", () => {

@@ -139,14 +139,20 @@ export async function publishGapAnalysisRelease(
       return id;
     };
 
-    const [questionnaire] = await tx
+    await tx
       .insert(questionnaires)
       .values({
         moduleId: gapModule.id,
         code: definition.questionnaire.code,
         title: definition.questionnaire.title.de,
       })
-      .returning();
+      .onConflictDoNothing();
+    const questionnaire = await tx.query.questionnaires.findFirst({
+      where: and(
+        eq(questionnaires.moduleId, gapModule.id),
+        eq(questionnaires.code, definition.questionnaire.code),
+      ),
+    });
     if (!questionnaire) throw new Error("Could not create gap questionnaire");
     const [questionnaireVersion] = await tx
       .insert(questionnaireVersions)

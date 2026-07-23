@@ -1,0 +1,213 @@
+"use client";
+
+import { Loader2, Play } from "lucide-react";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import type { GapWorkflowStep } from "@/src/server/gap-analysis/workflow-state";
+import { GapGenerationProgress } from "./gap-generation-progress";
+import type { GapLabels, GapWorkflow } from "./types";
+
+export function GapReviewStep({
+  workflow,
+  labels,
+  answers,
+  selected,
+  busy,
+  generating,
+  onNavigate,
+  onGenerate,
+  onRetry,
+  onCancel,
+}: {
+  workflow: GapWorkflow;
+  labels: GapLabels;
+  answers: Record<string, string>;
+  selected: string[];
+  busy: string | null;
+  generating: boolean;
+  onNavigate: (step: GapWorkflowStep) => void;
+  onGenerate: () => void;
+  onRetry: () => void;
+  onCancel: () => void;
+}) {
+  const release = workflow.release!;
+  const selectedDocuments = workflow.documentLibrary.documents.flatMap(
+    (entry) => {
+      const version = entry.versions.find((item) =>
+        selected.includes(item.version.id),
+      );
+      return version
+        ? [{ title: entry.document.title, fileName: version.version.fileName }]
+        : [];
+    },
+  );
+  const failed =
+    workflow.reassessment?.draft.status === "failed" ||
+    workflow.reassessment?.draft.status === "cancelled";
+
+  return (
+    <section aria-labelledby="gap-step-heading" className="grid gap-5">
+      <div>
+        <h2
+          id="gap-step-heading"
+          tabIndex={-1}
+          className="text-xl font-semibold outline-none"
+        >
+          {labels.steps.review}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {labels.stepDescriptions.review}
+        </p>
+      </div>
+      <SummarySection
+        title={labels.reviewQuestions}
+        editLabel={labels.edit}
+        onEdit={() => onNavigate("questions")}
+      >
+        <dl className="grid gap-3">
+          {release.questions.map((question) => {
+            const option = question.options.find(
+              (candidate) => candidate.id === answers[question.id],
+            );
+            return (
+              <div key={question.id}>
+                <dt className="text-sm font-medium">{question.questionText}</dt>
+                <dd className="text-sm text-muted-foreground">
+                  {option?.label ?? "—"}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </SummarySection>
+      <SummarySection
+        title={labels.reviewDocuments}
+        editLabel={labels.edit}
+        onEdit={() => onNavigate("documents")}
+      >
+        {selectedDocuments.length ? (
+          <ul className="grid gap-2 text-sm">
+            {selectedDocuments.map((document) => (
+              <li key={document.fileName}>
+                <span className="font-medium">{document.title}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {document.fileName}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">{labels.noneSelected}</p>
+        )}
+      </SummarySection>
+      <details className="rounded-lg border p-4 text-sm">
+        <summary className="cursor-pointer font-medium">
+          {labels.technicalDetails}
+        </summary>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Technical
+            label={labels.technical.baseResult}
+            value={
+              workflow.reassessment?.summary.baseAcceptedGapRevisionNumber
+                ? `#${workflow.reassessment.summary.baseAcceptedGapRevisionNumber}`
+                : "—"
+            }
+          />
+          <Technical
+            label={labels.technical.questionnaireSnapshot}
+            value={String(
+              workflow.reassessment?.summary.assessmentRevisionNumber ?? "—",
+            )}
+          />
+          <Technical
+            label={labels.technical.release}
+            value={release.versionLabel}
+          />
+          <Technical
+            label={labels.technical.requirementCount}
+            value={String(
+              workflow.reassessment?.summary.requirementCount ??
+                release.requirements.length,
+            )}
+          />
+        </dl>
+      </details>
+      {workflow.candidateRevision ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+          {labels.replaceWarning}
+        </div>
+      ) : null}
+      {generating ? (
+        <GapGenerationProgress
+          labels={labels}
+          cancelling={busy === "cancel-generation"}
+          canCancel={Boolean(
+            workflow.reassessment?.draft.generationJobId,
+          )}
+          onCancel={onCancel}
+        />
+      ) : failed ? (
+        <div className="grid gap-3">
+          <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+            {labels.runFailed}
+          </p>
+          <Button
+            className="justify-self-start"
+            disabled={Boolean(busy)}
+            onClick={onRetry}
+          >
+            {busy === "retry" ? <Loader2 className="animate-spin" /> : <Play />}
+            {labels.retry}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          className="justify-self-start"
+          disabled={Boolean(busy) || !workflow.reassessment}
+          onClick={onGenerate}
+        >
+          {busy === "generate" ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Play />
+          )}
+          {labels.startGeneration}
+        </Button>
+      )}
+    </section>
+  );
+}
+
+function SummarySection({
+  title,
+  editLabel,
+  onEdit,
+  children,
+}: {
+  title: string;
+  editLabel: string;
+  onEdit: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="font-semibold">{title}</h3>
+        <Button variant="link" size="sm" onClick={onEdit}>
+          {editLabel}
+        </Button>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Technical({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="font-medium">{label}</dt>
+      <dd className="text-muted-foreground">{value}</dd>
+    </div>
+  );
+}

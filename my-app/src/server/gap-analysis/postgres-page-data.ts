@@ -27,6 +27,35 @@ import {
 } from "./staleness";
 import type { LoadedGapRelease } from "./release-loader";
 
+export async function loadGapPrerequisiteState(
+  input: PageInput,
+  release: LoadedGapRelease,
+) {
+  const [row] = await db
+    .select({ id: generatedArtifactRevisions.id })
+    .from(generatedArtifacts)
+    .innerJoin(
+      generatedArtifactRevisions,
+      eq(generatedArtifacts.currentRevisionId, generatedArtifactRevisions.id),
+    )
+    .where(
+      and(
+        eq(generatedArtifacts.organizationId, input.organizationId),
+        eq(generatedArtifacts.artifactType, "affectedness_result"),
+        eq(generatedArtifactRevisions.status, "approved"),
+        eq(
+          generatedArtifactRevisions.checkReleaseId,
+          release.compatibleCheckReleaseId,
+        ),
+      ),
+    )
+    .limit(1);
+  return {
+    satisfied: Boolean(row),
+    destination: `/tool/organizations/${input.organizationId}/applicability-check`,
+  };
+}
+
 type PageInput = {
   organizationId: string;
   locale: "de" | "en";
@@ -294,4 +323,5 @@ export const postgresGapPageData = {
   loadReassessment,
   loadStalenessBatch: getGapRevisionStalenessBatchPreauthorized,
   loadRun,
+  loadGapPrerequisiteState,
 };

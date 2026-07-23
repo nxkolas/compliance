@@ -13,6 +13,7 @@ import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
 import { persistGroundingProvenance } from "./provenance";
 import type { GroundedOutputContract, GroundedProvider, GroundingContextItem, QueryUnit } from "./types";
 import { hasCompleteQueryUnitCoverage, validateGroundedClaims } from "./validation";
+import { GAP_GROUNDING_INSTRUCTION } from "../../gap-analysis/grounding-instruction";
 
 export async function runGroundedOperation<T>(input: {
   operation: "gap_analysis";
@@ -116,7 +117,7 @@ export async function runGroundedOperation<T>(input: {
   const context = [...retrievedContext, ...assertions];
   const prompt = buildGroundedPrompt(input.queryUnits, context);
   if (input.operation === "gap_analysis") {
-    prompt.system += " Return a findings object with exactly one property for every query-unit ID. Use each query-unit ID as its property name. Cite legal authority for every finding. Treat questionnaire answers as assertions, not proof; fulfilled requires organization-document evidence. Surface contradictions and set requiresReview.";
+    prompt.system += ` ${GAP_GROUNDING_INSTRUCTION}`;
   }
   const promptHash = createHash("sha256").update(`${prompt.system}\n${prompt.prompt}`).digest("hex");
   const corpusReleaseSetHash = createHash("sha256").update(context.filter((item) => item.channel === "legal").map((item) => item.metadata.corpusReleaseId).sort().join("\n")).digest("hex");
@@ -130,10 +131,10 @@ export async function runGroundedOperation<T>(input: {
     provider: provider.provider,
     model: provider.model,
     promptName: "grounded-gap-analysis",
-    promptVersion: "v1",
+    promptVersion: "v2",
     promptTemplateHash: promptHash,
     renderedInputHash: promptHash,
-    responseSchemaVersion: "grounding-v1",
+    responseSchemaVersion: "grounding-v2",
     providerPolicyVersion: policy.providerPolicy.version,
     corpusReleaseSetHash,
     provenanceStatus: "complete",

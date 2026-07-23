@@ -24,7 +24,7 @@ describe("gap review and approval", () => {
     ).toThrow(/review blockers/i);
   });
 
-  it("requires exact requirement coverage and documentary fulfilled evidence", () => {
+  it("requires exact requirement coverage but allows fulfilled without a document", () => {
     expect(() =>
       assertGapRevisionApprovable({
         expectedRequirementVersionIds: ["r1", "r2"],
@@ -38,7 +38,7 @@ describe("gap review and approval", () => {
         findings: [{ id: "f1", requirementVersionId: "r1", status: "fulfilled", requiresReview: false }],
         evidence: [{ findingId: "f1", citationId: "Q:a1", sourceType: "assessment_answer" }],
       }),
-    ).toThrow(/documentary evidence/i);
+    ).not.toThrow();
   });
 });
 

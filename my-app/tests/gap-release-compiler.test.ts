@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileGapAnalysisRelease } from "@/src/server/gap-analysis/publishing/compile-release";
 import { demoGapRelease } from "@/src/server/gap-analysis/releases/demo-v1/release";
+import { guidedGapRelease } from "@/src/server/gap-analysis/releases/guided-v2/release";
 
 describe("gap-analysis release compiler", () => {
   it("compiles the four-requirement demo release deterministically", () => {
@@ -29,5 +30,21 @@ describe("gap-analysis release compiler", () => {
     invalid.prompt.templateHash = "stale";
 
     expect(() => compileGapAnalysisRelease(invalid)).toThrow(/template hash/);
+  });
+
+  it("publishes the guided labels under a new immutable release contract", () => {
+    expect(() => compileGapAnalysisRelease(guidedGapRelease)).not.toThrow();
+    expect(guidedGapRelease.versionLabel).toBe("guided-v2");
+    expect(guidedGapRelease.prompt.version).toBe("2");
+    expect(
+      guidedGapRelease.questionnaire.questions[0].options.map(
+        (option) => option.label.en,
+      ),
+    ).toEqual([
+      "Fully implemented",
+      "Partially implemented",
+      "Not implemented",
+      "I don't know",
+    ]);
   });
 });

@@ -46,8 +46,8 @@ als gemeinsame Evidenzquelle für Gap-Neubewertungen.
 - Archivierung entfernt ein Dokument aus zukünftigen Auswahlen, löscht aber
   keine bereits zitierte Evidenz.
 - Nutzungskennzeichen zeigen, ob eine Version noch nicht bewertet wurde, in
-  einem Entwurf oder einer Kandidatenrevision steckt, genehmigte Evidenz ist
-  oder den aktiven Maßnahmenplan unterstützt.
+  einem Entwurf oder neuen Analyseergebnis steckt, ein bestätigtes Ergebnis
+  stützt oder den aktiven Maßnahmenplan unterstützt.
 
 Die privaten Quelldateien liegen im Supabase-Bucket `organization-evidence`.
 Metadaten und Suchdaten liegen in `documents`, `document_versions`,
@@ -60,23 +60,31 @@ Die Gap-Analyse ist ein KI-gestützter, aber serverseitig begrenzter
 Organisationsworkflow. Sie ist ein eigener Prozess neben dem deterministischen
 Betroffenheitscheck.
 
-1. Eine aktive Gap-Release und ein kompatibles genehmigtes
-   Betroffenheitscheck-Ergebnis sind erforderlich.
-2. Der Nutzer speichert den Gap-Fragebogen als neue unveränderliche
-   Assessment-Revision.
-3. Er bereitet einen gemeinsamen Neubewertungsentwurf mit den vollständigen
-   Dokumentversionen vor.
-4. Erst die ausdrückliche Generierung sperrt die Eingaben und stellt einen
-   dauerhaften Worker-Job in die Warteschlange.
-5. Der Grounding Gateway recherchiert ausschließlich in gepinnten, freigegebenen
-   Rechtsquellen und Organisationsevidenz. Die KI darf weder Anwendbarkeit noch
-   Priorität bestimmen und jede Rechtsbehauptung benötigt ein gültiges Zitat.
-6. Owner/Admins korrigieren und genehmigen die Kandidatenrevision.
+Die normale Oberfläche führt durch vier Aufgaben:
 
-Das zuletzt genehmigte Ergebnis bleibt über
+1. **Fragen beantworten** speichert einen unveränderlichen Antwortstand.
+2. **Dokumente auswählen** pinnt optional die neuesten verwendbaren Versionen;
+   eine leere Auswahl ist gültig und entfernt übernommene Dokumente.
+3. **Angaben prüfen** zeigt alle Antworten und Dateinamen vor dem ausdrücklichen
+   KI-Aufruf.
+4. **Ihre Lücken** trennt den Umsetzungsstatus von der Dokumentunterstützung,
+   bietet Filter, manuelle Änderungen, Vergleich, Verlauf und Bestätigung.
+
+Der Grounding Gateway recherchiert ausschließlich in gepinnten, freigegebenen
+Rechtsquellen und ausgewählten Organisationsevidenzen. Fragebogenangaben können
+einen Umsetzungsstatus stützen; `evidenceSufficiency` und der Hinweis auf ein
+Organisationsdokument bleiben davon unabhängig. Die KI darf weder
+Anwendbarkeit noch Priorität bestimmen und jede Rechtsbehauptung benötigt ein
+gültiges Zitat.
+
+Das zuletzt bestätigte Ergebnis bleibt über
 `generated_artifacts.accepted_revision_id` verbindlich, während
-`current_revision_id` eine neuere Arbeits- oder Kandidatenrevision zeigen kann.
-Dadurch überschreibt eine Neubewertung das akzeptierte Ergebnis nicht vorzeitig.
+`current_revision_id` ein neueres, noch unbestätigtes Analyseergebnis zeigen
+kann.
+Dadurch überschreibt eine neue Analyse das bestätigte Ergebnis nicht vorzeitig.
+In der Oberfläche heißen diese Zustände **Bestätigter Stand** und **Neues
+Analyseergebnis**; Revisionsbegriffe erscheinen nur in technischen
+Auditdetails.
 
 Anforderungen, Releases, KI-Läufe und Ergebnisse liegen unter anderem in
 `gap_requirements`, `gap_requirement_versions`, `gap_analysis_releases`,

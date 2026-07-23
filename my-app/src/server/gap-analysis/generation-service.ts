@@ -416,6 +416,7 @@ async function persistGeneratedGapResult(input: {
           rationale: finding.rationale,
           recommendation: finding.recommendation,
           assumptions: finding.assumptions,
+          contradictions: finding.contradictions,
           requiresReview: finding.requiresReview,
           citationIds: finding.citations,
         };

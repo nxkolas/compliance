@@ -67,8 +67,8 @@ export function OrganizationDocumentManager({
       const body = await action();
       router.refresh();
       return body;
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : labels.error);
+    } catch {
+      setError(labels.error);
       return null;
     } finally {
       setBusy(null);
