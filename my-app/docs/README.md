@@ -25,6 +25,7 @@ Compliance Checker app.
 
 ## Implementation Plans
 
+- [Guided gap analysis UX and status corrections](./plans/gap-analysis-guided-ux-and-status-corrections.md)
 - [Authoritative legal corpus and grounded AI](./plans/authoritative-legal-corpus-and-grounded-ai.md)
 - [Internal API and client/server service completion](./plans/internal-api-and-service-completion.md)
 - [Gap analysis, evidence, and action plan](./plans/gap-analysis-evidence-and-action-plan.md)
