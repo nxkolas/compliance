@@ -4,6 +4,9 @@ This runbook recreates the application state in an existing **disposable,
 non-production** database. It combines the repository's older Supabase
 security sequence with the newer API/corpus rollout sequence.
 
+For the 2026-07-24 rollout failure analysis and preventive actions, see
+[`reset-and-reseed-postmortem-2026-07-24.md`](reset-and-reseed-postmortem-2026-07-24.md).
+
 > **Destructive operation:** `db:clear` truncates every existing
 > Drizzle-managed table in `public` and cascades to dependent rows. It removes
 > organizations, memberships, assessments, releases, jobs, audit history,
