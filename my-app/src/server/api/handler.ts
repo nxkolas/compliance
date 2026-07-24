@@ -21,7 +21,10 @@ export type ApiRouteResult<T> = {
 
 export type ApiRouteHandler<TContext, TOutput> = (
   context: ApiRouteContext<TContext>,
-) => Promise<ApiRouteResult<TOutput>> | ApiRouteResult<TOutput>;
+) =>
+  | Promise<ApiRouteResult<TOutput> | Response>
+  | ApiRouteResult<TOutput>
+  | Response;
 
 export function apiRoute<TContext = unknown, TOutput = unknown>(
   handler: ApiRouteHandler<TContext, TOutput>,
@@ -34,6 +37,11 @@ export function apiRoute<TContext = unknown, TOutput = unknown>(
     try {
       await validateRouteParams(routeContext);
       const result = await handler({ request, routeContext, requestId });
+
+      if (result instanceof Response) {
+        status = result.status;
+        return result;
+      }
 
       if (result.status === 204) {
         status = 204;

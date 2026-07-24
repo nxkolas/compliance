@@ -50,9 +50,8 @@ describe("generated output language indicators", () => {
                   en: "English requirement",
                 },
               },
-              evidence: [],
-              contradictions: [],
-              questionnaireDisagreements: [],
+              sources: [],
+              hasQuestionnaireDisagreement: false,
               hasOrganizationDocument: false,
               manuallyChanged: false,
             },
@@ -74,6 +73,9 @@ describe("generated output language indicators", () => {
     expect(html).toContain("English requirement");
     expect(html).toContain("Die Kontrolle ist nicht umgesetzt.");
     expect(html).toContain("Führen Sie die Kontrolle ein.");
+    expect(html).toContain("Sources");
+    expect(html).toContain("No sources linked");
+    expect(html).not.toContain("Show evidence and details");
   });
 
   it("keeps English generated prose when the surrounding UI is German", () => {
@@ -107,9 +109,8 @@ describe("generated output language indicators", () => {
                   en: "English requirement",
                 },
               },
-              evidence: [],
-              contradictions: [],
-              questionnaireDisagreements: [],
+              sources: [],
+              hasQuestionnaireDisagreement: false,
               hasOrganizationDocument: false,
               manuallyChanged: false,
             },
@@ -131,6 +132,9 @@ describe("generated output language indicators", () => {
     expect(html).toContain("Deutsche Anforderung");
     expect(html).toContain("The control has not been implemented.");
     expect(html).toContain("Implement the control.");
+    expect(html).toContain("Quellen");
+    expect(html).toContain("Keine Quellen verknüpft");
+    expect(html).not.toContain("Nachweise und Details anzeigen");
   });
 
   it.each([

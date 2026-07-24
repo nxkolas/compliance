@@ -22,6 +22,7 @@ import {
   type GapStatus,
 } from "@/src/server/gap-analysis/workflow-state";
 import { localizeGapError } from "./gap-error";
+import { GapFindingSources } from "./gap-finding-sources";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
 import {
   Dialog,
@@ -400,7 +401,7 @@ function FindingCard({
           <AlertTriangle className="h-4 w-4" /> {labels.reviewRequired}
         </p>
       ) : null}
-      {row.questionnaireDisagreements.length ? (
+      {row.hasQuestionnaireDisagreement ? (
         <div className="mt-3 rounded-md border border-primary/35 bg-primary/10 p-3 text-sm text-foreground">
           <p className="font-medium">{labels.questionnaireDisagreement}</p>
           <p className="mt-1">
@@ -418,47 +419,6 @@ function FindingCard({
           value={row.finding.recommendation}
         />
       </dl>
-      <details className="mt-4 rounded-md bg-muted/30 p-3 text-sm">
-        <summary className="cursor-pointer font-medium">
-          {labels.showDetails}
-        </summary>
-        <div className="mt-3 grid gap-3">
-          <Summary label={labels.requirementCode} value={row.requirement.code} />
-          <div>
-            <p className="font-medium">{labels.citations}</p>
-            {row.evidence.length ? (
-              <div className="mt-2 grid gap-2">
-                {row.evidence.map((evidence) => (
-                  <blockquote
-                    key={evidence.id}
-                    className="border-l-2 pl-3 text-muted-foreground"
-                  >
-                    {evidence.excerpt}
-                    <span className="ml-2 text-xs">
-                      [{evidence.citationId}]
-                    </span>
-                  </blockquote>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">{labels.noCitations}</p>
-            )}
-          </div>
-          {Array.isArray(row.finding.assumptions) &&
-          row.finding.assumptions.length ? (
-            <Summary
-              label={labels.assumptions}
-              value={row.finding.assumptions.join(" · ")}
-            />
-          ) : null}
-          {row.contradictions.length ? (
-            <Summary
-              label={labels.contradictions}
-              value={row.contradictions.join(" · ")}
-            />
-          ) : null}
-        </div>
-      </details>
       {editing ? (
         <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4">
           <label className="grid gap-1 text-sm font-medium">
@@ -520,6 +480,7 @@ function FindingCard({
       ) : !canManage ? (
         <p className="mt-4 text-xs text-muted-foreground">{labels.readOnly}</p>
       ) : null}
+      <GapFindingSources sources={row.sources} labels={labels} />
     </article>
   );
 }

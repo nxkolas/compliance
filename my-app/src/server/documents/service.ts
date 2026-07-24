@@ -614,12 +614,46 @@ export async function getOrganizationDocumentVersion(userId: string, organizatio
   return row ?? null;
 }
 
-export async function createDocumentSourceAccess(userId: string, organizationId: string, versionId: string) {
+export async function createDocumentSourceAccess(
+  userId: string,
+  organizationId: string,
+  versionId: string,
+  options: {
+    mode?: "download" | "inline";
+    page?: number;
+  } = {},
+) {
   const row = await getOrganizationDocumentVersion(userId, organizationId, versionId);
   if (!row) throw new ApiError(404, "Document version not found", undefined, "DOCUMENT_VERSION_NOT_FOUND");
-  const { data, error } = await getSupabaseAdminClient().storage.from(row.version.storageBucket).createSignedUrl(row.version.storagePath, 300, { download: row.version.fileName });
-  if (error) throw new ApiError(502, "Document source access could not be created", undefined, "SOURCE_ACCESS_FAILED");
-  return { url: data.signedUrl, expiresAt: new Date(Date.now() + 300_000).toISOString() };
+  try {
+    const source = getSupabaseAdminClient().storage.from(row.version.storageBucket);
+    const { data, error } =
+      options.mode === "inline"
+        ? await source.createSignedUrl(row.version.storagePath, 300)
+        : await source.createSignedUrl(row.version.storagePath, 300, {
+            download: sanitizeFileName(row.version.fileName),
+          });
+    if (error || !data?.signedUrl) throw new Error("Signing failed");
+    const page =
+      row.version.mimeType === "application/pdf" &&
+      Number.isInteger(options.page) &&
+      (options.page ?? 0) > 0
+        ? options.page
+        : undefined;
+    const url = new URL(data.signedUrl);
+    if (page) url.hash = `page=${page}`;
+    return {
+      url: url.toString(),
+      expiresAt: new Date(Date.now() + 300_000).toISOString(),
+    };
+  } catch {
+    throw new ApiError(
+      502,
+      "Document source access could not be created",
+      undefined,
+      "SOURCE_ACCESS_FAILED",
+    );
+  }
 }
 
 export async function updateOrganizationDocument(input: { userId: string; organizationId: string; documentId: string; title: string; expectedVersion: number }) {

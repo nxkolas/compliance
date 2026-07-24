@@ -1,6 +1,6 @@
 # Compact Source Links for Gap-Analysis Results
 
-Status: planned; product decisions confirmed on 2026-07-24. This plan changes
+Status: implemented on 2026-07-24. This plan changes
 the customer-facing Gap-Analysis result cards without changing the persisted
 audit model.
 

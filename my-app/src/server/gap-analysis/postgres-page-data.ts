@@ -5,6 +5,10 @@ import {
   assessmentAnswerOptions,
   assessmentAnswers,
   assessments,
+  documentChunks,
+  documentExtractions,
+  documentVersions,
+  documents,
   gapFindingEvidence,
   gapFindings,
   gapReassessmentDrafts,
@@ -12,6 +16,11 @@ import {
   gapAnalysisReleases,
   generatedArtifactRevisions,
   generatedArtifacts,
+  legalSourceChunks,
+  legalSourceProcessingGenerations,
+  legalSourceRenditions,
+  legalSources,
+  legalSourceVersions,
   questionOptions,
 } from "@/src/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -213,11 +222,41 @@ export async function loadFindingsBatch(input: {
     ),
   ];
   if (!revisionIds.length) return { accepted: [], candidate: [] };
+  const findings = await loadFindingsForRevisionIds(revisionIds);
+  const byRevision = (revisionId: string | null) =>
+    revisionId
+      ? findings.filter(
+          (row) => row.finding.artifactRevisionId === revisionId,
+        )
+      : [];
+  return {
+    accepted: byRevision(input.acceptedRevisionId),
+    candidate: byRevision(input.candidateRevisionId),
+  };
+}
+
+export async function loadFindingsForRevisionIds(revisionIds: string[]) {
+  if (!revisionIds.length) return [];
   const rows = await db
     .select({
       finding: gapFindings,
       requirement: gapRequirementVersions,
       evidence: gapFindingEvidence,
+      documentSource: {
+        versionId: documentVersions.id,
+        title: documents.title,
+        mimeType: documentVersions.mimeType,
+        chunkPageNumber: documentChunks.pageNumber,
+        chunkSectionLabel: documentChunks.sectionLabel,
+      },
+      legalSource: {
+        versionId: legalSourceVersions.id,
+        title: legalSources.title,
+        upstreamUrl: legalSourceVersions.upstreamUrl,
+        mimeType: legalSourceRenditions.mimeType,
+        chunkPageNumber: legalSourceChunks.pageNumber,
+        chunkSectionLabel: legalSourceChunks.sectionPath,
+      },
     })
     .from(gapFindings)
     .innerJoin(
@@ -228,14 +267,60 @@ export async function loadFindingsBatch(input: {
       gapFindingEvidence,
       eq(gapFindingEvidence.findingId, gapFindings.id),
     )
-    .where(inArray(gapFindings.artifactRevisionId, revisionIds));
+    .leftJoin(
+      documentChunks,
+      eq(gapFindingEvidence.documentChunkId, documentChunks.id),
+    )
+    .leftJoin(
+      documentExtractions,
+      eq(documentChunks.extractionId, documentExtractions.id),
+    )
+    .leftJoin(
+      documentVersions,
+      eq(documentExtractions.documentVersionId, documentVersions.id),
+    )
+    .leftJoin(documents, eq(documentVersions.documentId, documents.id))
+    .leftJoin(
+      legalSourceChunks,
+      eq(gapFindingEvidence.legalSourceChunkId, legalSourceChunks.id),
+    )
+    .leftJoin(
+      legalSourceProcessingGenerations,
+      eq(
+        legalSourceChunks.generationId,
+        legalSourceProcessingGenerations.id,
+      ),
+    )
+    .leftJoin(
+      legalSourceRenditions,
+      eq(
+        legalSourceProcessingGenerations.renditionId,
+        legalSourceRenditions.id,
+      ),
+    )
+    .leftJoin(
+      legalSourceVersions,
+      eq(legalSourceRenditions.sourceVersionId, legalSourceVersions.id),
+    )
+    .leftJoin(legalSources, eq(legalSourceVersions.sourceId, legalSources.id))
+    .where(inArray(gapFindings.artifactRevisionId, revisionIds))
+    .orderBy(
+      gapFindings.id,
+      gapFindingEvidence.createdAt,
+      gapFindingEvidence.id,
+    );
 
   const findings = new Map<
     string,
     {
       finding: typeof gapFindings.$inferSelect;
       requirement: typeof gapRequirementVersions.$inferSelect;
-      evidence: Array<typeof gapFindingEvidence.$inferSelect>;
+      evidence: Array<
+        typeof gapFindingEvidence.$inferSelect & {
+          documentSource: (typeof rows)[number]["documentSource"];
+          legalSource: (typeof rows)[number]["legalSource"];
+        }
+      >;
     }
   >();
   for (const row of rows) {
@@ -248,20 +333,15 @@ export async function loadFindingsBatch(input: {
       row.evidence &&
       !current.evidence.some((evidence) => evidence.id === row.evidence!.id)
     ) {
-      current.evidence.push(row.evidence);
+      current.evidence.push({
+        ...row.evidence,
+        documentSource: row.documentSource,
+        legalSource: row.legalSource,
+      });
     }
     findings.set(row.finding.id, current);
   }
-  const byRevision = (revisionId: string | null) =>
-    revisionId
-      ? [...findings.values()].filter(
-          (row) => row.finding.artifactRevisionId === revisionId,
-        )
-      : [];
-  return {
-    accepted: byRevision(input.acceptedRevisionId),
-    candidate: byRevision(input.candidateRevisionId),
-  };
+  return [...findings.values()];
 }
 
 export async function loadReassessment(

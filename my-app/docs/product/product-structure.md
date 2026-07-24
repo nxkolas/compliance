@@ -1,6 +1,6 @@
 # Produktstruktur: NIS2 Compliance Checker
 
-Status: aktueller Produkt- und Implementierungsstand vom 17.07.2026.
+Status: aktueller Produkt- und Implementierungsstand vom 24.07.2026.
 
 Dieses Dokument ordnet die sichtbaren Module fachlich ein. Der detaillierte
 Ablauf von Gap-Analyse, Dokumentnachweisen und Maßnahmenplan steht unter
@@ -68,7 +68,8 @@ Vor der Generierung führt die Oberfläche durch vier nummerierte Aufgaben:
 3. **Angaben prüfen** zeigt alle Antworten und Dateinamen vor dem ausdrücklichen
    KI-Aufruf.
 4. **Gap-Analyse-Ergebnis** trennt den Umsetzungsstatus von der
-   Dokumentunterstützung und bietet Filter und manuelle Änderungen.
+   Dokumentunterstützung, bietet Filter und manuelle Änderungen und zeigt pro
+   Finding eine kompakte, dauerhaft sichtbare Quellenzeile.
 
 Nach der ersten erfolgreichen Generierung wird der Assistent durch
 **Gap-Analyse-Ergebnis** und **Verwendete Eingaben** ersetzt. Die Eingaben
@@ -81,6 +82,14 @@ einen Umsetzungsstatus stützen; `evidenceSufficiency` und der Hinweis auf ein
 Organisationsdokument bleiben davon unabhängig. Die KI darf weder
 Anwendbarkeit noch Priorität bestimmen und jede Rechtsbehauptung benötigt ein
 gültiges Zitat.
+
+Die Quellenzeile fasst Fragebogenangaben, exakt zitierte Dokumentversionen und
+Versionen offizieller Rechtsquellen zusammen. Dokumente werden nur über
+autorisierte, kurzlebige Links geöffnet; archivierte oder durch neuere
+Versionen ersetzte Zitate bleiben dadurch auf ihre unveränderliche Version
+bezogen. Der Browser erhält ausschließlich eine freigegebene
+Ergebnisprojektion. Volltexte, Zitat-IDs, Annahmen, Widerspruchsdiagnosen,
+Speicherpfade und vollständige Revisionsmetadaten bleiben serverseitig.
 
 Bis zur Erstellung des Maßnahmenplans können Owner und Admins Findings manuell
 korrigieren. Die atomare Planerstellung bestätigt den aktuellen Stand, setzt

@@ -1,6 +1,7 @@
 # Current Gap-Analysis Workflow
 
-Status: single organization lifecycle implemented on 2026-07-23.
+Status: single organization lifecycle and compact finding sources implemented
+on 2026-07-24.
 
 Each organization can generate one AI Gap Analysis and one action plan:
 
@@ -63,12 +64,27 @@ without an organization document. **No document provided** is displayed with
 an accessible amber warning icon and does not block finalization or create an
 action-plan item.
 
+Every result card has an always-visible **Sources** footer. It deduplicates
+questionnaire support, exact organization document versions, and legal-source
+versions, shows three sources before an inline `+N` expansion, and has an
+explicit empty state. Organization documents open through an authorized,
+short-lived same-origin access route; cited PDFs open on the first cited page.
+Official HTTP(S) legal URLs open upstream, while missing or unsafe URLs remain
+visible as unavailable sources. Questionnaire support is displayed as the
+non-link **Your information** source.
+
+The result-card projection is an explicit allowlist. Full excerpts, citation
+IDs, assumptions, requirement codes, contradiction diagnostics, storage
+coordinates, and revision-result JSON remain server-side for generation,
+review, and audit behavior. They are not sent in the current workflow or the
+customer-accessible historical revision response.
+
 The `guided-v3` prompt asks the model to explain interpreted disagreements
 between its status and questionnaire assertions in
-`questionnaireDisagreements`. The UI presents these explanations as neutral,
-non-blocking information. Genuine contradictions still use `contradictions`
-and `requiresReview`. A manual correction suppresses stale AI disagreement
-metadata for that finding.
+`questionnaireDisagreements`. The UI presents a neutral, non-blocking
+disagreement indicator without returning the raw diagnostic strings. Genuine
+contradictions still use `contradictions` and `requiresReview` server-side. A
+manual correction suppresses stale AI disagreement metadata for that finding.
 
 ## Atomic action-plan boundary
 

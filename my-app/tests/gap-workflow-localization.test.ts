@@ -144,12 +144,9 @@ describe("Gap workflow localization", () => {
     expect(workflow.findings[0].requirement.title).toBe(
       "New localized title",
     );
-    expect(workflow.acceptedFindings[0].requirement.title).toBe(
-      "Historical localized title",
-    );
-    expect(workflow.candidateFindings[0].requirement.requirementText).toBe(
-      "New localized title text",
-    );
+    expect(workflow.comparison[0].title).toBe("New localized title");
+    expect("acceptedFindings" in workflow).toBe(false);
+    expect("candidateFindings" in workflow).toBe(false);
     expect(releaseReader.getPublished).toHaveBeenCalledOnce();
     expect(releaseReader.getPublished).toHaveBeenCalledWith({
       releaseId: "release-old",
