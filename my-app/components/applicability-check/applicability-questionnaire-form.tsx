@@ -30,7 +30,7 @@ import { CheckCircle2, Loader2, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
-import { ApiClientError } from "@/src/client/api-client";
+import { localizeUiError } from "@/lib/i18n/errors";
 
 type ApplicabilityQuestionnaireFormProps = {
   submitUrl: string;
@@ -150,13 +150,12 @@ export function ApplicabilityQuestionnaireForm({
       router.refresh();
     } catch (error) {
       setNotice({
-        message:
-          error instanceof ApiClientError &&
-          error.code === "APPLICABILITY_RECALCULATION_LOCKED"
-            ? labels.recalculationLocked
-            : error instanceof Error
-              ? error.message
-              : labels.submitError,
+        message: localizeUiError(error, {
+          fallback: labels.submitError,
+          codeMessages: {
+            APPLICABILITY_RECALCULATION_LOCKED: labels.recalculationLocked,
+          },
+        }),
         tone: "error",
       });
     } finally {

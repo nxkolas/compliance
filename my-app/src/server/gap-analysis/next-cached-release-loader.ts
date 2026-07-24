@@ -1,4 +1,4 @@
-import { cacheLife } from "next/cache";
+import { unstable_cache } from "next/cache";
 import {
   createGapReleaseReader,
   loadActiveGapAnalysisReleasePointer,
@@ -6,18 +6,17 @@ import {
 } from "./release-loader";
 import type { Locale } from "@/lib/i18n-config";
 
-async function loadCachedPublishedGapRelease(
-  releaseId: string,
-  locale: Locale,
-) {
-  "use cache";
-  cacheLife("max");
-  const release = await loadGapAnalysisRelease(releaseId, locale);
-  if (!release) {
-    throw new PublishedGapReleaseNotFoundError(releaseId);
-  }
-  return release;
-}
+const loadCachedPublishedGapRelease = unstable_cache(
+  async (releaseId: string, locale: Locale) => {
+    const release = await loadGapAnalysisRelease(releaseId, locale);
+    if (!release) {
+      throw new PublishedGapReleaseNotFoundError(releaseId);
+    }
+    return release;
+  },
+  ["published-gap-analysis-release"],
+  { revalidate: false },
+);
 
 class PublishedGapReleaseNotFoundError extends Error {
   constructor(releaseId: string) {

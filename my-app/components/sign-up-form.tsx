@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { parseSafeToolNext } from "@/lib/auth/route-policy";
 import { isValidAccountPassword } from "@/lib/auth/password-policy";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import { User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -87,7 +88,7 @@ export function SignUpForm({
 
       router.push(loginPath);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : labels.errorFallback);
+      setError(localizeUiError(err, { fallback: labels.errorFallback }));
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +110,7 @@ export function SignUpForm({
         <div className="h-16 flex items-center justify-start">
           <Image 
             src="/images/Logo-weiß.svg"
-            alt="complyX Logo"
+            alt={labels.logoAlt}
             width={180}
             height={48}
             priority 

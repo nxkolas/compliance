@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getDictionary, getLocale } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/i18n/format";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getApplicabilityAnswersForUser,
@@ -88,10 +89,7 @@ export default async function ApplicabilityAnswersPage({
           <CardDescription>
             {labels.submitted}:{" "}
             {answers.submittedAt
-              ? new Intl.DateTimeFormat(locale, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(answers.submittedAt))
+              ? formatDateTime(answers.submittedAt, locale)
               : labels.noDate}
           </CardDescription>
         </CardHeader>

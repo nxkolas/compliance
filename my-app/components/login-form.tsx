@@ -8,6 +8,7 @@ import {
   parseSafeToolNext,
 } from "@/lib/auth/route-policy";
 import type { Dictionary } from "@/lib/i18n";
+import { classifyExternalError } from "@/lib/i18n/errors";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -16,16 +17,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type LoginErrorType = "invalidCredentials" | "tooManyAttempts" | null;
-
-const RATE_LIMIT_ERROR_CODES = new Set([
-  "over_request_rate_limit",
-  "over_email_send_rate_limit",
-]);
-
-const INVALID_CREDENTIALS_ERROR =
-  "E-Mail-Adresse oder Passwort ist nicht korrekt. Bitte pr\u00fcfen Sie Ihre Eingabe.";
-const TOO_MANY_ATTEMPTS_ERROR =
-  "Zu viele Anmeldeversuche. Bitte warten Sie 15 Minuten oder setzen Sie Ihr Passwort zur\u00fcck.";
 
 function getSupabaseAuthErrorDetails(error: unknown) {
   if (!error || typeof error !== "object") {
@@ -55,9 +46,7 @@ function getSupabaseAuthErrorDetails(error: unknown) {
 }
 
 function isTooManyAttemptsError(error: unknown) {
-  const { status, code } = getSupabaseAuthErrorDetails(error);
-
-  return status === 429 || (code ? RATE_LIMIT_ERROR_CODES.has(code) : false);
+  return classifyExternalError(error) === "RATE_LIMITED";
 }
 
 function getNextPath() {
@@ -82,9 +71,9 @@ export function LoginForm({
   const isTooManyAttempts = errorType === "tooManyAttempts";
   const error =
     errorType === "invalidCredentials"
-      ? INVALID_CREDENTIALS_ERROR
+      ? labels.invalidCredentials
       : errorType === "tooManyAttempts"
-        ? TOO_MANY_ATTEMPTS_ERROR
+        ? labels.tooManyAttempts
         : null;
   const fieldErrorTone =
     errorType === "invalidCredentials"
@@ -141,7 +130,7 @@ export function LoginForm({
       <div className="flex h-16 items-center justify-start">
         <Image
           src="/images/Logo-weiß.svg"
-          alt="complyX Logo"
+          alt={labels.logoAlt}
           width={180}
           height={48}
           priority
@@ -241,7 +230,7 @@ export function LoginForm({
             href="/auth/forgot-password"
             className="font-bold decoration-2 hover:underline"
           >
-            ← Passwort zurücksetzen
+            {labels.resetPasswordLink}
           </Link>
         ) : (
           <>

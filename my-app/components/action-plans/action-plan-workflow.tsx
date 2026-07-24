@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import type { getCurrentActionPlan } from "@/src/server/action-plans/service";
 import { actionPlansClient } from "@/src/client/action-plans";
 
@@ -56,7 +57,7 @@ export function ActionPlanWorkflow({
       );
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : labels.error);
+      setError(localizeUiError(caught, { fallback: labels.error }));
     } finally {
       setBusy(null);
     }

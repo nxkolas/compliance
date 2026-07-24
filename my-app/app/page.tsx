@@ -1,4 +1,5 @@
 import { AuthButton } from "@/components/auth-button";
+import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,6 +15,7 @@ import { Suspense } from "react";
 export default function Home() {
   return (
     <Suspense fallback={<HomeFallback />}>
+      <PublicLanguageSwitcher />
       <HomeContent />
     </Suspense>
   );

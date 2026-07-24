@@ -41,6 +41,65 @@ describe("compliance runtime release", () => {
     expect(release?.questionIndexByFactKey.fact_one).toBe(0);
   });
 
+  it("emits a structured warning only when English content falls back to German", async () => {
+    const warnings: unknown[] = [];
+    const source = fixtureSource([]);
+    source.loadContent = async () =>
+      fixtureContent().filter((row) => row.locale === "de");
+
+    const release = await assemblePublishedComplianceRelease(
+      "release-1",
+      "en",
+      source,
+      { onTranslationFallback: (warning) => warnings.push(warning) },
+    );
+
+    expect(release?.questions[0].questionText).toBe("Frage DE");
+    expect(warnings).toContainEqual({
+      event: "compliance.translation_fallback",
+      checkReleaseId: "release-1",
+      releaseVersionLabel: "2026-v1",
+      contentRevisionId: "content-question",
+      stableKey: "question.one",
+      requestedLocale: "en",
+      fallbackLocale: "de",
+    });
+    expect(
+      warnings.every(
+        (warning) =>
+          !JSON.stringify(warning).includes("Frage DE") &&
+          !JSON.stringify(warning).includes("Option DE"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not warn when the requested translation is present", async () => {
+    const warnings: unknown[] = [];
+
+    await assemblePublishedComplianceRelease(
+      "release-1",
+      "en",
+      fixtureSource([]),
+      { onTranslationFallback: (warning) => warnings.push(warning) },
+    );
+
+    expect(warnings).toEqual([]);
+  });
+
+  it("fails when neither requested nor fallback content is present", async () => {
+    const source = fixtureSource([]);
+    source.loadContent = async () =>
+      fixtureContent().filter(
+        (row) => row.contentRevisionId !== "content-question",
+      );
+
+    await expect(
+      assemblePublishedComplianceRelease("release-1", "en", source),
+    ).rejects.toThrow(
+      "Published release content content-question has no runtime translation",
+    );
+  });
+
   it("runs all four post-header operations in one concurrent dependency layer", async () => {
     const started: string[] = [];
     let releaseBarrier = () => {};

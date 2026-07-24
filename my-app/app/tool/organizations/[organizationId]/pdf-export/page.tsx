@@ -10,5 +10,5 @@ import { connection } from "next/server";
 export default async function PdfExportPage({ params }: { params: Promise<{ organizationId: string }> }) {
   await connection(); const user = await requireAuth(); const dictionary = await getDictionary(); const locale = await getLocale(); const { organizationId } = await params;
   const [membership, reports] = await Promise.all([assertCanAccessOrganization(user.id, organizationId), listReports(user.id, organizationId)]);
-  return <section className="flex w-full flex-col gap-8"><PageHeader title={dictionary.modules.pdfExport.title} subtitle={dictionary.modules.pdfExport.description} /><ReportWorkflow organizationId={organizationId} locale={locale} reports={reports} canCreate={hasOrganizationCapability(membership.role, "reports:create")} /></section>;
+  return <section className="flex w-full flex-col gap-8"><PageHeader title={dictionary.modules.pdfExport.title} subtitle={dictionary.modules.pdfExport.description} /><ReportWorkflow organizationId={organizationId} locale={locale} reports={reports} canCreate={hasOrganizationCapability(membership.role, "reports:create")} labels={dictionary.reports.workflow} /></section>;
 }

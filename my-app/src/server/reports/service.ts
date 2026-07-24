@@ -4,6 +4,8 @@ import {
   reportSources, reports,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
+import { localizedFilename } from "@/lib/i18n/format";
+import { reportsMessages } from "@/lib/i18n/messages/reports";
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { contentHash } from "@/src/server/compliance/publishing/canonical-json";
 import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
@@ -101,7 +103,13 @@ export async function createReportDownload(userId: string, organizationId: strin
   await requireOrganizationCapability(userId, organizationId, "reports:read");
   const report = await db.query.reports.findFirst({ where: and(eq(reports.id, reportId), eq(reports.organizationId, organizationId), eq(reports.state, "ready")) });
   if (!report?.storageBucket || !report.storagePath) throw new ApiError(409, "Report is not ready", undefined, "REPORT_NOT_READY");
-  const { data, error } = await getSupabaseAdminClient().storage.from(report.storageBucket).createSignedUrl(report.storagePath, 120, { download: `compliance-report-${report.id}.pdf` });
+  const locale = report.locale as Locale;
+  const fileName = localizedFilename(
+    reportsMessages[locale].reports.pdf.fileName,
+    locale,
+    "pdf",
+  );
+  const { data, error } = await getSupabaseAdminClient().storage.from(report.storageBucket).createSignedUrl(report.storagePath, 120, { download: fileName });
   if (error || !data) throw new ApiError(503, "Report download is unavailable", undefined, "REPORT_DOWNLOAD_UNAVAILABLE");
   await db.insert(auditEvents).values({ organizationId, actorUserId: userId, eventType: "report.downloaded", entityType: "report", entityId: report.id, metadata: {} });
   return { url: data.signedUrl, expiresInSeconds: 120 };

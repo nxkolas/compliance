@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import { organizationAiProviderPolicySchema } from "@/src/contracts/organizations";
 import { organizationsClient } from "@/src/client/organizations";
 import { useRouter } from "next/navigation";
@@ -45,7 +46,12 @@ export function OrganizationAiProviderPolicyForm({
       setNotice({ tone: "success", message: labels.aiPolicySaveSuccess });
       router.refresh();
     } catch (error) {
-      setNotice({ tone: "error", message: error instanceof Error ? error.message : labels.aiPolicySaveError });
+      setNotice({
+        tone: "error",
+        message: localizeUiError(error, {
+          fallback: labels.aiPolicySaveError,
+        }),
+      });
     } finally {
       setSaving(false);
     }

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import type { OrganizationDto } from "@/src/server/organizations/types";
 import { Building2, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -83,8 +84,9 @@ export function OrganizationSettingsForm({
       router.refresh();
     } catch (error) {
       setNotice({
-        message:
-          error instanceof Error ? error.message : labels.updateErrorFallback,
+        message: localizeUiError(error, {
+          fallback: labels.updateErrorFallback,
+        }),
         tone: "error",
       });
     } finally {

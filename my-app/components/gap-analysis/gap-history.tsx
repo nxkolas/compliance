@@ -1,4 +1,5 @@
 import type { GapLabels, GapWorkflow } from "./types";
+import { formatDateTime } from "@/lib/i18n/format";
 
 export function GapHistory({
   history,
@@ -20,10 +21,7 @@ export function GapHistory({
             <li key={event.id} className="border-l-2 pl-4 text-sm">
               <p className="font-medium">{event.label}</p>
               <p className="text-muted-foreground">
-                {new Intl.DateTimeFormat(locale, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(event.occurredAt))}{" "}
+                {formatDateTime(event.occurredAt, locale)}{" "}
                 · {event.actor}
               </p>
               {event.reason ? <p className="mt-1">{event.reason}</p> : null}

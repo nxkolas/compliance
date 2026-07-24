@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { Dictionary, Locale } from "@/lib/i18n";
+import { formatDate as formatLocalizedDate } from "@/lib/i18n/format";
+import { localizeUiError } from "@/lib/i18n/errors";
 import type { OrganizationMailboxInvitationDto } from "@/src/server/organizations/types";
 import { Check, Inbox, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -76,8 +78,9 @@ export function OrganizationInbox({
       router.refresh();
     } catch (error) {
       setNotice({
-        message:
-          error instanceof Error ? error.message : labels.acceptErrorFallback,
+        message: localizeUiError(error, {
+          fallback: labels.acceptErrorFallback,
+        }),
         tone: "error",
       });
     } finally {
@@ -136,7 +139,8 @@ export function OrganizationInbox({
                     {invitation.organization.name}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {labels.role}: {invitation.role} &middot; {labels.expires}{" "}
+                    {labels.role}: {labels.roles[invitation.role]} {" · "}
+                    {labels.expires}{" "}
                     {formatDate(
                       invitation.expiresAt,
                       locale,
@@ -170,7 +174,5 @@ function formatDate(value: string | null, locale: Locale, fallback: string) {
     return fallback;
   }
 
-  return new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+  return formatLocalizedDate(value, locale, { dateStyle: "medium" });
 }

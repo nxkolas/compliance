@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import { organizationsClient } from "@/src/client/organizations";
 import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -93,8 +94,9 @@ export function OrganizationCreateForm({
       router.refresh();
     } catch (error) {
       setNotice({
-        message:
-          error instanceof Error ? error.message : labels.createErrorFallback,
+        message: localizeUiError(error, {
+          fallback: labels.createErrorFallback,
+        }),
         tone: "error",
       });
     } finally {
@@ -138,7 +140,7 @@ export function OrganizationCreateForm({
               <Label htmlFor="organization-name">{labels.organizationName}</Label>
               <Input
                 id="organization-name"
-                placeholder="Example GmbH"
+                placeholder={labels.organizationNamePlaceholder}
                 value={organizationForm.name}
                 onChange={(event) =>
                   setOrganizationForm((current) => ({
@@ -153,7 +155,7 @@ export function OrganizationCreateForm({
               <Label htmlFor="legal-name">{labels.legalName}</Label>
               <Input
                 id="legal-name"
-                placeholder="Example GmbH"
+                placeholder={labels.legalNamePlaceholder}
                 value={organizationForm.legalName}
                 onChange={(event) =>
                   setOrganizationForm((current) => ({

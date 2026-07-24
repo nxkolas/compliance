@@ -7,7 +7,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "verify": "npm run lint && npm run typecheck && npm test",
+    "test:e2e": "playwright test",
+    "check:i18n": "tsx scripts/check-i18n.ts",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run check:i18n",
     "db:push": "drizzle-kit push",
     "db:apply-operator-sql": "tsx scripts/apply-operator-sql.ts",
     "db:drop:legacy": "tsx scripts/drop-legacy-app-tables.ts",
@@ -33,11 +35,11 @@
     "db:activate:gap": "tsx scripts/activate-gap-release.ts",
     "db:smoke:gap": "tsx scripts/smoke-gap-analysis.ts",
     "test:ai": "vitest run evals",
-    "test:ai:watch": "vitest evals"
-    ,"test:worker": "vitest run tests/job-state-machine.test.ts tests/job-polling.test.ts tests/gap-generation-job-contract.test.ts"
-    ,"test:routes": "vitest run tests/api-route-baseline.test.ts tests/job-route-contract.test.ts tests/gap-generation-job-contract.test.ts"
-    ,"test:report": "vitest run tests/report-renderer.test.tsx"
-    ,"db:smoke:api-corpus": "tsx scripts/smoke-api-corpus-rollout.ts"
+    "test:ai:watch": "vitest evals",
+    "test:worker": "vitest run tests/job-state-machine.test.ts tests/job-polling.test.ts tests/gap-generation-job-contract.test.ts",
+    "test:routes": "vitest run tests/api-route-baseline.test.ts tests/job-route-contract.test.ts tests/gap-generation-job-contract.test.ts",
+    "test:report": "vitest run tests/report-renderer.test.tsx",
+    "db:smoke:api-corpus": "tsx scripts/smoke-api-corpus-rollout.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.65",
@@ -73,6 +75,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

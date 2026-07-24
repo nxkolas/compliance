@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { gapAnalysisClient } from "@/src/client/gap-analysis";
 import { actionPlansClient } from "@/src/client/action-plans";
 import { ApiClientError } from "@/src/client/api-client";
+import { formatDateTime } from "@/lib/i18n/format";
 import {
   countGapStatuses,
   sortGapFindings,
@@ -121,11 +122,9 @@ export function GapResultsStep({
           {workflow.lastWorkflowChange ? (
             <p className="mt-2 text-xs text-muted-foreground">
               {labels.lastChanged}{" "}
-              {new Intl.DateTimeFormat(locale, {
-                dateStyle: "medium",
-                timeStyle: "short",
-              }).format(
-                new Date(workflow.lastWorkflowChange.occurredAt),
+              {formatDateTime(
+                workflow.lastWorkflowChange.occurredAt,
+                locale,
               )}{" "}
               {labels.by} {workflow.lastWorkflowChange.actor}
             </p>
@@ -239,7 +238,7 @@ export function GapResultsStep({
         </Button>
       ) : null}
       <Dialog open={showFinalization} onOpenChange={setShowFinalization}>
-        <DialogContent>
+        <DialogContent closeLabel={labels.cancelEdit}>
           <DialogHeader>
             <DialogTitle>{labels.finalizeTitle}</DialogTitle>
             <DialogDescription>
@@ -417,7 +416,7 @@ function FindingCard({
           {labels.showDetails}
         </summary>
         <div className="mt-3 grid gap-3">
-          <Summary label="Code" value={row.requirement.code} />
+          <Summary label={labels.requirementCode} value={row.requirement.code} />
           <div>
             <p className="font-medium">{labels.citations}</p>
             {row.evidence.length ? (

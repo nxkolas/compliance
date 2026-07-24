@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Dictionary, Locale } from "@/lib/i18n";
+import { formatDate as formatLocalizedDate } from "@/lib/i18n/format";
+import { localizeUiError } from "@/lib/i18n/errors";
 import type {
   OrganizationInvitationDto,
   OrganizationRole,
@@ -96,8 +98,9 @@ export function OrganizationInvitePanel({
       });
     } catch (error) {
       setNotice({
-        message:
-          error instanceof Error ? error.message : labels.createErrorFallback,
+        message: localizeUiError(error, {
+          fallback: labels.createErrorFallback,
+        }),
         tone: "error",
       });
     } finally {
@@ -136,7 +139,7 @@ export function OrganizationInvitePanel({
                 <Input
                   id="invite-email"
                   type="email"
-                  placeholder="teammate@example.com"
+                  placeholder={labels.emailPlaceholder}
                   value={inviteForm.email}
                   onChange={(event) =>
                     setInviteForm((current) => ({
@@ -164,7 +167,7 @@ export function OrganizationInvitePanel({
                   <SelectContent>
                     {roleOptions.map((role) => (
                       <SelectItem key={role} value={role}>
-                        {role}
+                        {labels.roles[role]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -210,7 +213,8 @@ export function OrganizationInvitePanel({
                 <div>
                   <p className="font-medium">{invitation.email}</p>
                   <p className="text-sm text-muted-foreground">
-                    {labels.role}: {invitation.role} &middot; {labels.expires}{" "}
+                    {labels.role}: {labels.roles[invitation.role]} {" · "}
+                    {labels.expires}{" "}
                     {formatDate(
                       invitation.expiresAt,
                       locale,
@@ -219,7 +223,7 @@ export function OrganizationInvitePanel({
                   </p>
                 </div>
                 <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
-                  {invitation.status}
+                  {labels.statuses[invitation.status]}
                 </span>
               </div>
             ))
@@ -235,7 +239,5 @@ function formatDate(value: string | null, locale: Locale, fallback: string) {
     return fallback;
   }
 
-  return new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+  return formatLocalizedDate(value, locale, { dateStyle: "medium" });
 }

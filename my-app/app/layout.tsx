@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -11,19 +12,25 @@ const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "NIS2 Compliance Checker",
-  description: "A simple NIS2 compliance checker for organizations.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const dictionary = await getDictionary();
 
-export default function RootLayout({
+  return {
+    metadataBase: new URL(defaultUrl),
+    title: dictionary.metadata.title,
+    description: dictionary.metadata.description,
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="de">
+    <html lang={locale}>
       <body className={`${spaceGrotesk.className} antialiased`}>
         {children}
       </body>

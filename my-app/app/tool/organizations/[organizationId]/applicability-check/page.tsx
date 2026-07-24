@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getDictionary, getLocale } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/i18n/format";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getApplicabilityOverviewForUser,
@@ -98,10 +99,7 @@ export default async function ApplicabilityCheckPage({
           <CardDescription>
             {labels.lastCalculation}:{" "}
             {overview.submittedAt
-              ? new Intl.DateTimeFormat(locale, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(overview.submittedAt))
+              ? formatDateTime(overview.submittedAt, locale)
               : labels.noDate}
           </CardDescription>
         </CardHeader>

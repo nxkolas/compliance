@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       : "/tool/organizations";
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/auth/error?error=No auth code`);
+    return NextResponse.redirect(`${origin}/auth/error?code=AUTH_CODE_MISSING`);
   }
 
   const supabase = await createClient();
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      `${origin}/auth/error?error=${encodeURIComponent(error.message)}`,
+      `${origin}/auth/error?code=AUTH_CALLBACK_FAILED`,
     );
   }
 

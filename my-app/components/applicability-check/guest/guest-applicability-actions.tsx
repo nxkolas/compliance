@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import { Building2, LogIn, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,7 +45,7 @@ export function GuestApplicabilityActions({
       router.replace("/");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : labels.deleteError);
+      setError(localizeUiError(caught, { fallback: labels.deleteError }));
     } finally {
       setIsDeleting(false);
     }
