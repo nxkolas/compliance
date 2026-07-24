@@ -4,9 +4,9 @@ import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError } from "@/src/server/api/errors";
 import { readJsonBody } from "@/src/server/api/request";
-import { getGapReassessmentDraft, prepareGapReassessment } from "@/src/server/gap-analysis/reassessment-service";
+import { getGapReassessmentDraft, prepareGapReassessment } from "@/src/server/gap-analysis";
 import { gapReassessmentPrepareSchema, gapReassessmentQuerySchema } from "@/src/contracts/gap-analysis/generation";
-import { runIdempotentCommand } from "@/src/server/api/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/idempotency/repository";
+import { runIdempotentCommand } from "@/src/server/api/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import { parseInput } from "@/src/server/api/request";
 type Context = { params: Promise<{ organizationId: string }> };
 export const GET = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: Context }) => {
@@ -17,7 +17,7 @@ export const GET = apiRoute(async ({ request, routeContext }: { request: Request
 export const POST = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: Context }) => {
   const user = await requireApiUser(); const { organizationId } = await routeContext.params;
   const body = await readJsonBody(request, gapReassessmentPrepareSchema); const locale = await getLocale();
-  const result = await runIdempotentCommand({ repository: databaseIdempotencyRepository, request, actorKey: user.id, scope: organizationId,
+  const result = await runIdempotentCommand({ repository: databaseIdempotencyRepository, request, actorKey: user.id, organizationId, scope: organizationId,
     operation: "gap-reassessment.prepare", requestInput: body, resultType: "gap_reassessment_draft", responseStatus: 201,
     execute: async () => { const value = await prepareGapReassessment({ userId: user.id, organizationId, locale, ...body }); if (!value) throw new ApiError(500, "Could not prepare reassessment", undefined, "GAP_REASSESSMENT_PREPARE_FAILED"); return value; },
     resultId: (value) => value.draft.id,

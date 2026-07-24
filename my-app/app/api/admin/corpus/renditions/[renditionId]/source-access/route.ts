@@ -1,2 +1,2 @@
-import { requireApiUser } from "@/src/server/api/auth"; import { apiRoute } from "@/src/server/api/handler"; import { createLegalSourceAccess } from "@/src/server/corpus/operations-service";
+import { requireApiUser } from "@/src/server/api/auth"; import { apiRoute } from "@/src/server/api/handler"; import { createLegalSourceAccess } from "@/src/server/corpus";
 export const POST = apiRoute(async ({ routeContext }: { request: Request; routeContext: { params: Promise<{ renditionId: string }> } }) => { const user = await requireApiUser(); const { renditionId } = await routeContext.params; return { data: { access: await createLegalSourceAccess({ actorUserId: user.id, renditionId }) } }; });

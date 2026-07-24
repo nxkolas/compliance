@@ -66,7 +66,9 @@ workflow, not another interpretation of its rules.
 - Requirement-set versions pin both their localized title revision and exact
   requirement versions.
 - `gap_analysis_releases` pins the questionnaire, requirement set, prompt
-  metadata, model configuration, and compatible applicability release.
+  metadata, response contract, evaluator, and compatible applicability
+  release. Provider authorization is organization policy; the selected
+  provider/model is recorded on the AI run rather than duplicated on a release.
 - Active-release pointers and activation history use the same publish-then-
   activate separation as the applicability checker.
 
@@ -80,6 +82,12 @@ applicability.
 answer rows are immutable submitted sources. New answers create a new revision
 instead of mutating the previous one.
 
+Answers and organization facts use typed scalar columns plus relational option
+tables. Database checks enforce the representation allowed by each answer/fact
+type, and composite foreign keys prove that every selected option belongs to
+the same question or fact definition. JSON is retained only for genuinely
+structured values.
+
 `generated_artifacts` is the stable result identity. It has two intentionally
 different pointers:
 
@@ -89,8 +97,11 @@ different pointers:
 
 This separation lets a candidate Gap-Analyse coexist with the accepted result.
 Corrections create another complete revision; approval updates the accepted
-pointer transactionally. `artifact_revision_sources` pins the questionnaire,
-applicability result, release, and immutable document versions used by a result.
+pointer transactionally. Lineage is typed: artifact, assessment, and document
+sources live in `artifact_revision_artifact_sources`,
+`artifact_revision_assessment_sources`, and
+`artifact_revision_document_sources`. Composite ownership foreign keys reject
+cross-organization and cross-parent references.
 
 ## Organization document evidence
 
@@ -132,15 +143,20 @@ explicitly; a generated candidate is never mutated by later uploads.
 
 ## AI runs, findings, and review
 
-`ai_processing_runs` and `ai_processing_run_inputs` make each model call durable
-and pin its input hash, prompt/model metadata, and source records. The generation
-service retrieves evidence only from the selected immutable document versions.
+`ai_processing_runs` and the typed
+`ai_processing_run_{artifact,assessment,document}_inputs` tables make each model
+call durable and pin its input hash, prompt/model metadata, and source records.
+Legal inputs remain explicit in `ai_processing_run_legal_inputs`. The
+generation service retrieves evidence only from selected immutable document
+versions.
 
-`gap_findings` normalizes one result per applicable requirement.
+`gap_findings` is the sole authority for one result per applicable requirement.
 `gap_finding_evidence` stores exact question or document citations, and
 `gap_finding_review_resolutions` records human resolution history. Invalid or
 incomplete structured output fails closed before a result revision is stored.
-Review corrections copy the complete result into a new immutable revision.
+The revision JSON is metadata-only (`gap_revision_metadata_v1`); it cannot
+contain a duplicate `findings` array. Review corrections copy normalized rows
+and their evidence into a new immutable revision.
 
 ## Action plans
 
@@ -165,21 +181,24 @@ Reviewed applicability release sources live under
 `src/server/gap-analysis/releases/`. Publication validates content and writes an
 immutable release. Publishing never activates.
 
-For a disposable development database, follow the security runbook and then
-publish both workflows as needed:
+For a disposable development database, follow the complete
+[reset/reseed runbook](../database/database-reset-and-reseed.md). The
+remediation cutover is coordinated and destructive: quiesce writers, clear the
+approved target, apply the pre-push SQL, run the guarded composite-unique
+Drizzle pass, install the dependent identity foreign keys, then apply the
+post-push integrity/security files before reseeding.
 
 ```powershell
-$env:DB_CLEAR_CONFIRM='clear-app-tables'
-npm.cmd run db:clear
-# Run SQL Editor 004 once before db:push.
-npm.cmd run db:push
-# Run SQL Editor 004 again, followed by 001, 002, and 003.
-npm.cmd run db:publish:compliance -- --release nis2/2026-v1
-npm.cmd run db:activate:compliance -- --release nis2/2026-v1
-npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
-npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
-npm.cmd run db:verify:gap-requirements
-Remove-Item Env:DB_CLEAR_CONFIRM
+npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-pre-push.sql
+$env:DATABASE_REMEDIATION_UNIQUE_PASS = '1'
+try {
+  npx.cmd drizzle-kit push --strict --verbose
+} finally {
+  Remove-Item Env:DATABASE_REMEDIATION_UNIQUE_PASS -ErrorAction SilentlyContinue
+}
+npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-identity-fks.sql
+npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-integrity.sql
+npm.cmd run db:verify:remediation-integrity
 ```
 
 Run this destructive sequence only after confirming that the configured
@@ -208,3 +227,21 @@ Applicability submission preparation happens before the write transaction.
 Within the transaction, answer and fact persistence is set-based; revision,
 artifact, projection, provenance, pointer, and guest-claim changes remain
 atomic.
+
+## Persistence module boundaries
+
+Production routes, pages, and worker orchestration call the public module
+entries under `src/server/*/index.ts`. They do not import `src/db/schema.ts` or
+another module's private persistence files. Production relational reads use
+explicit column projections; schema-management, verification, and benchmark
+operator commands are the intentionally narrow exceptions. The static
+`persistence-architecture` test enforces these boundaries.
+
+Module-level performance gates are:
+
+```powershell
+npm.cmd run db:benchmark:compliance -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npx.cmd tsx scripts/benchmark-gap-workflow.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npx.cmd tsx scripts/benchmark-corpus-document-runtime.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npm.cmd run db:benchmark:index-remediation
+```

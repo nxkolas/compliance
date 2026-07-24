@@ -19,7 +19,7 @@ export async function reviewLegalProcessingGeneration(input: {
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:review");
   return db.transaction(async (tx) => {
-    const generation = await tx.query.legalSourceProcessingGenerations.findFirst({
+    const generation = await tx.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
       where: eq(legalSourceProcessingGenerations.id, input.generationId),
     });
     if (!generation) throw new ApiError(404, "Processing generation not found", undefined, "PROCESSING_GENERATION_NOT_FOUND");
@@ -29,7 +29,7 @@ export async function reviewLegalProcessingGeneration(input: {
     if (!generation.extractionHash || !generation.normalizedTextHash || !generation.embeddingJobId) {
       throw new ApiError(409, "Processing generation is incomplete", undefined, "PROCESSING_INCOMPLETE");
     }
-    const embeddingJob = await tx.query.backgroundJobs.findFirst({
+    const embeddingJob = await tx.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
       where: and(
         eq(backgroundJobs.id, generation.embeddingJobId),
         eq(backgroundJobs.state, "succeeded"),
@@ -52,7 +52,7 @@ export async function reviewLegalProcessingGeneration(input: {
     if (!embeddingJob || !coverage || coverage.chunks === 0 || coverage.embeddings !== coverage.chunks) {
       throw new ApiError(409, "Processing generation is incomplete", undefined, "PROCESSING_INCOMPLETE");
     }
-    const rendition = await tx.query.legalSourceRenditions.findFirst({
+    const rendition = await tx.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
       where: eq(legalSourceRenditions.id, generation.renditionId),
     });
     if (!rendition) throw new ApiError(409, "Rendition is missing", undefined, "RENDITION_MISSING");

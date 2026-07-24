@@ -51,7 +51,7 @@ vi.mock("@/lib/i18n/format", () => ({
   formatDateTime: vi.fn().mockReturnValue("24 July 2026"),
 }));
 
-vi.mock("@/src/server/applicability-check/service", () => ({
+vi.mock("@/src/server/applicability-check", () => ({
   getApplicabilityOverviewForUser: mocks.getApplicabilityOverviewForUser,
   getApplicabilityRecalculationLockForUser:
     mocks.getApplicabilityRecalculationLockForUser,

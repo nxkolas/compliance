@@ -1,6 +1,6 @@
 import * as z from "zod";
-import type { backgroundJobs } from "@/src/db/schema";
-import { executeGapGenerationJob } from "@/src/server/gap-analysis/reassessment-service";
+import type { BackgroundJobRecord } from "@/src/server/jobs";
+import { executeGapGenerationJob } from "@/src/server/gap-analysis";
 
 const payloadSchema = z.object({
   draftId: z.uuid(),
@@ -8,7 +8,7 @@ const payloadSchema = z.object({
   retryNonce: z.string().optional(),
 });
 
-export async function handleGapGeneration(job: typeof backgroundJobs.$inferSelect) {
+export async function handleGapGeneration(job: BackgroundJobRecord) {
   const payload = payloadSchema.parse(job.payload);
   if (!job.organizationId || !job.requestedByUserId) throw new Error("Gap generation job scope is incomplete");
   return executeGapGenerationJob({

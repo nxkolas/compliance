@@ -3,7 +3,7 @@ import * as z from "zod";
 import { db } from "@/src/db";
 import { backgroundJobs, platformAuditEvents } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
-import { toJobDto } from "@/src/server/jobs/service";
+import { toJobDto } from "@/src/server/jobs";
 import { getCursorCodec } from "@/src/server/api/pagination";
 
 const cursorSchema = z.tuple([z.iso.datetime(), z.uuid()]);
@@ -12,7 +12,7 @@ export async function listPlatformJobs(input: { userId: string; limit: number; c
   await requirePlatformCapability(input.userId, "corpus:read");
   const scope = `platform-jobs:${JSON.stringify({ kind: input.kind ?? null, state: input.state ?? null })}`;
   const cursor = input.cursor ? cursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.backgroundJobs.findMany({
+  const rows = await db.query.backgroundJobs.findMany({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
     where: and(
       input.kind ? eq(backgroundJobs.kind, input.kind) : undefined,
       input.state ? eq(backgroundJobs.state, input.state as typeof backgroundJobs.$inferSelect.state) : undefined,
@@ -31,7 +31,7 @@ export async function listPlatformAuditEvents(input: { userId: string; limit: nu
   const filters = { eventType: input.eventType ?? null, entityType: input.entityType ?? null, entityId: input.entityId ?? null, actorUserId: input.actorUserId ?? null, dateFrom: input.dateFrom?.toISOString() ?? null, dateTo: input.dateTo?.toISOString() ?? null };
   const scope = `platform-audit:${JSON.stringify(filters)}`;
   const cursor = input.cursor ? cursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.platformAuditEvents.findMany({
+  const rows = await db.query.platformAuditEvents.findMany({ columns: { id: true, actorUserId: true, eventType: true, entityType: true, entityId: true, requestId: true, metadata: true, createdAt: true },
     where: and(
       input.eventType ? eq(platformAuditEvents.eventType, input.eventType) : undefined,
       input.entityType ? eq(platformAuditEvents.entityType, input.entityType) : undefined,

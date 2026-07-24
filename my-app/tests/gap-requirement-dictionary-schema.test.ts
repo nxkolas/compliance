@@ -37,7 +37,7 @@ describe("Gap requirement dictionary schema", () => {
     },
   );
 
-  it("publishes revision pins while leaving recommendation and legal references unchanged", () => {
+  it("publishes stable identity and revision pins without definition recommendations", () => {
     const publisher = readFileSync(
       join(
         process.cwd(),
@@ -49,7 +49,8 @@ describe("Gap requirement dictionary schema", () => {
     expect(publisher).toMatch(/titleContentRevisionId,\s+requirementTextContentRevisionId,/);
     expect(publisher).not.toMatch(/title:\s*source\.title/);
     expect(publisher).not.toMatch(/requirementText:\s*source\.requirementText/);
-    expect(publisher).toMatch(/recommendation:\s*source\.recommendation/);
+    expect(publisher).not.toMatch(/recommendation:\s*source\.recommendation/);
+    expect(publisher).not.toMatch(/code:\s*source\.code,\s+versionLabel/);
     expect(publisher).toMatch(/legalReferences:\s*source\.legalReferences/);
   });
 });

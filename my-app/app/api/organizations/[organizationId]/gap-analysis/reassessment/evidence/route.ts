@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { readJsonBody } from "@/src/server/api/request";
-import { updateGapReassessmentEvidence } from "@/src/server/gap-analysis/reassessment-service";
+import { updateGapReassessmentEvidence } from "@/src/server/gap-analysis";
 import { gapReassessmentEvidenceSchema } from "@/src/contracts/gap-analysis/generation";
 import { requireIfMatch } from "@/src/server/api/concurrency";
 import { ApiError } from "@/src/server/api/errors";

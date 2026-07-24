@@ -1,17 +1,23 @@
-import { failJob, finalizeJobCancellation, heartbeatJob, leaseNextJob, succeedJob } from "@/src/server/jobs/service";
+import {
+  failJob,
+  finalizeJobCancellation,
+  heartbeatJob,
+  leaseNextJob,
+  recordWorkerDomainCancellation,
+  recordWorkerDomainFailure,
+  succeedJob,
+} from "@/src/server/jobs";
 import { handleLegalSourceEmbed } from "./handlers/legal-source-embed";
 import { handleLegalSourceProcess } from "./handlers/legal-source-process";
 import { handleLegalSourceMonitor } from "./handlers/legal-source-monitor";
 import { handleLegalSourceImport } from "./handlers/legal-source-import";
 import { handleGroundingEvaluation } from "./handlers/grounding-evaluation";
-import { recordWorkerDomainFailure } from "./failure-state";
-import { recordWorkerDomainCancellation } from "./failure-state";
 import { handleGapGeneration } from "./handlers/gap-generation";
 import { handleReportRender } from "./handlers/report-render";
 import { handleCleanup } from "./handlers/cleanup";
 import { ensureScheduledCleanupJob } from "@/src/server/api/cleanup";
 import { ApiError } from "@/src/server/api/errors";
-import { ensureScheduledLegalSourceMonitorJobs } from "@/src/server/corpus/monitor-scheduler";
+import { ensureScheduledLegalSourceMonitorJobs } from "@/src/server/corpus";
 
 const handlers = {
   "legal-source-process": handleLegalSourceProcess,

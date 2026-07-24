@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { activateGapAnalysisRelease } from "../src/server/gap-analysis/publishing/activate-release";
+import { activateGapAnalysisRelease } from "@/src/server/gap-analysis";
 
 async function main() {
   if (process.env.NODE_ENV === "production") {

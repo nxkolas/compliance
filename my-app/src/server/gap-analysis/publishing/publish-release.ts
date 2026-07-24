@@ -19,10 +19,10 @@ import {
   questions,
 } from "@/src/db/schema";
 import { and, desc, eq } from "drizzle-orm";
-import { contentHash } from "../../compliance/publishing/canonical-json";
+import { contentHash } from "@/src/server/compliance";
 import type { GapAnalysisReleaseDefinition, LocalizedText } from "../releases/types";
 import { compileGapAnalysisRelease } from "./compile-release";
-import { resolvePublishableCorpusPins } from "../../corpus/pinning";
+import { resolvePublishableCorpusPins } from "@/src/server/corpus";
 import {
   assertExactBilingualTranslations,
   assertRequirementContentPins,
@@ -34,7 +34,7 @@ export async function publishGapAnalysisRelease(
   definition: GapAnalysisReleaseDefinition,
 ) {
   const compiled = compileGapAnalysisRelease(definition);
-  const existing = await db.query.gapAnalysisReleases.findFirst({
+  const existing = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: and(
       eq(gapAnalysisReleases.releaseCode, definition.releaseCode),
       eq(gapAnalysisReleases.versionLabel, definition.versionLabel),
@@ -51,7 +51,7 @@ export async function publishGapAnalysisRelease(
       tx,
       definition.requiredCorpusFamilies,
     );
-    const compatibleRelease = await tx.query.complianceCheckReleases.findFirst({
+    const compatibleRelease = await tx.query.complianceCheckReleases.findFirst({ columns: { id: true, checkCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, scopeModelVersionId: true, scopeThresholdSetId: true, ruleSetId: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, effectiveFrom: true, effectiveTo: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
       where: and(
         eq(complianceCheckReleases.checkCode, definition.compatibleCheck.checkCode),
         eq(
@@ -67,7 +67,7 @@ export async function publishGapAnalysisRelease(
     ) {
       throw new Error("Compatible applicability release is not published");
     }
-    const applicabilityModule = await tx.query.complianceModules.findFirst({
+    const applicabilityModule = await tx.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
       where: eq(complianceModules.id, compatibleRelease.moduleId),
     });
     if (!applicabilityModule) throw new Error("Compatible module is missing");
@@ -79,21 +79,21 @@ export async function publishGapAnalysisRelease(
         .insert(contentItems)
         .values({ stableKey: source.key, format: "plain_text" })
         .onConflictDoNothing();
-      const item = await tx.query.contentItems.findFirst({
+      const item = await tx.query.contentItems.findFirst({ columns: { id: true, stableKey: true, format: true, createdAt: true, updatedAt: true },
         where: eq(contentItems.stableKey, source.key),
       });
       if (!item || item.format !== "plain_text") {
         throw new Error(`Conflicting content item ${source.key}`);
       }
       const hash = contentHash(source.translations);
-      let revision = await tx.query.contentRevisions.findFirst({
+      let revision = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
         where: and(
           eq(contentRevisions.contentItemId, item.id),
           eq(contentRevisions.contentHash, hash),
         ),
       });
       if (!revision) {
-        const latest = await tx.query.contentRevisions.findFirst({
+        const latest = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
           where: eq(contentRevisions.contentItemId, item.id),
           orderBy: [desc(contentRevisions.revisionNumber)],
         });
@@ -115,7 +115,7 @@ export async function publishGapAnalysisRelease(
         );
       }
       const persistedTranslations =
-        await tx.query.contentTranslations.findMany({
+        await tx.query.contentTranslations.findMany({ columns: { contentRevisionId: true, locale: true, value: true },
           where: eq(contentTranslations.contentRevisionId, revision.id),
         });
       assertExactBilingualTranslations(
@@ -143,7 +143,7 @@ export async function publishGapAnalysisRelease(
         position: 20,
       })
       .onConflictDoNothing();
-    const gapModule = await tx.query.complianceModules.findFirst({
+    const gapModule = await tx.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
       where: and(
         eq(
           complianceModules.frameworkVersionId,
@@ -169,7 +169,7 @@ export async function publishGapAnalysisRelease(
         code: definition.questionnaire.code,
       })
       .onConflictDoNothing();
-    const questionnaire = await tx.query.questionnaires.findFirst({
+    const questionnaire = await tx.query.questionnaires.findFirst({ columns: { id: true, moduleId: true, code: true, createdAt: true },
       where: and(
         eq(questionnaires.moduleId, gapModule.id),
         eq(questionnaires.code, definition.questionnaire.code),
@@ -226,7 +226,7 @@ export async function publishGapAnalysisRelease(
         code: definition.requirementSet.code,
       })
       .onConflictDoNothing();
-    const requirementSet = await tx.query.gapRequirementSets.findFirst({
+    const requirementSet = await tx.query.gapRequirementSets.findFirst({ columns: { id: true, code: true, createdAt: true },
       where: eq(gapRequirementSets.code, definition.requirementSet.code),
     });
     if (!requirementSet) throw new Error("Could not create requirement set");
@@ -255,13 +255,13 @@ export async function publishGapAnalysisRelease(
         contentKeys.text,
       );
       await tx.insert(gapRequirements).values({ code: source.code }).onConflictDoNothing();
-      const stableRequirement = await tx.query.gapRequirements.findFirst({
+      const stableRequirement = await tx.query.gapRequirements.findFirst({ columns: { id: true, code: true, createdAt: true },
         where: eq(gapRequirements.code, source.code),
       });
       if (!stableRequirement) {
         throw new Error(`Could not create stable requirement ${source.code}`);
       }
-      let requirement = await tx.query.gapRequirementVersions.findFirst({
+      let requirement = await tx.query.gapRequirementVersions.findFirst({ columns: { id: true, requirementId: true, versionLabel: true, criticality: true, titleContentRevisionId: true, requirementTextContentRevisionId: true, legalReferences: true, contentHash: true, createdAt: true },
         where: and(
           eq(gapRequirementVersions.requirementId, stableRequirement.id),
           eq(gapRequirementVersions.versionLabel, source.versionLabel),
@@ -285,12 +285,10 @@ export async function publishGapAnalysisRelease(
           .insert(gapRequirementVersions)
           .values({
             requirementId: stableRequirement.id,
-            code: source.code,
             versionLabel: source.versionLabel,
             criticality: source.criticality,
             titleContentRevisionId,
             requirementTextContentRevisionId,
-            recommendation: source.recommendation,
             legalReferences: source.legalReferences,
             contentHash: requirementHash,
           })
@@ -311,6 +309,7 @@ export async function publishGapAnalysisRelease(
         releaseCode: definition.releaseCode,
         versionLabel: definition.versionLabel,
         moduleId: gapModule.id,
+        questionnaireId: questionnaire.id,
         questionnaireVersionId: questionnaireVersion.id,
         requirementSetVersionId: requirementSetVersion.id,
         compatibleCheckReleaseId: compatibleRelease.id,
@@ -320,7 +319,6 @@ export async function publishGapAnalysisRelease(
         responseSchemaVersion: definition.prompt.responseSchemaVersion,
         evaluatorKind: definition.evaluator.kind,
         evaluatorVersion: definition.evaluator.version,
-        modelPolicy: definition.modelPolicy,
         defaultLocale: definition.defaultLocale,
         status: "published",
         aggregateHash: compiled.hashes.aggregate,

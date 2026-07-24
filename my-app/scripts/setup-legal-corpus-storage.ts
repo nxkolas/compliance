@@ -4,7 +4,7 @@ import {
   LEGAL_CORPUS_BUCKET,
   LEGAL_SOURCE_MIME_TYPES,
   MAX_LEGAL_SOURCE_BYTES,
-} from "@/src/server/corpus/config";
+} from "@/src/server/corpus";
 
 async function main() {
   const storage = getSupabaseAdminClient().storage;

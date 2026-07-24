@@ -82,7 +82,6 @@ describe("generated Gap input snapshots", () => {
         responseSchemaVersion: "1",
       },
       evaluator: { kind: "deterministic", version: 1 },
-      modelPolicy: {},
       questions: [],
       requirements: [],
     } satisfies LoadedGapRelease;

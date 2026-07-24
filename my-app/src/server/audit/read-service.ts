@@ -11,7 +11,7 @@ export async function listOrganizationAuditEvents(input: { userId: string; organ
   await requireOrganizationCapability(input.userId, input.organizationId, "audit:read");
   const scope = cursorScope(input.organizationId, input);
   const cursor = input.cursor ? cursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.auditEvents.findMany({
+  const rows = await db.query.auditEvents.findMany({ columns: { id: true, organizationId: true, actorUserId: true, eventType: true, entityType: true, entityId: true, metadata: true, createdAt: true },
     where: and(
       eq(auditEvents.organizationId, input.organizationId),
       input.eventType ? eq(auditEvents.eventType, input.eventType) : undefined,

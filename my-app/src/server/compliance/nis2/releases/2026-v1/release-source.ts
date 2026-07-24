@@ -1,6 +1,6 @@
 import type {
   Nis2EntityRule,
-} from "../../../../applicability-check/rule-set-schema";
+} from "@/src/server/applicability-check/domain";
 
 export type Nis2SourceEntityType = {
   code: string;

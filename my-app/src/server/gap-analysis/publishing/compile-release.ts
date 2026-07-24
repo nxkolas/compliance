@@ -1,4 +1,4 @@
-import { contentHash } from "../../compliance/publishing/canonical-json";
+import { contentHash } from "@/src/server/compliance/domain";
 import { GAP_PROMPT_TEMPLATE_HASH } from "../prompt-contract";
 import { GAP_PROMPT_V2_TEMPLATE_HASH } from "../prompt-contract-v2";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
@@ -18,9 +18,6 @@ export function compileGapAnalysisRelease(
     )
   ) {
     errors.push("Prompt template hash does not match the code-defined prompt");
-  }
-  if (release.modelPolicy.maxRequirementsPerBatch < 1) {
-    errors.push("Model policy requires a positive batch size");
   }
   requireLocalizedText(release.title, "module title", errors);
   requireLocalizedText(

@@ -1,4 +1,4 @@
-import { contentHash } from "../compliance/publishing/canonical-json";
+import { contentHash } from "@/src/server/compliance/domain";
 
 export type CorpusReleaseMemberValidation = {
   position: number;

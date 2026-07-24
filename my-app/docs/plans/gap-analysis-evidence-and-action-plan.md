@@ -10,6 +10,11 @@ See [Document Management, Gap Reassessment, and Plan Reconciliation](./document-
 for that successor design and [Current Gap-Analysis Workflow](../product/gap-analysis-current-workflow.md)
 for current runtime behavior.
 
+> Persistence update (2026-07-24): Gap revision JSON is metadata-only and
+> `gap_findings`/`gap_finding_evidence` are the sole result authority. AI and
+> artifact provenance now use typed target tables rather than polymorphic
+> type/UUID rows.
+
 ## Implementation Status
 
 All six phases are implemented in the repository and the configured database:

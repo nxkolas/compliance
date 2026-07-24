@@ -4,7 +4,7 @@ import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getCurrentActionPlan,
-} from "@/src/server/action-plans/service";
+} from "@/src/server/action-plans";
 import { assertCanAccessOrganization, listOrganizationMembers } from "@/src/server/organizations/service";
 import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
 import { connection } from "next/server";

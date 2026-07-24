@@ -597,9 +597,10 @@ failed attempt even when no business result is created.
 
 After validation, one final database transaction creates or updates:
 
-- a `gap_analysis_result` artifact and immutable generated revision;
-- artifact source links to the questionnaire revision, applicability revision,
-  and selected document versions;
+- a `gap_analysis_result` artifact and immutable generated revision whose JSON
+  contains only `gap_revision_metadata_v1` diagnostics/correction metadata;
+- typed artifact, assessment, and document source links to the questionnaire
+  revision, applicability revision, and selected document versions;
 - one `gap_findings` row per applicable requirement;
 - exact `gap_finding_evidence` excerpt snapshots and source foreign keys;
 - the AI run's successful output-artifact pointer;
@@ -773,7 +774,10 @@ The architecture uses stable identities plus immutable revisions:
 - Action Plan items snapshot requirement titles and recommendations so later
   release activation cannot rewrite the plan.
 
-`artifact_revision_sources` is the central cross-workflow lineage:
+Three typed lineage tables are the central cross-workflow lineage:
+`artifact_revision_assessment_sources`,
+`artifact_revision_artifact_sources`, and
+`artifact_revision_document_sources`.
 
 ```text
 Gap revision
@@ -896,8 +900,8 @@ therefore broader than the chat-provider policy alone suggests.
 | Gap release | `gap_requirements`, `gap_requirement_versions`, requirement-set/version/member tables, `gap_analysis_releases`, applicability rules, active/activation tables, `gap_analysis_release_corpus_releases` |
 | Organization evidence | `documents`, `document_versions`, `document_extractions`, `document_chunks`, `document_embedding_generations`, `document_chunk_embeddings` |
 | Generation coordination | `gap_reassessment_drafts`, `gap_reassessment_draft_documents`, `background_jobs`, `idempotency_records` |
-| AI provenance | `ai_processing_runs`, `ai_processing_run_inputs`, `ai_processing_run_legal_inputs`, `ai_processing_run_context`, `ai_processing_run_claims`, claim/context joins |
-| Gap result | `generated_artifacts`, `generated_artifact_revisions`, `artifact_revision_sources`, `gap_findings`, `gap_finding_evidence`, `gap_finding_review_resolutions` |
+| AI provenance | `ai_processing_runs`, typed `ai_processing_run_{assessment,artifact,document}_inputs`, `ai_processing_run_legal_inputs`, `ai_processing_run_context`, `ai_processing_run_claims`, claim/context joins |
+| Gap result | `generated_artifacts`, metadata-only `generated_artifact_revisions`, typed `artifact_revision_{assessment,artifact,document}_sources`, `gap_findings`, `gap_finding_evidence`, `gap_finding_review_resolutions` |
 | Action Plan | `action_plans`, `action_plan_items` |
 | Audit | `audit_events`, `platform_audit_events` |
 
@@ -913,30 +917,25 @@ These points describe the implementation, not desired behavior:
    applicability revision satisfies the Gap prerequisite, but the current Gap
    release maps requirements only to essential/important outcomes. Negative and
    clarification results therefore fail later with zero requirements.
-3. **Gap release model policy is stored but not enforced by generation.** The
-   current Grounding Gateway selects the chat provider/model from organization
-   policy and environment configuration. `modelPolicy.model` and
-   `maxRequirementsPerBatch` from the Gap release are not used in the current
-   generation path.
-4. **Embedding disclosure bypasses organization chat policy.** The OpenAI
+3. **Embedding disclosure bypasses organization chat policy.** The OpenAI
    embedding path is fixed independently of
    `organization_ai_provider_policies`.
-5. **Organization-document processing is synchronous and has no OCR.** Legal
+4. **Organization-document processing is synchronous and has no OCR.** Legal
    corpus processing is worker-based and may use configured Docling fallback;
    Organization Evidence cannot.
-6. **The lifecycle is generate-once.** Although tables and routes retain
+5. **The lifecycle is generate-once.** Although tables and routes retain
    “reassessment” names, lifecycle guards reject a second generation after the
    first result exists.
-7. **There is no plan reconciliation or replacement.** The historical
+6. **There is no plan reconciliation or replacement.** The historical
    reconciliation tables and application routes have been removed.
-8. **The service permits only one plan ever, not merely one active plan.**
+7. **The service permits only one plan ever, not merely one active plan.**
    Finalization rejects when any plan row already exists for the organization.
-9. **Staleness can create a product dead end before finalization.** A new
+8. **Staleness can create a product dead end before finalization.** A new
    selected-document version, document archive, or Gap-release activation can
    make the generated revision non-finalizable, while generate-once guards
    prevent rebuilding it. No current product recovery path reconciles this
    state.
-10. **Grounding policy is currently fixed to NIS2 EU/DE families and retrieves
+9. **Grounding policy is currently fixed to NIS2 EU/DE families and retrieves
     legal context in German.** Output can be German or English, but legal
     retrieval passes `language: "de"`.
 

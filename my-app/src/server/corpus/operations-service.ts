@@ -12,7 +12,7 @@ import {
   platformAuditEvents,
 } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
-import { requestJobCancellation } from "@/src/server/jobs/service";
+import { requestJobCancellation } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "../supabase-admin";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -23,11 +23,11 @@ export async function getProcessingGeneration(input: {
   previewLimit?: number;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:read");
-  const generation = await db.query.legalSourceProcessingGenerations.findFirst({
+  const generation = await db.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
     where: eq(legalSourceProcessingGenerations.id, input.generationId),
   });
   if (!generation) throw new ApiError(404, "Processing generation not found", undefined, "PROCESSING_GENERATION_NOT_FOUND");
-  const chunks = await db.query.legalSourceChunks.findMany({
+  const chunks = await db.query.legalSourceChunks.findMany({ columns: { id: true, generationId: true, position: true, text: true, textHash: true, pageNumber: true, sectionPath: true, provisionCode: true, anchorMetadata: true, tokenCount: true, searchVector: true, createdAt: true },
     where: eq(legalSourceChunks.generationId, generation.id),
     orderBy: [asc(legalSourceChunks.position)],
     limit: Math.max(1, Math.min(100, input.previewLimit ?? 20)),
@@ -42,13 +42,13 @@ export async function retryProcessingGeneration(input: {
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:operate");
   return db.transaction(async (tx) => {
-    const current = await tx.query.legalSourceProcessingGenerations.findFirst({
+    const current = await tx.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
       where: eq(legalSourceProcessingGenerations.id, input.generationId),
     });
     if (!current || (current.state !== "failed" && current.state !== "cancelled")) {
       throw new ApiError(409, "Only failed or cancelled processing can be retried", undefined, "PROCESSING_NOT_RETRYABLE");
     }
-    const latest = await tx.query.legalSourceProcessingGenerations.findFirst({
+    const latest = await tx.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
       where: eq(legalSourceProcessingGenerations.renditionId, current.renditionId),
       orderBy: [desc(legalSourceProcessingGenerations.generationNumber)],
     });
@@ -79,7 +79,7 @@ export async function cancelProcessingGeneration(input: {
   generationId: string;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:operate");
-  const generation = await db.query.legalSourceProcessingGenerations.findFirst({
+  const generation = await db.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
     where: eq(legalSourceProcessingGenerations.id, input.generationId),
   });
   if (!generation) throw new ApiError(404, "Processing generation not found", undefined, "PROCESSING_GENERATION_NOT_FOUND");
@@ -127,7 +127,7 @@ export async function createLegalSourceAccess(input: {
   expiresInSeconds?: number;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:read");
-  const rendition = await db.query.legalSourceRenditions.findFirst({
+  const rendition = await db.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
     where: eq(legalSourceRenditions.id, input.renditionId),
   });
   if (!rendition) throw new ApiError(404, "Rendition not found", undefined, "RENDITION_NOT_FOUND");

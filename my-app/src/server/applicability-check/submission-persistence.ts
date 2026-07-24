@@ -1,6 +1,6 @@
 import { db } from "@/src/db";
 import {
-  artifactRevisionSources,
+  artifactRevisionAssessmentSources,
   assessmentAnswerOptions,
   assessmentAnswers,
   assessmentRevisions,
@@ -200,7 +200,11 @@ export type SubmissionBatchWriter = {
     }>,
   ): Promise<AnswerHeader[]>;
   insertAnswerOptionJoins(
-    rows: Array<{ assessmentAnswerId: string; questionOptionId: string }>,
+    rows: Array<{
+      assessmentAnswerId: string;
+      questionId: string;
+      questionOptionId: string;
+    }>,
   ): Promise<void>;
   invalidateCurrentFacts(input: {
     organizationId: string;
@@ -220,7 +224,11 @@ export type SubmissionBatchWriter = {
     pairs: Array<{ factKey: string; stableValue: string }>,
   ): Promise<FactOption[]>;
   insertFactOptionJoins(
-    rows: Array<{ organizationFactValueId: string; factOptionId: string }>,
+    rows: Array<{
+      organizationFactValueId: string;
+      factKey: string;
+      factOptionId: string;
+    }>,
   ): Promise<void>;
 };
 
@@ -250,6 +258,7 @@ export async function executeSubmissionBatches(
       }
       return answer.optionIds.map((questionOptionId) => ({
         assessmentAnswerId,
+        questionId: answer.questionId,
         questionOptionId,
       }));
     }),
@@ -330,6 +339,7 @@ export async function executeSubmissionBatches(
       }
       return {
         organizationFactValueId,
+        factKey,
         factOptionId: option.id,
       };
     }),
@@ -698,10 +708,9 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
           artifactRevisionId,
           assessmentRevisionId,
         }) {
-          await tx.insert(artifactRevisionSources).values({
+          await tx.insert(artifactRevisionAssessmentSources).values({
             artifactRevisionId,
-            sourceType: "assessment_revision",
-            sourceId: assessmentRevisionId,
+            assessmentRevisionId,
           });
         },
         async setCurrentArtifactRevision({ artifactId, revisionId }) {

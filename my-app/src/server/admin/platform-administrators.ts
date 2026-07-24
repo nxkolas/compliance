@@ -73,7 +73,7 @@ export async function revokePlatformAdministrator(input: {
 
   return db.transaction(async (tx) => {
     await lockAdministratorRegistry(tx);
-    const actor = await tx.query.platformAdministrators.findFirst({
+    const actor = await tx.query.platformAdministrators.findFirst({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true },
       where: and(
         eq(platformAdministrators.userId, input.actorUserId),
         isNull(platformAdministrators.revokedAt),
@@ -132,7 +132,7 @@ export async function listActivePlatformAdministrators(actorUserId: string) {
 
 export async function getPlatformAdministrator(actorUserId: string, userId: string) {
   await requirePlatformCapability(actorUserId, "platform-admins:manage");
-  const administrator = await db.query.platformAdministrators.findFirst({ where: eq(platformAdministrators.userId, userId) });
+  const administrator = await db.query.platformAdministrators.findFirst({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true }, where: eq(platformAdministrators.userId, userId) });
   if (!administrator) throw new ApiError(404, "Platform Administrator not found", undefined, "PLATFORM_ADMIN_NOT_FOUND");
   return administrator;
 }
@@ -141,7 +141,7 @@ export async function listActivePlatformAdministratorsPage(input: { actorUserId:
   await requirePlatformCapability(input.actorUserId, "platform-admins:manage");
   const scope = "platform-administrators:active";
   const cursor = input.cursor ? z.tuple([z.iso.datetime(), z.uuid()]).parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.platformAdministrators.findMany({
+  const rows = await db.query.platformAdministrators.findMany({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true },
     where: and(isNull(platformAdministrators.revokedAt), cursor ? or(gt(platformAdministrators.createdAt, new Date(cursor[0])), and(eq(platformAdministrators.createdAt, new Date(cursor[0])), gt(platformAdministrators.userId, cursor[1]))) : undefined),
     orderBy: [asc(platformAdministrators.createdAt), asc(platformAdministrators.userId)],
     limit: input.limit + 1,

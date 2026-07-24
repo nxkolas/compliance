@@ -28,6 +28,7 @@ import {
 import { loadGapAnalysisRelease } from "./release-loader";
 import { localizeGapFinding } from "./finding-localization";
 import { nextCachedGapReleaseReader } from "./next-cached-release-loader";
+import { readGapRevisionMetadata } from "./gap-revision-metadata";
 
 export async function getGapAnalysisWorkflow(
   input: GapPageReadInput,
@@ -36,34 +37,14 @@ export async function getGapAnalysisWorkflow(
     nextCachedGapReleaseReader,
 ) {
   const workflow = await reader.readGap(input);
-  const correctedIds = (result: unknown) =>
-    new Set(
-      Array.isArray(
-        (result as Record<string, unknown> | undefined)
-          ?.correctedRequirementVersionIds,
-      )
-        ? ((result as Record<string, unknown>)
-            .correctedRequirementVersionIds as unknown[]).filter(
-          (value): value is string => typeof value === "string",
-        )
-        : [],
-    );
-  const findingMetadata = (result: unknown) => {
-    const rows = Array.isArray(
-      (result as Record<string, unknown> | undefined)?.findings,
-    )
-      ? ((result as Record<string, unknown>).findings as Array<
-          Record<string, unknown>
-        >)
-      : [];
-    return rows;
-  };
-  const currentCorrectedIds = correctedIds(workflow.revision?.result);
-  const acceptedCorrectedIds = correctedIds(workflow.acceptedRevision?.result);
-  const candidateCorrectedIds = correctedIds(workflow.candidateRevision?.result);
-  const currentMetadata = findingMetadata(workflow.revision?.result);
-  const acceptedMetadata = findingMetadata(workflow.acceptedRevision?.result);
-  const candidateMetadata = findingMetadata(workflow.candidateRevision?.result);
+  const metadata = (result: unknown | undefined) =>
+    result === undefined ? null : readGapRevisionMetadata(result);
+  const currentMetadata = metadata(workflow.revision?.result);
+  const acceptedMetadata = metadata(workflow.acceptedRevision?.result);
+  const candidateMetadata = metadata(workflow.candidateRevision?.result);
+  const currentCorrectedIds = new Set(currentMetadata?.correctedRequirementVersionIds ?? []);
+  const acceptedCorrectedIds = new Set(acceptedMetadata?.correctedRequirementVersionIds ?? []);
+  const candidateCorrectedIds = new Set(candidateMetadata?.correctedRequirementVersionIds ?? []);
   const releasePromiseById = new Map<
     string,
     Promise<LoadedGapRelease | null>
@@ -114,7 +95,11 @@ export async function getGapAnalysisWorkflow(
   const enrich = <T extends (typeof workflow.findings)[number]>(
     row: T,
     manuallyChangedIds: Set<string>,
-    metadataRows: Array<Record<string, unknown>>,
+    metadataRows: Array<{
+      requirementVersionId: string;
+      contradictions: string[];
+      questionnaireDisagreements: string[];
+    }>,
     catalogueByVersionId: Map<
       string,
       NonNullable<typeof workflow.release>["requirements"][number]
@@ -123,8 +108,7 @@ export async function getGapAnalysisWorkflow(
     const localizedRow = localizeGapFinding(row, catalogueByVersionId);
     const metadata = metadataRows.find(
       (item) =>
-        item.requirementVersionId === row.finding.requirementVersionId ||
-        item.requirementCode === row.requirement.code,
+        item.requirementVersionId === row.finding.requirementVersionId,
     );
     const contradictions = Array.isArray(metadata?.contradictions)
       ? metadata.contradictions.filter(
@@ -151,13 +135,13 @@ export async function getGapAnalysisWorkflow(
     };
   };
   const findings = workflow.findings.map((row) =>
-    enrich(row, currentCorrectedIds, currentMetadata, currentCatalogue),
+    enrich(row, currentCorrectedIds, currentMetadata?.findingDiagnostics ?? [], currentCatalogue),
   );
   const acceptedFindings = workflow.acceptedFindings.map((row) =>
-    enrich(row, acceptedCorrectedIds, acceptedMetadata, acceptedCatalogue),
+    enrich(row, acceptedCorrectedIds, acceptedMetadata?.findingDiagnostics ?? [], acceptedCatalogue),
   );
   const candidateFindings = workflow.candidateFindings.map((row) =>
-    enrich(row, candidateCorrectedIds, candidateMetadata, candidateCatalogue),
+    enrich(row, candidateCorrectedIds, candidateMetadata?.findingDiagnostics ?? [], candidateCatalogue),
   );
   const selectedDocumentVersionIds =
     workflow.reassessment?.selected.map(
@@ -302,7 +286,7 @@ async function loadFindings(revisionId: string) {
     )
     .where(eq(gapFindings.artifactRevisionId, revisionId));
   const evidenceRows = findingRows.length
-    ? await db.query.gapFindingEvidence.findMany({
+    ? await db.query.gapFindingEvidence.findMany({ columns: { id: true, findingId: true, citationId: true, sourceType: true, assessmentAnswerId: true, documentChunkId: true, legalSourceChunkId: true, excerpt: true, pageNumber: true, sectionLabel: true, createdAt: true },
         where: inArray(
           gapFindingEvidence.findingId,
           findingRows.map((row) => row.finding.id),

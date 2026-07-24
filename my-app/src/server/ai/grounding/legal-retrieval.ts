@@ -14,7 +14,7 @@ import {
   legalSources,
   legalSourceVersions,
 } from "@/src/db/schema";
-import { createDocumentEmbeddingProvider, validateEmbeddings, type DocumentEmbeddingProvider } from "../../documents/embeddings";
+import { createDocumentEmbeddingProvider, validateEmbeddings, type DocumentEmbeddingProvider } from "@/src/server/documents";
 import type { GroundingContextItem } from "./types";
 import { ApiError } from "../../api/errors";
 

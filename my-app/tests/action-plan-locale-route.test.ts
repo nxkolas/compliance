@@ -22,14 +22,14 @@ vi.mock("@/src/server/api/idempotency", () => ({
   fingerprintRequest: vi.fn(() => "fingerprint"),
   requireIdempotencyKey: vi.fn(() => "command-key"),
 }));
-vi.mock("@/src/server/action-plans/service", () => ({
+vi.mock("@/src/server/action-plans", () => ({
   getCurrentActionPlan: mocks.getCurrentActionPlan,
   getActionPlanDetail: mocks.getActionPlanDetail,
 }));
-vi.mock("@/src/server/gap-analysis/finalization-service", () => ({
+vi.mock("@/src/server/gap-analysis", () => ({
   finalizeGapAnalysisAndGenerateActionPlan: mocks.finalize,
 }));
-vi.mock("@/src/server/idempotency/repository", () => ({
+vi.mock("@/src/server/idempotency", () => ({
   databaseIdempotencyRepository: {},
 }));
 

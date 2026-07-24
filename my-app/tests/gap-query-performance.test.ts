@@ -30,7 +30,6 @@ function release(id: string, locale: "de" | "en"): LoadedGapRelease {
       responseSchemaVersion: "1",
     },
     evaluator: { kind: "deterministic", version: 1 },
-    modelPolicy: {},
     questions: [],
     requirements: [],
   };

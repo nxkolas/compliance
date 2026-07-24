@@ -13,7 +13,7 @@ import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getApplicabilityOverviewForUser,
   getApplicabilityRecalculationLockForUser,
-} from "@/src/server/applicability-check/service";
+} from "@/src/server/applicability-check";
 import {
   ArrowRight,
   ClipboardList,

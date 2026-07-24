@@ -2,6 +2,11 @@
 
 Status: Implemented and verified on 2026-07-23.
 
+> Persistence update (2026-07-24): typed lineage tables supersede references
+> below to `artifact_revision_sources`. The complete-workflow gate remains 17
+> SQL calls and a 500 ms warm-median ceiling; Corpus/Document reads now have a
+> separate module benchmark.
+
 ## Complete-workflow regression correction
 
 A later Gap-analysis simplification added prerequisite, history, and generated

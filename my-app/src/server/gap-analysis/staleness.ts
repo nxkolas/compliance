@@ -1,7 +1,9 @@
 import { db } from "@/src/db";
 import {
   activeGapAnalysisReleases,
-  artifactRevisionSources,
+  artifactRevisionArtifactSources,
+  artifactRevisionAssessmentSources,
+  artifactRevisionDocumentSources,
   assessmentRevisions,
   assessments,
   documentVersions,
@@ -49,7 +51,7 @@ export async function getGapRevisionStaleness(input: {
   revisionId: string;
 }) {
   await assertCanAccessOrganization(input.userId, input.organizationId);
-  const active = await db.query.activeGapAnalysisReleases.findFirst({
+  const active = await db.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
     where: eq(activeGapAnalysisReleases.releaseCode, "nis2-gap"),
   });
   const batch = await getGapRevisionStalenessBatchPreauthorized({
@@ -102,8 +104,9 @@ export async function getGapRevisionStalenessBatchPreauthorized(input: {
     .select({
       revision: generatedArtifactRevisions,
       artifactOrganizationId: generatedArtifacts.organizationId,
-      sourceType: artifactRevisionSources.sourceType,
-      sourceId: artifactRevisionSources.sourceId,
+      assessmentSourceId: artifactRevisionAssessmentSources.assessmentRevisionId,
+      documentSourceId: artifactRevisionDocumentSources.documentVersionId,
+      artifactSourceId: artifactRevisionArtifactSources.sourceArtifactRevisionId,
       assessmentId: sourceAssessment.id,
       assessmentOrganizationId: sourceAssessment.organizationId,
       assessmentCurrentRevisionId: sourceAssessment.currentRevisionId,
@@ -125,40 +128,39 @@ export async function getGapRevisionStalenessBatchPreauthorized(input: {
       eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id),
     )
     .leftJoin(
-      artifactRevisionSources,
+      artifactRevisionAssessmentSources,
       eq(
-        artifactRevisionSources.artifactRevisionId,
+        artifactRevisionAssessmentSources.artifactRevisionId,
         generatedArtifactRevisions.id,
       ),
     )
     .leftJoin(
       sourceAssessmentRevision,
-      and(
-        eq(artifactRevisionSources.sourceType, "assessment_revision"),
-        eq(sourceAssessmentRevision.id, artifactRevisionSources.sourceId),
-      ),
+      eq(sourceAssessmentRevision.id, artifactRevisionAssessmentSources.assessmentRevisionId),
     )
     .leftJoin(
       sourceAssessment,
       eq(sourceAssessment.id, sourceAssessmentRevision.assessmentId),
     )
     .leftJoin(
+      artifactRevisionDocumentSources,
+      eq(artifactRevisionDocumentSources.artifactRevisionId, generatedArtifactRevisions.id),
+    )
+    .leftJoin(
       sourceDocumentVersion,
-      and(
-        eq(artifactRevisionSources.sourceType, "document_version"),
-        eq(sourceDocumentVersion.id, artifactRevisionSources.sourceId),
-      ),
+      eq(sourceDocumentVersion.id, artifactRevisionDocumentSources.documentVersionId),
     )
     .leftJoin(
       sourceDocument,
       eq(sourceDocument.id, sourceDocumentVersion.documentId),
     )
     .leftJoin(
+      artifactRevisionArtifactSources,
+      eq(artifactRevisionArtifactSources.artifactRevisionId, generatedArtifactRevisions.id),
+    )
+    .leftJoin(
       sourceArtifactRevision,
-      and(
-        eq(artifactRevisionSources.sourceType, "artifact_revision"),
-        eq(sourceArtifactRevision.id, artifactRevisionSources.sourceId),
-      ),
+      eq(sourceArtifactRevision.id, artifactRevisionArtifactSources.sourceArtifactRevisionId),
     )
     .leftJoin(
       sourceArtifact,
@@ -189,21 +191,21 @@ export async function getGapRevisionStalenessBatchPreauthorized(input: {
     }
     for (const row of revisionRows) {
       if (
-        row.sourceType === "assessment_revision" &&
+        row.assessmentSourceId &&
         row.assessmentOrganizationId &&
         row.assessmentOrganizationId !== input.organizationId
       ) {
         throw new ApiError(404, "Gap revision source not found");
       }
       if (
-        row.sourceType === "document_version" &&
+        row.documentSourceId &&
         row.documentOrganizationId &&
         row.documentOrganizationId !== input.organizationId
       ) {
         throw new ApiError(404, "Gap revision source not found");
       }
       if (
-        row.sourceType === "artifact_revision" &&
+        row.artifactSourceId &&
         row.sourceArtifactOrganizationId &&
         row.sourceArtifactOrganizationId !== input.organizationId
       ) {
@@ -216,35 +218,44 @@ export async function getGapRevisionStalenessBatchPreauthorized(input: {
     if (!revisionId) return null;
     const revisionRows = rowsByRevision.get(revisionId)!;
     const revision = revisionRows[0].revision;
-    const dependencies = revisionRows.flatMap(
+    const duplicateDependencies = revisionRows.flatMap(
       (row): StalenessDependency[] => {
-        if (!row.sourceType || !row.sourceId) return [];
-        if (row.sourceType === "assessment_revision") {
-          return [{
+        const dependencies: StalenessDependency[] = [];
+        if (row.assessmentSourceId) {
+          dependencies.push({
             kind: "assessment_revision",
-            selectedId: row.sourceId,
+            selectedId: row.assessmentSourceId,
             currentId: row.assessmentCurrentRevisionId,
             archived: row.assessmentStatus === "archived",
-          }];
+          });
         }
-        if (row.sourceType === "document_version") {
-          return [{
+        if (row.documentSourceId) {
+          dependencies.push({
             kind: "document_version",
-            selectedId: row.sourceId,
+            selectedId: row.documentSourceId,
             currentId: row.documentCurrentVersionId,
             archived:
               Boolean(row.documentVersionArchivedAt) ||
               row.documentStatus === "archived",
-          }];
+          });
         }
-        return [{
-          kind: "artifact_revision",
-          selectedId: row.sourceId,
-          currentId: row.sourceArtifactCurrentRevisionId,
-          archived: row.sourceArtifactRevisionStatus === "archived",
-        }];
+        if (row.artifactSourceId) {
+          dependencies.push({
+            kind: "artifact_revision",
+            selectedId: row.artifactSourceId,
+            currentId: row.sourceArtifactCurrentRevisionId,
+            archived: row.sourceArtifactRevisionStatus === "archived",
+          });
+        }
+        return dependencies;
       },
     );
+    const dependencies = [...new Map(
+      duplicateDependencies.map((dependency) => [
+        `${dependency.kind}:${dependency.selectedId}`,
+        dependency,
+      ]),
+    ).values()];
     return calculateGapStaleness({
       dependencies,
       pinnedGapReleaseId: revision.gapAnalysisReleaseId!,

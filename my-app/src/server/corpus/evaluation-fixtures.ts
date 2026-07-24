@@ -2,7 +2,7 @@ import { buildGroundedPrompt } from "../ai/grounding/context-builder";
 import { isLegalSourceEffectiveOn } from "../ai/grounding/retrieval-policy";
 import type { GroundedClaim, GroundingContextItem } from "../ai/grounding/types";
 import { hasCompleteQueryUnitCoverage, validateGroundedClaims } from "../ai/grounding/validation";
-import { assertSelectedDocumentVersionScope } from "../documents/retrieval-policy";
+import { assertSelectedDocumentVersionScope } from "@/src/server/documents/domain";
 
 export const CORPUS_FIXTURE_SET_VERSION = "grounding-safety-v2";
 

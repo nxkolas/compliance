@@ -8,7 +8,9 @@ import {
   platformAuditEvents,
   uploadSessions,
   reports,
-  reportSources,
+  reportActionPlanSources,
+  reportArtifactSources,
+  reportDocumentSources,
   aiProcessingRuns,
   legalSourceProcessingGenerations,
   legalSourceRenditions,
@@ -23,7 +25,9 @@ describe("Phase 1 server-only schema", () => {
     ["platform_audit_events", platformAuditEvents],
     ["upload_sessions", uploadSessions],
     ["reports", reports],
-    ["report_sources", reportSources],
+    ["report_artifact_sources", reportArtifactSources],
+    ["report_action_plan_sources", reportActionPlanSources],
+    ["report_document_sources", reportDocumentSources],
   ])("enables RLS for %s", (_name, table) => {
     expect(getTableConfig(table).enableRLS).toBe(true);
   });

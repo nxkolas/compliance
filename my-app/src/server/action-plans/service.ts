@@ -7,7 +7,7 @@ import {
 } from "@/src/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { getGapRevisionStaleness } from "../gap-analysis/staleness";
+import { getGapRevisionStaleness } from "@/src/server/gap-analysis";
 import {
   assertCanAccessOrganization,
   assertCanContributeToOrganization,
@@ -42,7 +42,7 @@ export async function getCurrentActionPlan(
   organizationId: string,
 ) {
   await assertCanAccessOrganization(userId, organizationId);
-  const plan = await db.query.actionPlans.findFirst({
+  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
     where: and(
       eq(actionPlans.organizationId, organizationId),
       eq(actionPlans.status, "active"),
@@ -50,7 +50,7 @@ export async function getCurrentActionPlan(
     orderBy: [desc(actionPlans.createdAt)],
   });
   if (!plan) return null;
-  const items = await db.query.actionPlanItems.findMany({
+  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, description: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
     where: eq(actionPlanItems.actionPlanId, plan.id),
     orderBy: [desc(actionPlanItems.priority), actionPlanItems.createdAt],
   });
@@ -68,7 +68,7 @@ export async function getActionPlanDetail(
   planId: string,
 ) {
   await assertCanAccessOrganization(userId, organizationId);
-  const plan = await db.query.actionPlans.findFirst({
+  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
     where: and(
       eq(actionPlans.id, planId),
       eq(actionPlans.organizationId, organizationId),
@@ -82,7 +82,7 @@ export async function getActionPlanDetail(
       "ACTION_PLAN_NOT_FOUND",
     );
   }
-  const items = await db.query.actionPlanItems.findMany({
+  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, description: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
     where: eq(actionPlanItems.actionPlanId, plan.id),
     orderBy: [desc(actionPlanItems.priority), actionPlanItems.createdAt],
   });
@@ -119,7 +119,7 @@ export async function updateActionPlanItem(input: {
     .limit(1);
   if (!current) throw new ApiError(404, "Action-plan item not found");
   if (input.ownerUserId) {
-    const owner = await db.query.organizationMemberships.findFirst({
+    const owner = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
       where: and(
         eq(
           organizationMemberships.organizationId,

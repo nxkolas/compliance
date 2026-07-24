@@ -1,8 +1,11 @@
 # API, corpus, and grounded-AI rollout
 
-This rollout is additive. Do not delete jobs, immutable revisions, reports,
-audit events, finalized uploads, corpus releases, or provenance records during
-rollback.
+The API/corpus feature set is normally forward-only. The 2026-07-24 database
+architecture remediation is a coordinated destructive development cutover
+that removes obsolete polymorphic tables and columns. Use the guarded
+[reset/reseed runbook](database-reset-and-reseed.md) for that cutover. Do not
+apply its destructive pre-push SQL to production or a database whose data must
+be retained.
 
 ## Required server configuration
 
@@ -26,15 +29,18 @@ API error details.
 
 1. Take and verify a target-database backup. Record the environment and
    operator approving the rollout.
-2. Apply `scripts/sql/api-corpus-integrity-additions.sql` once before the schema
-   push. This marks pre-existing AI-run provenance `historical_unknown` before
-   the new non-null default is introduced.
-3. Preview with `npx.cmd drizzle-kit push --strict --verbose`, review every
-   statement, and approve only the additive diff. Never use `--force`.
+2. Apply `004_gap_evidence_infrastructure.sql`,
+   `api-corpus-integrity-additions.sql`, and
+   `database-remediation-pre-push.sql` in the exact order documented by the
+   reset/reseed runbook.
+3. Run the guarded `DATABASE_REMEDIATION_UNIQUE_PASS=1` strict Drizzle pass,
+   then apply `database-remediation-identity-fks.sql`. Review every statement
+   and never use `--force` or a second post-security Drizzle push.
 4. Apply `scripts/sql/api-corpus-integrity-additions.sql` again, then
    `scripts/sql/phase1-server-only.sql`,
    `scripts/sql/legal-corpus-server-only.sql`, and
-   `scripts/sql/audit-events-append-only.sql` as a privileged database
+   `scripts/sql/audit-events-append-only.sql`, followed by
+   `scripts/sql/database-remediation-integrity.sql`, as a privileged database
    operator. The second integrity pass adds constraints to newly-created
    tables and replaces the pre-corpus `gap_finding_evidence_source_check`;
    Drizzle adds the legal citation column and enum value but does not replace
@@ -45,6 +51,9 @@ API error details.
    `npm.cmd run storage:setup:reports`; both buckets must remain private.
 7. Run `npm.cmd run db:verify:server-only` and require every public table, all
    expected rollout tables, and both append-only audit triggers to pass.
+   Run `npm.cmd run db:verify:remediation-integrity` to prove typed values,
+   composite ownership, metadata-only Gap results, and deferred normalized
+   finding coverage.
    Run `npm.cmd run storage:verify` and require all three private buckets.
 8. Optionally seed the deliberately incomplete NIS2 fixture with
    `npm.cmd run db:seed:legal-corpus-fixture`. It must still be reviewed,
@@ -84,14 +93,24 @@ that both evaluated corpus releases are active, compliance and Gap pin those
 exact releases, their compatible release link is active, governance audit
 events exist, and the rollout has no unfinished jobs.
 
-- Complete an authenticated applicability check.
+- Run the automated authenticated remediation smoke with
+  `REMEDIATION_SMOKE_USER_ID=<active-admin-uuid> npm.cmd run
+  db:smoke:authenticated-gap`. It creates/resumes a synthetic fixture and
+  proves applicability persistence, actual queued grounded generation,
+  normalized findings, correction, finalization, action-plan creation, and
+  repeated read-only loading.
 - Direct-upload evidence, inspect processing, archive/restore it, and request a
   controlled original.
-- Prepare, enqueue, poll, cancel, retry, review, and approve a Gap reassessment.
-- Create and reconcile an action plan using an active member as assignee.
+- Prepare, enqueue, poll/cancel/retry as needed, then correct and finalize the
+  single generated Gap Analysis. Finalization creates the fixed action plan;
+  there is no plan reconciliation workflow.
 - Create, cancel, regenerate, and download a pinned PDF report.
 - Inspect organization audit history and, separately as a Platform
   Administrator, corpus jobs and platform audit history.
+
+Run the Compliance, Gap, Corpus/Document, and structural index benchmarks from
+the reset/reseed runbook. Their assertion modes are deployment gates, not
+diagnostic-only reports.
 
 ## Durable maintenance and source monitoring
 

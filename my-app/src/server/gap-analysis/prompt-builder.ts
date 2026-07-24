@@ -1,4 +1,4 @@
-import { canonicalJson, contentHash } from "../compliance/publishing/canonical-json";
+import { canonicalJson, contentHash } from "@/src/server/compliance/domain";
 import { GAP_PROMPT_TEMPLATE } from "./prompt-contract";
 import type { SuppliedCitation } from "./generation-schema";
 

@@ -11,7 +11,7 @@ export async function assertGapInputsMutable(input: {
   organizationId: string;
   moduleId: string;
 }) {
-  const activeGeneration = await db.query.gapReassessmentDrafts.findFirst({
+  const activeGeneration = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
     where: and(
       eq(gapReassessmentDrafts.organizationId, input.organizationId),
       eq(gapReassessmentDrafts.status, "locked"),
@@ -25,7 +25,7 @@ export async function assertGapInputsMutable(input: {
       "GAP_INPUTS_LOCKED",
     );
   }
-  const artifact = await db.query.generatedArtifacts.findFirst({
+  const artifact = await db.query.generatedArtifacts.findFirst({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true },
     where: and(
       eq(generatedArtifacts.organizationId, input.organizationId),
       eq(generatedArtifacts.moduleId, input.moduleId),
@@ -43,7 +43,7 @@ export async function assertGapInputsMutable(input: {
 }
 
 export async function assertGapFindingsMutable(organizationId: string) {
-  const plan = await db.query.actionPlans.findFirst({
+  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
     where: and(
       eq(actionPlans.organizationId, organizationId),
       eq(actionPlans.status, "active"),

@@ -289,6 +289,7 @@ function fixtureHeader(): RuntimeReleaseHeader {
       checkCode: "check",
       versionLabel: "2026-v1",
       moduleId: "module-1",
+      questionnaireId: "questionnaire-1",
       questionnaireVersionId: "questionnaire-version-1",
       scopeModelVersionId: "scope-model-version-1",
       scopeThresholdSetId: "threshold-1",

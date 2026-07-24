@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { retrieveDocumentEvidence } from "../../documents/retrieval";
+import { retrieveDocumentEvidence } from "@/src/server/documents";
 import type { GroundingContextItem } from "./types";
 
 export async function retrieveOrganizationContext(input: {

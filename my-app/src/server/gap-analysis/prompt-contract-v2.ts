@@ -1,4 +1,4 @@
-import { contentHash } from "../compliance/publishing/canonical-json";
+import { contentHash } from "@/src/server/compliance/domain";
 
 export const GAP_PROMPT_V2_NAME = "nis2_gap_analysis";
 export const GAP_PROMPT_V2_VERSION = "2";

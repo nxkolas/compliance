@@ -74,7 +74,7 @@ export async function loadGapHistoryPreauthorized(input: {
   locale: Locale;
   limit?: number;
 }) {
-  const rows = await db.query.auditEvents.findMany({
+  const rows = await db.query.auditEvents.findMany({ columns: { id: true, organizationId: true, actorUserId: true, eventType: true, entityType: true, entityId: true, metadata: true, createdAt: true },
     where: and(
       eq(auditEvents.organizationId, input.organizationId),
       inArray(auditEvents.eventType, [...gapEventTypes]),

@@ -3,8 +3,8 @@ import { resolveRequestId } from "@/src/server/api/request-id";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError } from "@/src/server/api/errors";
 import { readJsonBody } from "@/src/server/api/request";
-import { getGuestApplicabilityToken, getGuestApplicabilityTokenFromRequest, guestApplicabilityCookieName } from "@/src/server/applicability-check/guest-cookie";
-import { claimGuestApplicabilityCheckForUser } from "@/src/server/applicability-check/service";
+import { getGuestApplicabilityToken, getGuestApplicabilityTokenFromRequest, guestApplicabilityCookieName } from "@/src/server/applicability-check";
+import { claimGuestApplicabilityCheckForUser } from "@/src/server/applicability-check";
 import { claimGuestApplicabilityCheckSchema } from "@/src/contracts/applicability-check";
 export async function POST(request: Request) {
   const requestId = resolveRequestId(request);

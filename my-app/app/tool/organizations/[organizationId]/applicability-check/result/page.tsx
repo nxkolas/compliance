@@ -6,7 +6,7 @@ import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getApplicabilityRecalculationLockForUser,
   getApplicabilityResultForUser,
-} from "@/src/server/applicability-check/service";
+} from "@/src/server/applicability-check";
 import {
   ArrowLeft,
   ClipboardList,

@@ -1,8 +1,8 @@
 import "dotenv/config";
 
 import postgres from "postgres";
-import { closeDbConnection } from "@/src/db";
-import { getActiveGapAnalysisRelease } from "@/src/server/gap-analysis/release-loader";
+import { closeDatabaseConnection } from "@/src/server/database-lifecycle";
+import { getActiveGapAnalysisRelease } from "@/src/server/gap-analysis";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -78,17 +78,19 @@ async function main() {
 
   const requirements = await sql<RequirementRow[]>`
     with active_requirements as (
-      select requirement.id as requirement_version_id,
+      select requirement_version.id as requirement_version_id,
         requirement.code,
-        requirement.title_content_revision_id,
-        requirement.requirement_text_content_revision_id
+        requirement_version.title_content_revision_id,
+        requirement_version.requirement_text_content_revision_id
       from active_gap_analysis_releases active
       join gap_analysis_releases release
         on release.id = active.gap_analysis_release_id
       join gap_requirement_set_members member
         on member.requirement_set_version_id = release.requirement_set_version_id
-      join gap_requirement_versions requirement
-        on requirement.id = member.requirement_version_id
+      join gap_requirement_versions requirement_version
+        on requirement_version.id = member.requirement_version_id
+      join gap_requirements requirement
+        on requirement.id = requirement_version.requirement_id
       where active.release_code = 'nis2-gap'
     )
     select active.requirement_version_id,
@@ -225,5 +227,5 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await Promise.all([sql.end(), closeDbConnection()]);
+    await Promise.all([sql.end(), closeDatabaseConnection()]);
   });

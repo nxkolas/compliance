@@ -1,7 +1,7 @@
 import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError } from "@/src/server/api/errors";
-import { listOrganizationDocumentVersionsPage } from "@/src/server/documents/service";
+import { listOrganizationDocumentVersionsPage } from "@/src/server/documents";
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
 import { parseInput } from "@/src/server/api/request";
 export const GET = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string; documentId: string }> } }) => {

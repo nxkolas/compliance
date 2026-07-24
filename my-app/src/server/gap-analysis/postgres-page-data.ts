@@ -18,7 +18,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   getOrganizationDocumentLibraryPreauthorized,
-} from "../documents/service";
+} from "@/src/server/documents";
 import {
   getGapReassessmentDraftPreauthorized,
 } from "./reassessment-service";
@@ -66,7 +66,7 @@ export async function loadDocumentsAssessment(
   release: LoadedGapRelease,
 ) {
   return (
-    (await db.query.assessments.findFirst({
+    (await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
       where: and(
         eq(assessments.organizationId, input.organizationId),
         eq(assessments.moduleId, release.moduleId),
@@ -285,14 +285,14 @@ export async function loadRun(
 ) {
   if (context.aiProcessingRunId) {
     return (
-      (await db.query.aiProcessingRuns.findFirst({
+      (await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
         where: eq(aiProcessingRuns.id, context.aiProcessingRunId),
       })) ?? null
     );
   }
   if (context.generationJobId) {
     return (
-      (await db.query.aiProcessingRuns.findFirst({
+      (await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
         where: eq(aiProcessingRuns.jobId, context.generationJobId),
         orderBy: [desc(aiProcessingRuns.createdAt)],
       })) ?? null
@@ -300,7 +300,7 @@ export async function loadRun(
   }
   if (!context.assessmentRevisionId) return null;
   return (
-    (await db.query.aiProcessingRuns.findFirst({
+    (await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
       where: and(
         eq(aiProcessingRuns.organizationId, input.organizationId),
         eq(

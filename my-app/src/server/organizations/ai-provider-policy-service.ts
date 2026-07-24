@@ -7,7 +7,7 @@ import { defaultOrganizationAiProviderPolicy } from "@/src/server/ai/grounding/p
 
 export async function getOrganizationAiProviderPolicy(userId: string, organizationId: string) {
   await requireOrganizationCapability(userId, organizationId, "organizations:read");
-  const policy = await db.query.organizationAiProviderPolicies.findFirst({
+  const policy = await db.query.organizationAiProviderPolicies.findFirst({ columns: { organizationId: true, allowedProviderModes: true, externalDisclosureAllowed: true, retentionClassification: true, version: true, updatedBy: true, createdAt: true, updatedAt: true },
     where: eq(organizationAiProviderPolicies.organizationId, organizationId),
   });
   if (!policy) {

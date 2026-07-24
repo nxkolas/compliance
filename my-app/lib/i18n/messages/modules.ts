@@ -126,7 +126,7 @@ export const modulesMessages = defineFeatureMessages({
               startCurrent: "Prüfung mit aktuellen Regeln starten",
               unknown: "unbekannt",
               revision: "Ergebnisstand",
-              outcome: "Outcome",
+              outcome: "Ergebnis",
               profile: "Prüfprofil",
               jurisdiction: "Zuständigkeit",
               size: "Unternehmensgröße",

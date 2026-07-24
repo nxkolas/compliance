@@ -3,6 +3,10 @@
 Status: proposed implementation plan; product and architecture decisions
 confirmed on 2026-07-22.
 
+> Current-state note (2026-07-24): report provenance is implemented through
+> typed action-plan, artifact, and document source tables. References below to
+> polymorphic `report_sources` are historical design context.
+
 ## Outcome
 
 Complete the application backend as an internal Next.js backend-for-frontend:

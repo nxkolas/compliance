@@ -1,7 +1,7 @@
 import { ApplicabilityQuestionnaireForm } from "@/components/applicability-check/applicability-questionnaire-form";
 import { Button } from "@/components/ui/button";
 import { getDictionary, getLocale } from "@/lib/i18n";
-import { getApplicabilityQuestionnaireForGuest } from "@/src/server/applicability-check/service";
+import { getApplicabilityQuestionnaireForGuest } from "@/src/server/applicability-check";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";

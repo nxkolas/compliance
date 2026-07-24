@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateControlledUrl } from "@/src/worker/security/controlled-url";
+import { validateControlledUrl } from "@/src/server/corpus/controlled-url";
 
 describe("controlled source URLs", () => {
   it("accepts an exact public HTTPS target", async () => {

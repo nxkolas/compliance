@@ -20,7 +20,7 @@ vi.mock("@/src/server/organizations/service", () => ({
   getOrganizationForUser: mocks.getOrganizationForUser,
 }));
 
-vi.mock("@/src/server/idempotency/repository", () => ({
+vi.mock("@/src/server/idempotency", () => ({
   databaseIdempotencyRepository: {
     create: mocks.idempotencyCreate,
     find: mocks.idempotencyFind,

@@ -1,4 +1,4 @@
-import { parseRuleSetDocument } from "../../applicability-check/rule-set-schema";
+import { parseRuleSetDocument } from "@/src/server/applicability-check/domain";
 
 export type ActivationCompletenessSnapshot = {
   releasePublished: boolean;

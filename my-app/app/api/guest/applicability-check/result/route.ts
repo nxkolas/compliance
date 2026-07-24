@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { apiRoute } from "@/src/server/api/handler";
 import { resolveRequestId } from "@/src/server/api/request-id";
 import { ApiError } from "@/src/server/api/errors";
-import { getGuestApplicabilityToken, getGuestApplicabilityTokenFromRequest, guestApplicabilityCookieName } from "@/src/server/applicability-check/guest-cookie";
-import { deleteGuestApplicabilityCheck, getGuestApplicabilityCheck } from "@/src/server/applicability-check/service";
+import { getGuestApplicabilityToken, getGuestApplicabilityTokenFromRequest, guestApplicabilityCookieName } from "@/src/server/applicability-check";
+import { deleteGuestApplicabilityCheck, getGuestApplicabilityCheck } from "@/src/server/applicability-check";
 import { guestApplicabilityCheckReferenceSchema } from "@/src/contracts/applicability-check";
 import { parseInput, readOptionalJsonBody } from "@/src/server/api/request";
 export const GET = apiRoute(async ({ request }) => {

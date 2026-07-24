@@ -16,7 +16,7 @@ export async function resolveGroundingPolicy(input: {
   operation: keyof typeof operationPolicies;
   organizationId: string;
 }) {
-  const providerPolicy = await db.query.organizationAiProviderPolicies.findFirst({
+  const providerPolicy = await db.query.organizationAiProviderPolicies.findFirst({ columns: { organizationId: true, allowedProviderModes: true, externalDisclosureAllowed: true, retentionClassification: true, version: true, updatedBy: true, createdAt: true, updatedAt: true },
     where: eq(organizationAiProviderPolicies.organizationId, input.organizationId),
   });
   if (!providerPolicy) {

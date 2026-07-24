@@ -1,7 +1,8 @@
-import type { backgroundJobs } from "@/src/db/schema";
+import type { BackgroundJobRecord } from "@/src/server/jobs";
 import { runMaintenanceCleanup } from "@/src/server/api/cleanup";
 
-export async function handleCleanup(job: typeof backgroundJobs.$inferSelect) {
+export async function handleCleanup(job: BackgroundJobRecord) {
   await runMaintenanceCleanup();
-  return { type: "maintenance_cleanup", id: job.id };
+  void job;
+  return undefined;
 }

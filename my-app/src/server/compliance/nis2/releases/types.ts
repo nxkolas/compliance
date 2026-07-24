@@ -1,4 +1,4 @@
-import type { Nis2EntityRule } from "../../../applicability-check/rule-set-schema";
+import type { Nis2EntityRule } from "@/src/server/applicability-check/domain";
 
 export type RequiredLocale = "de" | "en";
 

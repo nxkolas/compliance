@@ -6,7 +6,7 @@ import { createOrganizationInvitation, getOrganizationInvitation, listOrganizati
 import { invitationInputSchema } from "@/src/contracts/organizations";
 import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
 import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency/repository";
+import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import type { OrganizationInvitationDto } from "@/src/server/organizations/types";
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
 type Context = { params: Promise<{ organizationId: string }> };
@@ -20,7 +20,7 @@ export const POST = apiRoute(async ({ request, routeContext }: { request: Reques
   const user = await requireApiUser(); const { organizationId } = await routeContext.params;
   await enforceOperationRateLimit({ userId: user.id, operation: "invitations:write", scopeId: organizationId });
   const body = await readJsonBody(request, invitationInputSchema);
-  const result = await runIdempotentCommand<OrganizationInvitationDto>({ repository: databaseIdempotencyRepository, request, actorKey: user.id, scope: organizationId,
+  const result = await runIdempotentCommand<OrganizationInvitationDto>({ repository: databaseIdempotencyRepository, request, actorKey: user.id, organizationId, scope: organizationId,
     operation: "invitation.create", requestInput: body, resultType: "organization_invitation", responseStatus: 201,
     execute: () => createOrganizationInvitation(user.id, organizationId, body), resultId: (invitation) => invitation.id,
     replay: (id) => getOrganizationInvitation(user.id, organizationId, id),

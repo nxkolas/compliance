@@ -21,7 +21,6 @@ export type GapRequirementDefinition = {
   criticality: "low" | "medium" | "high" | "critical";
   title: LocalizedText;
   requirementText: LocalizedText;
-  recommendation: LocalizedText;
   legalReferences: Array<{
     label: LocalizedText;
     url: string;
@@ -45,11 +44,6 @@ export type GapAnalysisReleaseDefinition = {
     responseSchemaVersion: string;
   };
   evaluator: { kind: string; version: number };
-  modelPolicy: {
-    provider: string;
-    model: string;
-    maxRequirementsPerBatch: number;
-  };
   questionnaire: {
     code: string;
     title: LocalizedText;

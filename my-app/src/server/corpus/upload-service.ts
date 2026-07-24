@@ -7,10 +7,11 @@ import {
   legalSources,
   legalSourceVersions,
   platformAuditEvents,
+  uploadSessionResults,
   uploadSessions,
 } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
-import { createUploadSession, verifyUploadedObject } from "@/src/server/uploads/service";
+import { createUploadSession, verifyUploadedObject } from "@/src/server/uploads";
 import { getSupabaseAdminClient } from "../supabase-admin";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -30,7 +31,7 @@ export async function createLegalSourceUploadSession(input: {
   sha256?: string;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:curate");
-  const source = await db.query.legalSources.findFirst({ where: eq(legalSources.id, input.sourceId) });
+  const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalSources.id, input.sourceId) });
   if (!source || source.withdrawnAt) throw new ApiError(404, "Legal source not found", undefined, "LEGAL_SOURCE_NOT_FOUND");
   return createUploadSession({
     userId: input.actorUserId,
@@ -61,6 +62,7 @@ export async function completeLegalSourceUpload(input: {
   versionLabel: string;
   officialIdentifier?: string;
   upstreamUrl?: string;
+  upstreamPublishedAt?: string;
   effectiveFrom?: string;
   effectiveTo?: string;
   language: string;
@@ -78,33 +80,46 @@ export async function completeLegalSourceUpload(input: {
   if (verified.scope !== `legal-source:${input.sourceId}`) {
     throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
   }
-  if (verified.state === "completed" && verified.resultId) {
-    const rendition = await db.query.legalSourceRenditions.findFirst({
-      where: eq(legalSourceRenditions.id, verified.resultId),
+  if (verified.state === "completed") {
+    const completedResult = await db.query.uploadSessionResults.findFirst({
+      where: eq(uploadSessionResults.sessionId, verified.id),
+      columns: { legalSourceRenditionId: true },
+    });
+    const renditionId = completedResult?.legalSourceRenditionId;
+    if (!renditionId) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
+    const rendition = await db.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
+      where: eq(legalSourceRenditions.id, renditionId),
     });
     if (!rendition) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
-    const version = await db.query.legalSourceVersions.findFirst({
+    const version = await db.query.legalSourceVersions.findFirst({ columns: { id: true, sourceId: true, versionLabel: true, officialIdentifier: true, upstreamPublishedAt: true, retrievedAt: true, upstreamUrl: true, effectiveFrom: true, effectiveTo: true, contentHash: true, status: true, reviewedBy: true, reviewedAt: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, createdBy: true, createdAt: true },
       where: eq(legalSourceVersions.id, rendition.sourceVersionId),
     });
-    const generation = await db.query.legalSourceProcessingGenerations.findFirst({
+    const generation = await db.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
       where: eq(legalSourceProcessingGenerations.renditionId, rendition.id),
     });
     const job = generation?.jobId
-      ? await db.query.backgroundJobs.findFirst({ where: eq(backgroundJobs.id, generation.jobId) })
+      ? await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: eq(backgroundJobs.id, generation.jobId) })
       : undefined;
     if (!version || !generation || !job) throw new ApiError(409, "Completed upload result is incomplete", undefined, "UPLOAD_RESULT_MISSING");
     return { version, rendition, generation, job };
   }
 
   return db.transaction(async (tx) => {
-    const [locked] = await tx.select().from(uploadSessions)
+    const [locked] = await tx.select({
+      id: uploadSessions.id,
+      bucket: uploadSessions.bucket,
+      objectPath: uploadSessions.objectPath,
+      actualMimeType: uploadSessions.actualMimeType,
+      actualSize: uploadSessions.actualSize,
+      actualSha256: uploadSessions.actualSha256,
+    }).from(uploadSessions)
       .where(and(eq(uploadSessions.id, input.sessionId), eq(uploadSessions.state, "verified")))
       .limit(1).for("update");
     if (!locked?.actualSha256 || !locked.actualMimeType || !locked.actualSize) {
       throw new ApiError(409, "Upload session is not verified", undefined, "UPLOAD_SESSION_NOT_VERIFIED");
     }
     const existingVersion = input.existingVersionId
-      ? await tx.query.legalSourceVersions.findFirst({
+      ? await tx.query.legalSourceVersions.findFirst({ columns: { id: true, sourceId: true, versionLabel: true, officialIdentifier: true, upstreamPublishedAt: true, retrievedAt: true, upstreamUrl: true, effectiveFrom: true, effectiveTo: true, contentHash: true, status: true, reviewedBy: true, reviewedAt: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, createdBy: true, createdAt: true },
           where: and(
             eq(legalSourceVersions.id, input.existingVersionId),
             eq(legalSourceVersions.sourceId, input.sourceId),
@@ -115,11 +130,23 @@ export async function completeLegalSourceUpload(input: {
     if (input.existingVersionId && !existingVersion) {
       throw new ApiError(404, "Draft source version not found", undefined, "LEGAL_SOURCE_VERSION_NOT_FOUND");
     }
-    const version = existingVersion ?? (await tx.insert(legalSourceVersions).values({
+    const upstreamPublishedAt = input.upstreamPublishedAt
+      ? new Date(input.upstreamPublishedAt)
+      : undefined;
+    const version = existingVersion
+      ? upstreamPublishedAt
+        ? (await tx
+            .update(legalSourceVersions)
+            .set({ upstreamPublishedAt })
+            .where(eq(legalSourceVersions.id, existingVersion.id))
+            .returning())[0]
+        : existingVersion
+      : (await tx.insert(legalSourceVersions).values({
         sourceId: input.sourceId,
         versionLabel: input.versionLabel,
         officialIdentifier: input.officialIdentifier,
         upstreamUrl: input.upstreamUrl,
+        upstreamPublishedAt,
         effectiveFrom: input.effectiveFrom,
         effectiveTo: input.effectiveTo,
         contentHash: locked.actualSha256,
@@ -130,7 +157,7 @@ export async function completeLegalSourceUpload(input: {
       if (!input.authoritativeRenditionId) {
         throw new ApiError(400, "A translated rendition requires its authoritative rendition", undefined, "AUTHORITATIVE_RENDITION_REQUIRED");
       }
-      const authoritative = await tx.query.legalSourceRenditions.findFirst({
+      const authoritative = await tx.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
         where: and(
           eq(legalSourceRenditions.id, input.authoritativeRenditionId),
           eq(legalSourceRenditions.sourceVersionId, version.id),
@@ -170,11 +197,13 @@ export async function completeLegalSourceUpload(input: {
     await tx.update(backgroundJobs).set({ payload: { renditionId: rendition.id, generationId: generation.id } }).where(eq(backgroundJobs.id, job.id));
     await tx.update(uploadSessions).set({
       state: "completed",
-      resultType: "legal_source_rendition",
-      resultId: rendition.id,
       completedAt: new Date(),
       updatedAt: new Date(),
     }).where(eq(uploadSessions.id, locked.id));
+    await tx.insert(uploadSessionResults).values({
+      sessionId: locked.id,
+      legalSourceRenditionId: rendition.id,
+    });
     await tx.insert(platformAuditEvents).values({
       actorUserId: input.actorUserId,
       eventType: "legal_source_rendition.created",

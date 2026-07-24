@@ -3,14 +3,33 @@ import { ApiError } from "./errors";
 
 export type IdempotencyRecord = {
   actorKey: string;
+  organizationId?: string;
   scope: string;
   operation: string;
   key: string;
   requestFingerprint: string;
   state: "in_progress" | "succeeded" | "failed";
   responseStatus?: number;
-  resultReference?: { type: string; id: string };
+  resultReference?: { type: IdempotencyResultType; id: string };
 };
+
+export type IdempotencyResultType =
+  | "platform_administrator"
+  | "legal_corpus_family"
+  | "background_job"
+  | "legal_processing_generation"
+  | "legal_corpus_release"
+  | "legal_source_rendition"
+  | "legal_source"
+  | "generated_artifact_revision"
+  | "assessment"
+  | "assessment_revision"
+  | "gap_reassessment_draft"
+  | "organization_invitation"
+  | "organization"
+  | "action_plan"
+  | "report"
+  | "document_version";
 
 export type IdempotencyClaim =
   | { kind: "started"; record: IdempotencyRecord }
@@ -65,10 +84,11 @@ export async function runIdempotentCommand<T>(input: {
   repository: IdempotencyRepository;
   request: Request;
   actorKey: string;
+  organizationId?: string;
   scope: string;
   operation: string;
   requestInput: unknown;
-  resultType: string;
+  resultType: IdempotencyResultType;
   execute: () => Promise<T>;
   resultId: (value: T) => string;
   replay: (id: string) => Promise<T>;
@@ -76,6 +96,7 @@ export async function runIdempotentCommand<T>(input: {
 }) {
   const claim = await claimIdempotency(input.repository, {
     actorKey: input.actorKey,
+    organizationId: input.organizationId,
     scope: input.scope,
     operation: input.operation,
     key: requireIdempotencyKey(input.request),
@@ -104,7 +125,7 @@ export async function runIdempotentCommand<T>(input: {
 export async function completeIdempotency(
   repository: IdempotencyRepository,
   record: IdempotencyRecord,
-  result: { responseStatus: number; resultReference: { type: string; id: string } },
+  result: { responseStatus: number; resultReference: { type: IdempotencyResultType; id: string } },
 ) {
   await repository.save({ ...record, ...result, state: "succeeded" });
 }

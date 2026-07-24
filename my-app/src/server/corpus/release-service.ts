@@ -69,7 +69,7 @@ export async function replaceCorpusReleaseMembers(input: {
 
 export async function publishCorpusRelease(input: { actorUserId: string; releaseId: string; requestId?: string }) {
   await requirePlatformCapability(input.actorUserId, "corpus:publish");
-  const release = await db.query.legalCorpusReleases.findFirst({ where: eq(legalCorpusReleases.id, input.releaseId) });
+  const release = await db.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalCorpusReleases.id, input.releaseId) });
   if (!release || release.status !== "draft") throw new ApiError(404, "Draft corpus release not found", undefined, "CORPUS_RELEASE_NOT_FOUND");
   const rows = await db.select({
     position: legalCorpusReleaseMembers.position,
@@ -102,7 +102,10 @@ export async function publishCorpusRelease(input: { actorUserId: string; release
       status: "published", contentHash: validation.contentHash, publishedBy: input.actorUserId, publishedAt: now, updatedAt: now,
     }).where(and(eq(legalCorpusReleases.id, release.id), eq(legalCorpusReleases.status, "draft"))).returning();
     if (!published) throw new ApiError(409, "Corpus release changed", undefined, "CORPUS_RELEASE_CHANGED");
-    await tx.update(legalSourceVersions).set({ status: "published" }).where(and(
+    await tx.update(legalSourceVersions).set({
+      status: "published",
+      publishedAt: now,
+    }).where(and(
       eq(legalSourceVersions.status, "reviewed"),
       inArray(legalSourceVersions.id, rows.map((row) => row.sourceVersionId)),
     ));
@@ -114,7 +117,7 @@ export async function publishCorpusRelease(input: { actorUserId: string; release
 export async function enqueueCorpusEvaluation(input: { actorUserId: string; releaseId: string; requestId?: string }) {
   await requirePlatformCapability(input.actorUserId, "corpus:operate");
   return db.transaction(async (tx) => {
-    const release = await tx.query.legalCorpusReleases.findFirst({ where: eq(legalCorpusReleases.id, input.releaseId) });
+    const release = await tx.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalCorpusReleases.id, input.releaseId) });
     if (!release || release.status !== "published") throw new ApiError(409, "Only published releases can be evaluated", undefined, "CORPUS_RELEASE_NOT_PUBLISHED");
     const [job] = await tx.insert(backgroundJobs).values({ kind: "grounding-evaluation", payload: { releaseId: release.id }, requestedByUserId: input.actorUserId, cancellable: true }).returning();
     await tx.update(legalCorpusReleases).set({ evaluationState: "pending", evaluationJobId: job.id, updatedAt: new Date() }).where(eq(legalCorpusReleases.id, release.id));
@@ -133,10 +136,10 @@ export async function enqueueCorpusEvaluation(input: { actorUserId: string; rele
 export async function activateCorpusRelease(input: { actorUserId: string; releaseId: string; emergencyOverrideReason?: string; requestId?: string }) {
   await requirePlatformCapability(input.actorUserId, "corpus:activate");
   return db.transaction(async (tx) => {
-    const release = await tx.query.legalCorpusReleases.findFirst({ where: eq(legalCorpusReleases.id, input.releaseId) });
+    const release = await tx.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalCorpusReleases.id, input.releaseId) });
     if (!release || release.status !== "published") throw new ApiError(409, "Corpus release is not published", undefined, "CORPUS_RELEASE_NOT_PUBLISHED");
     if (release.evaluationState !== "passed" && !input.emergencyOverrideReason?.trim()) throw new ApiError(409, "Corpus evaluation has not passed", undefined, "CORPUS_EVALUATION_REQUIRED");
-    const previous = await tx.query.activeLegalCorpusReleases.findFirst({ where: eq(activeLegalCorpusReleases.familyId, release.familyId) });
+    const previous = await tx.query.activeLegalCorpusReleases.findFirst({ columns: { familyId: true, releaseId: true, activatedBy: true, activatedAt: true }, where: eq(activeLegalCorpusReleases.familyId, release.familyId) });
     const now = new Date();
     await tx.insert(activeLegalCorpusReleases).values({ familyId: release.familyId, releaseId: release.id, activatedBy: input.actorUserId, activatedAt: now })
       .onConflictDoUpdate({ target: activeLegalCorpusReleases.familyId, set: { releaseId: release.id, activatedBy: input.actorUserId, activatedAt: now } });

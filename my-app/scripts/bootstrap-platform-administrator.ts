@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { closeDbConnection } from "@/src/db";
+import { closeDatabaseConnection } from "@/src/server/database-lifecycle";
 import { grantPlatformAdministrator } from "@/src/server/admin/platform-administrators";
 import * as z from "zod";
 
@@ -26,4 +26,4 @@ main()
     console.error(error);
     process.exitCode = 1;
   })
-  .finally(() => closeDbConnection());
+  .finally(() => closeDatabaseConnection());

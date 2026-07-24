@@ -25,9 +25,12 @@ export function localizeGapFinding<
     requirement: {
       ...row.requirement,
       stableRequirementId: catalogue.stableRequirementId,
+      code: catalogue.code,
       position: catalogue.position,
+      criticality: catalogue.criticality,
       title: catalogue.title,
       requirementText: catalogue.requirementText,
+      legalReferences: catalogue.legalReferences,
     },
   };
 }

@@ -13,7 +13,7 @@ export async function resolveOrganizationCapabilities(
   userId: string,
   organizationId: string,
 ) {
-  const membership = await db.query.organizationMemberships.findFirst({
+  const membership = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
     where: and(
       eq(organizationMemberships.userId, userId),
       eq(organizationMemberships.organizationId, organizationId),
@@ -66,7 +66,7 @@ const archivedOrganizationCapabilities = new Set<OrganizationCapability>([
 ]);
 
 export async function resolvePlatformCapabilities(userId: string) {
-  const administrator = await db.query.platformAdministrators.findFirst({
+  const administrator = await db.query.platformAdministrators.findFirst({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true },
     where: and(
       eq(platformAdministrators.userId, userId),
       isNull(platformAdministrators.revokedAt),

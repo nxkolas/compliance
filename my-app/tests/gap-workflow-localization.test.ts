@@ -28,7 +28,6 @@ function release(
       responseSchemaVersion: "1",
     },
     evaluator: { kind: "deterministic", version: 1 },
-    modelPolicy: {},
     questions: [],
     requirements: [
       {
@@ -39,7 +38,6 @@ function release(
         criticality: "high",
         title,
         requirementText: `${title} text`,
-        recommendation: "Recommendation",
         legalReferences: [],
         applicabilityOutcomeCodes: ["essential_entity"],
         questionStableKeys: ["question"],
@@ -68,25 +66,47 @@ function finding(requirementVersionId: string, revisionId: string) {
 
 describe("Gap workflow localization", () => {
   it("uses each result revision's pinned release catalogue", async () => {
+    const newRequirementId = "db04d289-e7aa-4548-9674-f50a5e62aa72";
+    const oldRequirementId = "ef69e5aa-88ec-4527-ae79-df059c6e74df";
     const activeRelease = release(
       "release-new",
-      "requirement-new",
+      newRequirementId,
       "New localized title",
     );
     const historicalRelease = release(
       "release-old",
-      "requirement-old",
+      oldRequirementId,
       "Historical localized title",
     );
     const acceptedRevision = {
       id: "accepted",
       gapAnalysisReleaseId: historicalRelease.id,
-      result: {},
+      result: {
+        schemaKind: "gap_revision_metadata_v1",
+        outputLocale: "en",
+        findingDiagnostics: [{
+          requirementVersionId: oldRequirementId,
+          contradictions: [],
+          questionnaireDisagreements: [],
+        }],
+        correctedFromRevisionId: null,
+        correctedRequirementVersionIds: [],
+      },
     };
     const candidateRevision = {
       id: "candidate",
       gapAnalysisReleaseId: activeRelease.id,
-      result: {},
+      result: {
+        schemaKind: "gap_revision_metadata_v1",
+        outputLocale: "en",
+        findingDiagnostics: [{
+          requirementVersionId: newRequirementId,
+          contradictions: [],
+          questionnaireDisagreements: [],
+        }],
+        correctedFromRevisionId: null,
+        correctedRequirementVersionIds: [],
+      },
     };
     const reader = {
       readGap: vi.fn(async () => ({
@@ -94,9 +114,9 @@ describe("Gap workflow localization", () => {
         revision: candidateRevision,
         acceptedRevision,
         candidateRevision,
-        findings: [finding("requirement-new", "candidate")],
-        acceptedFindings: [finding("requirement-old", "accepted")],
-        candidateFindings: [finding("requirement-new", "candidate")],
+        findings: [finding(newRequirementId, "candidate")],
+        acceptedFindings: [finding(oldRequirementId, "accepted")],
+        candidateFindings: [finding(newRequirementId, "candidate")],
         answers: {},
         reassessment: null,
         documentLibrary: { documents: [] },

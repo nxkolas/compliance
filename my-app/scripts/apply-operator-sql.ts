@@ -7,9 +7,13 @@ import postgres from "postgres";
 const approvedFiles = new Set([
   "scripts/sql/api-corpus-integrity-additions.sql",
   "scripts/sql/audit-events-append-only.sql",
+  "scripts/sql/database-remediation-identity-fks.sql",
+  "scripts/sql/database-remediation-integrity.sql",
+  "scripts/sql/database-remediation-pre-push.sql",
   "scripts/sql/legal-corpus-indexes.sql",
   "scripts/sql/legal-corpus-server-only.sql",
   "scripts/sql/phase1-server-only.sql",
+  "scripts/sql/remediation-rehearsal-bootstrap.sql",
   "scripts/sql/workflow-server-only.sql",
   "supabase/sql-editor/001_server_only_definition_rls.sql",
   "supabase/sql-editor/002_server_only_application_data_rls.sql",
@@ -39,6 +43,17 @@ async function main() {
   const client = postgres(databaseUrl!, { prepare: false, max: 1 });
   try {
     for (const file of files) {
+      if (file.repositoryPath === "scripts/sql/api-corpus-integrity-additions.sql") {
+        const [state] = await client<{ schemaReady: boolean }[]>`
+          select to_regclass('public.background_jobs') is not null as "schemaReady"
+        `;
+        if (!state.schemaReady) {
+          console.log(
+            `Deferred ${file.repositoryPath}; application tables are not present yet.`,
+          );
+          continue;
+        }
+      }
       const sql = await readFile(file.absolutePath, "utf8");
       await client.unsafe(sql);
       console.log(`Applied ${file.repositoryPath}.`);

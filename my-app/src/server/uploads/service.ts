@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, notExists, sql } from "drizzle-orm";
 import { db } from "@/src/db";
-import { uploadSessions } from "@/src/db/schema";
+import { uploadSessionResults, uploadSessions } from "@/src/db/schema";
 import type { UploadSessionDto } from "@/src/contracts/common/uploads";
 import { ApiError } from "../api/errors";
 import { validateUploadInput, type UploadPolicy } from "./policy";
@@ -89,7 +89,7 @@ export async function verifyUploadedObject(input: {
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  const session = await db.query.uploadSessions.findFirst({
+  const session = await db.query.uploadSessions.findFirst({ columns: { id: true, organizationId: true, createdByUserId: true, scope: true, bucket: true, objectPath: true, fileName: true, expectedMimeType: true, expectedSize: true, expectedSha256: true, actualMimeType: true, actualSize: true, actualSha256: true, state: true, safeErrorCode: true, expiresAt: true, completedAt: true, createdAt: true, updatedAt: true },
     where: and(eq(uploadSessions.id, input.sessionId), eq(uploadSessions.createdByUserId, input.userId)),
   });
   if (!session) throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
@@ -135,19 +135,31 @@ export async function markUploadSessionCompleted(input: {
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  const [session] = await db
-    .update(uploadSessions)
-    .set({
-      state: "completed",
-      resultType: input.result.type,
-      resultId: input.result.id,
-      completedAt: now,
-      updatedAt: now,
-    })
-    .where(and(eq(uploadSessions.id, input.sessionId), eq(uploadSessions.state, "verified")))
-    .returning();
-  if (!session) throw new ApiError(409, "Upload session is not verified", undefined, "UPLOAD_SESSION_NOT_VERIFIED");
-  return session;
+  const resultValues = toUploadResultValues(input.sessionId, input.result);
+  return db.transaction(async (tx) => {
+    const [session] = await tx
+      .update(uploadSessions)
+      .set({
+        state: "completed",
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(uploadSessions.id, input.sessionId), eq(uploadSessions.state, "verified")))
+      .returning();
+    if (!session) throw new ApiError(409, "Upload session is not verified", undefined, "UPLOAD_SESSION_NOT_VERIFIED");
+    await tx.insert(uploadSessionResults).values(resultValues);
+    return session;
+  });
+}
+
+export async function getUploadSessionResult(sessionId: string) {
+  return db.query.uploadSessionResults.findFirst({
+    where: eq(uploadSessionResults.sessionId, sessionId),
+    columns: {
+      documentVersionId: true,
+      legalSourceRenditionId: true,
+    },
+  });
 }
 
 export async function expireUploadSessions(now = new Date()) {
@@ -165,8 +177,23 @@ export async function listUnreferencedFailedUploads(before: Date) {
     .where(and(
       inArray(uploadSessions.state, ["expired", "failed"]),
       lt(uploadSessions.updatedAt, before),
-      isNull(uploadSessions.resultId),
+      notExists(
+        db.select({ sessionId: uploadSessionResults.sessionId })
+          .from(uploadSessionResults)
+          .where(eq(uploadSessionResults.sessionId, uploadSessions.id)),
+      ),
     ));
+}
+
+export function toUploadResultValues(sessionId: string, result: { type: string; id: string }) {
+  switch (result.type) {
+    case "document_version":
+      return { sessionId, documentVersionId: result.id };
+    case "legal_source_rendition":
+      return { sessionId, legalSourceRenditionId: result.id };
+    default:
+      throw new ApiError(500, "Unsupported upload result kind", undefined, "UPLOAD_RESULT_KIND_INVALID");
+  }
 }
 
 function toUploadSessionDto(session: typeof uploadSessions.$inferSelect): UploadSessionDto {

@@ -18,9 +18,11 @@ import * as z from "zod";
 import { createHash, randomBytes } from "node:crypto";
 import type { User } from "@supabase/supabase-js";
 import { ApiError } from "../api/errors";
-import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
-import { loadPublishedReleasesById } from "../compliance/runtime-release/load-published-releases";
-import type { RuntimeReleaseReader } from "../compliance/runtime-release/types";
+import {
+  loadPublishedReleasesById,
+  nextCachedRuntimeReleaseReader,
+  type RuntimeReleaseReader,
+} from "@/src/server/compliance";
 import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
@@ -142,7 +144,7 @@ export async function getOrganizationForUser(
   userId: string,
   organizationId: string,
 ): Promise<OrganizationDto | null> {
-  const membership = await db.query.organizationMemberships.findFirst({
+  const membership = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
     where: and(
       eq(organizationMemberships.userId, userId),
       eq(organizationMemberships.organizationId, organizationId),
@@ -182,7 +184,7 @@ export async function listOrganizationMembersPage(input: { userId: string; organ
   await requireOrganizationCapability(input.userId, input.organizationId, "members:read");
   const scope = `organization-members:${input.organizationId}`;
   const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.organizationMemberships.findMany({
+  const rows = await db.query.organizationMemberships.findMany({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
     where: and(eq(organizationMemberships.organizationId, input.organizationId), cursor ? or(gt(organizationMemberships.createdAt, new Date(cursor[0])), and(eq(organizationMemberships.createdAt, new Date(cursor[0])), gt(organizationMemberships.id, cursor[1]))) : undefined),
     orderBy: [asc(organizationMemberships.createdAt), asc(organizationMemberships.id)],
     limit: input.limit + 1,
@@ -216,7 +218,7 @@ export async function updateOrganizationMember(input: {
     if (!lockedOrganization) {
       throw new ApiError(404, "Organization not found", undefined, "ORGANIZATION_NOT_FOUND");
     }
-    const current = await tx.query.organizationMemberships.findFirst({
+    const current = await tx.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
       where: and(eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.userId, input.memberUserId)),
     });
     if (!current) throw new ApiError(404, "Organization member not found", undefined, "MEMBER_NOT_FOUND");
@@ -249,7 +251,7 @@ export async function setOrganizationMemberStatus(input: {
   status: "active" | "suspended"; expectedVersion: number;
 }) {
   await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
-  const current = await db.query.organizationMemberships.findFirst({
+  const current = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
     where: and(eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.userId, input.memberUserId)),
   });
   if (!current) throw new ApiError(404, "Organization member not found", undefined, "MEMBER_NOT_FOUND");
@@ -343,7 +345,7 @@ export async function listOrganizationInvitationsPage(input: { userId: string; o
   await assertCanManageOrganization(input.userId, input.organizationId);
   const scope = `organization-invitations:${input.organizationId}`;
   const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.organizationInvitations.findMany({ where: and(eq(organizationInvitations.organizationId, input.organizationId), cursor ? or(lt(organizationInvitations.createdAt, new Date(cursor[0])), and(eq(organizationInvitations.createdAt, new Date(cursor[0])), lt(organizationInvitations.id, cursor[1]))) : undefined), orderBy: [desc(organizationInvitations.createdAt), desc(organizationInvitations.id)], limit: input.limit + 1 });
+  const rows = await db.query.organizationInvitations.findMany({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: and(eq(organizationInvitations.organizationId, input.organizationId), cursor ? or(lt(organizationInvitations.createdAt, new Date(cursor[0])), and(eq(organizationInvitations.createdAt, new Date(cursor[0])), lt(organizationInvitations.id, cursor[1]))) : undefined), orderBy: [desc(organizationInvitations.createdAt), desc(organizationInvitations.id)], limit: input.limit + 1 });
   const page = rows.slice(0, input.limit); const last = page.at(-1);
   return { invitations: page.map(toInvitationDto), nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
 }
@@ -361,7 +363,7 @@ export async function listMailboxInvitationsForUserPage(input: { user: User; lim
   }
   const scope = `invitation-mailbox:${user.id}`;
   const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.organizationInvitations.findMany({
+  const rows = await db.query.organizationInvitations.findMany({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true },
     where: and(
       eq(organizationInvitations.email, normalizeEmail(user.email)),
       eq(organizationInvitations.status, "pending"),
@@ -437,7 +439,7 @@ export async function acceptOrganizationInvitation(
 ): Promise<OrganizationInvitationDto> {
   const token = normalizeRequiredString(input.token, "token");
   const tokenHash = hashInvitationToken(token);
-  const invitation = await db.query.organizationInvitations.findFirst({
+  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true },
     where: eq(organizationInvitations.tokenHash, tokenHash),
   });
 
@@ -452,7 +454,7 @@ export async function acceptMailboxInvitation(
   user: User,
   invitationId: string,
 ): Promise<OrganizationInvitationDto> {
-  const invitation = await db.query.organizationInvitations.findFirst({
+  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true },
     where: eq(organizationInvitations.id, invitationId),
   });
 
@@ -472,7 +474,7 @@ export async function assertCanAccessOrganization(
 
 export async function getOrganizationInvitation(userId: string, organizationId: string, invitationId: string) {
   await requireOrganizationCapability(userId, organizationId, "members:read");
-  const invitation = await db.query.organizationInvitations.findFirst({ where: and(
+  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: and(
     eq(organizationInvitations.id, invitationId), eq(organizationInvitations.organizationId, organizationId),
   ) });
   if (!invitation) throw new ApiError(404, "Invitation not found", undefined, "INVITATION_NOT_FOUND");
@@ -491,7 +493,7 @@ export async function revokeOrganizationInvitation(input: { userId: string; orga
 
 export async function resendOrganizationInvitation(input: { userId: string; organizationId: string; invitationId: string }) {
   await requireOrganizationCapability(input.userId, input.organizationId, "members:invite");
-  const invitation = await db.query.organizationInvitations.findFirst({ where: and(
+  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: and(
     eq(organizationInvitations.id, input.invitationId), eq(organizationInvitations.organizationId, input.organizationId),
   ) });
   if (!invitation || invitation.status === "accepted") throw new ApiError(409, "Invitation cannot be resent", undefined, "INVITATION_NOT_RESENDABLE");

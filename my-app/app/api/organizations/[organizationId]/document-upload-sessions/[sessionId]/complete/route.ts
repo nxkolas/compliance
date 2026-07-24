@@ -3,11 +3,11 @@ import { documentUploadCompletionSchema } from "@/src/contracts/documents";
 import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { readJsonBody } from "@/src/server/api/request";
-import { completeDocumentUpload } from "@/src/server/documents/service";
+import { completeDocumentUpload } from "@/src/server/documents";
 import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
 import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency/repository";
-import { getOrganizationDocumentVersion } from "@/src/server/documents/service";
+import { databaseIdempotencyRepository } from "@/src/server/idempotency";
+import { getOrganizationDocumentVersion } from "@/src/server/documents";
 export const POST = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string; sessionId: string }> } }) => {
   const user = await requireApiUser(); const params = await routeContext.params;
   await enforceOperationRateLimit({ userId: user.id, operation: "uploads:complete", scopeId: params.organizationId });
@@ -16,6 +16,7 @@ export const POST = apiRoute(async ({ request, routeContext }: { request: Reques
     repository: databaseIdempotencyRepository,
     request,
     actorKey: user.id,
+    organizationId: params.organizationId,
     scope: params.organizationId,
     operation: "document-upload.complete",
     requestInput: { sessionId: params.sessionId, ...body },

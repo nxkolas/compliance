@@ -14,7 +14,6 @@ function requirement(
     criticality: "high",
     title,
     requirementText,
-    recommendation: "Recommendation",
     legalReferences: [],
     applicabilityOutcomeCodes: ["essential_entity"],
     questionStableKeys: ["question"],

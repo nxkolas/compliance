@@ -1,6 +1,9 @@
 # Supabase server-only data, evidence infrastructure, and guest-retention runbook
 
-This runbook applies the Supabase-specific part of the immutable NIS2 release cutover. Ordinary tables, constraints, indexes, and relations remain owned by Drizzle.
+This runbook applies the Supabase-specific part of the immutable NIS2 release
+cutover. Ordinary tables, constraints, indexes, and relations remain owned by
+Drizzle, except for the explicitly audited remediation integrity
+functions/triggers and the existing Supabase infrastructure SQL.
 
 ## Preconditions
 
@@ -28,28 +31,22 @@ Run the schema and SQL Editor files in this order:
 1. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql`. Before the
    Drizzle tables exist, it creates the vector extension and reports that its
    table-dependent work is deferred.
-2. Run `npm.cmd run db:push`.
-3. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
-4. Run `supabase/sql-editor/001_server_only_definition_rls.sql`.
-5. Run `supabase/sql-editor/002_server_only_application_data_rls.sql`.
-6. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
+2. Apply `scripts/sql/database-remediation-pre-push.sql`.
+3. Run the guarded strict Drizzle pass and
+   `scripts/sql/database-remediation-identity-fks.sql` exactly as documented in
+   the reset/reseed runbook.
+4. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
+5. Run `supabase/sql-editor/001_server_only_definition_rls.sql`.
+6. Run `supabase/sql-editor/002_server_only_application_data_rls.sql`.
+7. Run `scripts/sql/workflow-server-only.sql`.
+8. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
+9. Run the API/corpus server-only and append-only SQL files, then
+   `scripts/sql/database-remediation-integrity.sql`.
 
-All four files are idempotent. `001` and `002` fail immediately when an
+All SQL files above are idempotent. `001` and `002` fail immediately when an
 expected Drizzle table is absent. The reassessment tables enable RLS in
 `src/db/schema.ts`; the grant verification below remains mandatory for every
 public table, including those workflow tables.
-
-The current `001`/`002` table lists predate the three workflow tables below.
-RLS without a policy is default-deny, but revoke their browser grants explicitly
-after `db:push` as defense in depth:
-
-```sql
-revoke all privileges on table
-  public.gap_requirements,
-  public.gap_reassessment_drafts,
-  public.gap_reassessment_draft_documents
-from anon, authenticated;
-```
 
 After the SQL files succeed, publish and activate the repository release separately:
 
@@ -112,6 +109,19 @@ rollback;
 ```
 
 Then smoke-test through server APIs only: login, organization access, authenticated questionnaire load/submission/result, guest load/submission/result, guest claim, and organization-fact reuse.
+
+Run the automated verifiers:
+
+```powershell
+npm.cmd run db:verify:server-only
+npm.cmd run db:verify:remediation-integrity
+npm.cmd run storage:verify
+```
+
+The remediation verifier exercises both valid and deliberately invalid
+transactions. It proves composite owner/identity foreign keys, typed-value
+checks, metadata-only Gap JSON, and the deferred trigger that requires exactly
+one normalized finding per applicable requirement.
 
 For the organization-only evidence workflow, also verify:
 

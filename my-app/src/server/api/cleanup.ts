@@ -1,7 +1,7 @@
 import { db } from "@/src/db";
-import { apiRateLimitWindows, backgroundJobs, idempotencyRecords, uploadSessions } from "@/src/db/schema";
-import { and, eq, inArray, isNull, lt } from "drizzle-orm";
-import { expireUploadSessions, listUnreferencedFailedUploads } from "@/src/server/uploads/service";
+import { apiRateLimitWindows, backgroundJobs, idempotencyRecords, uploadSessionResults, uploadSessions } from "@/src/db/schema";
+import { and, eq, inArray, lt, notExists } from "drizzle-orm";
+import { expireUploadSessions, listUnreferencedFailedUploads } from "@/src/server/uploads";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 
 export async function cleanupExpiredApiPrimitives(now = new Date()) {
@@ -31,7 +31,11 @@ export async function runMaintenanceCleanup(now = new Date()) {
   }).where(and(
     eq(uploadSessions.state, "verified"),
     lt(uploadSessions.expiresAt, abandonedBefore),
-    isNull(uploadSessions.resultId),
+    notExists(
+      db.select({ sessionId: uploadSessionResults.sessionId })
+        .from(uploadSessionResults)
+        .where(eq(uploadSessionResults.sessionId, uploadSessions.id)),
+    ),
   )).returning({ id: uploadSessions.id });
   const candidates = await listUnreferencedFailedUploads(abandonedBefore);
   let removedObjects = 0;
@@ -43,7 +47,11 @@ export async function runMaintenanceCleanup(now = new Date()) {
     const deleted = await db.delete(uploadSessions).where(and(
       eq(uploadSessions.id, candidate.id),
       inArray(uploadSessions.state, ["expired", "failed"]),
-      isNull(uploadSessions.resultId),
+      notExists(
+        db.select({ sessionId: uploadSessionResults.sessionId })
+          .from(uploadSessionResults)
+          .where(eq(uploadSessionResults.sessionId, uploadSessions.id)),
+      ),
     )).returning({ id: uploadSessions.id });
     if (deleted.length) {
       removedObjects += 1;

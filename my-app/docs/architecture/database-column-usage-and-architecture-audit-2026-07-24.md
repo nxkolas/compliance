@@ -6,6 +6,10 @@ Scope: PostgreSQL schema, runtime usage, operational scripts, tests, and persist
 Implementation response:
 [Database Column and Persistence Architecture Remediation](../plans/database-column-and-persistence-architecture-remediation.md)
 
+> Remediation status (2026-07-24): the linked response is implemented. This
+> file remains the pre-remediation audit snapshot; table/column names and
+> recommendations below intentionally describe the state that was audited.
+
 ## Executive summary
 
 The audit covered all 113 public database tables and all 951 columns declared

@@ -26,7 +26,7 @@ import {
 import {
   GAP_GROUNDING_INSTRUCTION,
   gapOutputLocaleInstruction,
-} from "../../gap-analysis/grounding-instruction";
+} from "@/src/server/gap-analysis";
 
 export async function runGroundedOperation<T>(input: {
   operation: "gap_analysis";
@@ -50,7 +50,7 @@ export async function runGroundedOperation<T>(input: {
   providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
   languageDetector?: LanguageDetector;
 } = {}) {
-  const existing = await db.query.aiProcessingRuns.findFirst({
+  const existing = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
     where: and(
       eq(aiProcessingRuns.organizationId, input.organizationId),
       eq(aiProcessingRuns.operationKind, "gap_analysis"),
@@ -66,7 +66,7 @@ export async function runGroundedOperation<T>(input: {
   }
   if (existing?.status === "processing" && existing.validatedOutput !== null) {
     const output = input.outputContract.schema.parse(existing.validatedOutput);
-    const rows = await db.query.aiProcessingRunContext.findMany({
+    const rows = await db.query.aiProcessingRunContext.findMany({ columns: { id: true, runId: true, channel: true, citationId: true, queryUnitId: true, queryHash: true, retrievalRank: true, retrievalScore: true, legalChunkId: true, documentChunkId: true, assessmentAnswerId: true, excerptHash: true, excerptSnapshot: true, disclosedExternally: true, promptPosition: true, createdAt: true },
       where: eq(aiProcessingRunContext.runId, existing.id),
       orderBy: [asc(aiProcessingRunContext.promptPosition)],
     });

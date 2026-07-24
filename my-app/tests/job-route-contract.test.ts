@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
 vi.mock("@/src/server/api/operation-rate-limit", () => ({ enforceOperationRateLimit: mocks.enforceOperationRateLimit }));
-vi.mock("@/src/server/jobs/service", () => ({
+vi.mock("@/src/server/jobs", () => ({
   getAuthorizedJob: mocks.getAuthorizedJob,
   requestJobCancellation: vi.fn(),
 }));

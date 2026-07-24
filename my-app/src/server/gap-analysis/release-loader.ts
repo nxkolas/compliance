@@ -6,6 +6,7 @@ import {
   contentTranslations,
   gapAnalysisReleaseApplicabilityRules,
   gapAnalysisReleases,
+  gapRequirements,
   gapRequirementSetMembers,
   gapRequirementSetVersions,
   gapRequirementVersions,
@@ -17,8 +18,6 @@ import {
 import type { Locale } from "@/lib/i18n-config";
 import { asc, eq, inArray } from "drizzle-orm";
 import { resolveGapContentTranslation } from "./localize-content";
-
-type LegacyLocalizedJson = { de: string; en: string };
 
 export type LoadedGapRelease = {
   id: string;
@@ -38,7 +37,6 @@ export type LoadedGapRelease = {
     responseSchemaVersion: string;
   };
   evaluator: { kind: string; version: number };
-  modelPolicy: unknown;
   questions: Array<{
     id: string;
     stableKey: string;
@@ -62,7 +60,6 @@ export type LoadedGapRelease = {
     criticality: "low" | "medium" | "high" | "critical";
     title: string;
     requirementText: string;
-    recommendation: string;
     legalReferences: unknown;
     applicabilityOutcomeCodes: string[];
     questionStableKeys: string[];
@@ -102,7 +99,7 @@ export function createGapReleaseReader(input: {
 export async function loadActiveGapAnalysisReleasePointer(
   releaseCode: string,
 ) {
-  return db.query.activeGapAnalysisReleases.findFirst({
+  return db.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
     where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),
   });
 }
@@ -111,28 +108,28 @@ export async function loadGapAnalysisRelease(
   releaseId: string,
   locale: Locale,
 ): Promise<LoadedGapRelease | null> {
-  const release = await db.query.gapAnalysisReleases.findFirst({
+  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: eq(gapAnalysisReleases.id, releaseId),
   });
   if (!release || release.status !== "published") return null;
-  const gapModule = await db.query.complianceModules.findFirst({
+  const gapModule = await db.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
     where: eq(complianceModules.id, release.moduleId),
   });
   if (!gapModule) return null;
-  const frameworkVersion = await db.query.complianceFrameworkVersions.findFirst({
+  const frameworkVersion = await db.query.complianceFrameworkVersions.findFirst({ columns: { id: true, frameworkId: true, versionLabel: true, nameContentRevisionId: true, descriptionContentRevisionId: true, status: true, effectiveFrom: true, effectiveTo: true, createdAt: true },
     where: eq(complianceFrameworkVersions.id, gapModule.frameworkVersionId),
   });
   if (!frameworkVersion) return null;
-  const questionnaireVersion = await db.query.questionnaireVersions.findFirst({
+  const questionnaireVersion = await db.query.questionnaireVersions.findFirst({ columns: { id: true, questionnaireId: true, versionLabel: true, titleContentRevisionId: true, status: true, createdAt: true, publishedAt: true },
     where: eq(questionnaireVersions.id, release.questionnaireVersionId),
   });
   if (!questionnaireVersion) return null;
-  const questionnaire = await db.query.questionnaires.findFirst({
+  const questionnaire = await db.query.questionnaires.findFirst({ columns: { id: true, moduleId: true, code: true, createdAt: true },
     where: eq(questionnaires.id, questionnaireVersion.questionnaireId),
   });
   if (!questionnaire) return null;
   const requirementSetVersion =
-    await db.query.gapRequirementSetVersions.findFirst({
+    await db.query.gapRequirementSetVersions.findFirst({ columns: { id: true, requirementSetId: true, versionLabel: true, titleContentRevisionId: true, status: true, contentHash: true, createdAt: true, publishedAt: true },
       where: eq(
         gapRequirementSetVersions.id,
         release.requirementSetVersionId,
@@ -140,12 +137,12 @@ export async function loadGapAnalysisRelease(
     });
   if (!requirementSetVersion) return null;
 
-  const questionRows = await db.query.questions.findMany({
+  const questionRows = await db.query.questions.findMany({ columns: { id: true, questionnaireVersionId: true, stableKey: true, position: true, questionContentRevisionId: true, helpContentRevisionId: true, answerType: true, required: true, config: true, createdAt: true },
     where: eq(questions.questionnaireVersionId, questionnaireVersion.id),
     orderBy: [asc(questions.position)],
   });
   const optionRows = questionRows.length
-    ? await db.query.questionOptions.findMany({
+    ? await db.query.questionOptions.findMany({ columns: { id: true, questionId: true, stableValue: true, labelContentRevisionId: true, factOptionId: true, position: true, metadata: true },
         where: inArray(
           questionOptions.questionId,
           questionRows.map((question) => question.id),
@@ -156,7 +153,14 @@ export async function loadGapAnalysisRelease(
   const members = await db
     .select({
       position: gapRequirementSetMembers.position,
-      requirement: gapRequirementVersions,
+      id: gapRequirementVersions.id,
+      stableRequirementId: gapRequirements.id,
+      code: gapRequirements.code,
+      criticality: gapRequirementVersions.criticality,
+      titleContentRevisionId: gapRequirementVersions.titleContentRevisionId,
+      requirementTextContentRevisionId:
+        gapRequirementVersions.requirementTextContentRevisionId,
+      legalReferences: gapRequirementVersions.legalReferences,
     })
     .from(gapRequirementSetMembers)
     .innerJoin(
@@ -165,6 +169,10 @@ export async function loadGapAnalysisRelease(
         gapRequirementSetMembers.requirementVersionId,
         gapRequirementVersions.id,
       ),
+    )
+    .innerJoin(
+      gapRequirements,
+      eq(gapRequirementVersions.requirementId, gapRequirements.id),
     )
     .where(
       eq(
@@ -184,13 +192,13 @@ export async function loadGapAnalysisRelease(
       ...(question.helpContentRevisionId ? [question.helpContentRevisionId] : []),
     ]),
     ...optionRows.map((option) => option.labelContentRevisionId),
-    ...members.flatMap(({ requirement }) => [
+    ...members.flatMap((requirement) => [
       requirement.titleContentRevisionId,
       requirement.requirementTextContentRevisionId,
     ]),
   ];
   const translations = contentRevisionIds.length
-    ? await db.query.contentTranslations.findMany({
+    ? await db.query.contentTranslations.findMany({ columns: { contentRevisionId: true, locale: true, value: true },
         where: inArray(contentTranslations.contentRevisionId, contentRevisionIds),
       })
     : [];
@@ -208,7 +216,7 @@ export async function loadGapAnalysisRelease(
       release.defaultLocale,
     );
 
-  const rules = await db.query.gapAnalysisReleaseApplicabilityRules.findMany({
+  const rules = await db.query.gapAnalysisReleaseApplicabilityRules.findMany({ columns: { id: true, gapAnalysisReleaseId: true, requirementVersionId: true, conditions: true, createdAt: true },
     where: eq(
       gapAnalysisReleaseApplicabilityRules.gapAnalysisReleaseId,
       release.id,
@@ -238,7 +246,6 @@ export async function loadGapAnalysisRelease(
       responseSchemaVersion: release.responseSchemaVersion,
     },
     evaluator: { kind: release.evaluatorKind, version: release.evaluatorVersion },
-    modelPolicy: release.modelPolicy,
     questions: questionRows.map((question) => ({
       id: question.id,
       stableKey: question.stableKey,
@@ -258,30 +265,24 @@ export async function loadGapAnalysisRelease(
           position: option.position,
         })),
     })),
-    requirements: members.map(({ position, requirement }) => {
+    requirements: members.map((requirement) => {
       const conditions = ruleByRequirement.get(requirement.id) ?? {
         applicabilityOutcomeCodes: [],
         questionStableKeys: [],
       };
       return {
         id: requirement.id,
-        stableRequirementId: requirement.requirementId,
+        stableRequirementId: requirement.stableRequirementId,
         code: requirement.code,
-        position,
+        position: requirement.position,
         criticality: requirement.criticality,
         title: text(requirement.titleContentRevisionId),
         requirementText: text(requirement.requirementTextContentRevisionId),
-        recommendation: localizeLegacyJson(requirement.recommendation, locale),
         legalReferences: requirement.legalReferences,
         ...conditions,
       };
     }),
   };
-}
-
-function localizeLegacyJson(value: unknown, locale: Locale) {
-  const candidate = value as Partial<LegacyLocalizedJson>;
-  return candidate[locale] ?? candidate.de ?? candidate.en ?? "";
 }
 
 function parseConditions(value: unknown) {

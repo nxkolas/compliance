@@ -3,8 +3,8 @@ import { requireApiUser } from "@/src/server/api/auth";
 import { apiRoute } from "@/src/server/api/handler";
 import { claimIdempotency, completeIdempotency, failIdempotency, fingerprintRequest, requireIdempotencyKey } from "@/src/server/api/idempotency";
 import { parseInput, readJsonBody } from "@/src/server/api/request";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency/repository";
-import { createReport, getReportDetail, listReportsPage } from "@/src/server/reports/service";
+import { databaseIdempotencyRepository } from "@/src/server/idempotency";
+import { createReport, getReportDetail, listReportsPage } from "@/src/server/reports";
 import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
 type Context = { params: Promise<{ organizationId: string }> };
@@ -18,7 +18,7 @@ export const POST = apiRoute(async ({ request, routeContext }: { request: Reques
   const user = await requireApiUser(); const { organizationId } = await routeContext.params;
   await enforceOperationRateLimit({ userId: user.id, operation: "reports:create", scopeId: organizationId });
   const body = await readJsonBody(request, reportCreateSchema);
-  const claim = await claimIdempotency(databaseIdempotencyRepository, { actorKey: user.id, scope: organizationId, operation: "report.create", key: requireIdempotencyKey(request), requestFingerprint: fingerprintRequest(body) });
+  const claim = await claimIdempotency(databaseIdempotencyRepository, { actorKey: user.id, organizationId, scope: organizationId, operation: "report.create", key: requireIdempotencyKey(request), requestFingerprint: fingerprintRequest(body) });
   if (claim.kind === "replay" && claim.record.resultReference) {
     const detail = await getReportDetail(user.id, organizationId, claim.record.resultReference.id);
     return { status: 202, data: { report: detail.report, job: detail.job, reused: true } };

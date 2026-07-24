@@ -4,7 +4,7 @@ import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
 import { assertCanAccessOrganization } from "@/src/server/organizations/service";
-import { listReports } from "@/src/server/reports/service";
+import { listReports } from "@/src/server/reports";
 import { connection } from "next/server";
 
 export default async function PdfExportPage({ params }: { params: Promise<{ organizationId: string }> }) {

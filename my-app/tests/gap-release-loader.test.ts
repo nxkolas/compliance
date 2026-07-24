@@ -59,7 +59,6 @@ describe("Gap release loader", () => {
       responseSchemaVersion: "1",
       evaluatorKind: "deterministic",
       evaluatorVersion: 1,
-      modelPolicy: {},
       defaultLocale: "de",
       status: "published",
     });
@@ -118,19 +117,13 @@ describe("Gap release loader", () => {
     const members = [
       {
         position: 1,
-        requirement: {
-          id: "requirement-version",
-          requirementId: "stable-requirement",
-          code: "access-control",
-          criticality: "high",
-          titleContentRevisionId: "requirement-title",
-          requirementTextContentRevisionId: "requirement-text",
-          recommendation: {
-            en: "Implement access control",
-            de: "Zugriffskontrolle umsetzen",
-          },
-          legalReferences: [],
-        },
+        id: "requirement-version",
+        stableRequirementId: "stable-requirement",
+        code: "access-control",
+        criticality: "high",
+        titleContentRevisionId: "requirement-title",
+        requirementTextContentRevisionId: "requirement-text",
+        legalReferences: [],
       },
     ];
     const query = {
@@ -151,8 +144,8 @@ describe("Gap release loader", () => {
     expect(english?.requirements[0]).toMatchObject({
       title: "Access control",
       requirementText: "Review access",
-      recommendation: "Implement access control",
     });
+    expect(english?.requirements[0]).not.toHaveProperty("recommendation");
     expect(findTranslations).toHaveBeenCalledOnce();
     const queryInput = findTranslations.mock.calls[0][0] as {
       where: unknown;
@@ -168,8 +161,8 @@ describe("Gap release loader", () => {
     expect(german?.requirements[0]).toMatchObject({
       title: "Zugriffskontrolle",
       requirementText: "Zugriffe prüfen",
-      recommendation: "Zugriffskontrolle umsetzen",
     });
+    expect(german?.requirements[0]).not.toHaveProperty("recommendation");
     expect(findTranslations).toHaveBeenCalledOnce();
   });
 });

@@ -4,7 +4,7 @@ import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { requireIdempotencyKey } from "@/src/server/api/idempotency";
 import { readJsonBody } from "@/src/server/api/request";
-import { generateGapReassessment } from "@/src/server/gap-analysis/reassessment-service";
+import { generateGapReassessment } from "@/src/server/gap-analysis";
 import { gapReassessmentGenerateSchema } from "@/src/contracts/gap-analysis/generation";
 import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
 

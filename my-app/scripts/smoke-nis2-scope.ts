@@ -1,13 +1,13 @@
 import "dotenv/config";
 
 import postgres from "postgres";
-import { evaluateRuleSet } from "../src/server/applicability-check/rules";
 import {
+  evaluateRuleSet,
   getApplicabilityQuestionnaireForGuest,
   submitApplicabilityCheckForGuest,
-} from "../src/server/applicability-check/service";
-import type { ApplicabilityAnswerValue } from "../src/server/applicability-check/question-visibility";
-import { directRuntimeReleaseReader } from "../src/server/compliance/runtime-release/direct-reader";
+} from "@/src/server/applicability-check";
+import type { ApplicabilityAnswerValue } from "@/src/server/applicability-check";
+import { directRuntimeReleaseReader } from "@/src/server/compliance";
 
 const databaseUrl = process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
 

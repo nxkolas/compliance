@@ -181,8 +181,7 @@ Expected output: `Cleared Drizzle-managed app tables.`
 
 ### 4. Apply the pre-push SQL passes
 
-Both files are **documented** as pre-push operations. Their combined ordering
-below is **inferred** because they do not depend on one another:
+These files are required pre-push operations:
 
 1. Run
    [`supabase/sql-editor/004_gap_evidence_infrastructure.sql`](../../supabase/sql-editor/004_gap_evidence_infrastructure.sql).
@@ -194,26 +193,47 @@ below is **inferred** because they do not depend on one another:
    safe and keeps this sequence compatible with an additive rollout. Run this
    file again after Drizzle push: that second pass also replaces the legacy Gap
    evidence source check so legal-corpus citations can be persisted.
+3. Run
+   [`scripts/sql/database-remediation-pre-push.sql`](../../scripts/sql/database-remediation-pre-push.sql).
+   It removes the three obsolete polymorphic lineage tables/type and converts
+   or creates the composite UNIQUE constraints needed by the typed ownership
+   foreign keys. It is idempotent and safe on an empty schema, but destructive
+   to data in the obsolete tables; writers must remain quiesced.
 
 With the approved runner:
 
 ```powershell
 npm.cmd run db:apply-operator-sql -- supabase/sql-editor/004_gap_evidence_infrastructure.sql
 npm.cmd run db:apply-operator-sql -- scripts/sql/api-corpus-integrity-additions.sql
+npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-pre-push.sql
 ```
 
-### 5. Preview and apply the Drizzle schema
+### 5. Apply the coordinated Drizzle/identity-FK passes
 
-**Documented:** use strict/verbose mode, inspect every statement, approve only
-the expected diff, and never use `--force`.
+PostgreSQL must materialize the referenced composite UNIQUE constraints before
+the 12 dependent identity FKs. For an existing database, use the guarded
+schema flag for exactly one strict Drizzle pass, then install the exact FKs
+from the audited SQL file. Do not perform a second Drizzle push.
 
 ```powershell
-npx.cmd drizzle-kit push --strict --verbose
+$env:DATABASE_REMEDIATION_UNIQUE_PASS = '1'
+try {
+  npx.cmd drizzle-kit push --strict --verbose
+  if ($LASTEXITCODE -ne 0) { throw 'Drizzle remediation pass failed' }
+}
+finally {
+  Remove-Item Env:DATABASE_REMEDIATION_UNIQUE_PASS -ErrorAction SilentlyContinue
+}
+
+npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-identity-fks.sql
 ```
 
-This is the actual schema mutation. Answer the interactive prompt only after
-reviewing the target and SQL diff. If Drizzle proposes an unexpected drop,
-rename, or unrelated schema change, answer **No** and investigate.
+The flag omits only those 12 dependent FKs from the temporary Drizzle model;
+normal application/schema imports include them. The SQL pass adds exactly the
+same constraints declared in `src/db/schema.ts`. Answer the interactive prompt
+only after reviewing the target and SQL diff. Never use `--force`. If Drizzle
+proposes an unexpected drop, rename, or unrelated schema change, answer **No**
+and investigate.
 
 ### 6. Apply post-push Supabase infrastructure and base security
 
@@ -255,6 +275,7 @@ npm.cmd run db:apply-operator-sql -- scripts/sql/api-corpus-integrity-additions.
 npm.cmd run db:apply-operator-sql -- scripts/sql/phase1-server-only.sql
 npm.cmd run db:apply-operator-sql -- scripts/sql/legal-corpus-server-only.sql
 npm.cmd run db:apply-operator-sql -- scripts/sql/audit-events-append-only.sql
+npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-integrity.sql
 ```
 
 **Inferred from the script header:** after pgvector and both embedding tables
@@ -450,8 +471,10 @@ state with the dedicated security and storage checks below instead.
 
 ```powershell
 npm.cmd run db:verify:server-only
+npm.cmd run db:verify:remediation-integrity
 npm.cmd run storage:verify
 npm.cmd run db:verify:rollout
+npm.cmd run db:verify:localized-metadata
 npm.cmd run db:verify:gap-requirements
 npm.cmd run db:smoke:nis2
 npm.cmd run db:smoke:gap
@@ -502,13 +525,23 @@ and a short-lived signed URL can be created; see
 ### Final release checks
 
 ```powershell
+npm.cmd run db:smoke:authenticated-gap
+npm.cmd run db:benchmark:compliance -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npx.cmd tsx scripts/benchmark-gap-workflow.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npx.cmd tsx scripts/benchmark-corpus-document-runtime.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npm.cmd run db:benchmark:index-remediation
 npm.cmd run verify
 npm.cmd run test:worker
 npm.cmd run test:ai
 npm.cmd run build
 ```
 
-Then perform the authenticated/manual smoke paths listed in
+Set `REMEDIATION_SMOKE_USER_ID` to an active Platform Administrator who can own
+the synthetic fixture before running `db:smoke:authenticated-gap`. The command
+creates or resumes the exactly named acceptance organization, records an
+audited OpenAI disclosure approval for synthetic data, retries a failed locked
+generation when needed, and proves generate/correct/finalize/repeated-read
+behavior. Then perform any remaining manual smoke paths listed in
 [`api-corpus-rollout-runbook.md`](api-corpus-rollout-runbook.md#smoke-gate).
 Do not resume web traffic until every required gate is green.
 

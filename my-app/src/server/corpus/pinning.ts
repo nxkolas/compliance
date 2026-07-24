@@ -5,7 +5,7 @@ import {
   legalCorpusReleases,
 } from "@/src/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import { contentHash } from "../compliance/publishing/canonical-json";
+import { contentHash } from "@/src/server/compliance/domain";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

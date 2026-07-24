@@ -1,6 +1,6 @@
 # Database Column and Persistence Architecture Remediation
 
-Status: approved for implementation on 2026-07-24.
+Status: implemented and acceptance-verified on 2026-07-24.
 
 This plan responds to the
 [Database Column Usage and Architecture Audit](../architecture/database-column-usage-and-architecture-audit-2026-07-24.md).
@@ -1193,6 +1193,41 @@ The implementation is complete only when:
 - current workflow smoke tests and benchmarks pass; and
 - `verify`, worker tests, AI evaluations, and the production build pass.
 
+## Implementation evidence
+
+Acceptance was completed on 2026-07-24 against the approved live disposable
+development target:
+
+- the from-empty database rehearsal completed the pre-push, strict Drizzle,
+  post-push, and integrity sequence before the shared cutover;
+- the live schema verifier covered all 122 public tables and 44 rollout
+  tables, with two append-only audit triggers, durable schedulers, and no
+  browser-role access;
+- the remediation verifier found all 10 constraints and 9 deferred triggers,
+  rejected four invalid transactions, and accepted the valid control
+  transaction;
+- all three storage buckets are private;
+- active evaluated Corpus Releases are
+  `195bc420-fe15-4805-b4c4-eb05f35728f9` (`nis2-eu-primary`) and
+  `510f6d0e-333e-4736-81e6-6cae1955e786`
+  (`nis2-de-primary`);
+- active releases are `d255ecd9-b293-4c2c-8815-f1c97770f5ee`
+  (`nis2/2026-v1`) and `ddff07d5-3bb0-42d6-9cc5-4b0c8fd4ce96`
+  (`nis2-gap/guided-v3`);
+- applicability, Gap, API/corpus, and authenticated
+  generate/correct/finalize/repeated-read smokes passed; the authenticated
+  fixture has four normalized findings and action plan
+  `77e4d060-b0d7-4293-888a-dbbd7c9c7e91`;
+- the final complete Gap workflow warm median was 259.3 ms at exactly 17 SQL
+  calls; Compliance and Corpus/Document assertion-mode benchmarks passed, and
+  the 250,000-row structural index benchmark retained only evidence-backed
+  changes;
+- `npm run verify` passed 77 files/434 tests, the worker suite passed 10 tests,
+  AI evaluations passed 8 tests, and the Next.js production build completed;
+  and
+- the final rollout verifier reported zero unfinished jobs and a scheduled
+  next cleanup.
+
 ## Rollback
 
 Before the database cutover, revert individual code slices normally.
@@ -1207,4 +1242,3 @@ After the disposable schema cutover:
 
 Do not use `db:reset`, `--force`, a second post-security Drizzle push, or
 blanket privilege grants.
-

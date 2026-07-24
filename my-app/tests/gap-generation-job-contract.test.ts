@@ -16,7 +16,7 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/lib/i18n", () => ({ getLocale: mocks.getLocale }));
 vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
 vi.mock("@/src/server/api/operation-rate-limit", () => ({ enforceOperationRateLimit: mocks.enforceOperationRateLimit }));
-vi.mock("@/src/server/gap-analysis/reassessment-service", () => ({
+vi.mock("@/src/server/gap-analysis", () => ({
   generateGapReassessment: mocks.generateGapReassessment,
   retryGapReassessment: mocks.retryGapReassessment,
 }));

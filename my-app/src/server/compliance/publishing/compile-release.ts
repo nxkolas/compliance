@@ -1,5 +1,4 @@
-import { evaluateRuleSet } from "../../applicability-check/rules";
-import { parseRuleSetDocument, type Nis2ScopeRuleSetDocument } from "../../applicability-check/rule-set-schema";
+import { evaluateRuleSet, parseRuleSetDocument, type Nis2ScopeRuleSetDocument } from "@/src/server/applicability-check/domain";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 import { canonicalJson, contentHash } from "./canonical-json";
 import { validateReleaseDefinition } from "./validate-release";

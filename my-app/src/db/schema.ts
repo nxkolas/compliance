@@ -21,6 +21,13 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+// Existing databases need one Drizzle pass that materializes referenced
+// composite UNIQUE constraints before PostgreSQL can accept their dependent
+// FKs. Normal runtime/schema generation always includes the FKs; the guarded
+// rollout pass installs them immediately afterward from the audited SQL file.
+const includeRemediationDependentIdentityForeignKeys =
+  process.env.DATABASE_REMEDIATION_UNIQUE_PASS !== "1";
+
 const vector = customType<{ data: number[]; driverData: string }>({
   dataType() {
     return "vector(1536)";
@@ -139,16 +146,6 @@ export const generatedArtifactRevisionStatusEnum = pgEnum(
 export const generatedArtifactGeneratedByEnum = pgEnum(
   "generated_artifact_generated_by",
   ["system", "ai", "user"],
-);
-
-export const artifactRevisionSourceTypeEnum = pgEnum(
-  "artifact_revision_source_type",
-  [
-    "assessment_revision",
-    "artifact_revision",
-    "document_version",
-    "organization_fact_snapshot",
-  ],
 );
 
 export const gapAnalysisReleaseStatusEnum = pgEnum(
@@ -374,7 +371,6 @@ export const organizationMemberships = pgTable(
       table.userId,
     ),
     index("organization_memberships_user_idx").on(table.userId),
-    index("organization_memberships_org_idx").on(table.organizationId),
     index("organization_memberships_status_idx").on(table.status),
     check("organization_memberships_version_positive", sql`${table.version} > 0`),
   ],
@@ -703,6 +699,10 @@ export const factOptions = pgTable(
     foreignKey({ name: "fact_options_definition_fk", columns: [table.factDefinitionKey], foreignColumns: [organizationFactDefinitions.key] }).onDelete("restrict"),
     foreignKey({ name: "fact_options_entity_type_fk", columns: [table.scopeEntityTypeId], foreignColumns: [scopeEntityTypes.id] }).onDelete("restrict"),
     uniqueIndex("fact_options_definition_value_unique").on(table.factDefinitionKey, table.stableValue),
+    unique("fact_options_definition_id_unique").on(
+      table.factDefinitionKey,
+      table.id,
+    ),
     check("fact_options_single_catalog_identity_check", sql`num_nonnulls(${table.scopeEntityTypeId}, ${table.jurisdictionEntityTypeId}) <= 1`),
     check("fact_options_catalog_identity_check", sql`(${table.scopeEntityTypeId} is null or ${table.catalogCode} = 'eu_core') and (${table.jurisdictionEntityTypeId} is null or ${table.catalogCode} like 'country:%')`),
   ],
@@ -740,9 +740,17 @@ export const organizationFactValues = pgTable(
     uniqueIndex("organization_fact_values_current_unique")
       .on(table.organizationId, table.factKey)
       .where(sql`${table.isCurrent} = true`),
+    unique("organization_fact_values_id_fact_unique").on(
+      table.id,
+      table.factKey,
+    ),
     index("idx_org_fact_structured_value_gin").using("gin", table.structuredValue),
     index("organization_fact_values_org_idx").on(table.organizationId),
     index("organization_fact_values_fact_key_idx").on(table.factKey),
+    check(
+      "organization_fact_values_scalar_representation_check",
+      sql`num_nonnulls(${table.textValue}, ${table.numberValue}, ${table.booleanValue}, ${table.structuredValue}) <= 1`,
+    ),
   ],
 );
 
@@ -750,12 +758,28 @@ export const organizationFactValueOptions = pgTable(
   "organization_fact_value_options",
   {
     organizationFactValueId: uuid("organization_fact_value_id").notNull(),
+    factKey: text("fact_key").notNull(),
     factOptionId: uuid("fact_option_id").notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.organizationFactValueId, table.factOptionId] }),
-    foreignKey({ name: "organization_fact_value_options_value_fk", columns: [table.organizationFactValueId], foreignColumns: [organizationFactValues.id] }).onDelete("cascade"),
-    foreignKey({ name: "organization_fact_value_options_option_fk", columns: [table.factOptionId], foreignColumns: [factOptions.id] }).onDelete("restrict"),
+    foreignKey({
+      name: "organization_fact_value_options_value_fact_fk",
+      columns: [table.organizationFactValueId, table.factKey],
+      foreignColumns: [
+        organizationFactValues.id,
+        organizationFactValues.factKey,
+      ],
+    }).onDelete("cascade"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "organization_fact_value_options_fact_option_fk",
+            columns: [table.factKey, table.factOptionId],
+            foreignColumns: [factOptions.factDefinitionKey, factOptions.id],
+          }).onDelete("restrict"),
+        ]
+      : []),
     index("organization_fact_value_options_option_idx").on(table.factOptionId),
   ],
 );
@@ -811,7 +835,6 @@ export const complianceFrameworkVersions = pgTable(
       table.frameworkId,
       table.versionLabel,
     ),
-    index("compliance_framework_versions_framework_idx").on(table.frameworkId),
     index("compliance_framework_versions_status_idx").on(table.status),
   ],
 );
@@ -841,9 +864,6 @@ export const complianceModules = pgTable(
       table.frameworkVersionId,
       table.code,
     ),
-    index("compliance_modules_framework_version_idx").on(
-      table.frameworkVersionId,
-    ),
     index("compliance_modules_code_idx").on(table.code),
   ],
 );
@@ -868,7 +888,7 @@ export const questionnaires = pgTable(
       table.moduleId,
       table.code,
     ),
-    index("questionnaires_module_idx").on(table.moduleId),
+    unique("questionnaires_id_module_unique").on(table.id, table.moduleId),
     index("questionnaires_code_idx").on(table.code),
   ],
 );
@@ -901,7 +921,10 @@ export const questionnaireVersions = pgTable(
       table.questionnaireId,
       table.versionLabel,
     ),
-    index("questionnaire_versions_questionnaire_idx").on(table.questionnaireId),
+    unique("questionnaire_versions_id_questionnaire_unique").on(
+      table.id,
+      table.questionnaireId,
+    ),
     index("questionnaire_versions_status_idx").on(table.status),
   ],
 );
@@ -934,9 +957,7 @@ export const questions = pgTable(
       table.questionnaireVersionId,
       table.stableKey,
     ),
-    index("questions_questionnaire_version_idx").on(
-      table.questionnaireVersionId,
-    ),
+    unique("questions_id_stable_key_unique").on(table.id, table.stableKey),
     index("questions_stable_key_idx").on(table.stableKey),
   ],
 );
@@ -964,7 +985,10 @@ export const questionOptions = pgTable(
       table.questionId,
       table.stableValue,
     ),
-    index("question_options_question_idx").on(table.questionId),
+    unique("question_options_question_id_unique").on(
+      table.questionId,
+      table.id,
+    ),
     index("question_options_fact_option_idx").on(table.factOptionId),
   ],
 );
@@ -995,7 +1019,6 @@ export const questionFactMappings = pgTable(
       table.questionId,
       table.factKey,
     ),
-    index("question_fact_mappings_question_idx").on(table.questionId),
     index("question_fact_mappings_fact_key_idx").on(table.factKey),
   ],
 );
@@ -1228,24 +1251,14 @@ export const assessments = pgTable(
     organizationId: uuid("organization_id").notNull(),
     moduleId: uuid("module_id").notNull(),
     questionnaireId: uuid("questionnaire_id").notNull(),
-    checkReleaseId: uuid("check_release_id").references(
-      (): AnyPgColumn => complianceCheckReleases.id,
-      {
-        onDelete: "restrict",
-      },
-    ),
-    gapAnalysisReleaseId: uuid("gap_analysis_release_id").references(
-      (): AnyPgColumn => gapAnalysisReleases.id,
-      { onDelete: "restrict" },
-    ),
+    checkReleaseId: uuid("check_release_id"),
+    gapAnalysisReleaseId: uuid("gap_analysis_release_id"),
     applicabilityArtifactRevisionId: uuid(
       "applicability_artifact_revision_id",
     ).references((): AnyPgColumn => generatedArtifactRevisions.id, {
       onDelete: "restrict",
     }),
-    currentRevisionId: uuid("current_revision_id").references(
-      (): AnyPgColumn => assessmentRevisions.id,
-    ),
+    currentRevisionId: uuid("current_revision_id"),
     status: assessmentStatusEnum("status").default("active").notNull(),
     createdBy: uuid("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -1267,6 +1280,24 @@ export const assessments = pgTable(
       name: "assessments_questionnaire_fk",
       columns: [table.questionnaireId],
       foreignColumns: [questionnaires.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "assessments_compliance_release_identity_fk",
+      columns: [table.checkReleaseId, table.moduleId, table.questionnaireId],
+      foreignColumns: [
+        complianceCheckReleases.id,
+        complianceCheckReleases.moduleId,
+        complianceCheckReleases.questionnaireId,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "assessments_gap_release_identity_fk",
+      columns: [table.gapAnalysisReleaseId, table.moduleId, table.questionnaireId],
+      foreignColumns: [
+        gapAnalysisReleases.id,
+        gapAnalysisReleases.moduleId,
+        gapAnalysisReleases.questionnaireId,
+      ],
     }).onDelete("restrict"),
     uniqueIndex("assessments_active_org_module_release_unique")
       .on(table.organizationId, table.moduleId, table.checkReleaseId)
@@ -1307,11 +1338,7 @@ export const assessmentRevisions = pgTable(
     parentRevisionId: uuid("parent_revision_id").references(
       (): AnyPgColumn => assessmentRevisions.id,
     ),
-    revertedFromRevisionId: uuid("reverted_from_revision_id").references(
-      (): AnyPgColumn => assessmentRevisions.id,
-    ),
     status: assessmentRevisionStatusEnum("status").notNull(),
-    changeReason: text("change_reason"),
     createdBy: uuid("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -1333,7 +1360,14 @@ export const assessmentRevisions = pgTable(
       table.assessmentId,
       table.revisionNumber,
     ),
-    index("assessment_revisions_assessment_idx").on(table.assessmentId),
+    unique("assessment_revisions_owner_identity_unique").on(
+      table.assessmentId,
+      table.id,
+    ),
+    check(
+      "assessment_revisions_submission_check",
+      sql`(${table.status} = 'draft' and ${table.submittedAt} is null) or (${table.status} <> 'draft' and ${table.submittedAt} is not null)`,
+    ),
     index("assessment_revisions_status_idx").on(table.status),
   ],
 );
@@ -1361,17 +1395,24 @@ export const assessmentAnswers = pgTable(
       foreignColumns: [assessmentRevisions.id],
     }).onDelete("cascade"),
     foreignKey({
-      name: "assessment_answers_question_fk",
-      columns: [table.questionId],
-      foreignColumns: [questions.id],
+      name: "assessment_answers_question_identity_fk",
+      columns: [table.questionId, table.questionStableKey],
+      foreignColumns: [questions.id, questions.stableKey],
     }).onDelete("restrict"),
     uniqueIndex("assessment_answers_revision_question_unique").on(
       table.assessmentRevisionId,
       table.questionId,
     ),
-    index("idx_answers_revision").on(table.assessmentRevisionId),
+    unique("assessment_answers_id_question_unique").on(
+      table.id,
+      table.questionId,
+    ),
     index("idx_answers_stable_key").on(table.questionStableKey),
     index("idx_answers_structured_value_gin").using("gin", table.structuredValue),
+    check(
+      "assessment_answers_scalar_representation_check",
+      sql`num_nonnulls(${table.textValue}, ${table.numberValue}, ${table.booleanValue}, ${table.dateValue}, ${table.structuredValue}) <= 1`,
+    ),
   ],
 );
 
@@ -1379,12 +1420,25 @@ export const assessmentAnswerOptions = pgTable(
   "assessment_answer_options",
   {
     assessmentAnswerId: uuid("assessment_answer_id").notNull(),
+    questionId: uuid("question_id").notNull(),
     questionOptionId: uuid("question_option_id").notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.assessmentAnswerId, table.questionOptionId] }),
-    foreignKey({ name: "assessment_answer_options_answer_fk", columns: [table.assessmentAnswerId], foreignColumns: [assessmentAnswers.id] }).onDelete("cascade"),
-    foreignKey({ name: "assessment_answer_options_option_fk", columns: [table.questionOptionId], foreignColumns: [questionOptions.id] }).onDelete("restrict"),
+    foreignKey({
+      name: "assessment_answer_options_answer_question_fk",
+      columns: [table.assessmentAnswerId, table.questionId],
+      foreignColumns: [assessmentAnswers.id, assessmentAnswers.questionId],
+    }).onDelete("cascade"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "assessment_answer_options_question_option_fk",
+            columns: [table.questionId, table.questionOptionId],
+            foreignColumns: [questionOptions.questionId, questionOptions.id],
+          }).onDelete("restrict"),
+        ]
+      : []),
     index("assessment_answer_options_option_idx").on(table.questionOptionId),
   ],
 );
@@ -1467,7 +1521,6 @@ export const ruleSets = pgTable(
       table.code,
       table.versionLabel,
     ),
-    index("rule_sets_module_idx").on(table.moduleId),
     index("rule_sets_status_idx").on(table.status),
     uniqueIndex("rule_sets_content_hash_unique").on(table.contentHash),
   ],
@@ -1480,6 +1533,7 @@ export const complianceCheckReleases = pgTable(
     checkCode: text("check_code").notNull(),
     versionLabel: text("version_label").notNull(),
     moduleId: uuid("module_id").notNull(),
+    questionnaireId: uuid("questionnaire_id").notNull(),
     questionnaireVersionId: uuid("questionnaire_version_id").notNull(),
     scopeModelVersionId: uuid("scope_model_version_id").notNull(),
     scopeThresholdSetId: uuid("scope_threshold_set_id").notNull(),
@@ -1497,12 +1551,33 @@ export const complianceCheckReleases = pgTable(
   },
   (table) => [
     foreignKey({ name: "compliance_check_releases_module_fk", columns: [table.moduleId], foreignColumns: [complianceModules.id] }).onDelete("restrict"),
-    foreignKey({ name: "compliance_check_releases_questionnaire_fk", columns: [table.questionnaireVersionId], foreignColumns: [questionnaireVersions.id] }).onDelete("restrict"),
+    foreignKey({
+      name: "compliance_check_releases_questionnaire_version_identity_fk",
+      columns: [table.questionnaireVersionId, table.questionnaireId],
+      foreignColumns: [
+        questionnaireVersions.id,
+        questionnaireVersions.questionnaireId,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "compliance_check_releases_questionnaire_module_identity_fk",
+      columns: [table.questionnaireId, table.moduleId],
+      foreignColumns: [questionnaires.id, questionnaires.moduleId],
+    }).onDelete("restrict"),
     foreignKey({ name: "compliance_check_releases_scope_model_fk", columns: [table.scopeModelVersionId], foreignColumns: [scopeModelVersions.id] }).onDelete("restrict"),
     foreignKey({ name: "compliance_check_releases_threshold_fk", columns: [table.scopeThresholdSetId], foreignColumns: [scopeThresholdSets.id] }).onDelete("restrict"),
     foreignKey({ name: "compliance_check_releases_rule_set_fk", columns: [table.ruleSetId], foreignColumns: [ruleSets.id] }).onDelete("restrict"),
     uniqueIndex("compliance_check_releases_check_version_unique").on(table.checkCode, table.versionLabel),
     uniqueIndex("compliance_check_releases_aggregate_hash_unique").on(table.aggregateHash),
+    unique("compliance_check_releases_check_id_unique").on(
+      table.checkCode,
+      table.id,
+    ),
+    unique("compliance_check_releases_id_identity_unique").on(
+      table.id,
+      table.moduleId,
+      table.questionnaireId,
+    ),
     index("compliance_check_releases_status_idx").on(table.status),
   ],
 );
@@ -1556,7 +1631,18 @@ export const activeComplianceCheckReleases = pgTable(
     activatedAt: timestamp("activated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    foreignKey({ name: "active_compliance_check_releases_release_fk", columns: [table.checkReleaseId], foreignColumns: [complianceCheckReleases.id] }).onDelete("restrict"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "active_compliance_check_releases_identity_fk",
+            columns: [table.checkCode, table.checkReleaseId],
+            foreignColumns: [
+              complianceCheckReleases.checkCode,
+              complianceCheckReleases.id,
+            ],
+          }).onDelete("restrict"),
+        ]
+      : []),
     uniqueIndex("active_compliance_check_releases_release_unique").on(table.checkReleaseId),
   ],
 );
@@ -1572,8 +1658,26 @@ export const complianceCheckReleaseActivations = pgTable(
     activatedAt: timestamp("activated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    foreignKey({ name: "compliance_release_activations_previous_fk", columns: [table.previousReleaseId], foreignColumns: [complianceCheckReleases.id] }).onDelete("restrict"),
-    foreignKey({ name: "compliance_release_activations_active_fk", columns: [table.activatedReleaseId], foreignColumns: [complianceCheckReleases.id] }).onDelete("restrict"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "compliance_release_activations_previous_identity_fk",
+            columns: [table.checkCode, table.previousReleaseId],
+            foreignColumns: [
+              complianceCheckReleases.checkCode,
+              complianceCheckReleases.id,
+            ],
+          }).onDelete("restrict"),
+          foreignKey({
+            name: "compliance_release_activations_active_identity_fk",
+            columns: [table.checkCode, table.activatedReleaseId],
+            foreignColumns: [
+              complianceCheckReleases.checkCode,
+              complianceCheckReleases.id,
+            ],
+          }).onDelete("restrict"),
+        ]
+      : []),
     index("compliance_release_activations_check_idx").on(table.checkCode, table.activatedAt),
   ],
 );
@@ -1585,12 +1689,8 @@ export const generatedArtifacts = pgTable(
     organizationId: uuid("organization_id").notNull(),
     moduleId: uuid("module_id").notNull(),
     artifactType: generatedArtifactTypeEnum("artifact_type").notNull(),
-    currentRevisionId: uuid("current_revision_id").references(
-      (): AnyPgColumn => generatedArtifactRevisions.id,
-    ),
-    acceptedRevisionId: uuid("accepted_revision_id").references(
-      (): AnyPgColumn => generatedArtifactRevisions.id,
-    ),
+    currentRevisionId: uuid("current_revision_id"),
+    acceptedRevisionId: uuid("accepted_revision_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1611,7 +1711,6 @@ export const generatedArtifacts = pgTable(
       table.moduleId,
       table.artifactType,
     ),
-    index("generated_artifacts_organization_idx").on(table.organizationId),
     index("generated_artifacts_module_idx").on(table.moduleId),
     index("generated_artifacts_current_revision_idx").on(
       table.currentRevisionId,
@@ -1629,9 +1728,6 @@ export const generatedArtifactRevisions = pgTable(
     artifactId: uuid("artifact_id").notNull(),
     revisionNumber: integer("revision_number").notNull(),
     parentRevisionId: uuid("parent_revision_id").references(
-      (): AnyPgColumn => generatedArtifactRevisions.id,
-    ),
-    revertedFromRevisionId: uuid("reverted_from_revision_id").references(
       (): AnyPgColumn => generatedArtifactRevisions.id,
     ),
     status: generatedArtifactRevisionStatusEnum("status").notNull(),
@@ -1673,7 +1769,10 @@ export const generatedArtifactRevisions = pgTable(
       table.artifactId,
       table.revisionNumber,
     ),
-    index("generated_artifact_revisions_artifact_idx").on(table.artifactId),
+    unique("generated_artifact_revisions_owner_identity_unique").on(
+      table.artifactId,
+      table.id,
+    ),
     index("generated_artifact_revisions_status_idx").on(table.status),
     index("generated_artifact_revisions_rule_set_idx").on(table.ruleSetId),
     index("generated_artifact_revisions_release_idx").on(table.checkReleaseId),
@@ -1691,6 +1790,27 @@ export const generatedArtifactRevisions = pgTable(
           ${table.gapAnalysisReleaseId} is not null
           and ${table.outputLocale} in ('de', 'en')
           and ${table.result}->>'outputLocale' = ${table.outputLocale}
+        )
+      )`,
+    ),
+    check(
+      "generated_artifact_revisions_gap_metadata_check",
+      sql`(
+        ${table.gapAnalysisReleaseId} is null
+        or (
+          jsonb_typeof(${table.result}) = 'object'
+          and ${table.result}->>'schemaKind' = 'gap_revision_metadata_v1'
+          and ${table.result}->>'outputLocale' = ${table.outputLocale}
+          and jsonb_typeof(${table.result}->'findingDiagnostics') = 'array'
+          and jsonb_typeof(${table.result}->'correctedRequirementVersionIds') = 'array'
+          and ${table.result}
+            - 'schemaKind'
+            - 'outputLocale'
+            - 'findingDiagnostics'
+            - 'correctedFromRevisionId'
+            - 'correctedRequirementVersionIds'
+            = '{}'::jsonb
+          and not (${table.result} ? 'findings')
         )
       )`,
     ),
@@ -1713,34 +1833,74 @@ export const nis2ResultProjections = pgTable(
   ],
 );
 
-export const artifactRevisionSources = pgTable(
-  "artifact_revision_sources",
+export const artifactRevisionAssessmentSources = pgTable(
+  "artifact_revision_assessment_sources",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
     artifactRevisionId: uuid("artifact_revision_id").notNull(),
-    sourceType: artifactRevisionSourceTypeEnum("source_type").notNull(),
-    sourceId: uuid("source_id").notNull(),
+    assessmentRevisionId: uuid("assessment_revision_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => [
+    primaryKey({ columns: [table.artifactRevisionId, table.assessmentRevisionId] }),
     foreignKey({
-      name: "artifact_revision_sources_artifact_revision_fk",
+      name: "artifact_revision_assessment_sources_revision_fk",
       columns: [table.artifactRevisionId],
       foreignColumns: [generatedArtifactRevisions.id],
     }).onDelete("cascade"),
-    index("artifact_revision_sources_revision_idx").on(
-      table.artifactRevisionId,
-    ),
-    index("artifact_revision_sources_revision_type_idx").on(
-      table.artifactRevisionId,
-      table.sourceType,
-    ),
-    index("artifact_revision_sources_source_idx").on(
-      table.sourceType,
-      table.sourceId,
-    ),
+    foreignKey({
+      name: "artifact_revision_assessment_sources_assessment_fk",
+      columns: [table.assessmentRevisionId],
+      foreignColumns: [assessmentRevisions.id],
+    }).onDelete("restrict"),
+    index("artifact_revision_assessment_sources_assessment_idx").on(table.assessmentRevisionId),
+  ],
+);
+
+export const artifactRevisionArtifactSources = pgTable(
+  "artifact_revision_artifact_sources",
+  {
+    artifactRevisionId: uuid("artifact_revision_id").notNull(),
+    sourceArtifactRevisionId: uuid("source_artifact_revision_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.artifactRevisionId, table.sourceArtifactRevisionId] }),
+    foreignKey({
+      name: "artifact_revision_artifact_sources_revision_fk",
+      columns: [table.artifactRevisionId],
+      foreignColumns: [generatedArtifactRevisions.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "artifact_revision_artifact_sources_source_fk",
+      columns: [table.sourceArtifactRevisionId],
+      foreignColumns: [generatedArtifactRevisions.id],
+    }).onDelete("restrict"),
+    index("artifact_revision_artifact_sources_source_idx").on(table.sourceArtifactRevisionId),
+  ],
+);
+
+export const artifactRevisionDocumentSources = pgTable(
+  "artifact_revision_document_sources",
+  {
+    artifactRevisionId: uuid("artifact_revision_id").notNull(),
+    documentVersionId: uuid("document_version_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.artifactRevisionId, table.documentVersionId] }),
+    foreignKey({
+      name: "artifact_revision_document_sources_revision_fk",
+      columns: [table.artifactRevisionId],
+      foreignColumns: [generatedArtifactRevisions.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "artifact_revision_document_sources_document_fk",
+      columns: [table.documentVersionId],
+      foreignColumns: [documentVersions.id],
+    }).onDelete("restrict"),
+    index("artifact_revision_document_sources_document_idx").on(table.documentVersionId),
   ],
 );
 
@@ -1773,14 +1933,12 @@ export const gapRequirementVersions = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     requirementId: uuid("requirement_id").notNull(),
-    code: text("code").notNull(),
     versionLabel: text("version_label").notNull(),
     criticality: gapRequirementCriticalityEnum("criticality").notNull(),
     titleContentRevisionId: uuid("title_content_revision_id").notNull(),
     requirementTextContentRevisionId: uuid(
       "requirement_text_content_revision_id",
     ).notNull(),
-    recommendation: jsonb("recommendation").notNull(),
     legalReferences: jsonb("legal_references").notNull(),
     contentHash: text("content_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -1807,7 +1965,6 @@ export const gapRequirementVersions = pgTable(
       table.requirementId,
       table.versionLabel,
     ),
-    index("gap_requirement_versions_requirement_idx").on(table.requirementId),
     uniqueIndex("gap_requirement_versions_hash_unique").on(table.contentHash),
   ],
 ).enableRLS();
@@ -1882,6 +2039,7 @@ export const gapAnalysisReleases = pgTable(
     releaseCode: text("release_code").notNull(),
     versionLabel: text("version_label").notNull(),
     moduleId: uuid("module_id").notNull(),
+    questionnaireId: uuid("questionnaire_id").notNull(),
     questionnaireVersionId: uuid("questionnaire_version_id").notNull(),
     requirementSetVersionId: uuid("requirement_set_version_id").notNull(),
     compatibleCheckReleaseId: uuid("compatible_check_release_id").notNull(),
@@ -1891,7 +2049,6 @@ export const gapAnalysisReleases = pgTable(
     responseSchemaVersion: text("response_schema_version").notNull(),
     evaluatorKind: text("evaluator_kind").notNull(),
     evaluatorVersion: integer("evaluator_version").notNull(),
-    modelPolicy: jsonb("model_policy").notNull(),
     defaultLocale: text("default_locale").default("de").notNull(),
     status: gapAnalysisReleaseStatusEnum("status").notNull(),
     aggregateHash: text("aggregate_hash").notNull(),
@@ -1908,9 +2065,17 @@ export const gapAnalysisReleases = pgTable(
       foreignColumns: [complianceModules.id],
     }).onDelete("restrict"),
     foreignKey({
-      name: "gap_analysis_releases_questionnaire_fk",
-      columns: [table.questionnaireVersionId],
-      foreignColumns: [questionnaireVersions.id],
+      name: "gap_analysis_releases_questionnaire_version_identity_fk",
+      columns: [table.questionnaireVersionId, table.questionnaireId],
+      foreignColumns: [
+        questionnaireVersions.id,
+        questionnaireVersions.questionnaireId,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_analysis_releases_questionnaire_module_identity_fk",
+      columns: [table.questionnaireId, table.moduleId],
+      foreignColumns: [questionnaires.id, questionnaires.moduleId],
     }).onDelete("restrict"),
     foreignKey({
       name: "gap_analysis_releases_requirement_set_fk",
@@ -1925,6 +2090,15 @@ export const gapAnalysisReleases = pgTable(
     uniqueIndex("gap_analysis_releases_code_version_unique").on(
       table.releaseCode,
       table.versionLabel,
+    ),
+    unique("gap_analysis_releases_code_id_unique").on(
+      table.releaseCode,
+      table.id,
+    ),
+    unique("gap_analysis_releases_id_identity_unique").on(
+      table.id,
+      table.moduleId,
+      table.questionnaireId,
     ),
     uniqueIndex("gap_analysis_releases_hash_unique").on(table.aggregateHash),
     index("gap_analysis_releases_status_idx").on(table.status),
@@ -1942,11 +2116,18 @@ export const activeGapAnalysisReleases = pgTable(
       .notNull(),
   },
   (table) => [
-    foreignKey({
-      name: "active_gap_analysis_releases_release_fk",
-      columns: [table.gapAnalysisReleaseId],
-      foreignColumns: [gapAnalysisReleases.id],
-    }).onDelete("restrict"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "active_gap_analysis_releases_identity_fk",
+            columns: [table.releaseCode, table.gapAnalysisReleaseId],
+            foreignColumns: [
+              gapAnalysisReleases.releaseCode,
+              gapAnalysisReleases.id,
+            ],
+          }).onDelete("restrict"),
+        ]
+      : []),
     uniqueIndex("active_gap_analysis_releases_release_unique").on(
       table.gapAnalysisReleaseId,
     ),
@@ -1966,16 +2147,26 @@ export const gapAnalysisReleaseActivations = pgTable(
       .notNull(),
   },
   (table) => [
-    foreignKey({
-      name: "gap_analysis_release_activations_previous_fk",
-      columns: [table.previousReleaseId],
-      foreignColumns: [gapAnalysisReleases.id],
-    }).onDelete("restrict"),
-    foreignKey({
-      name: "gap_analysis_release_activations_active_fk",
-      columns: [table.activatedReleaseId],
-      foreignColumns: [gapAnalysisReleases.id],
-    }).onDelete("restrict"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "gap_analysis_release_activations_previous_identity_fk",
+            columns: [table.releaseCode, table.previousReleaseId],
+            foreignColumns: [
+              gapAnalysisReleases.releaseCode,
+              gapAnalysisReleases.id,
+            ],
+          }).onDelete("restrict"),
+          foreignKey({
+            name: "gap_analysis_release_activations_active_identity_fk",
+            columns: [table.releaseCode, table.activatedReleaseId],
+            foreignColumns: [
+              gapAnalysisReleases.releaseCode,
+              gapAnalysisReleases.id,
+            ],
+          }).onDelete("restrict"),
+        ]
+      : []),
     index("gap_analysis_release_activations_code_idx").on(
       table.releaseCode,
       table.activatedAt,
@@ -2020,10 +2211,7 @@ export const documents = pgTable(
     title: text("title").notNull(),
     status: documentStatusEnum("status").default("active").notNull(),
     version: integer("version").default(1).notNull(),
-    currentVersionId: uuid("current_version_id").references(
-      (): AnyPgColumn => documentVersions.id,
-      { onDelete: "restrict" },
-    ),
+    currentVersionId: uuid("current_version_id"),
     createdBy: uuid("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -2039,7 +2227,6 @@ export const documents = pgTable(
       columns: [table.organizationId],
       foreignColumns: [organizations.id],
     }).onDelete("restrict"),
-    index("documents_organization_idx").on(table.organizationId),
     index("documents_organization_created_idx").on(
       table.organizationId,
       table.createdAt,
@@ -2086,11 +2273,14 @@ export const documentVersions = pgTable(
       table.storageBucket,
       table.storagePath,
     ),
-    index("document_versions_document_idx").on(table.documentId),
     index("document_versions_hash_idx").on(table.contentHash),
     unique("document_versions_id_document_unique").on(
       table.id,
       table.documentId,
+    ),
+    unique("document_versions_owner_identity_unique").on(
+      table.documentId,
+      table.id,
     ),
     check("document_versions_byte_size_positive", sql`${table.byteSize} > 0`),
   ],
@@ -2165,7 +2355,6 @@ export const gapReassessmentDrafts = pgTable(
       table.id,
       table.organizationId,
     ),
-    index("gap_reassessment_drafts_organization_idx").on(table.organizationId),
     index(
       "gap_reassessment_drafts_organization_assessment_created_idx",
     ).on(table.organizationId, table.assessmentId, table.createdAt),
@@ -2278,7 +2467,6 @@ export const documentChunks = pgTable(
       table.extractionId,
       table.chunkIndex,
     ),
-    index("document_chunks_extraction_idx").on(table.extractionId),
     index("document_chunks_search_idx").using("gin", table.searchVector),
   ],
 );
@@ -2344,6 +2532,7 @@ export const documentChunkEmbeddings = pgTable(
       columns: [table.chunkId],
       foreignColumns: [documentChunks.id],
     }).onDelete("restrict"),
+    index("document_chunk_embeddings_chunk_idx").on(table.chunkId),
   ],
 );
 
@@ -2370,7 +2559,6 @@ export const aiProcessingRuns = pgTable(
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
     cachedInputTokens: integer("cached_input_tokens"),
-    estimatedCostMicros: integer("estimated_cost_micros"),
     validatedOutput: jsonb("validated_output"),
     jobId: uuid("job_id").references((): AnyPgColumn => backgroundJobs.id, {
       onDelete: "restrict",
@@ -2435,32 +2623,106 @@ export const aiProcessingRuns = pgTable(
         and jsonb_typeof(${table.languageValidation}->'attempts') = 'array'
       `,
     ),
+    check(
+      "ai_processing_runs_lifecycle_check",
+      sql`(
+        ${table.status} = 'pending'
+        and ${table.startedAt} is null
+        and ${table.completedAt} is null
+        and ${table.errorCode} is null
+        and ${table.errorMessage} is null
+      ) or (
+        ${table.status} = 'processing'
+        and ${table.startedAt} is not null
+        and ${table.completedAt} is null
+        and ${table.errorCode} is null
+        and ${table.errorMessage} is null
+      ) or (
+        ${table.status} = 'succeeded'
+        and ${table.startedAt} is not null
+        and ${table.completedAt} is not null
+        and ${table.validatedOutput} is not null
+        and ${table.errorCode} is null
+        and ${table.errorMessage} is null
+      ) or (
+        ${table.status} = 'failed'
+        and ${table.completedAt} is not null
+        and ${table.errorCode} is not null
+        and ${table.errorMessage} is not null
+      )`,
+    ),
   ],
 );
 
-export const aiProcessingRunInputs = pgTable(
-  "ai_processing_run_inputs",
+export const aiProcessingRunAssessmentInputs = pgTable(
+  "ai_processing_run_assessment_inputs",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
     runId: uuid("run_id").notNull(),
-    sourceType: artifactRevisionSourceTypeEnum("source_type").notNull(),
-    sourceId: uuid("source_id").notNull(),
+    assessmentRevisionId: uuid("assessment_revision_id").notNull(),
     sourceHash: text("source_hash").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    primaryKey({ columns: [table.runId, table.assessmentRevisionId] }),
     foreignKey({
-      name: "ai_processing_run_inputs_run_fk",
+      name: "ai_processing_run_assessment_inputs_run_fk",
       columns: [table.runId],
       foreignColumns: [aiProcessingRuns.id],
     }).onDelete("cascade"),
-    uniqueIndex("ai_processing_run_inputs_source_unique").on(
-      table.runId,
-      table.sourceType,
-      table.sourceId,
-    ),
+    foreignKey({
+      name: "ai_processing_run_assessment_inputs_assessment_fk",
+      columns: [table.assessmentRevisionId],
+      foreignColumns: [assessmentRevisions.id],
+    }).onDelete("restrict"),
+    index("ai_processing_run_assessment_inputs_assessment_idx").on(table.assessmentRevisionId),
+  ],
+);
+
+export const aiProcessingRunArtifactInputs = pgTable(
+  "ai_processing_run_artifact_inputs",
+  {
+    runId: uuid("run_id").notNull(),
+    artifactRevisionId: uuid("artifact_revision_id").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.artifactRevisionId] }),
+    foreignKey({
+      name: "ai_processing_run_artifact_inputs_run_fk",
+      columns: [table.runId],
+      foreignColumns: [aiProcessingRuns.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_processing_run_artifact_inputs_artifact_fk",
+      columns: [table.artifactRevisionId],
+      foreignColumns: [generatedArtifactRevisions.id],
+    }).onDelete("restrict"),
+    index("ai_processing_run_artifact_inputs_artifact_idx").on(table.artifactRevisionId),
+  ],
+);
+
+export const aiProcessingRunDocumentInputs = pgTable(
+  "ai_processing_run_document_inputs",
+  {
+    runId: uuid("run_id").notNull(),
+    documentVersionId: uuid("document_version_id").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.documentVersionId] }),
+    foreignKey({
+      name: "ai_processing_run_document_inputs_run_fk",
+      columns: [table.runId],
+      foreignColumns: [aiProcessingRuns.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "ai_processing_run_document_inputs_document_fk",
+      columns: [table.documentVersionId],
+      foreignColumns: [documentVersions.id],
+    }).onDelete("restrict"),
+    index("ai_processing_run_document_inputs_document_idx").on(table.documentVersionId),
   ],
 );
 
@@ -2497,6 +2759,10 @@ export const gapFindings = pgTable(
     uniqueIndex("gap_findings_revision_requirement_unique").on(
       table.artifactRevisionId,
       table.requirementVersionId,
+    ),
+    unique("gap_findings_revision_identity_unique").on(
+      table.artifactRevisionId,
+      table.id,
     ),
     index("gap_findings_status_idx").on(table.status),
   ],
@@ -2542,6 +2808,15 @@ export const gapFindingEvidence = pgTable(
       table.findingId,
       table.citationId,
     ),
+    index("gap_finding_evidence_answer_idx")
+      .on(table.assessmentAnswerId)
+      .where(sql`${table.assessmentAnswerId} is not null`),
+    index("gap_finding_evidence_document_chunk_idx")
+      .on(table.documentChunkId)
+      .where(sql`${table.documentChunkId} is not null`),
+    index("gap_finding_evidence_legal_chunk_idx")
+      .on(table.legalSourceChunkId)
+      .where(sql`${table.legalSourceChunkId} is not null`),
     check(
       "gap_finding_evidence_source_check",
       sql`(
@@ -2577,16 +2852,15 @@ export const gapFindingReviewResolutions = pgTable(
       .notNull(),
   },
   (table) => [
-    foreignKey({
-      name: "gap_finding_review_resolutions_revision_fk",
-      columns: [table.artifactRevisionId],
-      foreignColumns: [generatedArtifactRevisions.id],
-    }).onDelete("cascade"),
-    foreignKey({
-      name: "gap_finding_review_resolutions_finding_fk",
-      columns: [table.findingId],
-      foreignColumns: [gapFindings.id],
-    }).onDelete("restrict"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "gap_finding_review_resolutions_finding_revision_fk",
+            columns: [table.artifactRevisionId, table.findingId],
+            foreignColumns: [gapFindings.artifactRevisionId, gapFindings.id],
+          }).onDelete("restrict"),
+        ]
+      : []),
     uniqueIndex("gap_finding_review_resolutions_finding_unique").on(
       table.artifactRevisionId,
       table.findingId,
@@ -2605,10 +2879,6 @@ export const actionPlans = pgTable(
     outputLocale: text("output_locale").notNull(),
     status: actionPlanStatusEnum("status").default("active").notNull(),
     revisionNumber: integer("revision_number").notNull(),
-    predecessorPlanId: uuid("predecessor_plan_id").references(
-      (): AnyPgColumn => actionPlans.id,
-      { onDelete: "restrict" },
-    ),
     activatedBy: uuid("activated_by"),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
     createdBy: uuid("created_by").notNull(),
@@ -2647,6 +2917,20 @@ export const actionPlans = pgTable(
       "action_plans_output_locale_check",
       sql`${table.outputLocale} in ('de', 'en')`,
     ),
+    check(
+      "action_plans_lifecycle_check",
+      sql`(
+        ${table.status} = 'active'
+        and ${table.activatedBy} is not null
+        and ${table.activatedAt} is not null
+        and ${table.archivedAt} is null
+      ) or (
+        ${table.status} = 'archived'
+        and ${table.activatedBy} is not null
+        and ${table.activatedAt} is not null
+        and ${table.archivedAt} is not null
+      )`,
+    ),
   ],
 );
 
@@ -2662,10 +2946,6 @@ export const actionPlanItems = pgTable(
     status: actionPlanItemStatusEnum("status").default("open").notNull(),
     ownerUserId: uuid("owner_user_id"),
     dueDate: date("due_date"),
-    predecessorItemId: uuid("predecessor_item_id").references(
-      (): AnyPgColumn => actionPlanItems.id,
-      { onDelete: "restrict" },
-    ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -2719,21 +2999,72 @@ export const reports = pgTable(
     uniqueIndex("reports_job_unique").on(table.jobId),
     index("reports_organization_created_idx").on(table.organizationId, table.createdAt),
     check("reports_output_check", sql`${table.state} <> 'ready' or (${table.storageBucket} is not null and ${table.storagePath} is not null and ${table.outputHash} is not null and ${table.fileSize} is not null)`),
+    check(
+      "reports_lifecycle_check",
+      sql`(
+        ${table.state} in ('queued', 'rendering')
+        and ${table.completedAt} is null
+      ) or (
+        ${table.state} = 'ready'
+        and ${table.completedAt} is not null
+        and ${table.storageBucket} is not null
+        and ${table.storagePath} is not null
+        and ${table.outputHash} is not null
+        and ${table.fileSize} is not null
+      ) or (
+        ${table.state} = 'failed'
+        and ${table.completedAt} is not null
+        and ${table.safeErrorCode} is not null
+      ) or (
+        ${table.state} = 'cancelled'
+        and ${table.completedAt} is not null
+      )`,
+    ),
   ],
 ).enableRLS();
 
-export const reportSources = pgTable(
-  "report_sources",
+export const reportArtifactSources = pgTable(
+  "report_artifact_sources",
   {
     reportId: uuid("report_id").notNull(),
-    sourceType: text("source_type").notNull(),
-    sourceId: uuid("source_id").notNull(),
+    artifactRevisionId: uuid("artifact_revision_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.reportId, table.sourceType, table.sourceId] }),
-    foreignKey({ name: "report_sources_report_fk", columns: [table.reportId], foreignColumns: [reports.id] }).onDelete("cascade"),
-    index("report_sources_source_idx").on(table.sourceType, table.sourceId),
+    primaryKey({ columns: [table.reportId, table.artifactRevisionId] }),
+    foreignKey({ name: "report_artifact_sources_report_fk", columns: [table.reportId], foreignColumns: [reports.id] }).onDelete("cascade"),
+    foreignKey({ name: "report_artifact_sources_artifact_fk", columns: [table.artifactRevisionId], foreignColumns: [generatedArtifactRevisions.id] }).onDelete("restrict"),
+    index("report_artifact_sources_artifact_idx").on(table.artifactRevisionId),
+  ],
+).enableRLS();
+
+export const reportActionPlanSources = pgTable(
+  "report_action_plan_sources",
+  {
+    reportId: uuid("report_id").notNull(),
+    actionPlanId: uuid("action_plan_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.reportId, table.actionPlanId] }),
+    foreignKey({ name: "report_action_plan_sources_report_fk", columns: [table.reportId], foreignColumns: [reports.id] }).onDelete("cascade"),
+    foreignKey({ name: "report_action_plan_sources_plan_fk", columns: [table.actionPlanId], foreignColumns: [actionPlans.id] }).onDelete("restrict"),
+    index("report_action_plan_sources_plan_idx").on(table.actionPlanId),
+  ],
+).enableRLS();
+
+export const reportDocumentSources = pgTable(
+  "report_document_sources",
+  {
+    reportId: uuid("report_id").notNull(),
+    documentVersionId: uuid("document_version_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.reportId, table.documentVersionId] }),
+    foreignKey({ name: "report_document_sources_report_fk", columns: [table.reportId], foreignColumns: [reports.id] }).onDelete("cascade"),
+    foreignKey({ name: "report_document_sources_document_fk", columns: [table.documentVersionId], foreignColumns: [documentVersions.id] }).onDelete("restrict"),
+    index("report_document_sources_document_idx").on(table.documentVersionId),
   ],
 ).enableRLS();
 
@@ -2779,7 +3110,7 @@ export const platformAdministrators = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("platform_administrators_user_unique").on(table.userId),
+    unique("platform_administrators_user_unique").on(table.userId),
     index("platform_administrators_active_idx").on(table.userId, table.revokedAt),
     check(
       "platform_administrators_revocation_complete_check",
@@ -2802,8 +3133,6 @@ export const backgroundJobs = pgTable(
     maxAttempts: integer("max_attempts").default(3).notNull(),
     cancellable: boolean("cancellable").default(true).notNull(),
     cancellationCapability: text("cancellation_capability"),
-    resultType: text("result_type"),
-    resultId: uuid("result_id"),
     safeErrorCode: text("safe_error_code"),
     safeErrorMessage: text("safe_error_message"),
     runAfter: timestamp("run_after", { withTimezone: true }).defaultNow().notNull(),
@@ -2837,6 +3166,25 @@ export const backgroundJobs = pgTable(
       "background_jobs_cancellation_capability_check",
       sql`${table.organizationId} is null or not ${table.cancellable} or ${table.cancellationCapability} is not null`,
     ),
+    check(
+      "background_jobs_lifecycle_check",
+      sql`(
+        ${table.state} in ('queued', 'running', 'cancellation_requested')
+        and ${table.finishedAt} is null
+      ) or (
+        ${table.state} = 'succeeded'
+        and ${table.finishedAt} is not null
+        and ${table.progress} = 100
+      ) or (
+        ${table.state} = 'failed'
+        and ${table.finishedAt} is not null
+        and ${table.safeErrorCode} is not null
+        and ${table.safeErrorMessage} is not null
+      ) or (
+        ${table.state} = 'cancelled'
+        and ${table.finishedAt} is not null
+      )`,
+    ),
   ],
 ).enableRLS();
 
@@ -2852,8 +3200,6 @@ export const idempotencyRecords = pgTable(
     requestFingerprint: text("request_fingerprint").notNull(),
     state: idempotencyStateEnum("state").default("in_progress").notNull(),
     responseStatus: integer("response_status"),
-    resultType: text("result_type"),
-    resultId: uuid("result_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -2892,8 +3238,6 @@ export const uploadSessions = pgTable(
     actualSize: integer("actual_size"),
     actualSha256: text("actual_sha256"),
     state: uploadSessionStateEnum("state").default("pending").notNull(),
-    resultType: text("result_type"),
-    resultId: uuid("result_id"),
     safeErrorCode: text("safe_error_code"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -2911,6 +3255,10 @@ export const uploadSessions = pgTable(
     index("upload_sessions_organization_idx").on(table.organizationId, table.createdAt),
     index("upload_sessions_expiry_idx").on(table.state, table.expiresAt),
     check("upload_sessions_expected_size_check", sql`${table.expectedSize} > 0`),
+    check(
+      "upload_sessions_completion_check",
+      sql`${table.state} <> 'completed' or ${table.completedAt} is not null`,
+    ),
   ],
 ).enableRLS();
 
@@ -3012,9 +3360,11 @@ export const legalSourceVersions = pgTable(
     effectiveTo: date("effective_to"),
     contentHash: text("content_hash").notNull(),
     status: legalSourceVersionStatusEnum("status").default("draft").notNull(),
-    supersedesVersionId: uuid("supersedes_version_id").references((): AnyPgColumn => legalSourceVersions.id, { onDelete: "restrict" }),
     reviewedBy: uuid("reviewed_by"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    withdrawnBy: uuid("withdrawn_by"),
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
     withdrawalReason: text("withdrawal_reason"),
     createdBy: uuid("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -3024,7 +3374,42 @@ export const legalSourceVersions = pgTable(
     uniqueIndex("legal_source_versions_label_unique").on(table.sourceId, table.versionLabel),
     index("legal_source_versions_effective_idx").on(table.sourceId, table.effectiveFrom, table.effectiveTo),
     check("legal_source_versions_effective_check", sql`${table.effectiveTo} is null or ${table.effectiveFrom} is null or ${table.effectiveTo} >= ${table.effectiveFrom}`),
-    check("legal_source_versions_review_check", sql`${table.status} = 'draft' or (${table.reviewedBy} is not null and ${table.reviewedAt} is not null)`),
+    check(
+      "legal_source_versions_lifecycle_check",
+      sql`(
+        ${table.status} = 'draft'
+        and ${table.reviewedBy} is null
+        and ${table.reviewedAt} is null
+        and ${table.publishedAt} is null
+        and ${table.withdrawnBy} is null
+        and ${table.withdrawnAt} is null
+        and ${table.withdrawalReason} is null
+      ) or (
+        ${table.status} = 'reviewed'
+        and ${table.reviewedBy} is not null
+        and ${table.reviewedAt} is not null
+        and ${table.publishedAt} is null
+        and ${table.withdrawnBy} is null
+        and ${table.withdrawnAt} is null
+        and ${table.withdrawalReason} is null
+      ) or (
+        ${table.status} = 'published'
+        and ${table.reviewedBy} is not null
+        and ${table.reviewedAt} is not null
+        and ${table.publishedAt} is not null
+        and ${table.withdrawnBy} is null
+        and ${table.withdrawnAt} is null
+        and ${table.withdrawalReason} is null
+      ) or (
+        ${table.status} = 'withdrawn'
+        and ${table.reviewedBy} is not null
+        and ${table.reviewedAt} is not null
+        and ${table.publishedAt} is not null
+        and ${table.withdrawnBy} is not null
+        and ${table.withdrawnAt} is not null
+        and ${table.withdrawalReason} is not null
+      )`,
+    ),
   ],
 ).enableRLS();
 
@@ -3059,7 +3444,7 @@ export const legalSourceRenditions = pgTable(
     foreignKey({ name: "legal_source_renditions_import_job_fk", columns: [table.importJobId], foreignColumns: [backgroundJobs.id] }).onDelete("restrict"),
     uniqueIndex("legal_source_renditions_storage_unique").on(table.storageBucket, table.storagePath),
     uniqueIndex("legal_source_renditions_import_job_unique").on(table.importJobId),
-    uniqueIndex("legal_source_renditions_id_version_unique").on(table.id, table.sourceVersionId),
+    unique("legal_source_renditions_id_version_unique").on(table.id, table.sourceVersionId),
     uniqueIndex("legal_source_renditions_unacknowledged_hash_unique").on(table.contentHash).where(sql`not ${table.duplicateAcknowledged}`),
     index("legal_source_renditions_version_language_idx").on(table.sourceVersionId, table.language),
     check("legal_source_renditions_size_check", sql`${table.byteSize} > 0`),
@@ -3146,6 +3531,7 @@ export const legalSourceChunkEmbeddings = pgTable(
     primaryKey({ columns: [table.generationId, table.chunkId] }),
     foreignKey({ name: "legal_chunk_embeddings_generation_fk", columns: [table.generationId], foreignColumns: [legalSourceProcessingGenerations.id] }).onDelete("restrict"),
     foreignKey({ name: "legal_chunk_embeddings_chunk_fk", columns: [table.chunkId], foreignColumns: [legalSourceChunks.id] }).onDelete("restrict"),
+    index("legal_chunk_embeddings_chunk_idx").on(table.chunkId),
     check("legal_chunk_embeddings_dimensions_check", sql`${table.dimensions} = 1536`),
   ],
 ).enableRLS();
@@ -3175,8 +3561,38 @@ export const legalCorpusReleases = pgTable(
     foreignKey({ name: "legal_corpus_releases_evaluation_job_fk", columns: [table.evaluationJobId], foreignColumns: [backgroundJobs.id] }).onDelete("restrict"),
     uniqueIndex("legal_corpus_releases_label_unique").on(table.familyId, table.versionLabel),
     uniqueIndex("legal_corpus_releases_hash_unique").on(table.contentHash),
+    unique("legal_corpus_releases_family_id_unique").on(
+      table.familyId,
+      table.id,
+    ),
     index("legal_corpus_releases_status_idx").on(table.familyId, table.status),
-    check("legal_corpus_releases_publication_check", sql`${table.status} = 'draft' or (${table.contentHash} is not null and ${table.publishedBy} is not null and ${table.publishedAt} is not null)`),
+    check(
+      "legal_corpus_releases_lifecycle_check",
+      sql`(
+        ${table.status} = 'draft'
+        and ${table.publishedBy} is null
+        and ${table.publishedAt} is null
+        and ${table.withdrawnBy} is null
+        and ${table.withdrawnAt} is null
+        and ${table.withdrawalReason} is null
+      ) or (
+        ${table.status} = 'published'
+        and ${table.contentHash} is not null
+        and ${table.publishedBy} is not null
+        and ${table.publishedAt} is not null
+        and ${table.withdrawnBy} is null
+        and ${table.withdrawnAt} is null
+        and ${table.withdrawalReason} is null
+      ) or (
+        ${table.status} = 'withdrawn'
+        and ${table.contentHash} is not null
+        and ${table.publishedBy} is not null
+        and ${table.publishedAt} is not null
+        and ${table.withdrawnBy} is not null
+        and ${table.withdrawnAt} is not null
+        and ${table.withdrawalReason} is not null
+      )`,
+    ),
   ],
 ).enableRLS();
 
@@ -3196,6 +3612,9 @@ export const legalCorpusReleaseMembers = pgTable(
     foreignKey({ name: "legal_release_members_rendition_fk", columns: [table.renditionId], foreignColumns: [legalSourceRenditions.id] }).onDelete("restrict"),
     foreignKey({ name: "legal_release_members_generation_fk", columns: [table.processingGenerationId], foreignColumns: [legalSourceProcessingGenerations.id] }).onDelete("restrict"),
     uniqueIndex("legal_release_members_position_unique").on(table.releaseId, table.position),
+    index("legal_release_members_version_idx").on(table.sourceVersionId),
+    index("legal_release_members_rendition_idx").on(table.renditionId),
+    index("legal_release_members_generation_idx").on(table.processingGenerationId),
   ],
 ).enableRLS();
 
@@ -3229,7 +3648,18 @@ export const activeLegalCorpusReleases = pgTable(
   },
   (table) => [
     foreignKey({ name: "active_legal_releases_family_fk", columns: [table.familyId], foreignColumns: [legalCorpusFamilies.id] }).onDelete("restrict"),
-    foreignKey({ name: "active_legal_releases_release_fk", columns: [table.releaseId], foreignColumns: [legalCorpusReleases.id] }).onDelete("restrict"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "active_legal_corpus_releases_identity_fk",
+            columns: [table.familyId, table.releaseId],
+            foreignColumns: [
+              legalCorpusReleases.familyId,
+              legalCorpusReleases.id,
+            ],
+          }).onDelete("restrict"),
+        ]
+      : []),
   ],
 ).enableRLS();
 
@@ -3247,8 +3677,26 @@ export const legalCorpusReleaseActivations = pgTable(
   },
   (table) => [
     foreignKey({ name: "legal_release_activations_family_fk", columns: [table.familyId], foreignColumns: [legalCorpusFamilies.id] }).onDelete("restrict"),
-    foreignKey({ name: "legal_release_activations_release_fk", columns: [table.releaseId], foreignColumns: [legalCorpusReleases.id] }).onDelete("restrict"),
-    foreignKey({ name: "legal_release_activations_previous_fk", columns: [table.previousReleaseId], foreignColumns: [legalCorpusReleases.id] }).onDelete("restrict"),
+    ...(includeRemediationDependentIdentityForeignKeys
+      ? [
+          foreignKey({
+            name: "legal_release_activations_release_identity_fk",
+            columns: [table.familyId, table.releaseId],
+            foreignColumns: [
+              legalCorpusReleases.familyId,
+              legalCorpusReleases.id,
+            ],
+          }).onDelete("restrict"),
+          foreignKey({
+            name: "legal_release_activations_previous_identity_fk",
+            columns: [table.familyId, table.previousReleaseId],
+            foreignColumns: [
+              legalCorpusReleases.familyId,
+              legalCorpusReleases.id,
+            ],
+          }).onDelete("restrict"),
+        ]
+      : []),
     index("legal_release_activations_family_idx").on(table.familyId, table.activatedAt),
     check("legal_release_activations_gate_check", sql`${table.evaluationState} = 'passed' or ${table.emergencyOverrideReason} is not null`),
   ],
@@ -3388,6 +3836,9 @@ export const aiProcessingRunLegalInputs = pgTable(
     foreignKey({ name: "ai_run_legal_inputs_source_fk", columns: [table.sourceVersionId], foreignColumns: [legalSourceVersions.id] }).onDelete("restrict"),
     foreignKey({ name: "ai_run_legal_inputs_generation_fk", columns: [table.processingGenerationId], foreignColumns: [legalSourceProcessingGenerations.id] }).onDelete("restrict"),
     uniqueIndex("ai_run_legal_inputs_unique").on(table.runId, table.corpusReleaseId, table.processingGenerationId),
+    index("ai_run_legal_inputs_release_idx").on(table.corpusReleaseId),
+    index("ai_run_legal_inputs_source_idx").on(table.sourceVersionId),
+    index("ai_run_legal_inputs_generation_idx").on(table.processingGenerationId),
   ],
 ).enableRLS();
 
@@ -3418,6 +3869,15 @@ export const aiProcessingRunContext = pgTable(
     foreignKey({ name: "ai_run_context_answer_fk", columns: [table.assessmentAnswerId], foreignColumns: [assessmentAnswers.id] }).onDelete("restrict"),
     uniqueIndex("ai_run_context_citation_unique").on(table.runId, table.citationId),
     uniqueIndex("ai_run_context_position_unique").on(table.runId, table.promptPosition),
+    index("ai_run_context_legal_chunk_idx")
+      .on(table.legalChunkId)
+      .where(sql`${table.legalChunkId} is not null`),
+    index("ai_run_context_document_chunk_idx")
+      .on(table.documentChunkId)
+      .where(sql`${table.documentChunkId} is not null`),
+    index("ai_run_context_answer_idx")
+      .on(table.assessmentAnswerId)
+      .where(sql`${table.assessmentAnswerId} is not null`),
     check("ai_run_context_source_check", sql`num_nonnulls(${table.legalChunkId}, ${table.documentChunkId}, ${table.assessmentAnswerId}) = 1`),
     check("ai_run_context_channel_check", sql`(${table.channel} = 'legal' and ${table.legalChunkId} is not null) or (${table.channel} = 'organization_document' and ${table.documentChunkId} is not null) or (${table.channel} = 'questionnaire_assertion' and ${table.assessmentAnswerId} is not null)`),
   ],
@@ -3451,6 +3911,148 @@ export const aiProcessingRunClaimContext = pgTable(
     primaryKey({ columns: [table.claimId, table.contextId] }),
     foreignKey({ name: "ai_claim_context_claim_fk", columns: [table.claimId], foreignColumns: [aiProcessingRunClaims.id] }).onDelete("restrict"),
     foreignKey({ name: "ai_claim_context_context_fk", columns: [table.contextId], foreignColumns: [aiProcessingRunContext.id] }).onDelete("restrict"),
+    index("ai_claim_context_context_idx").on(table.contextId),
+  ],
+).enableRLS();
+
+export const backgroundJobResults = pgTable(
+  "background_job_results",
+  {
+    jobId: uuid("job_id").primaryKey(),
+    generatedArtifactRevisionId: uuid("generated_artifact_revision_id"),
+    reportId: uuid("report_id"),
+    legalSourceRenditionId: uuid("legal_source_rendition_id"),
+    legalProcessingGenerationId: uuid("legal_processing_generation_id"),
+    legalSourceMonitorId: uuid("legal_source_monitor_id"),
+    legalCorpusEvaluationId: uuid("legal_corpus_evaluation_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    foreignKey({ name: "background_job_results_job_fk", columns: [table.jobId], foreignColumns: [backgroundJobs.id] }).onDelete("cascade"),
+    foreignKey({ name: "background_job_results_artifact_fk", columns: [table.generatedArtifactRevisionId], foreignColumns: [generatedArtifactRevisions.id] }).onDelete("restrict"),
+    foreignKey({ name: "background_job_results_report_fk", columns: [table.reportId], foreignColumns: [reports.id] }).onDelete("restrict"),
+    foreignKey({ name: "background_job_results_rendition_fk", columns: [table.legalSourceRenditionId], foreignColumns: [legalSourceRenditions.id] }).onDelete("restrict"),
+    foreignKey({ name: "background_job_results_processing_fk", columns: [table.legalProcessingGenerationId], foreignColumns: [legalSourceProcessingGenerations.id] }).onDelete("restrict"),
+    foreignKey({ name: "background_job_results_monitor_fk", columns: [table.legalSourceMonitorId], foreignColumns: [legalSourceMonitors.id] }).onDelete("restrict"),
+    foreignKey({ name: "background_job_results_evaluation_fk", columns: [table.legalCorpusEvaluationId], foreignColumns: [legalCorpusEvaluations.id] }).onDelete("restrict"),
+    index("background_job_results_artifact_idx").on(table.generatedArtifactRevisionId),
+    index("background_job_results_report_idx").on(table.reportId),
+    index("background_job_results_rendition_idx").on(table.legalSourceRenditionId),
+    index("background_job_results_processing_idx").on(table.legalProcessingGenerationId),
+    index("background_job_results_monitor_idx").on(table.legalSourceMonitorId),
+    index("background_job_results_evaluation_idx").on(table.legalCorpusEvaluationId),
+    check(
+      "background_job_results_exactly_one_check",
+      sql`num_nonnulls(
+        ${table.generatedArtifactRevisionId},
+        ${table.reportId},
+        ${table.legalSourceRenditionId},
+        ${table.legalProcessingGenerationId},
+        ${table.legalSourceMonitorId},
+        ${table.legalCorpusEvaluationId}
+      ) = 1`,
+    ),
+  ],
+).enableRLS();
+
+export const uploadSessionResults = pgTable(
+  "upload_session_results",
+  {
+    sessionId: uuid("session_id").primaryKey(),
+    documentVersionId: uuid("document_version_id"),
+    legalSourceRenditionId: uuid("legal_source_rendition_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    foreignKey({ name: "upload_session_results_session_fk", columns: [table.sessionId], foreignColumns: [uploadSessions.id] }).onDelete("cascade"),
+    foreignKey({ name: "upload_session_results_document_fk", columns: [table.documentVersionId], foreignColumns: [documentVersions.id] }).onDelete("restrict"),
+    foreignKey({ name: "upload_session_results_rendition_fk", columns: [table.legalSourceRenditionId], foreignColumns: [legalSourceRenditions.id] }).onDelete("restrict"),
+    index("upload_session_results_document_idx").on(table.documentVersionId),
+    index("upload_session_results_rendition_idx").on(table.legalSourceRenditionId),
+    check(
+      "upload_session_results_exactly_one_check",
+      sql`num_nonnulls(${table.documentVersionId}, ${table.legalSourceRenditionId}) = 1`,
+    ),
+  ],
+).enableRLS();
+
+export const idempotencyRecordResults = pgTable(
+  "idempotency_record_results",
+  {
+    recordId: uuid("record_id").primaryKey(),
+    platformAdministratorUserId: uuid("platform_administrator_user_id"),
+    legalCorpusFamilyId: uuid("legal_corpus_family_id"),
+    backgroundJobId: uuid("background_job_id"),
+    legalProcessingGenerationId: uuid("legal_processing_generation_id"),
+    legalCorpusReleaseId: uuid("legal_corpus_release_id"),
+    legalSourceRenditionId: uuid("legal_source_rendition_id"),
+    legalSourceId: uuid("legal_source_id"),
+    generatedArtifactRevisionId: uuid("generated_artifact_revision_id"),
+    assessmentId: uuid("assessment_id"),
+    assessmentRevisionId: uuid("assessment_revision_id"),
+    gapReassessmentDraftId: uuid("gap_reassessment_draft_id"),
+    organizationInvitationId: uuid("organization_invitation_id"),
+    organizationId: uuid("organization_id"),
+    actionPlanId: uuid("action_plan_id"),
+    reportId: uuid("report_id"),
+    documentVersionId: uuid("document_version_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    foreignKey({ name: "idempotency_record_results_record_fk", columns: [table.recordId], foreignColumns: [idempotencyRecords.id] }).onDelete("cascade"),
+    foreignKey({ name: "idempotency_record_results_admin_fk", columns: [table.platformAdministratorUserId], foreignColumns: [platformAdministrators.userId] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_family_fk", columns: [table.legalCorpusFamilyId], foreignColumns: [legalCorpusFamilies.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_job_fk", columns: [table.backgroundJobId], foreignColumns: [backgroundJobs.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_processing_fk", columns: [table.legalProcessingGenerationId], foreignColumns: [legalSourceProcessingGenerations.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_release_fk", columns: [table.legalCorpusReleaseId], foreignColumns: [legalCorpusReleases.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_rendition_fk", columns: [table.legalSourceRenditionId], foreignColumns: [legalSourceRenditions.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_source_fk", columns: [table.legalSourceId], foreignColumns: [legalSources.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_artifact_fk", columns: [table.generatedArtifactRevisionId], foreignColumns: [generatedArtifactRevisions.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_assessment_fk", columns: [table.assessmentId], foreignColumns: [assessments.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_assessment_revision_fk", columns: [table.assessmentRevisionId], foreignColumns: [assessmentRevisions.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_reassessment_fk", columns: [table.gapReassessmentDraftId], foreignColumns: [gapReassessmentDrafts.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_invitation_fk", columns: [table.organizationInvitationId], foreignColumns: [organizationInvitations.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_organization_fk", columns: [table.organizationId], foreignColumns: [organizations.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_action_plan_fk", columns: [table.actionPlanId], foreignColumns: [actionPlans.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_report_fk", columns: [table.reportId], foreignColumns: [reports.id] }).onDelete("restrict"),
+    foreignKey({ name: "idempotency_record_results_document_fk", columns: [table.documentVersionId], foreignColumns: [documentVersions.id] }).onDelete("restrict"),
+    index("idempotency_record_results_admin_idx").on(table.platformAdministratorUserId).where(sql`${table.platformAdministratorUserId} is not null`),
+    index("idempotency_record_results_family_idx").on(table.legalCorpusFamilyId).where(sql`${table.legalCorpusFamilyId} is not null`),
+    index("idempotency_record_results_job_idx").on(table.backgroundJobId).where(sql`${table.backgroundJobId} is not null`),
+    index("idempotency_record_results_processing_idx").on(table.legalProcessingGenerationId).where(sql`${table.legalProcessingGenerationId} is not null`),
+    index("idempotency_record_results_release_idx").on(table.legalCorpusReleaseId).where(sql`${table.legalCorpusReleaseId} is not null`),
+    index("idempotency_record_results_rendition_idx").on(table.legalSourceRenditionId).where(sql`${table.legalSourceRenditionId} is not null`),
+    index("idempotency_record_results_source_idx").on(table.legalSourceId).where(sql`${table.legalSourceId} is not null`),
+    index("idempotency_record_results_artifact_idx").on(table.generatedArtifactRevisionId).where(sql`${table.generatedArtifactRevisionId} is not null`),
+    index("idempotency_record_results_assessment_idx").on(table.assessmentId).where(sql`${table.assessmentId} is not null`),
+    index("idempotency_record_results_assessment_revision_idx").on(table.assessmentRevisionId).where(sql`${table.assessmentRevisionId} is not null`),
+    index("idempotency_record_results_reassessment_idx").on(table.gapReassessmentDraftId).where(sql`${table.gapReassessmentDraftId} is not null`),
+    index("idempotency_record_results_invitation_idx").on(table.organizationInvitationId).where(sql`${table.organizationInvitationId} is not null`),
+    index("idempotency_record_results_organization_idx").on(table.organizationId).where(sql`${table.organizationId} is not null`),
+    index("idempotency_record_results_action_plan_idx").on(table.actionPlanId).where(sql`${table.actionPlanId} is not null`),
+    index("idempotency_record_results_report_idx").on(table.reportId).where(sql`${table.reportId} is not null`),
+    index("idempotency_record_results_document_idx").on(table.documentVersionId).where(sql`${table.documentVersionId} is not null`),
+    check(
+      "idempotency_record_results_exactly_one_check",
+      sql`num_nonnulls(
+        ${table.platformAdministratorUserId},
+        ${table.legalCorpusFamilyId},
+        ${table.backgroundJobId},
+        ${table.legalProcessingGenerationId},
+        ${table.legalCorpusReleaseId},
+        ${table.legalSourceRenditionId},
+        ${table.legalSourceId},
+        ${table.generatedArtifactRevisionId},
+        ${table.assessmentId},
+        ${table.assessmentRevisionId},
+        ${table.gapReassessmentDraftId},
+        ${table.organizationInvitationId},
+        ${table.organizationId},
+        ${table.actionPlanId},
+        ${table.reportId},
+        ${table.documentVersionId}
+      ) = 1`,
+    ),
   ],
 ).enableRLS();
 
@@ -3767,16 +4369,54 @@ export const generatedArtifactRevisionsRelations = relations(
       fields: [generatedArtifactRevisions.parentRevisionId],
       references: [generatedArtifactRevisions.id],
     }),
-    sources: many(artifactRevisionSources),
+    assessmentSources: many(artifactRevisionAssessmentSources),
+    artifactSources: many(artifactRevisionArtifactSources, {
+      relationName: "artifact_revision_artifact_sources_owner",
+    }),
+    documentSources: many(artifactRevisionDocumentSources),
   }),
 );
 
-export const artifactRevisionSourcesRelations = relations(
-  artifactRevisionSources,
+export const artifactRevisionAssessmentSourcesRelations = relations(
+  artifactRevisionAssessmentSources,
   ({ one }) => ({
     artifactRevision: one(generatedArtifactRevisions, {
-      fields: [artifactRevisionSources.artifactRevisionId],
+      fields: [artifactRevisionAssessmentSources.artifactRevisionId],
       references: [generatedArtifactRevisions.id],
+    }),
+    assessmentRevision: one(assessmentRevisions, {
+      fields: [artifactRevisionAssessmentSources.assessmentRevisionId],
+      references: [assessmentRevisions.id],
+    }),
+  }),
+);
+
+export const artifactRevisionArtifactSourcesRelations = relations(
+  artifactRevisionArtifactSources,
+  ({ one }) => ({
+    artifactRevision: one(generatedArtifactRevisions, {
+      fields: [artifactRevisionArtifactSources.artifactRevisionId],
+      references: [generatedArtifactRevisions.id],
+      relationName: "artifact_revision_artifact_sources_owner",
+    }),
+    sourceArtifactRevision: one(generatedArtifactRevisions, {
+      fields: [artifactRevisionArtifactSources.sourceArtifactRevisionId],
+      references: [generatedArtifactRevisions.id],
+      relationName: "artifact_revision_artifact_sources_source",
+    }),
+  }),
+);
+
+export const artifactRevisionDocumentSourcesRelations = relations(
+  artifactRevisionDocumentSources,
+  ({ one }) => ({
+    artifactRevision: one(generatedArtifactRevisions, {
+      fields: [artifactRevisionDocumentSources.artifactRevisionId],
+      references: [generatedArtifactRevisions.id],
+    }),
+    documentVersion: one(documentVersions, {
+      fields: [artifactRevisionDocumentSources.documentVersionId],
+      references: [documentVersions.id],
     }),
   }),
 );

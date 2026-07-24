@@ -18,7 +18,7 @@ export async function listCorpusFamiliesPage(input: { userId: string; limit: num
   await requirePlatformCapability(input.userId, "corpus:read");
   const scope = "corpus-families";
   const cursor = input.cursor ? z.tuple([z.string(), z.uuid()]).parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.legalCorpusFamilies.findMany({
+  const rows = await db.query.legalCorpusFamilies.findMany({ columns: { id: true, code: true, frameworkCode: true, jurisdictionCode: true, title: true, archivedAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
     where: cursor ? or(gt(legalCorpusFamilies.code, cursor[0]), and(eq(legalCorpusFamilies.code, cursor[0]), gt(legalCorpusFamilies.id, cursor[1]))) : undefined,
     orderBy: [asc(legalCorpusFamilies.code), asc(legalCorpusFamilies.id)],
     limit: input.limit + 1,
@@ -69,7 +69,7 @@ export async function createLegalSource(input: {
   requestId?: string;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:curate");
-  const family = await db.query.legalCorpusFamilies.findFirst({
+  const family = await db.query.legalCorpusFamilies.findFirst({ columns: { id: true, code: true, frameworkCode: true, jurisdictionCode: true, title: true, archivedAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
     where: and(eq(legalCorpusFamilies.id, input.familyId), isNull(legalCorpusFamilies.archivedAt)),
   });
   if (!family) throw new ApiError(404, "Corpus family not found", undefined, "CORPUS_FAMILY_NOT_FOUND");

@@ -1,7 +1,7 @@
 import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { ApiError } from "@/src/server/api/errors";
-import { getGapAnalysisRevision } from "@/src/server/gap-analysis/workflow-reader";
+import { getGapAnalysisRevision } from "@/src/server/gap-analysis";
 import { getLocale } from "@/lib/i18n";
 
 export const GET = apiRoute(async ({ routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string; revisionId: string }> } }) => {

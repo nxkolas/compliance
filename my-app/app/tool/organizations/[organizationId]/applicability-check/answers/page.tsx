@@ -13,7 +13,7 @@ import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getApplicabilityAnswersForUser,
   getApplicabilityRecalculationLockForUser,
-} from "@/src/server/applicability-check/service";
+} from "@/src/server/applicability-check";
 import { ArrowLeft, LockKeyhole, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";

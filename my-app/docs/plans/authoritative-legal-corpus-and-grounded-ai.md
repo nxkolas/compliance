@@ -3,6 +3,11 @@
 Status: proposed implementation plan; product and architecture decisions confirmed
 on 2026-07-22.
 
+> Current-state note (2026-07-24): implemented AI provenance uses typed
+> artifact, assessment, and document input tables plus the dedicated legal
+> input table. References below to a polymorphic `ai_processing_run_inputs`
+> table are historical design context.
+
 ## Outcome
 
 Build one controlled source boundary for every production AI feature:

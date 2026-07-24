@@ -1,4 +1,4 @@
-import { getVisibilityCondition } from "../../applicability-check/question-visibility";
+import { getVisibilityCondition } from "@/src/server/applicability-check/domain";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 
 const REQUIRED_LOCALES = ["de", "en"] as const;

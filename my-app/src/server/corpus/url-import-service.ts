@@ -3,7 +3,7 @@ import { backgroundJobs, legalSources, platformAuditEvents } from "@/src/db/sche
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
 import { eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { validateControlledUrl } from "@/src/worker/security/controlled-url";
+import { validateControlledUrl } from "./controlled-url";
 
 export async function enqueueLegalSourceUrlImport(input: {
   actorUserId: string;
@@ -11,13 +11,14 @@ export async function enqueueLegalSourceUrlImport(input: {
   exactUrl: string;
   versionLabel: string;
   officialIdentifier?: string;
+  upstreamPublishedAt?: string;
   effectiveFrom?: string;
   effectiveTo?: string;
   language: string;
   requestId?: string;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:curate");
-  const source = await db.query.legalSources.findFirst({
+  const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
     where: eq(legalSources.id, input.sourceId),
   });
   if (!source || source.withdrawnAt) {
@@ -32,6 +33,7 @@ export async function enqueueLegalSourceUrlImport(input: {
         exactUrl,
         versionLabel: input.versionLabel,
         officialIdentifier: input.officialIdentifier,
+        upstreamPublishedAt: input.upstreamPublishedAt,
         effectiveFrom: input.effectiveFrom,
         effectiveTo: input.effectiveTo,
         language: input.language,

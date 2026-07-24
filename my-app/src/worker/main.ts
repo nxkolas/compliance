@@ -1,9 +1,9 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { closeDbConnection } from "@/src/db";
+import { closeDatabaseConnection } from "@/src/server/database-lifecycle";
 import { runOneJob } from "./runtime";
 import { ensureScheduledCleanupJob } from "@/src/server/api/cleanup";
-import { ensureScheduledLegalSourceMonitorJobs } from "@/src/server/corpus/monitor-scheduler";
+import { ensureScheduledLegalSourceMonitorJobs } from "@/src/server/corpus";
 
 const once = process.argv.includes("--once");
 const workerId = process.env.WORKER_ID ?? `worker-${randomUUID()}`;
@@ -23,4 +23,4 @@ main()
     console.error("Worker stopped", { errorType: error instanceof Error ? error.name : "unknown" });
     process.exitCode = 1;
   })
-  .finally(() => closeDbConnection());
+  .finally(() => closeDatabaseConnection());

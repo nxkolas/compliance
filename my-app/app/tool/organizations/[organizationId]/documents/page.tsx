@@ -2,7 +2,7 @@ import { OrganizationDocumentManager } from "@/components/documents/organization
 import { PageHeader } from "@/components/page-header";
 import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getOrganizationDocumentLibrary } from "@/src/server/documents/service";
+import { getOrganizationDocumentLibrary } from "@/src/server/documents";
 import { connection } from "next/server";
 
 export default async function DocumentsPage({

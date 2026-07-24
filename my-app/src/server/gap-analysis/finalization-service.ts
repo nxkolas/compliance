@@ -2,7 +2,7 @@ import { db } from "@/src/db";
 import {
   actionPlanItems,
   actionPlans,
-  artifactRevisionSources,
+  artifactRevisionAssessmentSources,
   assessmentRevisions,
   assessments,
   auditEvents,
@@ -10,15 +10,17 @@ import {
   gapFindings,
   generatedArtifactRevisions,
   generatedArtifacts,
+  idempotencyRecordResults,
   idempotencyRecords,
 } from "@/src/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { buildActionPlanItems } from "../action-plans/service";
+import { buildActionPlanItems } from "@/src/server/action-plans";
 import { ApiError } from "../api/errors";
 import { assertCanManageOrganization } from "../organizations/service";
 import { assertGapRevisionApprovable } from "./review-service";
 import { loadGapAnalysisRelease } from "./release-loader";
 import { getGapRevisionStaleness } from "./staleness";
+import { readGapRevisionMetadata } from "./gap-revision-metadata";
 
 export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
   userId: string;
@@ -50,7 +52,10 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
   try {
     return await db.transaction(async (tx) => {
       const [artifact] = await tx
-        .select()
+        .select({
+          id: generatedArtifacts.id,
+          currentRevisionId: generatedArtifacts.currentRevisionId,
+        })
         .from(generatedArtifacts)
         .where(
           and(
@@ -69,7 +74,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         );
       }
       const revision =
-        await tx.query.generatedArtifactRevisions.findFirst({
+        await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
           where: and(
             eq(generatedArtifactRevisions.id, input.gapRevisionId),
             eq(generatedArtifactRevisions.artifactId, artifact.id),
@@ -83,9 +88,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
           "GAP_REVISION_NOT_FOUND",
         );
       }
-      const snapshotLocale = (
-        revision.result as { outputLocale?: unknown }
-      ).outputLocale;
+      const snapshotLocale = readGapRevisionMetadata(revision.result).outputLocale;
       if (
         (revision.outputLocale !== "de" &&
           revision.outputLocale !== "en") ||
@@ -99,23 +102,21 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         );
       }
       const outputLocale = revision.outputLocale;
-      const existingPlan = await tx.query.actionPlans.findFirst({
+      const existingPlan = await tx.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
         where: eq(actionPlans.organizationId, input.organizationId),
         orderBy: [desc(actionPlans.createdAt)],
       });
       if (existingPlan) {
         const existingSourceRevision =
-          await tx.query.generatedArtifactRevisions.findFirst({
+          await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
             where: eq(
               generatedArtifactRevisions.id,
               existingPlan.sourceGapArtifactRevisionId,
             ),
           });
-        const existingSnapshotLocale = (
-          existingSourceRevision?.result as
-            | { outputLocale?: unknown }
-            | undefined
-        )?.outputLocale;
+        const existingSnapshotLocale = existingSourceRevision
+          ? readGapRevisionMetadata(existingSourceRevision.result).outputLocale
+          : undefined;
         if (
           !existingSourceRevision ||
           existingPlan.outputLocale !==
@@ -137,15 +138,13 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         );
       }
 
-      const sources = await tx.query.artifactRevisionSources.findMany({
+      const assessmentSources = await tx.query.artifactRevisionAssessmentSources.findMany({
         where: eq(
-          artifactRevisionSources.artifactRevisionId,
+          artifactRevisionAssessmentSources.artifactRevisionId,
           revision.id,
         ),
+        columns: { assessmentRevisionId: true },
       });
-      const assessmentSources = sources.filter(
-        (source) => source.sourceType === "assessment_revision",
-      );
       if (assessmentSources.length !== 1) {
         throw new ApiError(
           409,
@@ -155,14 +154,14 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         );
       }
       const assessmentRevision =
-        await tx.query.assessmentRevisions.findFirst({
+        await tx.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
           where: eq(
             assessmentRevisions.id,
-            assessmentSources[0]!.sourceId,
+            assessmentSources[0]!.assessmentRevisionId,
           ),
         });
       const assessment = assessmentRevision
-        ? await tx.query.assessments.findFirst({
+        ? await tx.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
             where: and(
               eq(assessments.id, assessmentRevision.assessmentId),
               eq(assessments.organizationId, input.organizationId),
@@ -178,7 +177,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         );
       }
       const applicability =
-        await tx.query.generatedArtifactRevisions.findFirst({
+        await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
           where: eq(
             generatedArtifactRevisions.id,
             assessment.applicabilityArtifactRevisionId,
@@ -212,11 +211,11 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
           requirement.applicabilityOutcomeCodes.includes(outcome),
         )
         .map((requirement) => requirement.id);
-      const findings = await tx.query.gapFindings.findMany({
+      const findings = await tx.query.gapFindings.findMany({ columns: { id: true, artifactRevisionId: true, requirementVersionId: true, status: true, evidenceSufficiency: true, severity: true, rationale: true, recommendation: true, assumptions: true, requiresReview: true, createdAt: true },
         where: eq(gapFindings.artifactRevisionId, revision.id),
       });
       const evidence = findings.length
-        ? await tx.query.gapFindingEvidence.findMany({
+        ? await tx.query.gapFindingEvidence.findMany({ columns: { id: true, findingId: true, citationId: true, sourceType: true, assessmentAnswerId: true, documentChunkId: true, legalSourceChunkId: true, excerpt: true, pageNumber: true, sectionLabel: true, createdAt: true },
             where: inArray(
               gapFindingEvidence.findingId,
               findings.map((finding) => finding.id),
@@ -350,8 +349,6 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         .set({
           state: "succeeded",
           responseStatus: 201,
-          resultType: "action_plan",
-          resultId: plan.id,
           updatedAt: new Date(),
         })
         .where(
@@ -379,6 +376,10 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
           "IDEMPOTENCY_IN_PROGRESS",
         );
       }
+      await tx.insert(idempotencyRecordResults).values({
+        recordId: completedCommand.id,
+        actionPlanId: plan.id,
+      });
       return {
         plan,
         revision: approvedRevision,

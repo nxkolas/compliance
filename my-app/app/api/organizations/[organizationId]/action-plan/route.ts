@@ -5,9 +5,9 @@ import { formatEtag } from "@/src/server/api/concurrency";
 import { apiRoute } from "@/src/server/api/handler";
 import { claimIdempotency, failIdempotency, fingerprintRequest, requireIdempotencyKey } from "@/src/server/api/idempotency";
 import { readJsonBody } from "@/src/server/api/request";
-import { getCurrentActionPlan, getActionPlanDetail } from "@/src/server/action-plans/service";
-import { finalizeGapAnalysisAndGenerateActionPlan } from "@/src/server/gap-analysis/finalization-service";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency/repository";
+import { getCurrentActionPlan, getActionPlanDetail } from "@/src/server/action-plans";
+import { finalizeGapAnalysisAndGenerateActionPlan } from "@/src/server/gap-analysis";
+import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 
 type Context = { params: Promise<{ organizationId: string }> };
 export const GET = apiRoute(async ({ routeContext }: { request: Request; routeContext: Context }) => {
@@ -19,7 +19,7 @@ export const POST = apiRoute(async ({ request, routeContext }: { request: Reques
   const user = await requireApiUser(); const { organizationId } = await routeContext.params;
   const body = await readJsonBody(request, actionPlanGenerationRequestSchema);
   const claim = await claimIdempotency(databaseIdempotencyRepository, {
-    actorKey: user.id, scope: organizationId, operation: "action-plan.generate",
+    actorKey: user.id, organizationId, scope: organizationId, operation: "action-plan.generate",
     key: requireIdempotencyKey(request), requestFingerprint: fingerprintRequest(body),
   });
   if (claim.kind === "replay" && claim.record.resultReference) {

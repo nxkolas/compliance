@@ -52,6 +52,12 @@ exists. Members and auditors retain their read-only permissions. A correction
 creates a complete immutable child revision and copies its pinned input and
 evidence sources.
 
+Findings and citations are authoritative normalized rows. The generated
+revision's JSON contains only locale, diagnostics, and correction metadata; it
+never contains a second findings payload. Assessment, artifact, and document
+lineage use typed foreign-key tables, so a source cannot silently point at the
+wrong kind of record or owner.
+
 Finding status and document support are independent. `fulfilled` is valid
 without an organization document. **No document provided** is displayed with
 an accessible amber warning icon and does not block finalization or create an
@@ -128,3 +134,10 @@ npm run build
 
 Database-backed smoke QA additionally requires configured Supabase, worker,
 AI-provider, and corpus-release credentials.
+
+The automated acceptance path is:
+
+```text
+REMEDIATION_SMOKE_USER_ID=<active-admin-uuid> npm run db:smoke:authenticated-gap
+npx tsx scripts/benchmark-gap-workflow.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+```

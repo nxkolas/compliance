@@ -9,6 +9,11 @@
 > is evidence inside Gap-Analyse, findings and citations are normalized, and
 > action plans pin an approved gap artifact revision. The schema source of truth
 > is `src/db/schema.ts`.
+>
+> Status update (2026-07-24): the persistence remediation replaced the
+> illustrative polymorphic `artifact_revision_sources` design with typed
+> artifact/assessment/document lineage tables. Gap revision JSON is
+> metadata-only; normalized finding tables are authoritative.
 
 Yes — you need a **flexible, versioned questionnaire/compliance engine**, not a fixed schema like `betroffenheitscheck_question_1`, `question_2`, etc.
 

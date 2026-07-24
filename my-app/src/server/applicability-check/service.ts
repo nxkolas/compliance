@@ -17,12 +17,11 @@ import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { ApiError } from "../api/errors";
 import { assertCanAccessOrganization } from "../organizations/service";
-import { NIS2_CHECK_CODE } from "../compliance/runtime-release";
-import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
+import { NIS2_CHECK_CODE, nextCachedRuntimeReleaseReader } from "@/src/server/compliance";
 import type {
   ResolvedComplianceRelease,
   RuntimeReleaseReader,
-} from "../compliance/runtime-release/types";
+} from "@/src/server/compliance";
 import {
   parseStoredRuleEvaluationResult,
   type StoredRuleEvaluationResult,
@@ -331,7 +330,7 @@ export async function getApplicabilityAnswersForUser(
     : null;
   if (!definition) return null;
 
-  const revision = await db.query.assessmentRevisions.findFirst({
+  const revision = await db.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
     where: eq(assessmentRevisions.id, assessment.currentRevisionId),
   });
 
@@ -478,7 +477,7 @@ export async function submitApplicabilityCheckForGuest(
   dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<GuestApplicabilitySession & { result: ApplicabilityResultDto }> {
   if (!input.guestSession) throw new ApiError(400, "Guest session is required");
-  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({
+  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
     where: and(
       eq(guestApplicabilityChecks.id, input.guestSession.id),
       eq(guestApplicabilityChecks.tokenHash, hashGuestToken(input.guestSession.token)),
@@ -696,7 +695,7 @@ async function findGuestApplicabilityCheck(
     return null;
   }
 
-  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({
+  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
     where: guestCheckId
       ? and(
           eq(guestApplicabilityChecks.id, guestCheckId),
@@ -789,7 +788,7 @@ export function hashGuestToken(token: string): string {
 }
 
 async function getCurrentAssessment(organizationId: string, moduleId: string) {
-  return db.query.assessments.findFirst({
+  return db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
     where: and(
       eq(assessments.organizationId, organizationId),
       eq(assessments.moduleId, moduleId),

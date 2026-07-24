@@ -1,6 +1,8 @@
 import { db } from "@/src/db";
 import {
-  artifactRevisionSources,
+  artifactRevisionArtifactSources,
+  artifactRevisionAssessmentSources,
+  artifactRevisionDocumentSources,
   assessmentAnswerOptions,
   assessmentAnswers,
   assessmentRevisions,
@@ -268,13 +270,22 @@ const generatedGapInputsReader = createGeneratedGapInputsReader({
     return owner ?? null;
   },
   async loadSources(revisionId) {
-    return db
-      .select({
-        sourceType: artifactRevisionSources.sourceType,
-        sourceId: artifactRevisionSources.sourceId,
-      })
-      .from(artifactRevisionSources)
-      .where(eq(artifactRevisionSources.artifactRevisionId, revisionId));
+    const [assessmentSources, artifactSources, documentSources] = await Promise.all([
+      db.select({ sourceId: artifactRevisionAssessmentSources.assessmentRevisionId })
+        .from(artifactRevisionAssessmentSources)
+        .where(eq(artifactRevisionAssessmentSources.artifactRevisionId, revisionId)),
+      db.select({ sourceId: artifactRevisionArtifactSources.sourceArtifactRevisionId })
+        .from(artifactRevisionArtifactSources)
+        .where(eq(artifactRevisionArtifactSources.artifactRevisionId, revisionId)),
+      db.select({ sourceId: artifactRevisionDocumentSources.documentVersionId })
+        .from(artifactRevisionDocumentSources)
+        .where(eq(artifactRevisionDocumentSources.artifactRevisionId, revisionId)),
+    ]);
+    return [
+      ...assessmentSources.map(({ sourceId }) => ({ sourceType: "assessment_revision", sourceId })),
+      ...artifactSources.map(({ sourceId }) => ({ sourceType: "artifact_revision", sourceId })),
+      ...documentSources.map(({ sourceId }) => ({ sourceType: "document_version", sourceId })),
+    ];
   },
   async loadAssessment(input) {
     const [row] = await db

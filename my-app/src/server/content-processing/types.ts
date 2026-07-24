@@ -1,5 +1,4 @@
-import type { ParsedDocument } from "../documents/parser";
-import type { DocumentChunkInput } from "../documents/chunker";
+import type { DocumentChunkInput, ParsedDocument } from "@/src/server/documents/domain";
 
 export type ContentParser = {
   parse(bytes: Uint8Array, mimeType: string): Promise<ParsedDocument>;

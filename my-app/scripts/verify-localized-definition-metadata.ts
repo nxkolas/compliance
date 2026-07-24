@@ -1,9 +1,9 @@
 import "dotenv/config";
 
 import postgres from "postgres";
-import { closeDbConnection } from "@/src/db";
-import { directRuntimeReleaseReader } from "@/src/server/compliance/runtime-release/direct-reader";
-import { getActiveGapAnalysisRelease } from "@/src/server/gap-analysis/release-loader";
+import { closeDatabaseConnection } from "@/src/server/database-lifecycle";
+import { directRuntimeReleaseReader } from "@/src/server/compliance";
+import { getActiveGapAnalysisRelease } from "@/src/server/gap-analysis";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -171,5 +171,5 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await Promise.all([sql.end(), closeDbConnection()]);
+    await Promise.all([sql.end(), closeDatabaseConnection()]);
   });

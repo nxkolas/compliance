@@ -6,7 +6,7 @@ import { createOrganizationForUser, getOrganizationForUser, listOrganizationsFor
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
 import { organizationInputSchema } from "@/src/contracts/organizations";
 import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency/repository";
+import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import { ApiError } from "@/src/server/api/errors";
 
 export const GET = apiRoute(async ({ request }: { request: Request }) => {

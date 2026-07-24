@@ -1,7 +1,6 @@
 import * as z from "zod";
 import { db } from "@/src/db";
 import {
-  backgroundJobs,
   aiProcessingRuns,
   auditEvents,
   legalCorpusReleases,
@@ -13,9 +12,10 @@ import {
 } from "@/src/db/schema";
 import { and, eq } from "drizzle-orm";
 import { nextLegalSourceMonitorCheck } from "@/src/contracts/admin/legal-source-monitor-schedule";
+import type { BackgroundJobRecord } from "./service";
 
 export async function recordWorkerDomainFailure(
-  job: typeof backgroundJobs.$inferSelect,
+  job: BackgroundJobRecord,
   errorCode: string,
 ) {
   if (job.kind === "legal-source-process") {
@@ -37,7 +37,7 @@ export async function recordWorkerDomainFailure(
   } else if (job.kind === "legal-source-monitor") {
     const payload = z.object({ monitorId: z.uuid() }).safeParse(job.payload);
     if (!payload.success) return;
-    const monitor = await db.query.legalSourceMonitors.findFirst({
+    const monitor = await db.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
       where: eq(legalSourceMonitors.id, payload.data.monitorId),
     });
     if (monitor) {
@@ -85,7 +85,7 @@ export async function recordWorkerDomainFailure(
   }
 }
 
-export async function recordWorkerDomainCancellation(job: typeof backgroundJobs.$inferSelect) {
+export async function recordWorkerDomainCancellation(job: BackgroundJobRecord) {
   if (job.kind === "report-render") {
     await db.update(reports).set({ state: "cancelled", completedAt: new Date(), updatedAt: new Date() })
       .where(eq(reports.jobId, job.id));

@@ -8,7 +8,7 @@ import {
   gapRequirements,
   documents,
   aiProcessingRuns,
-  artifactRevisionSources,
+  artifactRevisionAssessmentSources,
   actionPlans,
   gapFindings,
   generatedArtifactRevisions,
@@ -90,9 +90,9 @@ describe("reassessment schema", () => {
         ],
       ],
       [
-        artifactRevisionSources,
-        "artifact_revision_sources_revision_type_idx",
-        ["artifact_revision_id", "source_type"],
+        artifactRevisionAssessmentSources,
+        "artifact_revision_assessment_sources_assessment_idx",
+        ["assessment_revision_id"],
       ],
     ] as const;
 
