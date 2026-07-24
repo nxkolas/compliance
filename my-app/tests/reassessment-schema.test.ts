@@ -2,8 +2,6 @@ import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 
 import {
-  actionPlanItemReconciliations,
-  actionPlanReconciliations,
   gapReassessmentDraftDocuments,
   gapReassessmentDrafts,
   gapFindingEvidenceSourceTypeEnum,
@@ -19,8 +17,6 @@ describe("reassessment schema", () => {
       gapRequirements,
       gapReassessmentDrafts,
       gapReassessmentDraftDocuments,
-      actionPlanReconciliations,
-      actionPlanItemReconciliations,
     ];
 
     for (const table of tables) {

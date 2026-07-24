@@ -44,8 +44,6 @@ async function main() {
       "gap_reassessment_drafts",
       "gap_reassessment_draft_documents",
       "action_plans",
-      "action_plan_reconciliations",
-      "action_plan_item_reconciliations",
       "audit_events",
     ];
     const rlsRows = await sql<{ relname: string; relrowsecurity: boolean }[]>`

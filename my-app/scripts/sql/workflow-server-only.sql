@@ -3,21 +3,15 @@
 alter table public.gap_requirements enable row level security;
 alter table public.gap_reassessment_drafts enable row level security;
 alter table public.gap_reassessment_draft_documents enable row level security;
-alter table public.action_plan_reconciliations enable row level security;
-alter table public.action_plan_item_reconciliations enable row level security;
 
 revoke all privileges on table
   public.gap_requirements,
   public.gap_reassessment_drafts,
-  public.gap_reassessment_draft_documents,
-  public.action_plan_reconciliations,
-  public.action_plan_item_reconciliations
+  public.gap_reassessment_draft_documents
 from anon, authenticated;
 
 grant all privileges on table
   public.gap_requirements,
   public.gap_reassessment_drafts,
-  public.gap_reassessment_draft_documents,
-  public.action_plan_reconciliations,
-  public.action_plan_item_reconciliations
+  public.gap_reassessment_draft_documents
 to service_role;

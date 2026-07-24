@@ -922,8 +922,8 @@ These points describe the implementation, not desired behavior:
 6. **The lifecycle is generate-once.** Although tables and routes retain
    “reassessment” names, lifecycle guards reject a second generation after the
    first result exists.
-7. **There is no plan reconciliation or replacement.** Reconciliation tables
-   remain in the schema, but no current application route exposes them.
+7. **There is no plan reconciliation or replacement.** The historical
+   reconciliation tables and application routes have been removed.
 8. **The service permits only one plan ever, not merely one active plan.**
    Finalization rejects when any plan row already exists for the organization.
 9. **Staleness can create a product dead end before finalization.** A new
@@ -935,10 +935,9 @@ These points describe the implementation, not desired behavior:
     legal context in German.** Output can be German or English, but legal
     retrieval passes `language: "de"`.
 
-Planned reassessment, candidate/accepted comparison, and Action Plan
-reconciliation concepts may still appear in the schema and older design
-documents. They are not part of the current organization-facing lifecycle
-described here.
+Historical reassessment, candidate/accepted comparison, and Action Plan
+reconciliation concepts may still appear in older design documents. They are
+not part of the current organization-facing lifecycle described here.
 
 ## Related documentation
 

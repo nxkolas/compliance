@@ -1,6 +1,6 @@
 # Database structure
 
-Status: current schema overview as of 2026-07-17.
+Status: current schema overview as of 2026-07-24.
 
 `src/db/schema.ts` is the source of truth for ordinary application tables,
 columns, enums, relations, constraints, and indexes. Apply it with
@@ -135,27 +135,19 @@ service retrieves evidence only from the selected immutable document versions.
 incomplete structured output fails closed before a result revision is stored.
 Review corrections copy the complete result into a new immutable revision.
 
-## Action-plan revisions and reconciliation
+## Action plans
 
-`action_plans` is revisioned. Exactly one plan is active per organization;
-later plans can remain `draft_reconciliation` until explicit activation. A
-superseded plan is historical and read-only.
-
+`action_plans` stores the one fixed plan produced atomically from the approved
+Gap revision.
 `action_plan_items` stores the immutable baseline derived from a finding plus
 mutable operational fields such as status, responsible user, and due date.
-Predecessor links retain item lineage.
-
-`action_plan_reconciliations` pins the source plan, target draft plan, old/new
-gap revisions, concurrency timestamp, status, and activation actor.
-`action_plan_item_reconciliations` persists each stable-requirement match,
-change kind, proposed decision, human decision, and reason. Activation verifies
-that the accepted gap result and active plan have not changed, then supersedes
-the old plan and activates the successor in one transaction.
+The current lifecycle creates at most one fixed action plan per organization.
+There is no refresh, replacement, or reconciliation workflow.
 
 ## Audit history
 
 `audit_events` records material publication, activation, document, generation,
-review, reassessment, action-plan, reconciliation, and activation actions. The
+review, input-draft, and action-plan actions. The
 Supabase `004` script installs a trigger that rejects update or delete attempts,
 making this activity stream append-only at the database boundary.
 

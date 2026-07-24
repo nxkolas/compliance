@@ -108,8 +108,6 @@ Gap-Revision erzeugt; dafür erfolgt kein weiterer KI-Aufruf.
   bearbeitbar.
 
 Die aktiven Daten liegen in `action_plans` und `action_plan_items`.
-Historische Reconciliation-Tabellen können vorübergehend im Schema verbleiben,
-sind aber über keine Anwendungsroute erreichbar.
 
 ## Weitere Ausbaustufen
 

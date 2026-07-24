@@ -35,11 +35,11 @@ Run the schema and SQL Editor files in this order:
 6. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
 
 All four files are idempotent. `001` and `002` fail immediately when an
-expected Drizzle table is absent. The reassessment and reconciliation tables
-enable RLS in `src/db/schema.ts`; the grant verification below remains mandatory
-for every public table, including those new workflow tables.
+expected Drizzle table is absent. The reassessment tables enable RLS in
+`src/db/schema.ts`; the grant verification below remains mandatory for every
+public table, including those workflow tables.
 
-The current `001`/`002` table lists predate the five workflow tables below.
+The current `001`/`002` table lists predate the three workflow tables below.
 RLS without a policy is default-deny, but revoke their browser grants explicitly
 after `db:push` as defense in depth:
 
@@ -47,9 +47,7 @@ after `db:push` as defense in depth:
 revoke all privileges on table
   public.gap_requirements,
   public.gap_reassessment_drafts,
-  public.gap_reassessment_draft_documents,
-  public.action_plan_reconciliations,
-  public.action_plan_item_reconciliations
+  public.gap_reassessment_draft_documents
 from anon, authenticated;
 ```
 
@@ -121,11 +119,10 @@ For the organization-only evidence workflow, also verify:
 - members can upload a supported document and a new immutable version through
   the server API;
 - direct browser-role reads of documents, reassessment drafts, findings,
-  action plans, reconciliations, and audit events fail;
+  action plans, and audit events fail;
 - preparing a reassessment does not call AI;
-- a candidate revision does not replace the accepted result or active plan;
-- reconciliation cannot activate with unresolved decisions; and
-- an applied reconciliation preserves the superseded plan as read-only history.
+- generation pins the selected immutable inputs; and
+- plan creation permanently locks the generated Gap Analysis.
 
 ## Cleanup job
 

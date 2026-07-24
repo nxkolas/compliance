@@ -3,8 +3,6 @@ import { closeDbConnection, db } from "@/src/db";
 import { sql } from "drizzle-orm";
 
 const expectedTables = [
-  "action_plan_item_reconciliations",
-  "action_plan_reconciliations",
   "api_rate_limit_windows",
   "background_jobs",
   "idempotency_records",

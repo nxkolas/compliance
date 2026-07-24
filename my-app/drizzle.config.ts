@@ -14,8 +14,6 @@ export default defineConfig({
   schemaFilter: 'public',
   tablesFilter: [
     'action_plan_items',
-    'action_plan_item_reconciliations',
-    'action_plan_reconciliations',
     'action_plans',
     'active_compliance_check_releases',
     'active_gap_analysis_releases',
