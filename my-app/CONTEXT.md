@@ -67,3 +67,19 @@ _Avoid_: Legal corpus, uploaded context, customer knowledge
 **Grounded Synthesis**:
 AI-generated comparison, explanation, or recommendation whose material claims are supported by explicitly supplied and validated corpus or organization-evidence citations.
 _Avoid_: Model knowledge, unsourced answer, extractive answer
+
+**Gap Analysis Revision**:
+An immutable organization-specific Gap Analysis result for one pinned set of questionnaire, applicability, Organization Evidence, and Gap Release inputs.
+_Avoid_: Gap report, reassessment result, mutable analysis
+
+**Gap Finding**:
+The assessment of one applicable requirement within one Gap Analysis Revision.
+_Avoid_: Issue, recommendation, requirement
+
+**Finding Recommendation**:
+Generated or human-corrected remediation guidance belonging to a Gap Finding.
+_Avoid_: Requirement recommendation, catalogue recommendation
+
+**Action Plan**:
+An organization's fixed set of measures derived when its Gap Analysis is finalized.
+_Avoid_: Gap Analysis, remediation report, plan revision

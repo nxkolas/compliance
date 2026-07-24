@@ -3,6 +3,8 @@
 Date: 2026-07-24  
 Status: Current-state audit and recommendation  
 Scope: PostgreSQL schema, runtime usage, operational scripts, tests, and persistence architecture
+Implementation response:
+[Database Column and Persistence Architecture Remediation](../plans/database-column-and-persistence-architecture-remediation.md)
 
 ## Executive summary
 
