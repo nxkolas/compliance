@@ -235,6 +235,11 @@ Gap requirements are authored, not AI-generated. A Gap release contains:
 - evaluator and model-policy metadata; and
 - required Legal Corpus families.
 
+The repository definitions remain bilingual. Publication stores the title and
+requirement text in immutable `content_revisions`/`content_translations` and
+pins both revision IDs on `gap_requirement_versions`. Recommendation and
+legal-reference labels remain localized JSON on the requirement version.
+
 The compiler requires every requirement to map at least one known question and
 every question to be mapped at least once. It permits a requirement to list
 multiple questions and permits the same question to be reused by multiple

@@ -8,7 +8,6 @@ import {
   auditEvents,
   gapFindingEvidence,
   gapFindings,
-  gapRequirementVersions,
   generatedArtifactRevisions,
   generatedArtifacts,
   idempotencyRecords,
@@ -230,16 +229,11 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         evidence,
       });
 
-      const requirements = findings.length
-        ? await tx.query.gapRequirementVersions.findMany({
-            where: inArray(
-              gapRequirementVersions.id,
-              findings.map((finding) => finding.requirementVersionId),
-            ),
-          })
-        : [];
       const requirementById = new Map(
-        requirements.map((requirement) => [requirement.id, requirement]),
+        release.requirements.map((requirement) => [
+          requirement.id,
+          requirement,
+        ]),
       );
       const baseline = buildActionPlanItems(
         findings.map((finding) => {
@@ -253,10 +247,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
             id: finding.id,
             status: finding.status,
             severity: finding.severity,
-            requirementTitle: localize(
-              requirement.title,
-              outputLocale,
-            ),
+            requirementTitle: requirement.title,
             recommendation: finding.recommendation,
           };
         }),
@@ -408,10 +399,4 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       "GAP_FINALIZATION_FAILED",
     );
   }
-}
-
-function localize(value: unknown, locale: "de" | "en") {
-  const candidate = value as { de?: unknown; en?: unknown };
-  const localized = candidate[locale] ?? candidate.de ?? candidate.en;
-  return typeof localized === "string" ? localized : "";
 }

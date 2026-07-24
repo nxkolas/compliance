@@ -18,7 +18,7 @@ import type { Locale } from "@/lib/i18n-config";
 import { asc, eq, inArray } from "drizzle-orm";
 import { resolveGapContentTranslation } from "./localize-content";
 
-type Localized = { de: string; en: string };
+type LegacyLocalizedJson = { de: string; en: string };
 
 export type LoadedGapRelease = {
   id: string;
@@ -153,37 +153,6 @@ export async function loadGapAnalysisRelease(
         orderBy: [asc(questionOptions.position)],
       })
     : [];
-  const contentRevisionIds = [
-    frameworkVersion.nameContentRevisionId,
-    frameworkVersion.descriptionContentRevisionId,
-    gapModule.nameContentRevisionId,
-    questionnaireVersion.titleContentRevisionId,
-    requirementSetVersion.titleContentRevisionId,
-    ...questionRows.flatMap((question) => [
-      question.questionContentRevisionId,
-      ...(question.helpContentRevisionId ? [question.helpContentRevisionId] : []),
-    ]),
-    ...optionRows.map((option) => option.labelContentRevisionId),
-  ];
-  const translations = contentRevisionIds.length
-    ? await db.query.contentTranslations.findMany({
-        where: inArray(contentTranslations.contentRevisionId, contentRevisionIds),
-      })
-    : [];
-  const translated = new Map<string, Map<string, string>>();
-  for (const row of translations) {
-    const values = translated.get(row.contentRevisionId) ?? new Map();
-    values.set(row.locale, row.value);
-    translated.set(row.contentRevisionId, values);
-  }
-  const text = (revisionId: string) =>
-    resolveGapContentTranslation(
-      translated,
-      revisionId,
-      locale,
-      release.defaultLocale,
-    );
-
   const members = await db
     .select({
       position: gapRequirementSetMembers.position,
@@ -204,6 +173,41 @@ export async function loadGapAnalysisRelease(
       ),
     )
     .orderBy(asc(gapRequirementSetMembers.position));
+  const contentRevisionIds = [
+    frameworkVersion.nameContentRevisionId,
+    frameworkVersion.descriptionContentRevisionId,
+    gapModule.nameContentRevisionId,
+    questionnaireVersion.titleContentRevisionId,
+    requirementSetVersion.titleContentRevisionId,
+    ...questionRows.flatMap((question) => [
+      question.questionContentRevisionId,
+      ...(question.helpContentRevisionId ? [question.helpContentRevisionId] : []),
+    ]),
+    ...optionRows.map((option) => option.labelContentRevisionId),
+    ...members.flatMap(({ requirement }) => [
+      requirement.titleContentRevisionId,
+      requirement.requirementTextContentRevisionId,
+    ]),
+  ];
+  const translations = contentRevisionIds.length
+    ? await db.query.contentTranslations.findMany({
+        where: inArray(contentTranslations.contentRevisionId, contentRevisionIds),
+      })
+    : [];
+  const translated = new Map<string, Map<string, string>>();
+  for (const row of translations) {
+    const values = translated.get(row.contentRevisionId) ?? new Map();
+    values.set(row.locale, row.value);
+    translated.set(row.contentRevisionId, values);
+  }
+  const text = (revisionId: string) =>
+    resolveGapContentTranslation(
+      translated,
+      revisionId,
+      locale,
+      release.defaultLocale,
+    );
+
   const rules = await db.query.gapAnalysisReleaseApplicabilityRules.findMany({
     where: eq(
       gapAnalysisReleaseApplicabilityRules.gapAnalysisReleaseId,
@@ -265,9 +269,9 @@ export async function loadGapAnalysisRelease(
         code: requirement.code,
         position,
         criticality: requirement.criticality,
-        title: localize(requirement.title, locale),
-        requirementText: localize(requirement.requirementText, locale),
-        recommendation: localize(requirement.recommendation, locale),
+        title: text(requirement.titleContentRevisionId),
+        requirementText: text(requirement.requirementTextContentRevisionId),
+        recommendation: localizeLegacyJson(requirement.recommendation, locale),
         legalReferences: requirement.legalReferences,
         ...conditions,
       };
@@ -275,8 +279,8 @@ export async function loadGapAnalysisRelease(
   };
 }
 
-function localize(value: unknown, locale: Locale) {
-  const candidate = value as Partial<Localized>;
+function localizeLegacyJson(value: unknown, locale: Locale) {
+  const candidate = value as Partial<LegacyLocalizedJson>;
   return candidate[locale] ?? candidate.de ?? candidate.en ?? "";
 }
 

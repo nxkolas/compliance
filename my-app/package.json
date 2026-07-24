@@ -29,6 +29,7 @@
     "db:approve:legal-corpus-fixture": "tsx scripts/approve-legal-corpus-fixture.ts",
     "db:verify:rollout": "tsx scripts/verify-api-corpus-rollout.ts",
     "db:verify:localized-metadata": "tsx scripts/verify-localized-definition-metadata.ts",
+    "db:verify:gap-requirements": "tsx scripts/verify-gap-requirement-dictionary.ts",
     "worker": "tsx src/worker/main.ts",
     "worker:once": "tsx src/worker/main.ts --once",
     "worker:typecheck": "tsc --noEmit",

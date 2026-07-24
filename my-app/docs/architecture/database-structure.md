@@ -58,8 +58,11 @@ workflow, not another interpretation of its rules.
 
 - `gap_requirements` provides stable identities used to reconcile findings and
   action-plan items over time.
-- `gap_requirement_versions` stores immutable localized requirement content,
-  legal metadata, criticality, and prompt-facing text.
+- `gap_requirement_versions` stores immutable structural requirement data,
+  legal metadata, criticality, and required revision pins for the localized
+  title and prompt-facing requirement text. Those pins resolve through
+  `content_revisions` and `content_translations`; recommendation and localized
+  legal-reference labels remain JSON on the requirement version.
 - Requirement-set versions pin both their localized title revision and exact
   requirement versions.
 - `gap_analysis_releases` pins the questionnaire, requirement set, prompt
@@ -175,6 +178,7 @@ npm.cmd run db:publish:compliance -- --release nis2/2026-v1
 npm.cmd run db:activate:compliance -- --release nis2/2026-v1
 npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
 npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
+npm.cmd run db:verify:gap-requirements
 Remove-Item Env:DB_CLEAR_CONFIRM
 ```
 

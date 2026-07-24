@@ -68,6 +68,16 @@ export function compileGapAnalysisRelease(
   );
   const mappedQuestions = new Set<string>();
   for (const requirement of requirements) {
+    requireLocalizedText(
+      requirement.title,
+      `requirement ${requirement.code} title`,
+      errors,
+    );
+    requireLocalizedText(
+      requirement.requirementText,
+      `requirement ${requirement.code} text`,
+      errors,
+    );
     if (requirement.legalReferences.length === 0) {
       errors.push(`Requirement ${requirement.code} has no legal reference`);
     }

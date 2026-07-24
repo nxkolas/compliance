@@ -23,6 +23,12 @@ import { contentHash } from "../../compliance/publishing/canonical-json";
 import type { GapAnalysisReleaseDefinition, LocalizedText } from "../releases/types";
 import { compileGapAnalysisRelease } from "./compile-release";
 import { resolvePublishableCorpusPins } from "../../corpus/pinning";
+import {
+  assertExactBilingualTranslations,
+  assertRequirementContentPins,
+  requirementContentKeys,
+  requirementContentSources,
+} from "./content-keys";
 
 export async function publishGapAnalysisRelease(
   definition: GapAnalysisReleaseDefinition,
@@ -108,6 +114,15 @@ export async function publishGapAnalysisRelease(
           })),
         );
       }
+      const persistedTranslations =
+        await tx.query.contentTranslations.findMany({
+          where: eq(contentTranslations.contentRevisionId, revision.id),
+        });
+      assertExactBilingualTranslations(
+        source.key,
+        source.translations,
+        persistedTranslations,
+      );
       contentRevisionByKey.set(source.key, revision.id);
     }
     const contentRevisionId = (key: string) => {
@@ -234,6 +249,11 @@ export async function publishGapAnalysisRelease(
 
     const requirementVersionByCode = new Map<string, string>();
     for (const source of definition.requirementSet.requirements) {
+      const contentKeys = requirementContentKeys(definition, source.code);
+      const titleContentRevisionId = contentRevisionId(contentKeys.title);
+      const requirementTextContentRevisionId = contentRevisionId(
+        contentKeys.text,
+      );
       await tx.insert(gapRequirements).values({ code: source.code }).onConflictDoNothing();
       const stableRequirement = await tx.query.gapRequirements.findFirst({
         where: eq(gapRequirements.code, source.code),
@@ -253,6 +273,13 @@ export async function publishGapAnalysisRelease(
           `Requirement ${source.code}/${source.versionLabel} already exists with different content`,
         );
       }
+      if (requirement) {
+        assertRequirementContentPins(
+          `${source.code}/${source.versionLabel}`,
+          requirement,
+          { titleContentRevisionId, requirementTextContentRevisionId },
+        );
+      }
       if (!requirement) {
         [requirement] = await tx
           .insert(gapRequirementVersions)
@@ -261,8 +288,8 @@ export async function publishGapAnalysisRelease(
             code: source.code,
             versionLabel: source.versionLabel,
             criticality: source.criticality,
-            title: source.title,
-            requirementText: source.requirementText,
+            titleContentRevisionId,
+            requirementTextContentRevisionId,
             recommendation: source.recommendation,
             legalReferences: source.legalReferences,
             contentHash: requirementHash,
@@ -354,6 +381,7 @@ function createContentSources(definition: GapAnalysisReleaseDefinition) {
         })),
       ];
     }),
+    ...requirementContentSources(definition),
   ] satisfies Array<{ key: string; translations: LocalizedText }>;
 }
 

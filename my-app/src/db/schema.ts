@@ -1776,8 +1776,10 @@ export const gapRequirementVersions = pgTable(
     code: text("code").notNull(),
     versionLabel: text("version_label").notNull(),
     criticality: gapRequirementCriticalityEnum("criticality").notNull(),
-    title: jsonb("title").notNull(),
-    requirementText: jsonb("requirement_text").notNull(),
+    titleContentRevisionId: uuid("title_content_revision_id").notNull(),
+    requirementTextContentRevisionId: uuid(
+      "requirement_text_content_revision_id",
+    ).notNull(),
     recommendation: jsonb("recommendation").notNull(),
     legalReferences: jsonb("legal_references").notNull(),
     contentHash: text("content_hash").notNull(),
@@ -1791,6 +1793,16 @@ export const gapRequirementVersions = pgTable(
       columns: [table.requirementId],
       foreignColumns: [gapRequirements.id],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_requirement_versions_title_content_fk",
+      columns: [table.titleContentRevisionId],
+      foreignColumns: [contentRevisions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_requirement_versions_requirement_text_content_fk",
+      columns: [table.requirementTextContentRevisionId],
+      foreignColumns: [contentRevisions.id],
+    }).onDelete("restrict"),
     uniqueIndex("gap_requirement_versions_requirement_version_unique").on(
       table.requirementId,
       table.versionLabel,
@@ -1798,7 +1810,7 @@ export const gapRequirementVersions = pgTable(
     index("gap_requirement_versions_requirement_idx").on(table.requirementId),
     uniqueIndex("gap_requirement_versions_hash_unique").on(table.contentHash),
   ],
-);
+).enableRLS();
 
 export const gapRequirementSetVersions = pgTable(
   "gap_requirement_set_versions",
@@ -3583,6 +3595,24 @@ export const gapRequirementSetVersionsRelations = relations(
       references: [contentRevisions.id],
     }),
     members: many(gapRequirementSetMembers),
+  }),
+);
+
+export const gapRequirementVersionsRelations = relations(
+  gapRequirementVersions,
+  ({ one }) => ({
+    requirement: one(gapRequirements, {
+      fields: [gapRequirementVersions.requirementId],
+      references: [gapRequirements.id],
+    }),
+    titleContentRevision: one(contentRevisions, {
+      fields: [gapRequirementVersions.titleContentRevisionId],
+      references: [contentRevisions.id],
+    }),
+    requirementTextContentRevision: one(contentRevisions, {
+      fields: [gapRequirementVersions.requirementTextContentRevisionId],
+      references: [contentRevisions.id],
+    }),
   }),
 );
 

@@ -452,6 +452,7 @@ state with the dedicated security and storage checks below instead.
 npm.cmd run db:verify:server-only
 npm.cmd run storage:verify
 npm.cmd run db:verify:rollout
+npm.cmd run db:verify:gap-requirements
 npm.cmd run db:smoke:nis2
 npm.cmd run db:smoke:gap
 ```

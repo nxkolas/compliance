@@ -13,7 +13,11 @@ import {
   type GapPageReadInput,
   type GapPageReader,
 } from "./page-reader";
-import { loadActiveGapAnalysisReleasePointer } from "./release-loader";
+import {
+  loadActiveGapAnalysisReleasePointer,
+  type GapReleaseReader,
+  type LoadedGapRelease,
+} from "./release-loader";
 import { getGapRevisionStalenessBatchPreauthorized } from "./staleness";
 import {
   compareGapFindings,
@@ -21,10 +25,15 @@ import {
   deriveGapLifecycleCapabilities,
   deriveGapLifecycleMode,
 } from "./workflow-state";
+import { loadGapAnalysisRelease } from "./release-loader";
+import { localizeGapFinding } from "./finding-localization";
+import { nextCachedGapReleaseReader } from "./next-cached-release-loader";
 
 export async function getGapAnalysisWorkflow(
   input: GapPageReadInput,
   reader: Pick<GapPageReader, "readGap"> = gapPageReader,
+  releaseReader: Pick<GapReleaseReader, "getPublished"> =
+    nextCachedGapReleaseReader,
 ) {
   const workflow = await reader.readGap(input);
   const correctedIds = (result: unknown) =>
@@ -55,20 +64,63 @@ export async function getGapAnalysisWorkflow(
   const currentMetadata = findingMetadata(workflow.revision?.result);
   const acceptedMetadata = findingMetadata(workflow.acceptedRevision?.result);
   const candidateMetadata = findingMetadata(workflow.candidateRevision?.result);
-  const catalogueByVersionId = new Map(
-    workflow.release?.requirements.map((requirement) => [
-      requirement.id,
-      requirement,
-    ]) ?? [],
-  );
+  const releasePromiseById = new Map<
+    string,
+    Promise<LoadedGapRelease | null>
+  >();
+  if (workflow.release) {
+    releasePromiseById.set(
+      workflow.release.id,
+      Promise.resolve(workflow.release),
+    );
+  }
+  const loadPinnedCatalogue = async (
+    revision: typeof workflow.revision,
+    label: string,
+  ) => {
+    if (!revision) return new Map();
+    if (!revision.gapAnalysisReleaseId) {
+      throw new Error(`${label} Gap revision ${revision.id} has no pinned release`);
+    }
+    let releasePromise = releasePromiseById.get(
+      revision.gapAnalysisReleaseId,
+    );
+    if (!releasePromise) {
+      releasePromise = releaseReader.getPublished({
+        releaseId: revision.gapAnalysisReleaseId,
+        locale: input.locale,
+      });
+      releasePromiseById.set(revision.gapAnalysisReleaseId, releasePromise);
+    }
+    const release = await releasePromise;
+    if (!release) {
+      throw new Error(
+        `${label} pinned Gap release ${revision.gapAnalysisReleaseId} is unavailable`,
+      );
+    }
+    return new Map(
+      release.requirements.map((requirement) => [
+        requirement.id,
+        requirement,
+      ]),
+    );
+  };
+  const [currentCatalogue, acceptedCatalogue, candidateCatalogue] =
+    await Promise.all([
+      loadPinnedCatalogue(workflow.revision, "Current"),
+      loadPinnedCatalogue(workflow.acceptedRevision, "Accepted"),
+      loadPinnedCatalogue(workflow.candidateRevision, "Candidate"),
+    ]);
   const enrich = <T extends (typeof workflow.findings)[number]>(
     row: T,
     manuallyChangedIds: Set<string>,
     metadataRows: Array<Record<string, unknown>>,
+    catalogueByVersionId: Map<
+      string,
+      NonNullable<typeof workflow.release>["requirements"][number]
+    >,
   ) => {
-    const catalogue = catalogueByVersionId.get(
-      row.finding.requirementVersionId,
-    );
+    const localizedRow = localizeGapFinding(row, catalogueByVersionId);
     const metadata = metadataRows.find(
       (item) =>
         item.requirementVersionId === row.finding.requirementVersionId ||
@@ -87,13 +139,7 @@ export async function getGapAnalysisWorkflow(
           )
         : [];
     return {
-      ...row,
-      requirement: {
-        ...row.requirement,
-        stableRequirementId:
-          catalogue?.stableRequirementId ?? row.requirement.requirementId,
-        position: catalogue?.position ?? Number.MAX_SAFE_INTEGER,
-      },
+      ...localizedRow,
       hasOrganizationDocument: row.evidence.some(
         (evidence) => evidence.sourceType === "document_chunk",
       ),
@@ -105,13 +151,13 @@ export async function getGapAnalysisWorkflow(
     };
   };
   const findings = workflow.findings.map((row) =>
-    enrich(row, currentCorrectedIds, currentMetadata),
+    enrich(row, currentCorrectedIds, currentMetadata, currentCatalogue),
   );
   const acceptedFindings = workflow.acceptedFindings.map((row) =>
-    enrich(row, acceptedCorrectedIds, acceptedMetadata),
+    enrich(row, acceptedCorrectedIds, acceptedMetadata, acceptedCatalogue),
   );
   const candidateFindings = workflow.candidateFindings.map((row) =>
-    enrich(row, candidateCorrectedIds, candidateMetadata),
+    enrich(row, candidateCorrectedIds, candidateMetadata, candidateCatalogue),
   );
   const selectedDocumentVersionIds =
     workflow.reassessment?.selected.map(
@@ -181,6 +227,47 @@ export async function getGapAnalysisRevision(input: {
   userId: string;
   organizationId: string;
   revisionId: string;
+  locale: "de" | "en";
+}) {
+  const revision = await getGapAnalysisRevisionRecord(input);
+  if (!revision) return null;
+  if (!revision.gapAnalysisReleaseId) {
+    throw new Error(`Gap revision ${revision.id} has no pinned release`);
+  }
+  const [findings, pinnedRelease, activeRelease] = await Promise.all([
+    loadFindings(revision.id),
+    loadGapAnalysisRelease(revision.gapAnalysisReleaseId, input.locale),
+    loadActiveGapAnalysisReleasePointer("nis2-gap"),
+  ]);
+  if (!pinnedRelease) {
+    throw new Error(
+      `Pinned Gap release ${revision.gapAnalysisReleaseId} is unavailable`,
+    );
+  }
+  const catalogueByVersionId = new Map(
+    pinnedRelease.requirements.map((requirement) => [
+      requirement.id,
+      requirement,
+    ]),
+  );
+  const localizedFindings = findings.map((finding) =>
+    localizeGapFinding(finding, catalogueByVersionId, pinnedRelease.id),
+  );
+  const staleness = (
+    await getGapRevisionStalenessBatchPreauthorized({
+      organizationId: input.organizationId,
+      acceptedRevisionId: revision.id,
+      candidateRevisionId: null,
+      activeGapReleaseId: activeRelease?.gapAnalysisReleaseId ?? null,
+    })
+  ).accepted;
+  return { revision, findings: localizedFindings, staleness };
+}
+
+export async function getGapAnalysisRevisionRecord(input: {
+  userId: string;
+  organizationId: string;
+  revisionId: string;
 }) {
   await requireOrganizationCapability(
     input.userId,
@@ -202,20 +289,7 @@ export async function getGapAnalysisRevision(input: {
       ),
     )
     .limit(1);
-  if (!row) return null;
-  const [findings, activeRelease] = await Promise.all([
-    loadFindings(row.revision.id),
-    loadActiveGapAnalysisReleasePointer("nis2-gap"),
-  ]);
-  const staleness = (
-    await getGapRevisionStalenessBatchPreauthorized({
-      organizationId: input.organizationId,
-      acceptedRevisionId: row.revision.id,
-      candidateRevisionId: null,
-      activeGapReleaseId: activeRelease?.gapAnalysisReleaseId ?? null,
-    })
-  ).accepted;
-  return { revision: row.revision, findings, staleness };
+  return row?.revision ?? null;
 }
 
 async function loadFindings(revisionId: string) {

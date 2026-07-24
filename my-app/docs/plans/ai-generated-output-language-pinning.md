@@ -65,20 +65,19 @@ The same free-form model response also includes `assumptions`,
 prompted in the selected language, but the selected locale is not persisted on
 the resulting artifact.
 
-### Reusable authored definitions outside the dictionary
+### Reusable authored Gap definitions
 
-`gap_requirement_versions` is a separate definition-model exception. It stores
-the following release-authored content directly as localized JSON:
+`gap_requirement_versions` stores release-authored content using two
+persistence models:
 
-- `title`;
-- `requirement_text`;
+- `title` and `requirement_text` pin immutable content revisions whose German
+  and English values live in `content_translations`;
 - `recommendation`; and
-- labels nested in `legal_references`.
+- labels nested in `legal_references` remain localized JSON.
 
-These are reusable immutable definitions rather than generated organization
-content, so they should eventually use pinned content revisions and
-`content_translations`. That normalization is deliberately a separate
-follow-up. It must not be coupled to the AI-output-language rollout.
+The title/text normalization is separate from generated organization output.
+The authored recommendation and legal-reference labels deliberately remain
+outside that normalization.
 
 ### Strings that should remain outside the dictionary
 
@@ -724,13 +723,12 @@ runbook's final verification gates pass.
   independent of the finalizing user's UI language.
 - The cleared database is fully reseeded with reviewed, evaluated, active legal
   corpora and active compliance/Gap releases.
-- `gap_requirement_versions` dictionary normalization remains explicitly out of
-  scope and is tracked separately.
+- Generated-output language pinning remains independent from the completed
+  title/text dictionary normalization on `gap_requirement_versions`.
 
-## Separate follow-up
+## Separate authored-content boundary
 
-Create a distinct plan to move the localized authored fields in
-`gap_requirement_versions` into immutable content revisions:
+Requirement title and requirement text use immutable content revisions:
 
 ```text
 content_items
@@ -738,7 +736,7 @@ content_items
     -> content_translations
 ```
 
-That follow-up should cover requirement title, requirement text,
-recommendation, and legal-reference labels, plus publisher validation and
-release-loader changes. It must not move organization-specific AI output,
-human input, or source evidence into the dictionary.
+Recommendation and legal-reference labels remain localized JSON. Any later
+normalization of those fields requires a separate plan and must not move
+organization-specific AI output, human input, or source evidence into the
+dictionary.
