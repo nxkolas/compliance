@@ -55,6 +55,10 @@ export default async function ApplicabilityCheckPage({
     locale === "en"
       ? overview.result?.result.labelEn ?? overview.result?.result.label
       : overview.result?.result.label;
+  const reasons =
+    locale === "en"
+      ? overview.result?.result.reasonsEn
+      : overview.result?.result.reasons;
 
   return (
     <section className="flex w-full flex-col gap-8">
@@ -105,7 +109,7 @@ export default async function ApplicabilityCheckPage({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            {overview.result?.result.reasons.join(" ") ?? labels.noResult}
+            {reasons?.join(" ") ?? labels.noResult}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button asChild>
