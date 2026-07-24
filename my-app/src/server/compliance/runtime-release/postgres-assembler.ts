@@ -3,6 +3,9 @@ import {
   activeComplianceCheckReleases,
   complianceCheckReleaseContentRevisions,
   complianceCheckReleases,
+  complianceFrameworkVersions,
+  complianceFrameworks,
+  complianceModules,
   contentItems,
   contentRevisions,
   contentTranslations,
@@ -29,6 +32,9 @@ import {
 
 export type RuntimeReleaseHeader = {
   release: typeof complianceCheckReleases.$inferSelect;
+  frameworkVersion: typeof complianceFrameworkVersions.$inferSelect;
+  framework: typeof complianceFrameworks.$inferSelect;
+  module: typeof complianceModules.$inferSelect;
   questionnaireVersion: typeof questionnaireVersions.$inferSelect;
   questionnaire: typeof questionnaires.$inferSelect;
   ruleSet: typeof ruleSets.$inferSelect;
@@ -94,11 +100,32 @@ export const postgresRuntimeReleaseDataSource: RuntimeReleaseDataSource = {
     const rows = await db
       .select({
         release: complianceCheckReleases,
+        frameworkVersion: complianceFrameworkVersions,
+        framework: complianceFrameworks,
+        module: complianceModules,
         questionnaireVersion: questionnaireVersions,
         questionnaire: questionnaires,
         ruleSet: ruleSets,
       })
       .from(complianceCheckReleases)
+      .innerJoin(
+        complianceModules,
+        eq(complianceCheckReleases.moduleId, complianceModules.id),
+      )
+      .innerJoin(
+        complianceFrameworkVersions,
+        eq(
+          complianceModules.frameworkVersionId,
+          complianceFrameworkVersions.id,
+        ),
+      )
+      .innerJoin(
+        complianceFrameworks,
+        eq(
+          complianceFrameworkVersions.frameworkId,
+          complianceFrameworks.id,
+        ),
+      )
       .innerJoin(
         questionnaireVersions,
         eq(
@@ -446,10 +473,17 @@ export async function assemblePublishedComplianceRelease(
     aggregateHash: header.release.aggregateHash,
     defaultLocale: header.release.defaultLocale,
     locale,
+    frameworkName:
+      resolveRevision(header.frameworkVersion.nameContentRevisionId) ?? "",
+    frameworkDescription:
+      resolveRevision(header.frameworkVersion.descriptionContentRevisionId) ??
+      "",
     moduleId: header.release.moduleId,
+    moduleName: resolveRevision(header.module.nameContentRevisionId) ?? "",
     questionnaireId: header.questionnaire.id,
     questionnaireVersionId: header.questionnaireVersion.id,
-    questionnaireTitle: header.questionnaire.title,
+    questionnaireTitle:
+      resolveRevision(header.questionnaireVersion.titleContentRevisionId) ?? "",
     questionnaireCode: header.questionnaire.code,
     ruleSet: header.ruleSet,
     scopeModelVersionId: header.release.scopeModelVersionId,

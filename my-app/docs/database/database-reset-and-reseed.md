@@ -423,10 +423,10 @@ Use the Platform Administrator UUID for the activation audit actor.
 ```powershell
 $env:GAP_RELEASE_ACTOR_ID = $platformAdminUserId
 try {
-  npm.cmd run db:publish:gap -- --release nis2-gap/demo-v1
+  npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
   if ($LASTEXITCODE -ne 0) { throw 'Gap publication failed' }
 
-  npm.cmd run db:activate:gap -- --release nis2-gap/demo-v1
+  npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
   if ($LASTEXITCODE -ne 0) { throw 'Gap activation failed' }
 }
 finally {

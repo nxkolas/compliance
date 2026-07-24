@@ -69,9 +69,11 @@ describe("generated Gap input snapshots", () => {
       releaseCode: "nis2-gap",
       versionLabel: "1",
       moduleId: "gap",
+      moduleTitle: "Module",
       questionnaireId: "questionnaire",
       questionnaireVersionId: "questionnaire-version",
       questionnaireTitle: "Questionnaire",
+      requirementSetTitle: "Requirement set",
       compatibleCheckReleaseId: "check-release",
       prompt: {
         name: "gap",

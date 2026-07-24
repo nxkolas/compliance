@@ -57,7 +57,7 @@ export type GapAnalysisReleaseDefinition = {
   };
   requirementSet: {
     code: string;
-    title: string;
+    title: LocalizedText;
     versionLabel: string;
     requirements: GapRequirementDefinition[];
   };

@@ -85,7 +85,10 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
   },
   requirementSet: {
     code: "nis2-security-demo",
-    title: "NIS2 security requirements – demo only",
+    title: {
+      de: "NIS2-Sicherheitsanforderungen – nur Demo",
+      en: "NIS2 security requirements – demo only",
+    },
     versionLabel: "demo-v1",
     requirements: [
       {

@@ -66,31 +66,8 @@ export async function publishGapAnalysisRelease(
     });
     if (!applicabilityModule) throw new Error("Compatible module is missing");
 
-    await tx
-      .insert(complianceModules)
-      .values({
-        frameworkVersionId: applicabilityModule.frameworkVersionId,
-        code: "gap_analysis",
-        name: "Gap-Analyse",
-        moduleType: "questionnaire",
-        position: 20,
-      })
-      .onConflictDoNothing();
-    const gapModule = await tx.query.complianceModules.findFirst({
-      where: and(
-        eq(
-          complianceModules.frameworkVersionId,
-          applicabilityModule.frameworkVersionId,
-        ),
-        eq(complianceModules.code, "gap_analysis"),
-      ),
-    });
-    if (!gapModule || gapModule.moduleType !== "questionnaire") {
-      throw new Error("Gap-analysis module is unavailable or conflicting");
-    }
-
     const contentRevisionByKey = new Map<string, string>();
-    const contentSources = createQuestionnaireContent(definition);
+    const contentSources = createContentSources(definition);
     for (const source of contentSources) {
       await tx
         .insert(contentItems)
@@ -138,13 +115,43 @@ export async function publishGapAnalysisRelease(
       if (!id) throw new Error(`Content revision ${key} is missing`);
       return id;
     };
+    const metadataKeys = definitionMetadataContentKeys(definition);
+    const moduleNameContentRevisionId = contentRevisionId(metadataKeys.module);
+
+    await tx
+      .insert(complianceModules)
+      .values({
+        frameworkVersionId: applicabilityModule.frameworkVersionId,
+        code: "gap_analysis",
+        nameContentRevisionId: moduleNameContentRevisionId,
+        moduleType: "questionnaire",
+        position: 20,
+      })
+      .onConflictDoNothing();
+    const gapModule = await tx.query.complianceModules.findFirst({
+      where: and(
+        eq(
+          complianceModules.frameworkVersionId,
+          applicabilityModule.frameworkVersionId,
+        ),
+        eq(complianceModules.code, "gap_analysis"),
+      ),
+    });
+    if (
+      !gapModule ||
+      gapModule.frameworkVersionId !== applicabilityModule.frameworkVersionId ||
+      gapModule.moduleType !== "questionnaire" ||
+      gapModule.position !== 20 ||
+      gapModule.nameContentRevisionId !== moduleNameContentRevisionId
+    ) {
+      throw new Error("Gap-analysis module is unavailable or conflicting");
+    }
 
     await tx
       .insert(questionnaires)
       .values({
         moduleId: gapModule.id,
         code: definition.questionnaire.code,
-        title: definition.questionnaire.title.de,
       })
       .onConflictDoNothing();
     const questionnaire = await tx.query.questionnaires.findFirst({
@@ -159,6 +166,9 @@ export async function publishGapAnalysisRelease(
       .values({
         questionnaireId: questionnaire.id,
         versionLabel: definition.versionLabel,
+        titleContentRevisionId: contentRevisionId(
+          metadataKeys.questionnaire,
+        ),
         status: "published",
         publishedAt: new Date(),
       })
@@ -199,7 +209,6 @@ export async function publishGapAnalysisRelease(
       .insert(gapRequirementSets)
       .values({
         code: definition.requirementSet.code,
-        title: definition.requirementSet.title,
       })
       .onConflictDoNothing();
     const requirementSet = await tx.query.gapRequirementSets.findFirst({
@@ -211,6 +220,9 @@ export async function publishGapAnalysisRelease(
       .values({
         requirementSetId: requirementSet.id,
         versionLabel: definition.requirementSet.versionLabel,
+        titleContentRevisionId: contentRevisionId(
+          metadataKeys.requirementSet,
+        ),
         status: "published",
         contentHash: compiled.hashes.requirementSet,
         publishedAt: new Date(),
@@ -319,18 +331,40 @@ export async function publishGapAnalysisRelease(
   });
 }
 
-function createQuestionnaireContent(definition: GapAnalysisReleaseDefinition) {
-  return definition.questionnaire.questions.flatMap((question) => {
-    const prefix = questionContentPrefix(definition, question.stableKey);
-    return [
-      { key: `${prefix}.question`, translations: question.text },
-      { key: `${prefix}.help`, translations: question.help },
-      ...question.options.map((option) => ({
-        key: `${prefix}.option.${option.stableValue}`,
-        translations: option.label,
-      })),
-    ];
-  }) satisfies Array<{ key: string; translations: LocalizedText }>;
+function createContentSources(definition: GapAnalysisReleaseDefinition) {
+  const metadataKeys = definitionMetadataContentKeys(definition);
+  return [
+    { key: metadataKeys.module, translations: definition.title },
+    {
+      key: metadataKeys.questionnaire,
+      translations: definition.questionnaire.title,
+    },
+    {
+      key: metadataKeys.requirementSet,
+      translations: definition.requirementSet.title,
+    },
+    ...definition.questionnaire.questions.flatMap((question) => {
+      const prefix = questionContentPrefix(definition, question.stableKey);
+      return [
+        { key: `${prefix}.question`, translations: question.text },
+        { key: `${prefix}.help`, translations: question.help },
+        ...question.options.map((option) => ({
+          key: `${prefix}.option.${option.stableValue}`,
+          translations: option.label,
+        })),
+      ];
+    }),
+  ] satisfies Array<{ key: string; translations: LocalizedText }>;
+}
+
+function definitionMetadataContentKeys(
+  definition: GapAnalysisReleaseDefinition,
+) {
+  return {
+    module: `${definition.releaseCode}.module.name`,
+    questionnaire: `${definition.releaseCode}.questionnaire.${definition.questionnaire.code}.title`,
+    requirementSet: `${definition.releaseCode}.requirement-set.${definition.requirementSet.code}.title`,
+  };
 }
 
 function questionContentPrefix(

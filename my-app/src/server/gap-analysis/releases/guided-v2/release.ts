@@ -43,7 +43,10 @@ export const guidedGapRelease: GapAnalysisReleaseDefinition = {
   },
   requirementSet: {
     ...demoGapRelease.requirementSet,
-    title: "NIS2 security requirements – guided workflow",
+    title: {
+      de: "NIS2-Sicherheitsanforderungen – geführter Ablauf",
+      en: "NIS2 security requirements – guided workflow",
+    },
     versionLabel: "guided-v2",
     requirements: demoGapRelease.requirementSet.requirements.map(
       (requirement) => ({

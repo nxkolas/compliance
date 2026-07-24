@@ -77,8 +77,8 @@ async function main() {
     where: eq(gapAnalysisReleases.id, gapPointer.gapAnalysisReleaseId),
   });
   assert(
-    gapRelease?.status === "published" && gapRelease.versionLabel === "demo-v1",
-    "The active NIS2 Gap release must be published demo-v1",
+    gapRelease?.status === "published" && gapRelease.versionLabel === "guided-v3",
+    "The active NIS2 Gap release must be published guided-v3",
   );
   assert(
     gapRelease.compatibleCheckReleaseId === complianceRelease.id,

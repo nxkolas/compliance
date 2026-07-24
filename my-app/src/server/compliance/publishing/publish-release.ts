@@ -154,21 +154,29 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       return id;
     };
 
-    await tx.insert(complianceFrameworks).values({ code: "nis2", name: "NIS2", description: "Immutable NIS2 release foundation" }).onConflictDoNothing();
-    const framework = await tx.query.complianceFrameworks.findFirst({ where: eq(complianceFrameworks.code, "nis2") });
-    if (!framework) throw new Error("NIS2 framework insert failed");
+    await tx.insert(complianceFrameworks).values({ code: release.framework.code }).onConflictDoNothing();
+    const framework = await tx.query.complianceFrameworks.findFirst({
+      where: eq(complianceFrameworks.code, release.framework.code),
+    });
+    if (!framework) throw new Error(`Framework insert failed: ${release.framework.code}`);
     const [frameworkVersion] = await tx.insert(complianceFrameworkVersions).values({
       frameworkId: framework.id,
       versionLabel: release.versionLabel,
+      nameContentRevisionId: contentRevisionId(
+        release.framework.nameContentKey,
+      ),
+      descriptionContentRevisionId: contentRevisionId(
+        release.framework.descriptionContentKey,
+      ),
       status: "published",
       effectiveFrom: release.effectiveFrom,
     }).returning();
     const [module] = await tx.insert(complianceModules).values({
       frameworkVersionId: frameworkVersion.id,
-      code: "betroffenheitscheck",
-      name: "Betroffenheitscheck",
-      moduleType: "questionnaire",
-      position: 10,
+      code: release.module.code,
+      nameContentRevisionId: contentRevisionId(release.module.nameContentKey),
+      moduleType: release.module.moduleType,
+      position: release.module.position,
     }).returning();
 
     await tx.insert(scopeModels).values({ code: "nis2_eu_core" }).onConflictDoNothing();
@@ -288,10 +296,16 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       }
     }
 
-    const [questionnaire] = await tx.insert(questionnaires).values({ moduleId: module.id, code: "betroffenheitscheck", title: "NIS2 Betroffenheitscheck" }).returning();
+    const [questionnaire] = await tx.insert(questionnaires).values({
+      moduleId: module.id,
+      code: release.questionnaire.code,
+    }).returning();
     const [questionnaireVersion] = await tx.insert(questionnaireVersions).values({
       questionnaireId: questionnaire.id,
       versionLabel: release.versionLabel,
+      titleContentRevisionId: contentRevisionId(
+        release.questionnaire.titleContentKey,
+      ),
       status: "published",
       publishedAt: new Date(),
     }).returning();

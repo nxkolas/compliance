@@ -17,9 +17,11 @@ function release(id: string, locale: "de" | "en"): LoadedGapRelease {
     releaseCode: "nis2-gap",
     versionLabel: `${id}-${locale}`,
     moduleId: "gap",
+    moduleTitle: `Module ${locale}`,
     questionnaireId: "questionnaire",
     questionnaireVersionId: "questionnaire-version",
     questionnaireTitle: `Questionnaire ${locale}`,
+    requirementSetTitle: `Requirement set ${locale}`,
     compatibleCheckReleaseId: "check-release",
     prompt: {
       name: "gap",

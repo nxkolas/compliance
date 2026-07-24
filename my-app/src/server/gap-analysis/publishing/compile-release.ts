@@ -22,6 +22,17 @@ export function compileGapAnalysisRelease(
   if (release.modelPolicy.maxRequirementsPerBatch < 1) {
     errors.push("Model policy requires a positive batch size");
   }
+  requireLocalizedText(release.title, "module title", errors);
+  requireLocalizedText(
+    release.questionnaire.title,
+    "questionnaire title",
+    errors,
+  );
+  requireLocalizedText(
+    release.requirementSet.title,
+    "requirement-set title",
+    errors,
+  );
 
   unique(
     release.questionnaire.questions.map((question) => question.stableKey),
@@ -101,6 +112,7 @@ export function compileGapAnalysisRelease(
   );
   const requirementSetHash = contentHash({
     code: release.requirementSet.code,
+    title: release.requirementSet.title,
     versionLabel: release.requirementSet.versionLabel,
     members: requirements.map((requirement) => ({
       code: requirement.code,
@@ -137,4 +149,14 @@ function unique(values: string[], label: string, errors: string[]) {
 
 function requireNonEmpty(value: string, label: string, errors: string[]) {
   if (!value.trim()) errors.push(`Missing ${label}`);
+}
+
+function requireLocalizedText(
+  value: { de: string; en: string },
+  label: string,
+  errors: string[],
+) {
+  for (const locale of ["de", "en"] as const) {
+    if (!value[locale]?.trim()) errors.push(`Missing ${locale} ${label}`);
+  }
 }

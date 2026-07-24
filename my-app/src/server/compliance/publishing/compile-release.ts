@@ -7,6 +7,7 @@ import { validateReleaseDefinition } from "./validate-release";
 export type CompiledComplianceRelease = {
   artifact: Nis2ScopeRuleSetDocument;
   hashes: {
+    metadata: string;
     content: string;
     legal: string;
     scopeModel: string;
@@ -77,6 +78,11 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
   });
 
   const hashes = {
+    metadata: contentHash({
+      framework: release.framework,
+      module: release.module,
+      questionnaire: release.questionnaire,
+    }),
     content: contentHash(release.content),
     legal: contentHash(release.legalInstruments),
     scopeModel: contentHash({

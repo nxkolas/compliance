@@ -64,8 +64,8 @@ Publish and activate the separate demo Gap-Analyse release when that workflow
 is required:
 
 ```powershell
-npm.cmd run db:publish:gap -- --release nis2-gap/demo-v1
-npm.cmd run db:activate:gap -- --release nis2-gap/demo-v1
+npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
+npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
 npm.cmd run db:smoke:gap
 ```
 

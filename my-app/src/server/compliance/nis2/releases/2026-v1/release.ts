@@ -449,6 +449,27 @@ const disclaimerContentKey = addContent(
   legacyRuleSetSource.disclaimerEn,
 );
 
+const frameworkNameContentKey = addContent(
+  "nis2.framework.name",
+  "NIS2",
+  "NIS2",
+);
+const frameworkDescriptionContentKey = addContent(
+  "nis2.framework.description",
+  "Rahmenwerk zur Prüfung der NIS2-Betroffenheit.",
+  "Framework for assessing NIS2 applicability.",
+);
+const moduleNameContentKey = addContent(
+  "nis2.module.betroffenheitscheck.name",
+  "Betroffenheitscheck",
+  "Applicability check",
+);
+const questionnaireTitleContentKey = addContent(
+  "nis2.questionnaire.betroffenheitscheck.title",
+  "NIS2-Betroffenheitscheck",
+  "NIS2 applicability check",
+);
+
 export const nis2ReleaseDefinition: Nis2ReleaseDefinition = {
   checkCode: "nis2_applicability",
   versionLabel: "2026-v1",
@@ -457,6 +478,21 @@ export const nis2ReleaseDefinition: Nis2ReleaseDefinition = {
   defaultLocale: "de",
   effectiveFrom: "2026-03-17",
   requiredCorpusFamilies: ["nis2-eu-primary", "nis2-de-primary"],
+  framework: {
+    code: "nis2",
+    nameContentKey: frameworkNameContentKey,
+    descriptionContentKey: frameworkDescriptionContentKey,
+  },
+  module: {
+    code: "betroffenheitscheck",
+    nameContentKey: moduleNameContentKey,
+    moduleType: "questionnaire",
+    position: 10,
+  },
+  questionnaire: {
+    code: "betroffenheitscheck",
+    titleContentKey: questionnaireTitleContentKey,
+  },
   content: [...content.values()],
   legalInstruments,
   sectors,

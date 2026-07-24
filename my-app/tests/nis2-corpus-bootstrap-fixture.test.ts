@@ -9,9 +9,23 @@ describe("NIS2 corpus bootstrap fixture", () => {
     ]);
     for (const item of NIS2_CORPUS_BOOTSTRAP_FIXTURE) {
       expect(item.source.authorityTier).toBe("primary_authority");
-      expect(item.import.exactUrl).toMatch(/^https:\/\/(eur-lex\.europa\.eu|www\.gesetze-im-internet\.de)\//);
+      expect(item.import.exactUrl).toMatch(/^https:\/\/(op\.europa\.eu|www\.gesetze-im-internet\.de)\//);
       expect(item.import.language).toMatch(/^(en|de)$/);
     }
+  });
+
+  it("uses the Publications Office download handler for the EU PDF", () => {
+    const euSource = NIS2_CORPUS_BOOTSTRAP_FIXTURE[0];
+    const url = new URL(euSource.import.exactUrl);
+
+    expect(url.hostname).toBe("op.europa.eu");
+    expect(url.pathname).toBe("/o/opportal-service/download-handler");
+    expect(url.searchParams.get("identifier")).toBe(
+      "9b84d482-85bd-11ed-9887-01aa75ed71a1",
+    );
+    expect(url.searchParams.get("format")).toBe("PDF");
+    expect(url.searchParams.get("language")).toBe("en");
+    expect(url.searchParams.get("productionSystem")).toBe("cellar");
   });
 
   it("makes the non-completeness and required review boundary explicit", () => {

@@ -35,6 +35,11 @@ export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
     }
   }
 
+  requireContent(contentByKey, release.framework.nameContentKey, errors);
+  requireContent(contentByKey, release.framework.descriptionContentKey, errors);
+  requireContent(contentByKey, release.module.nameContentKey, errors);
+  requireContent(contentByKey, release.questionnaire.titleContentKey, errors);
+
   for (const instrument of release.legalInstruments) {
     validateOfficialUrl(instrument.officialSourceUrl, `instrument ${instrument.code}`, errors);
     requireContent(contentByKey, instrument.titleContentKey, errors);

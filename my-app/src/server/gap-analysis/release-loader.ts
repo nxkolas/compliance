@@ -1,10 +1,13 @@
 import { db } from "@/src/db";
 import {
   activeGapAnalysisReleases,
+  complianceFrameworkVersions,
+  complianceModules,
   contentTranslations,
   gapAnalysisReleaseApplicabilityRules,
   gapAnalysisReleases,
   gapRequirementSetMembers,
+  gapRequirementSetVersions,
   gapRequirementVersions,
   questionOptions,
   questionnaireVersions,
@@ -13,6 +16,7 @@ import {
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { asc, eq, inArray } from "drizzle-orm";
+import { resolveGapContentTranslation } from "./localize-content";
 
 type Localized = { de: string; en: string };
 
@@ -21,9 +25,11 @@ export type LoadedGapRelease = {
   releaseCode: string;
   versionLabel: string;
   moduleId: string;
+  moduleTitle: string;
   questionnaireId: string;
   questionnaireVersionId: string;
   questionnaireTitle: string;
+  requirementSetTitle: string;
   compatibleCheckReleaseId: string;
   prompt: {
     name: string;
@@ -109,6 +115,14 @@ export async function loadGapAnalysisRelease(
     where: eq(gapAnalysisReleases.id, releaseId),
   });
   if (!release || release.status !== "published") return null;
+  const gapModule = await db.query.complianceModules.findFirst({
+    where: eq(complianceModules.id, release.moduleId),
+  });
+  if (!gapModule) return null;
+  const frameworkVersion = await db.query.complianceFrameworkVersions.findFirst({
+    where: eq(complianceFrameworkVersions.id, gapModule.frameworkVersionId),
+  });
+  if (!frameworkVersion) return null;
   const questionnaireVersion = await db.query.questionnaireVersions.findFirst({
     where: eq(questionnaireVersions.id, release.questionnaireVersionId),
   });
@@ -117,6 +131,14 @@ export async function loadGapAnalysisRelease(
     where: eq(questionnaires.id, questionnaireVersion.questionnaireId),
   });
   if (!questionnaire) return null;
+  const requirementSetVersion =
+    await db.query.gapRequirementSetVersions.findFirst({
+      where: eq(
+        gapRequirementSetVersions.id,
+        release.requirementSetVersionId,
+      ),
+    });
+  if (!requirementSetVersion) return null;
 
   const questionRows = await db.query.questions.findMany({
     where: eq(questions.questionnaireVersionId, questionnaireVersion.id),
@@ -132,6 +154,11 @@ export async function loadGapAnalysisRelease(
       })
     : [];
   const contentRevisionIds = [
+    frameworkVersion.nameContentRevisionId,
+    frameworkVersion.descriptionContentRevisionId,
+    gapModule.nameContentRevisionId,
+    questionnaireVersion.titleContentRevisionId,
+    requirementSetVersion.titleContentRevisionId,
     ...questionRows.flatMap((question) => [
       question.questionContentRevisionId,
       ...(question.helpContentRevisionId ? [question.helpContentRevisionId] : []),
@@ -149,10 +176,13 @@ export async function loadGapAnalysisRelease(
     values.set(row.locale, row.value);
     translated.set(row.contentRevisionId, values);
   }
-  const text = (revisionId: string) => {
-    const values = translated.get(revisionId);
-    return values?.get(locale) ?? values?.get("de") ?? values?.get("en") ?? "";
-  };
+  const text = (revisionId: string) =>
+    resolveGapContentTranslation(
+      translated,
+      revisionId,
+      locale,
+      release.defaultLocale,
+    );
 
   const members = await db
     .select({
@@ -189,9 +219,13 @@ export async function loadGapAnalysisRelease(
     releaseCode: release.releaseCode,
     versionLabel: release.versionLabel,
     moduleId: release.moduleId,
+    moduleTitle: text(gapModule.nameContentRevisionId),
     questionnaireId: questionnaire.id,
     questionnaireVersionId: questionnaireVersion.id,
-    questionnaireTitle: questionnaire.title,
+    questionnaireTitle: text(questionnaireVersion.titleContentRevisionId),
+    requirementSetTitle: text(
+      requirementSetVersion.titleContentRevisionId,
+    ),
     compatibleCheckReleaseId: release.compatibleCheckReleaseId,
     prompt: {
       name: release.promptName,

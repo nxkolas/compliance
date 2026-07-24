@@ -131,6 +131,21 @@ export type Nis2ReleaseDefinition = {
   defaultLocale: RequiredLocale;
   effectiveFrom: string;
   requiredCorpusFamilies: string[];
+  framework: {
+    code: string;
+    nameContentKey: string;
+    descriptionContentKey: string;
+  };
+  module: {
+    code: string;
+    nameContentKey: string;
+    moduleType: "questionnaire";
+    position: number;
+  };
+  questionnaire: {
+    code: string;
+    titleContentKey: string;
+  };
   content: LocalizedContentSource[];
   legalInstruments: LegalInstrumentSource[];
   sectors: Array<{ code: string; labelContentKey: string }>;

@@ -29,7 +29,10 @@ The deterministic NIS2 checker uses four layers:
    instruments, and content items.
 2. Immutable versions: content revisions/translations, legal-instrument
    versions/provisions, scope-model entity versions, threshold sets,
-   jurisdiction profiles, questionnaire versions, and compiled rule sets.
+   jurisdiction profiles, framework versions, questionnaire versions, and
+   compiled rule sets. Framework versions pin localized framework name and
+   description revisions; modules pin their localized name revision; and
+   questionnaire versions pin their localized title revision.
 3. Aggregate releases: `compliance_check_releases` pins one exact questionnaire,
    EU model, threshold set, evaluator/rule artifact, fact-version set,
    content-revision set, and national-profile mapping.
@@ -57,7 +60,8 @@ workflow, not another interpretation of its rules.
   action-plan items over time.
 - `gap_requirement_versions` stores immutable localized requirement content,
   legal metadata, criticality, and prompt-facing text.
-- Requirement-set versions pin exact requirement versions.
+- Requirement-set versions pin both their localized title revision and exact
+  requirement versions.
 - `gap_analysis_releases` pins the questionnaire, requirement set, prompt
   metadata, model configuration, and compatible applicability release.
 - Active-release pointers and activation history use the same publish-then-
@@ -169,8 +173,8 @@ npm.cmd run db:push
 # Run SQL Editor 004 again, followed by 001, 002, and 003.
 npm.cmd run db:publish:compliance -- --release nis2/2026-v1
 npm.cmd run db:activate:compliance -- --release nis2/2026-v1
-npm.cmd run db:publish:gap -- --release nis2-gap/demo-v1
-npm.cmd run db:activate:gap -- --release nis2-gap/demo-v1
+npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
+npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
 Remove-Item Env:DB_CLEAR_CONFIRM
 ```
 

@@ -1,6 +1,6 @@
 # Localized compliance-definition metadata
 
-Status: proposed
+Status: completed
 
 Date: 2026-07-24
 

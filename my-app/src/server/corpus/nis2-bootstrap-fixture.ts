@@ -14,10 +14,10 @@ export const NIS2_CORPUS_BOOTSTRAP_FIXTURE = [
       title: "Directive (EU) 2022/2555 (NIS 2 Directive)",
       sourceKind: "directive",
       authorityTier: "primary_authority" as const,
-      canonicalPublisher: "Publications Office of the European Union (EUR-Lex)",
+      canonicalPublisher: "Publications Office of the European Union",
     },
     import: {
-      exactUrl: "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:32022L2555",
+      exactUrl: "https://op.europa.eu/o/opportal-service/download-handler?identifier=9b84d482-85bd-11ed-9887-01aa75ed71a1&format=PDF&language=en&productionSystem=cellar",
       versionLabel: "OJ-L-333-2022-12-27-en",
       officialIdentifier: "CELEX:32022L2555",
       effectiveFrom: "2023-01-16",

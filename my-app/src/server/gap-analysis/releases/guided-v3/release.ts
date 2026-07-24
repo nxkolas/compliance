@@ -18,7 +18,10 @@ export const singleLifecycleGapRelease: GapAnalysisReleaseDefinition = {
   },
   requirementSet: {
     ...guidedGapRelease.requirementSet,
-    title: "NIS2 security requirements – single lifecycle",
+    title: {
+      de: "NIS2-Sicherheitsanforderungen – einheitlicher Lebenszyklus",
+      en: "NIS2 security requirements – single lifecycle",
+    },
     versionLabel: "guided-v3",
     requirements: guidedGapRelease.requirementSet.requirements.map(
       (requirement) => ({

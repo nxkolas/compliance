@@ -765,8 +765,6 @@ export const complianceFrameworks = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     code: text("code").notNull(),
-    name: text("name").notNull(),
-    description: text("description"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -782,6 +780,10 @@ export const complianceFrameworkVersions = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     frameworkId: uuid("framework_id").notNull(),
     versionLabel: text("version_label").notNull(),
+    nameContentRevisionId: uuid("name_content_revision_id").notNull(),
+    descriptionContentRevisionId: uuid(
+      "description_content_revision_id",
+    ).notNull(),
     status: complianceFrameworkVersionStatusEnum("status").notNull(),
     effectiveFrom: date("effective_from"),
     effectiveTo: date("effective_to"),
@@ -794,6 +796,16 @@ export const complianceFrameworkVersions = pgTable(
       name: "compliance_framework_versions_framework_fk",
       columns: [table.frameworkId],
       foreignColumns: [complianceFrameworks.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "compliance_framework_versions_name_content_fk",
+      columns: [table.nameContentRevisionId],
+      foreignColumns: [contentRevisions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "compliance_framework_versions_description_content_fk",
+      columns: [table.descriptionContentRevisionId],
+      foreignColumns: [contentRevisions.id],
     }).onDelete("restrict"),
     uniqueIndex("compliance_framework_versions_framework_label_unique").on(
       table.frameworkId,
@@ -810,7 +822,7 @@ export const complianceModules = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     frameworkVersionId: uuid("framework_version_id").notNull(),
     code: text("code").notNull(),
-    name: text("name").notNull(),
+    nameContentRevisionId: uuid("name_content_revision_id").notNull(),
     moduleType: complianceModuleTypeEnum("module_type").notNull(),
     position: integer("position").default(0).notNull(),
   },
@@ -819,6 +831,11 @@ export const complianceModules = pgTable(
       name: "compliance_modules_framework_version_fk",
       columns: [table.frameworkVersionId],
       foreignColumns: [complianceFrameworkVersions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "compliance_modules_name_content_fk",
+      columns: [table.nameContentRevisionId],
+      foreignColumns: [contentRevisions.id],
     }).onDelete("restrict"),
     uniqueIndex("compliance_modules_framework_version_code_unique").on(
       table.frameworkVersionId,
@@ -837,7 +854,6 @@ export const questionnaires = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     moduleId: uuid("module_id").notNull(),
     code: text("code").notNull(),
-    title: text("title").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -863,6 +879,7 @@ export const questionnaireVersions = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     questionnaireId: uuid("questionnaire_id").notNull(),
     versionLabel: text("version_label").notNull(),
+    titleContentRevisionId: uuid("title_content_revision_id").notNull(),
     status: complianceFrameworkVersionStatusEnum("status").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -874,6 +891,11 @@ export const questionnaireVersions = pgTable(
       name: "questionnaire_versions_questionnaire_fk",
       columns: [table.questionnaireId],
       foreignColumns: [questionnaires.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "questionnaire_versions_title_content_fk",
+      columns: [table.titleContentRevisionId],
+      foreignColumns: [contentRevisions.id],
     }).onDelete("restrict"),
     uniqueIndex("questionnaire_versions_questionnaire_label_unique").on(
       table.questionnaireId,
@@ -1714,7 +1736,6 @@ export const gapRequirementSets = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     code: text("code").notNull(),
-    title: text("title").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1772,6 +1793,7 @@ export const gapRequirementSetVersions = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     requirementSetId: uuid("requirement_set_id").notNull(),
     versionLabel: text("version_label").notNull(),
+    titleContentRevisionId: uuid("title_content_revision_id").notNull(),
     status: immutableComponentStatusEnum("status").notNull(),
     contentHash: text("content_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -1784,6 +1806,11 @@ export const gapRequirementSetVersions = pgTable(
       name: "gap_requirement_set_versions_set_fk",
       columns: [table.requirementSetId],
       foreignColumns: [gapRequirementSets.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_requirement_set_versions_title_content_fk",
+      columns: [table.titleContentRevisionId],
+      foreignColumns: [contentRevisions.id],
     }).onDelete("restrict"),
     uniqueIndex("gap_requirement_set_versions_label_unique").on(
       table.requirementSetId,
@@ -3432,6 +3459,14 @@ export const complianceFrameworkVersionsRelations = relations(
       fields: [complianceFrameworkVersions.frameworkId],
       references: [complianceFrameworks.id],
     }),
+    nameContentRevision: one(contentRevisions, {
+      fields: [complianceFrameworkVersions.nameContentRevisionId],
+      references: [contentRevisions.id],
+    }),
+    descriptionContentRevision: one(contentRevisions, {
+      fields: [complianceFrameworkVersions.descriptionContentRevisionId],
+      references: [contentRevisions.id],
+    }),
     modules: many(complianceModules),
   }),
 );
@@ -3442,6 +3477,10 @@ export const complianceModulesRelations = relations(
     frameworkVersion: one(complianceFrameworkVersions, {
       fields: [complianceModules.frameworkVersionId],
       references: [complianceFrameworkVersions.id],
+    }),
+    nameContentRevision: one(contentRevisions, {
+      fields: [complianceModules.nameContentRevisionId],
+      references: [contentRevisions.id],
     }),
     questionnaires: many(questionnaires),
     assessments: many(assessments),
@@ -3469,8 +3508,34 @@ export const questionnaireVersionsRelations = relations(
       fields: [questionnaireVersions.questionnaireId],
       references: [questionnaires.id],
     }),
+    titleContentRevision: one(contentRevisions, {
+      fields: [questionnaireVersions.titleContentRevisionId],
+      references: [contentRevisions.id],
+    }),
     questions: many(questions),
     assessmentRevisions: many(assessmentRevisions),
+  }),
+);
+
+export const gapRequirementSetsRelations = relations(
+  gapRequirementSets,
+  ({ many }) => ({
+    versions: many(gapRequirementSetVersions),
+  }),
+);
+
+export const gapRequirementSetVersionsRelations = relations(
+  gapRequirementSetVersions,
+  ({ one, many }) => ({
+    requirementSet: one(gapRequirementSets, {
+      fields: [gapRequirementSetVersions.requirementSetId],
+      references: [gapRequirementSets.id],
+    }),
+    titleContentRevision: one(contentRevisions, {
+      fields: [gapRequirementSetVersions.titleContentRevisionId],
+      references: [contentRevisions.id],
+    }),
+    members: many(gapRequirementSetMembers),
   }),
 );
 

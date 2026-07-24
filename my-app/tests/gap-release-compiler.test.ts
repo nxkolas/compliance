@@ -33,6 +33,53 @@ describe("gap-analysis release compiler", () => {
     expect(() => compileGapAnalysisRelease(invalid)).toThrow(/template hash/);
   });
 
+  it("rejects blank localized definition titles", () => {
+    const invalidTitles = [
+      (release: typeof demoGapRelease) => {
+        release.title.de = " ";
+      },
+      (release: typeof demoGapRelease) => {
+        release.questionnaire.title.en = "";
+      },
+      (release: typeof demoGapRelease) => {
+        release.requirementSet.title.de = "\t";
+      },
+    ];
+
+    for (const invalidate of invalidTitles) {
+      const invalid = structuredClone(demoGapRelease);
+      invalidate(invalid);
+      expect(() => compileGapAnalysisRelease(invalid)).toThrow(
+        /Missing (de|en) (module|questionnaire|requirement-set) title/,
+      );
+    }
+  });
+
+  it("changes deterministic hashes when localized definition titles change", () => {
+    const original = compileGapAnalysisRelease(demoGapRelease);
+    const moduleChange = structuredClone(demoGapRelease);
+    moduleChange.title.en += " updated";
+    const questionnaireChange = structuredClone(demoGapRelease);
+    questionnaireChange.questionnaire.title.de += " aktualisiert";
+    const requirementSetChange = structuredClone(demoGapRelease);
+    requirementSetChange.requirementSet.title.en += " updated";
+
+    expect(compileGapAnalysisRelease(moduleChange).hashes.aggregate).not.toBe(
+      original.hashes.aggregate,
+    );
+    expect(
+      compileGapAnalysisRelease(questionnaireChange).hashes.questionnaire,
+    ).not.toBe(original.hashes.questionnaire);
+    const compiledRequirementSet =
+      compileGapAnalysisRelease(requirementSetChange);
+    expect(compiledRequirementSet.hashes.requirementSet).not.toBe(
+      original.hashes.requirementSet,
+    );
+    expect(compiledRequirementSet.hashes.aggregate).not.toBe(
+      original.hashes.aggregate,
+    );
+  });
+
   it("publishes the guided labels under a new immutable release contract", () => {
     expect(() => compileGapAnalysisRelease(guidedGapRelease)).not.toThrow();
     expect(guidedGapRelease.versionLabel).toBe("guided-v2");
