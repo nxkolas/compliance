@@ -8,6 +8,7 @@ Compliance Checker app.
 - [End-to-end compliance workflow](./architecture/end-to-end-compliance-workflow.md)
 - [Product docs](./product/README.md)
 - [Current gap-analysis workflow](./product/gap-analysis-current-workflow.md)
+- [Current country support](./product/country-support-current-behavior.md)
 - [Product structure](./product/product-structure.md)
 - [Architecture docs](./architecture/README.md)
 - [Database structure](./architecture/database-structure.md)
