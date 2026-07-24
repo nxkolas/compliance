@@ -5,6 +5,7 @@ Compliance Checker app.
 
 ## Product And Architecture
 
+- [End-to-end compliance workflow](./architecture/end-to-end-compliance-workflow.md)
 - [Product docs](./product/README.md)
 - [Current gap-analysis workflow](./product/gap-analysis-current-workflow.md)
 - [Product structure](./product/product-structure.md)
