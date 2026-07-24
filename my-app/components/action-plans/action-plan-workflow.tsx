@@ -80,9 +80,17 @@ export function ActionPlanWorkflow({
       </Card>
     );
   }
+  const resultLocale =
+    current.plan.outputLocale === "de" ? "de" : "en";
 
   return (
     <div className="flex flex-col gap-6">
+      <div>
+        <span className="inline-flex rounded-full border px-3 py-1 text-xs">
+          {labels.resultLanguage}:{" "}
+          {labels.resultLanguages[resultLocale]}
+        </span>
+      </div>
       {error ? (
         <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
           {error}

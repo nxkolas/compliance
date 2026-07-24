@@ -29,7 +29,15 @@ export type GroundedOutputContract<T> = {
   schema: z.ZodType<T>;
   claims(output: T): GroundedClaim[];
   allowConflictingClaim?: (output: T, claim: GroundedClaim) => boolean;
-};
+} & (
+  | {
+      languagePolicy: "localized";
+      generatedProse(output: T): string[];
+    }
+  | {
+      languagePolicy: "language_neutral";
+    }
+);
 
 export type QueryUnit = { id: string; query: string };
 

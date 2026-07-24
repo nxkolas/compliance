@@ -1,5 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { getLocale } from "@/lib/i18n";
 import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { requireIdempotencyKey } from "@/src/server/api/idempotency";
@@ -19,7 +18,6 @@ export const POST = apiRoute(async ({ request, routeContext }: {
   const result = await retryGapReassessment({
     userId: user.id,
     organizationId,
-    locale: await getLocale(),
     idempotencyKey: requireIdempotencyKey(request),
     ...body,
   });
@@ -30,6 +28,7 @@ export const POST = apiRoute(async ({ request, routeContext }: {
       draft: {
         id: result.draft.id,
         status: result.draft.status,
+        outputLocale: result.draft.outputLocale,
         lockVersion: result.draft.lockVersion,
         generationJobId: result.draft.generationJobId!,
         aiProcessingRunId: result.draft.aiProcessingRunId,

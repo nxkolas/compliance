@@ -12,8 +12,8 @@ export const GAP_GROUNDING_INSTRUCTION = [
 export function gapOutputLocaleInstruction(locale: "de" | "en") {
   const language = locale === "de" ? "German" : "English";
   return [
-    `Write every free-form string in assumptions, contradictions, and questionnaireDisagreements in ${language}.`,
+    `Write every generated free-form field in ${language}: rationale, recommendation, assumptions, contradictions, and questionnaireDisagreements.`,
     "Keep citation IDs unchanged.",
-    "Continue to populate both de and en for rationale and recommendation.",
+    "Evidence excerpts are source quotations: they may be in another language and must not be translated, rewritten, or included as generated prose.",
   ].join(" ");
 }

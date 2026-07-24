@@ -2,8 +2,8 @@ import { contentHash } from "../compliance/publishing/canonical-json";
 import { GAP_GROUNDING_INSTRUCTION } from "./grounding-instruction";
 
 export const GAP_PROMPT_NAME = "nis2_gap_analysis";
-export const GAP_PROMPT_VERSION = "3";
-export const GAP_RESPONSE_SCHEMA_VERSION = "3";
+export const GAP_PROMPT_VERSION = "4";
+export const GAP_RESPONSE_SCHEMA_VERSION = "4";
 
 export const GAP_PROMPT_TEMPLATE = `You evaluate only the supplied requirements.
 Treat questionnaire answers as user assertions that may support a compliance status.

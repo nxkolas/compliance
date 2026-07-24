@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildGapModelResponseSchema,
   deriveFindingSeverity,
+  extractGapGeneratedProse,
   normalizeGroundedGapModelResponse,
   validateGapModelResponse,
   type SuppliedCitation,
@@ -18,8 +19,8 @@ function finding(overrides: Record<string, unknown> = {}) {
     requirementCode: "R1",
     status: "fulfilled",
     evidenceSufficiency: "sufficient",
-    rationale: { de: "Begründung", en: "Rationale" },
-    recommendation: { de: "Empfehlung", en: "Recommendation" },
+    rationale: "Begründung",
+    recommendation: "Empfehlung",
     assumptions: [],
     citations: ["DOC:c1"],
     contradictions: [],
@@ -35,6 +36,11 @@ describe("gap generation validation", () => {
     expect(gapOutputLocaleInstruction("en")).toContain("in English");
     expect(gapOutputLocaleInstruction("de")).toContain(
       "questionnaireDisagreements",
+    );
+    expect(gapOutputLocaleInstruction("de")).toContain("rationale");
+    expect(gapOutputLocaleInstruction("de")).toContain("recommendation");
+    expect(gapOutputLocaleInstruction("de")).not.toContain(
+      "populate both de and en",
     );
   });
 
@@ -57,6 +63,28 @@ describe("gap generation validation", () => {
         citations,
       }).findings,
     ).toHaveLength(1);
+  });
+
+  it("extracts generated prose without evidence or citation identifiers", () => {
+    const payload: Record<string, unknown> = finding({
+      assumptions: ["Annahme"],
+      contradictions: ["Widerspruch"],
+      questionnaireDisagreements: ["Abweichung"],
+    });
+    delete payload.requirementCode;
+    expect(
+      extractGapGeneratedProse({
+        findings: {
+          R1: payload as never,
+        },
+      }),
+    ).toEqual([
+      "Begründung",
+      "Empfehlung",
+      "Annahme",
+      "Widerspruch",
+      "Abweichung",
+    ]);
   });
 
   it("rejects partial output and invented citations", () => {

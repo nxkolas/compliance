@@ -1,5 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { getLocale } from "@/lib/i18n";
 import { actionPlanGenerationRequestSchema } from "@/src/contracts/action-plans";
 import { requireApiUser } from "@/src/server/api/auth";
 import { formatEtag } from "@/src/server/api/concurrency";
@@ -32,7 +31,6 @@ export const POST = apiRoute(async ({ request, routeContext }: { request: Reques
       userId: user.id,
       organizationId,
       gapRevisionId: body.gapRevisionId,
-      locale: await getLocale(),
       command: claim.record,
     });
     revalidatePath(`/tool/organizations/${organizationId}/action-plan`);

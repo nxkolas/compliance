@@ -10,6 +10,7 @@ export function isRetryableGapReassessmentStatus(status: string) {
 export const gapGenerationDraftSchema = z.object({
   id: z.uuid(),
   status: z.enum(["locked", "generated", "failed", "cancelled"]),
+  outputLocale: z.enum(["de", "en"]),
   lockVersion: z.number().int().positive(),
   generationJobId: z.uuid(),
   aiProcessingRunId: z.uuid().nullable(),
@@ -29,14 +30,13 @@ export const gapQuestionnaireInputSchema = z.object({
   assessmentId: z.uuid(),
   answers: z.array(z.object({ questionId: z.uuid(), optionId: z.uuid() })).min(1),
 });
-const localizedTextSchema = z.object({ de: z.string().trim().min(1), en: z.string().trim().min(1) });
 export const gapCorrectionInputSchema = z.object({
   corrections: z.array(z.object({
     findingId: z.uuid(),
     status: z.enum(["fulfilled", "partially_fulfilled", "not_fulfilled", "insufficient_evidence"]).optional(),
     evidenceSufficiency: z.enum(["sufficient", "partial", "none"]).optional(),
-    rationale: localizedTextSchema.optional(),
-    recommendation: localizedTextSchema.optional(),
+    rationale: z.string().trim().min(1).optional(),
+    recommendation: z.string().trim().min(1).optional(),
     assumptions: z.array(z.string().trim().min(1)).optional(),
     requiresReview: z.boolean().optional(),
     reason: z.string().trim().min(1),

@@ -1636,6 +1636,7 @@ export const generatedArtifactRevisions = pgTable(
     ),
     status: generatedArtifactRevisionStatusEnum("status").notNull(),
     result: jsonb("result").notNull(),
+    outputLocale: text("output_locale"),
     modelName: text("model_name"),
     promptVersion: text("prompt_version"),
     ruleSetId: uuid("rule_set_id"),
@@ -1681,6 +1682,18 @@ export const generatedArtifactRevisions = pgTable(
     ),
     index("generated_artifact_revisions_outcome_idx").on(table.outcomeCode),
     index("generated_artifact_revisions_evaluated_at_idx").on(table.evaluatedAt),
+    check(
+      "generated_artifact_revisions_output_locale_check",
+      sql`(
+        (${table.gapAnalysisReleaseId} is null and ${table.outputLocale} is null)
+        or
+        (
+          ${table.gapAnalysisReleaseId} is not null
+          and ${table.outputLocale} in ('de', 'en')
+          and ${table.result}->>'outputLocale' = ${table.outputLocale}
+        )
+      )`,
+    ),
   ],
 );
 
@@ -2081,6 +2094,7 @@ export const gapReassessmentDrafts = pgTable(
     baseAcceptedGapRevisionId: uuid("base_accepted_gap_revision_id"),
     assessmentRevisionId: uuid("assessment_revision_id").notNull(),
     status: gapReassessmentStatusEnum("status").default("open").notNull(),
+    outputLocale: text("output_locale"),
     lockVersion: integer("lock_version").default(1).notNull(),
     aiProcessingRunId: uuid("ai_processing_run_id").references(
       (): AnyPgColumn => aiProcessingRuns.id,
@@ -2145,6 +2159,14 @@ export const gapReassessmentDrafts = pgTable(
     ).on(table.organizationId, table.assessmentId, table.createdAt),
     uniqueIndex("gap_reassessment_drafts_generation_job_unique").on(table.generationJobId),
     check("gap_reassessment_drafts_lock_version_positive", sql`${table.lockVersion} > 0`),
+    check(
+      "gap_reassessment_drafts_output_locale_check",
+      sql`(
+        (${table.status} = 'open' and ${table.outputLocale} is null)
+        or
+        (${table.status} <> 'open' and ${table.outputLocale} in ('de', 'en'))
+      )`,
+    ),
   ],
 ).enableRLS();
 
@@ -2321,6 +2343,9 @@ export const aiProcessingRuns = pgTable(
     assessmentRevisionId: uuid("assessment_revision_id"),
     operationKind: aiOperationKindEnum("operation_kind").notNull(),
     status: processingStatusEnum("status").default("pending").notNull(),
+    outputLocale: text("output_locale").notNull(),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    languageValidation: jsonb("language_validation").notNull(),
     inputHash: text("input_hash").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
     provider: text("provider"),
@@ -2381,6 +2406,23 @@ export const aiProcessingRuns = pgTable(
       table.createdAt,
     ),
     check("ai_processing_runs_provenance_status_check", sql`${table.provenanceStatus} in ('complete', 'historical_unknown')`),
+    check(
+      "ai_processing_runs_output_locale_check",
+      sql`${table.outputLocale} in ('de', 'en')`,
+    ),
+    check(
+      "ai_processing_runs_attempt_count_check",
+      sql`${table.attemptCount} >= 0`,
+    ),
+    check(
+      "ai_processing_runs_language_validation_check",
+      sql`
+        jsonb_typeof(${table.languageValidation}) = 'object'
+        and ${table.languageValidation}->>'version' = '1'
+        and ${table.languageValidation}->>'expectedLocale' = ${table.outputLocale}
+        and jsonb_typeof(${table.languageValidation}->'attempts') = 'array'
+      `,
+    ),
   ],
 );
 
@@ -2421,8 +2463,8 @@ export const gapFindings = pgTable(
       "evidence_sufficiency",
     ).notNull(),
     severity: actionPlanPriorityEnum("severity").notNull(),
-    rationale: jsonb("rationale").notNull(),
-    recommendation: jsonb("recommendation").notNull(),
+    rationale: text("rationale").notNull(),
+    recommendation: text("recommendation").notNull(),
     assumptions: jsonb("assumptions").default(sql`'[]'::jsonb`).notNull(),
     requiresReview: boolean("requires_review").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -2548,6 +2590,7 @@ export const actionPlans = pgTable(
     sourceGapArtifactRevisionId: uuid(
       "source_gap_artifact_revision_id",
     ).notNull(),
+    outputLocale: text("output_locale").notNull(),
     status: actionPlanStatusEnum("status").default("active").notNull(),
     revisionNumber: integer("revision_number").notNull(),
     predecessorPlanId: uuid("predecessor_plan_id").references(
@@ -2587,6 +2630,10 @@ export const actionPlans = pgTable(
     unique("action_plans_id_organization_unique").on(
       table.id,
       table.organizationId,
+    ),
+    check(
+      "action_plans_output_locale_check",
+      sql`${table.outputLocale} in ('de', 'en')`,
     ),
   ],
 );

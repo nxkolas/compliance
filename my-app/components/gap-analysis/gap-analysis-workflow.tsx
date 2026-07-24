@@ -504,6 +504,7 @@ export function GapAnalysisWorkflow({
               busy={busy}
               generating={Boolean(pollingJobId)}
               editable={workflow.lifecycle.inputsEditable}
+              locale={locale}
               onNavigate={navigate}
               onGenerate={() => void enqueueGeneration("generate")}
               onRetry={() => void enqueueGeneration("retry")}

@@ -1,4 +1,3 @@
-import type { Locale } from "@/lib/i18n-config";
 import { db } from "@/src/db";
 import {
   actionPlanItems,
@@ -26,7 +25,6 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
   userId: string;
   organizationId: string;
   gapRevisionId: string;
-  locale: Locale;
   command: {
     actorKey: string;
     scope: string;
@@ -86,11 +84,52 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
           "GAP_REVISION_NOT_FOUND",
         );
       }
+      const snapshotLocale = (
+        revision.result as { outputLocale?: unknown }
+      ).outputLocale;
+      if (
+        (revision.outputLocale !== "de" &&
+          revision.outputLocale !== "en") ||
+        snapshotLocale !== revision.outputLocale
+      ) {
+        throw new ApiError(
+          409,
+          "Gap result language metadata is invalid",
+          undefined,
+          "GAP_OUTPUT_LOCALE_INVALID",
+        );
+      }
+      const outputLocale = revision.outputLocale;
       const existingPlan = await tx.query.actionPlans.findFirst({
         where: eq(actionPlans.organizationId, input.organizationId),
         orderBy: [desc(actionPlans.createdAt)],
       });
       if (existingPlan) {
+        const existingSourceRevision =
+          await tx.query.generatedArtifactRevisions.findFirst({
+            where: eq(
+              generatedArtifactRevisions.id,
+              existingPlan.sourceGapArtifactRevisionId,
+            ),
+          });
+        const existingSnapshotLocale = (
+          existingSourceRevision?.result as
+            | { outputLocale?: unknown }
+            | undefined
+        )?.outputLocale;
+        if (
+          !existingSourceRevision ||
+          existingPlan.outputLocale !==
+            existingSourceRevision.outputLocale ||
+          existingSnapshotLocale !== existingPlan.outputLocale
+        ) {
+          throw new ApiError(
+            409,
+            "Action plan language conflicts with its Gap result",
+            { actionPlanId: existingPlan.id },
+            "GAP_OUTPUT_LOCALE_CONFLICT",
+          );
+        }
         throw new ApiError(
           409,
           "An action plan already exists",
@@ -159,7 +198,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       }
       const release = await loadGapAnalysisRelease(
         revision.gapAnalysisReleaseId,
-        input.locale,
+        outputLocale,
       );
       if (!release) {
         throw new ApiError(
@@ -214,11 +253,11 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
             id: finding.id,
             status: finding.status,
             severity: finding.severity,
-            requirementTitle: localize(requirement.title, input.locale),
-            recommendation: localize(
-              finding.recommendation,
-              input.locale,
+            requirementTitle: localize(
+              requirement.title,
+              outputLocale,
             ),
+            recommendation: finding.recommendation,
           };
         }),
       );
@@ -271,6 +310,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         .values({
           organizationId: input.organizationId,
           sourceGapArtifactRevisionId: revision.id,
+          outputLocale,
           revisionNumber: 1,
           activatedBy: input.userId,
           activatedAt: approvedAt,
@@ -370,7 +410,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
   }
 }
 
-function localize(value: unknown, locale: Locale) {
+function localize(value: unknown, locale: "de" | "en") {
   const candidate = value as { de?: unknown; en?: unknown };
   const localized = candidate[locale] ?? candidate.de ?? candidate.en;
   return typeof localized === "string" ? localized : "";

@@ -13,17 +13,12 @@ export const evidenceSufficiencySchema = z.enum([
   "none",
 ]);
 
-const localizedTextSchema = z.object({
-  de: z.string().trim().min(1),
-  en: z.string().trim().min(1),
-});
-
 export const gapModelFindingSchema = z.object({
   requirementCode: z.string().trim().min(1),
   status: gapFindingStatusSchema,
   evidenceSufficiency: evidenceSufficiencySchema,
-  rationale: localizedTextSchema,
-  recommendation: localizedTextSchema,
+  rationale: z.string().trim().min(1),
+  recommendation: z.string().trim().min(1),
   assumptions: z.array(z.string().trim().min(1)),
   citations: z.array(z.string().trim().min(1)),
   contradictions: z.array(z.string().trim().min(1)),
@@ -62,6 +57,20 @@ export function normalizeGroundedGapModelResponse(
       ...finding,
     })),
   };
+}
+
+export function extractGapGeneratedProse(
+  value: GroundedGapModelResponse,
+): string[] {
+  return normalizeGroundedGapModelResponse(value).findings.flatMap(
+    (finding) => [
+      finding.rationale,
+      finding.recommendation,
+      ...finding.assumptions,
+      ...finding.contradictions,
+      ...finding.questionnaireDisagreements,
+    ],
+  );
 }
 
 export type GapModelResponse = z.infer<typeof gapModelResponseSchema>;

@@ -105,7 +105,7 @@ describe("gap correction transitions", () => {
         correction: {
           findingId: source.id,
           reason: "Clarified wording",
-          rationale: { de: "Neu", en: "New" },
+          rationale: "Neu",
         },
         criticality: "high",
       }).status,

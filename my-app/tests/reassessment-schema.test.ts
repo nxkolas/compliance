@@ -9,6 +9,9 @@ import {
   documents,
   aiProcessingRuns,
   artifactRevisionSources,
+  actionPlans,
+  gapFindings,
+  generatedArtifactRevisions,
 } from "@/src/db/schema";
 
 describe("reassessment schema", () => {
@@ -27,7 +30,41 @@ describe("reassessment schema", () => {
   it("links a reassessment to its durable generation job and supports legal citations", () => {
     const config = getTableConfig(gapReassessmentDrafts);
     expect(config.columns.some((column) => column.name === "generation_job_id")).toBe(true);
+    expect(config.columns.some((column) => column.name === "output_locale")).toBe(true);
+    expect(config.checks.map((item) => item.name)).toContain(
+      "gap_reassessment_drafts_output_locale_check",
+    );
     expect(gapFindingEvidenceSourceTypeEnum.enumValues).toContain("legal_source_chunk");
+  });
+
+  it("defines locale boundaries and stores generated finding prose as text", () => {
+    const revision = getTableConfig(generatedArtifactRevisions);
+    expect(revision.columns.map((column) => column.name)).toContain(
+      "output_locale",
+    );
+    expect(revision.checks.map((item) => item.name)).toContain(
+      "generated_artifact_revisions_output_locale_check",
+    );
+
+    const plan = getTableConfig(actionPlans);
+    expect(
+      plan.columns.find((column) => column.name === "output_locale")?.notNull,
+    ).toBe(true);
+    expect(plan.checks.map((item) => item.name)).toContain(
+      "action_plans_output_locale_check",
+    );
+
+    const findings = getTableConfig(gapFindings);
+    expect(
+      findings.columns
+        .find((column) => column.name === "rationale")
+        ?.getSQLType(),
+    ).toBe("text");
+    expect(
+      findings.columns
+        .find((column) => column.name === "recommendation")
+        ?.getSQLType(),
+    ).toBe("text");
   });
 
   it("defines the approved page-reader composite indexes in column order", () => {

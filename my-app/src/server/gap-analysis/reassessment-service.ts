@@ -27,11 +27,11 @@ import {
 import { generateGapAnalysis } from "./generation-service";
 import { loadGapAnalysisRelease } from "./release-loader";
 import { buildReassessmentEvidenceSelection } from "./reassessment-selection";
-import { fingerprintRequest } from "../api/idempotency";
 import { toJobDto } from "../jobs/service";
 import { retryableGapReassessmentStatuses } from "@/src/contracts/gap-analysis/generation";
 import type { LoadedGapRelease } from "./release-loader";
 import { assertGapInputsMutable } from "./lifecycle-guards";
+import { buildGapGenerationEnqueueFingerprint } from "./generation-identity";
 
 export async function prepareGapReassessment(input: {
   userId: string;
@@ -626,23 +626,12 @@ export async function retryGapReassessment(
     userId: string;
     organizationId: string;
     draftId: string;
-    locale: Locale;
     retryNonce: string;
     idempotencyKey: string;
   },
 ) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
-  const failedDraft = await db.query.gapReassessmentDrafts.findFirst({
-    where: and(
-      eq(gapReassessmentDrafts.id, input.draftId),
-      eq(gapReassessmentDrafts.organizationId, input.organizationId),
-      inArray(gapReassessmentDrafts.status, [...retryableGapReassessmentStatuses]),
-    ),
-  });
-  if (!failedDraft) {
-    throw new ApiError(409, "Only a failed or cancelled reassessment can be retried");
-  }
-  return enqueueDraftGeneration({ ...input, operation: "retry", failedDraft });
+  return enqueueDraftGeneration({ ...input, operation: "retry" });
 }
 
 async function enqueueDraftGeneration(input: {
@@ -650,19 +639,28 @@ async function enqueueDraftGeneration(input: {
   organizationId: string;
   draftId: string;
   expectedLockVersion?: number;
-  locale: Locale;
+  locale?: Locale;
   idempotencyKey: string;
   operation: "generate" | "retry";
   retryNonce?: string;
-  failedDraft?: typeof gapReassessmentDrafts.$inferSelect;
 }) {
-  const candidate = input.failedDraft ?? await db.query.gapReassessmentDrafts.findFirst({
+  const candidate = await db.query.gapReassessmentDrafts.findFirst({
     where: and(
       eq(gapReassessmentDrafts.id, input.draftId),
       eq(gapReassessmentDrafts.organizationId, input.organizationId),
     ),
   });
   if (!candidate) throw new ApiError(404, "Reassessment draft not found");
+  const outputLocale =
+    input.operation === "generate" ? input.locale : candidate.outputLocale;
+  if (outputLocale !== "de" && outputLocale !== "en") {
+    throw new ApiError(
+      409,
+      "The reassessment has no valid pinned result language",
+      undefined,
+      "GAP_OUTPUT_LOCALE_INVALID",
+    );
+  }
   const candidateAssessment = await db.query.assessments.findFirst({
     where: and(
       eq(assessments.id, candidate.assessmentId),
@@ -674,10 +672,11 @@ async function enqueueDraftGeneration(input: {
     organizationId: input.organizationId,
     moduleId: candidateAssessment.moduleId,
   });
-  const requestFingerprint = fingerprintRequest({
+  const requestFingerprint = buildGapGenerationEnqueueFingerprint({
     draftId: input.draftId,
     expectedLockVersion: input.expectedLockVersion,
     retryNonce: input.retryNonce,
+    outputLocale,
   });
   return db.transaction(async (tx) => {
     const claimValues = {
@@ -713,7 +712,12 @@ async function enqueueDraftGeneration(input: {
     await lockAssessmentGenerationSlot(tx, candidate);
     const [locked] = await tx
       .update(gapReassessmentDrafts)
-      .set({ status: "locked", lockedAt: new Date(), updatedAt: new Date() })
+      .set({
+        status: "locked",
+        outputLocale,
+        lockedAt: new Date(),
+        updatedAt: new Date(),
+      })
       .where(
         and(
           eq(gapReassessmentDrafts.id, input.draftId),
@@ -732,7 +736,11 @@ async function enqueueDraftGeneration(input: {
       organizationId: input.organizationId,
       requestedByUserId: input.userId,
       kind: "gap-generation",
-      payload: { draftId: locked.id, locale: input.locale, retryNonce: input.retryNonce },
+      payload: {
+        draftId: locked.id,
+        locale: outputLocale,
+        retryNonce: input.retryNonce,
+      },
       cancellable: true,
       cancellationCapability: "gap:contribute",
       maxAttempts: 1,
@@ -859,11 +867,19 @@ async function lockEligibleEvidenceSelection(
 
 async function runLockedDraft(
   draft: typeof gapReassessmentDrafts.$inferSelect,
-  input: { userId: string; organizationId: string; locale: Locale },
+  input: { userId: string; organizationId: string },
   retryNonce?: string,
   jobId?: string,
   deferFailure = false,
 ) {
+  if (draft.outputLocale !== "de" && draft.outputLocale !== "en") {
+    throw new ApiError(
+      409,
+      "The reassessment has no valid pinned result language",
+      undefined,
+      "GAP_OUTPUT_LOCALE_INVALID",
+    );
+  }
   const selected = await db.query.gapReassessmentDraftDocuments.findMany({
     where: eq(gapReassessmentDraftDocuments.draftId, draft.id),
   });
@@ -875,7 +891,7 @@ async function runLockedDraft(
         assessmentId: draft.assessmentId,
         assessmentRevisionId: draft.assessmentRevisionId,
         selectedDocumentVersionIds: selected.map((item) => item.documentVersionId),
-        locale: input.locale,
+        locale: draft.outputLocale,
         retryNonce,
         jobId,
         asOfDate: draft.lockedAt?.toISOString().slice(0, 10),
@@ -966,6 +982,14 @@ export async function executeGapGenerationJob(input: {
     return { type: "generated_artifact_revision", id: draft.outputGapRevisionId };
   }
   if (draft.status !== "locked") throw new ApiError(409, "Gap generation draft is not locked", undefined, "GAP_DRAFT_NOT_LOCKED");
+  if (draft.outputLocale !== input.locale) {
+    throw new ApiError(
+      409,
+      "The generation job locale conflicts with the locked reassessment",
+      undefined,
+      "GAP_OUTPUT_LOCALE_CONFLICT",
+    );
+  }
   const result = await runLockedDraft(draft, input, input.retryNonce, input.jobId, true);
   return { type: "generated_artifact_revision", id: result.artifactRevision!.id };
 }

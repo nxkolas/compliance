@@ -14,6 +14,16 @@ import { persistGroundingProvenance } from "./provenance";
 import type { GroundedOutputContract, GroundedProvider, GroundingContextItem, QueryUnit } from "./types";
 import { hasCompleteQueryUnitCoverage, validateGroundedClaims } from "./validation";
 import {
+  localAggregateLanguageDetector,
+  type LanguageDetector,
+} from "./language-detector";
+import {
+  assertOutputLocaleMatches,
+  executeLanguageValidatedProvider,
+  LanguagePolicyError,
+  type LanguageValidationDiagnostic,
+} from "./language-policy";
+import {
   GAP_GROUNDING_INSTRUCTION,
   gapOutputLocaleInstruction,
 } from "../../gap-analysis/grounding-instruction";
@@ -36,7 +46,10 @@ export async function runGroundedOperation<T>(input: {
   idempotencyKey: string;
   assessmentRevisionId?: string;
   jobId?: string;
-}, dependencies: { providers?: Partial<Record<AiProviderMode, GroundedProvider>> } = {}) {
+}, dependencies: {
+  providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
+  languageDetector?: LanguageDetector;
+} = {}) {
   const existing = await db.query.aiProcessingRuns.findFirst({
     where: and(
       eq(aiProcessingRuns.organizationId, input.organizationId),
@@ -44,6 +57,13 @@ export async function runGroundedOperation<T>(input: {
       eq(aiProcessingRuns.idempotencyKey, input.idempotencyKey),
     ),
   });
+  if (existing) {
+    assertOutputLocaleMatches(
+      existing.outputLocale,
+      input.outputLocale,
+      { runId: existing.id },
+    );
+  }
   if (existing?.status === "processing" && existing.validatedOutput !== null) {
     const output = input.outputContract.schema.parse(existing.validatedOutput);
     const rows = await db.query.aiProcessingRunContext.findMany({
@@ -65,7 +85,14 @@ export async function runGroundedOperation<T>(input: {
         metadata: { queryHash: row.queryHash, recovered: true },
       };
     });
-    return { runId: existing.id, output, context, claims: [], recovered: true };
+    return {
+      runId: existing.id,
+      output,
+      outputLocale: existing.outputLocale,
+      context,
+      claims: [],
+      recovered: true,
+    };
   }
   if (existing) throw new ApiError(409, "Grounded operation already exists", { runId: existing.id }, "GROUNDING_RUN_EXISTS");
   const policy = await resolveGroundingPolicy({ operation: input.operation, organizationId: input.organizationId });
@@ -130,15 +157,21 @@ export async function runGroundedOperation<T>(input: {
     assessmentRevisionId: input.assessmentRevisionId,
     operationKind: "gap_analysis",
     status: "processing",
+    outputLocale: input.outputLocale,
+    attemptCount: 0,
+    languageValidation: initialLanguageValidation(
+      input.outputLocale,
+      dependencies.languageDetector ?? localAggregateLanguageDetector,
+    ),
     inputHash: createHash("sha256").update(JSON.stringify(input.queryUnits)).digest("hex"),
     idempotencyKey: input.idempotencyKey,
     provider: provider.provider,
     model: provider.model,
     promptName: "grounded-gap-analysis",
-    promptVersion: "v3",
+    promptVersion: "v4",
     promptTemplateHash: promptHash,
     renderedInputHash: promptHash,
-    responseSchemaVersion: "grounding-v3",
+    responseSchemaVersion: "grounding-v4",
     providerPolicyVersion: policy.providerPolicy.version,
     corpusReleaseSetHash,
     provenanceStatus: "complete",
@@ -147,8 +180,46 @@ export async function runGroundedOperation<T>(input: {
     startedAt: new Date(),
   }).returning();
   try {
-    const result = await provider.run({ ...prompt, schema: input.outputContract.schema });
-    const parsed = input.outputContract.schema.parse(result.output);
+    const result =
+      input.outputContract.languagePolicy === "localized"
+        ? await executeLanguageValidatedProvider({
+            provider,
+            prompt,
+            schema: input.outputContract.schema,
+            expectedLocale: input.outputLocale,
+            generatedProse: input.outputContract.generatedProse,
+            detector:
+              dependencies.languageDetector ??
+              localAggregateLanguageDetector,
+            async onProviderAttempt(progress) {
+              await db
+                .update(aiProcessingRuns)
+                .set({
+                  attemptCount: progress.attemptCount,
+                  inputTokens: progress.usage.inputTokens,
+                  outputTokens: progress.usage.outputTokens,
+                  cachedInputTokens: progress.usage.cachedInputTokens,
+                })
+                .where(eq(aiProcessingRuns.id, run.id));
+            },
+          })
+        : await runLanguageNeutralProvider({
+            provider,
+            prompt,
+            schema: input.outputContract.schema,
+            outputLocale: input.outputLocale,
+          });
+    const parsed = result.output;
+    await db
+      .update(aiProcessingRuns)
+      .set({
+        attemptCount: result.attemptCount,
+        languageValidation: result.languageValidation,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+        cachedInputTokens: result.usage.cachedInputTokens,
+      })
+      .where(eq(aiProcessingRuns.id, run.id));
     const claims = validateGroundedClaims({
       queryUnits: input.queryUnits,
       context,
@@ -157,33 +228,83 @@ export async function runGroundedOperation<T>(input: {
     if (!hasCompleteQueryUnitCoverage(input.queryUnits, claims)) {
       throw new ApiError(422, "Grounded output omitted a query unit", undefined, "GROUNDING_COVERAGE_INCOMPLETE");
     }
+    const invalid = claims.filter((claim) =>
+      claim.validation !== "supported"
+      && !(claim.validation === "conflicting" && input.outputContract.allowConflictingClaim?.(parsed, claim)),
+    );
+    if (invalid.length) throw new ApiError(422, "Grounded output contains unsupported claims", { claims: invalid.map((claim) => claim.key) }, "GROUNDING_VALIDATION_FAILED");
     await persistGroundingProvenance({
       runId: run.id,
       context,
       claims,
       disclosedExternally: provider.mode === "openai",
     });
-    const invalid = claims.filter((claim) =>
-      claim.validation !== "supported"
-      && !(claim.validation === "conflicting" && input.outputContract.allowConflictingClaim?.(parsed, claim)),
-    );
-    if (invalid.length) throw new ApiError(422, "Grounded output contains unsupported claims", { claims: invalid.map((claim) => claim.key) }, "GROUNDING_VALIDATION_FAILED");
     await db.update(aiProcessingRuns).set({
       validatedOutput: parsed,
-      inputTokens: result.usage.inputTokens,
-      outputTokens: result.usage.outputTokens,
-      cachedInputTokens: result.usage.cachedInputTokens,
     }).where(eq(aiProcessingRuns.id, run.id));
-    return { runId: run.id, output: parsed, context, claims };
+    return {
+      runId: run.id,
+      output: parsed,
+      outputLocale: input.outputLocale,
+      context,
+      claims,
+    };
   } catch (error) {
     await db.update(aiProcessingRuns).set({
       status: "failed",
       errorCode: error instanceof ApiError ? error.code : "GROUNDING_FAILED",
       errorMessage: "Grounded operation failed.",
+      ...(error instanceof LanguagePolicyError
+        ? {
+            attemptCount: error.attemptCount,
+            languageValidation: error.languageValidation,
+            inputTokens: error.usage.inputTokens,
+            outputTokens: error.usage.outputTokens,
+            cachedInputTokens: error.usage.cachedInputTokens,
+          }
+        : {}),
       completedAt: new Date(),
     }).where(eq(aiProcessingRuns.id, run.id));
     throw error;
   }
+}
+
+function initialLanguageValidation(
+  outputLocale: "de" | "en",
+  detector: LanguageDetector,
+): LanguageValidationDiagnostic {
+  return {
+    version: 1,
+    detector: {
+      implementation: detector.implementation,
+      version: detector.version,
+    },
+    expectedLocale: outputLocale,
+    attempts: [],
+  };
+}
+
+async function runLanguageNeutralProvider<T>(input: {
+  provider: GroundedProvider;
+  prompt: { system: string; prompt: string };
+  schema: GroundedOutputContract<T>["schema"];
+  outputLocale: "de" | "en";
+}) {
+  const result = await input.provider.run({
+    ...input.prompt,
+    schema: input.schema,
+  });
+  return {
+    output: input.schema.parse(result.output),
+    attemptCount: 1,
+    languageValidation: {
+      version: 1 as const,
+      detector: { implementation: "not_applicable", version: "1" },
+      expectedLocale: input.outputLocale,
+      attempts: [],
+    },
+    usage: result.usage,
+  };
 }
 
 function configuredProviders() {

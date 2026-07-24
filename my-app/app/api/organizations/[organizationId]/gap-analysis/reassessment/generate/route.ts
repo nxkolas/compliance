@@ -31,6 +31,7 @@ export const POST = apiRoute(async ({ request, routeContext }: {
       draft: {
         id: result.draft.id,
         status: result.draft.status,
+        outputLocale: result.draft.outputLocale,
         lockVersion: result.draft.lockVersion,
         generationJobId: result.draft.generationJobId!,
         aiProcessingRunId: result.draft.aiProcessingRunId,

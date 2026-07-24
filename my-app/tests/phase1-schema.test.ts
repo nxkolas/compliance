@@ -41,6 +41,18 @@ describe("Phase 1 server-only schema", () => {
       .toContain("background_jobs_legal_monitor_active_unique");
     expect(getTableConfig(aiProcessingRuns).columns.map((column) => column.name))
       .toContain("validated_output");
+    expect(getTableConfig(aiProcessingRuns).columns.map((column) => column.name))
+      .toEqual(expect.arrayContaining([
+        "output_locale",
+        "attempt_count",
+        "language_validation",
+      ]));
+    expect(getTableConfig(aiProcessingRuns).checks.map((item) => item.name))
+      .toEqual(expect.arrayContaining([
+        "ai_processing_runs_output_locale_check",
+        "ai_processing_runs_attempt_count_check",
+        "ai_processing_runs_language_validation_check",
+      ]));
   });
 
   it("enforces legal-rendition and reviewed-generation integrity", () => {

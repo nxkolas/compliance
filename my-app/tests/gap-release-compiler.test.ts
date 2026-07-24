@@ -88,7 +88,8 @@ describe("gap-analysis release compiler", () => {
       compileGapAnalysisRelease(singleLifecycleGapRelease),
     ).not.toThrow();
     expect(singleLifecycleGapRelease.versionLabel).toBe("guided-v3");
-    expect(singleLifecycleGapRelease.prompt.version).toBe("3");
+    expect(singleLifecycleGapRelease.prompt.version).toBe("4");
+    expect(singleLifecycleGapRelease.prompt.responseSchemaVersion).toBe("4");
     expect(
       guidedGapRelease.questionnaire.questions[0].options.map(
         (option) => option.label.en,

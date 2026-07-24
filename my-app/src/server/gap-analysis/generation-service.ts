@@ -26,6 +26,7 @@ import { assertCanContributeToOrganization } from "../organizations/service";
 import {
   deriveFindingSeverity,
   buildGapModelResponseSchema,
+  extractGapGeneratedProse,
   normalizeGroundedGapModelResponse,
   type GapModelFinding,
   type GroundedGapModelResponse,
@@ -35,6 +36,7 @@ import {
 import type { GapPromptRequirement } from "./prompt-builder";
 import { loadGapAnalysisRelease } from "./release-loader";
 import { runGroundedOperation } from "../ai/grounding/gateway";
+import { assertOutputLocaleMatches } from "../ai/grounding/language-policy";
 import { assertGapInputsMutable } from "./lifecycle-guards";
 
 export async function generateGapAnalysis(input: {
@@ -169,6 +171,9 @@ export async function generateGapAnalysis(input: {
     ),
   });
   if (existingRun) {
+    assertOutputLocaleMatches(existingRun.outputLocale, input.locale, {
+      runId: existingRun.id,
+    });
     const artifactRevision = existingRun.outputArtifactRevisionId
       ? await db.query.generatedArtifactRevisions.findFirst({
           where: eq(
@@ -241,6 +246,8 @@ async function generateGroundedGapResult(input: {
     queryUnits,
     outputContract: {
       schema: buildGapModelResponseSchema(queryUnits.map((unit) => unit.id)),
+      languagePolicy: "localized",
+      generatedProse: extractGapGeneratedProse,
       claims(output) {
         return normalizeGroundedGapModelResponse(output).findings.map((finding) => ({
           key: `gap:${finding.requirementCode}`,
@@ -265,6 +272,14 @@ async function generateGroundedGapResult(input: {
     assessmentRevisionId: input.assessmentRevisionId,
     jobId: input.input.jobId,
   });
+  if (grounded.outputLocale !== input.input.locale) {
+    throw new ApiError(
+      409,
+      "Accepted AI output locale conflicts with the generation input",
+      undefined,
+      "GROUNDING_LOCALE_CONFLICT",
+    );
+  }
   try {
   const citations: SuppliedCitation[] = grounded.context.map((item) => ({
     id: item.citationId,
@@ -329,6 +344,7 @@ async function generateGroundedGapResult(input: {
     selectedVersionIds: input.selectedVersionIds,
     promptRequirements,
     findings,
+    outputLocale: input.input.locale,
     model: { model: run.model ?? "grounded-provider" },
     sourceInputHash: input.sourceInputHash,
     renderedInputHash: run.renderedInputHash,
@@ -361,6 +377,7 @@ async function persistGeneratedGapResult(input: {
   selectedVersionIds: string[];
   promptRequirements: GapPromptRequirement[];
   findings: GapModelFinding[];
+  outputLocale: Locale;
   model: { model: string };
   sourceInputHash: string;
   renderedInputHash: string;
@@ -436,7 +453,8 @@ async function persistGeneratedGapResult(input: {
       orderBy: [desc(generatedArtifactRevisions.revisionNumber)],
     });
     const summary = {
-      kind: "gap_analysis_result_v1",
+      kind: "gap_analysis_result_v2",
+      outputLocale: input.outputLocale,
       gapAnalysisReleaseId: input.release.id,
       assessmentRevisionId: input.assessmentRevisionId,
       applicabilityArtifactRevisionId: input.applicabilityArtifactRevisionId,
@@ -466,6 +484,7 @@ async function persistGeneratedGapResult(input: {
         parentRevisionId: artifact.currentRevisionId,
         status: "generated",
         result: summary,
+        outputLocale: input.outputLocale,
         modelName: input.model.model,
         promptVersion: input.release.prompt.version,
         gapAnalysisReleaseId: input.release.id,

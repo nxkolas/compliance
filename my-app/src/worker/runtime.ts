@@ -10,6 +10,7 @@ import { handleGapGeneration } from "./handlers/gap-generation";
 import { handleReportRender } from "./handlers/report-render";
 import { handleCleanup } from "./handlers/cleanup";
 import { ensureScheduledCleanupJob } from "@/src/server/api/cleanup";
+import { ApiError } from "@/src/server/api/errors";
 import { ensureScheduledLegalSourceMonitorJobs } from "@/src/server/corpus/monitor-scheduler";
 
 const handlers = {
@@ -72,7 +73,9 @@ export async function runOneJob(workerId: string) {
     }
     const errorCode = error instanceof Error && error.name === "AbortError"
       ? "JOB_TIMEOUT"
-      : "JOB_FAILED";
+      : error instanceof ApiError
+        ? error.code
+        : "JOB_FAILED";
     const failed = await failJob({
       jobId: job.id,
       workerId,

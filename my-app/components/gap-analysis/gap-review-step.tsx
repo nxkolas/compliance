@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { GapWorkflowStep } from "@/src/server/gap-analysis/workflow-state";
 import { GapGenerationProgress } from "./gap-generation-progress";
-import type { GapLabels, GapWorkflow } from "./types";
+import type { GapLabels, GapLocale, GapWorkflow } from "./types";
 
 export function GapReviewStep({
   workflow,
@@ -15,6 +15,7 @@ export function GapReviewStep({
   busy,
   generating,
   editable = true,
+  locale,
   onNavigate,
   onGenerate,
   onRetry,
@@ -27,6 +28,7 @@ export function GapReviewStep({
   busy: string | null;
   generating: boolean;
   editable?: boolean;
+  locale: GapLocale;
   onNavigate: (step: GapWorkflowStep) => void;
   onGenerate: () => void;
   onRetry: () => void;
@@ -46,6 +48,15 @@ export function GapReviewStep({
   const failed =
     workflow.reassessment?.draft.status === "failed" ||
     workflow.reassessment?.draft.status === "cancelled";
+  const draftLocale = workflow.reassessment?.draft.outputLocale;
+  const resultLocale =
+    draftLocale === "de" || draftLocale === "en" ? draftLocale : locale;
+  const failureCode = workflow.run?.errorCode;
+  const failureMessage =
+    failureCode &&
+    failureCode in labels.errors
+      ? labels.errors[failureCode as keyof typeof labels.errors]
+      : labels.runFailed;
 
   return (
     <section aria-labelledby="gap-step-heading" className="grid gap-5">
@@ -105,6 +116,15 @@ export function GapReviewStep({
           <p className="text-sm text-muted-foreground">{labels.noneSelected}</p>
         )}
       </SummarySection>
+      <section className="rounded-lg border border-primary/35 bg-primary/10 p-5">
+        <h3 className="font-semibold">{labels.resultLanguage}</h3>
+        <p className="mt-1 text-sm">
+          {labels.resultLanguages[resultLocale]}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {labels.sharedResultLanguage}
+        </p>
+      </section>
       <details className="rounded-lg border p-4 text-sm">
         <summary className="cursor-pointer font-medium">
           {labels.technicalDetails}
@@ -154,7 +174,7 @@ export function GapReviewStep({
       ) : failed ? (
         <div className="grid gap-3">
           <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground">
-            {labels.runFailed}
+            {failureMessage}
           </p>
           <Button
             className="justify-self-start"

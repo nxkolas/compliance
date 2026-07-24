@@ -20,8 +20,6 @@ import { deriveFindingSeverity } from "./generation-schema";
 import { loadGapAnalysisRelease } from "./release-loader";
 import { assertGapFindingsMutable } from "./lifecycle-guards";
 
-type LocalizedText = { de: string; en: string };
-
 export type FindingApprovalSnapshot = {
   id: string;
   requirementVersionId: string;
@@ -37,8 +35,8 @@ export type GapFindingCorrection = {
   findingId: string;
   status?: FindingApprovalSnapshot["status"];
   evidenceSufficiency?: "sufficient" | "partial" | "none";
-  rationale?: LocalizedText;
-  recommendation?: LocalizedText;
+  rationale?: string;
+  recommendation?: string;
   assumptions?: string[];
   requiresReview?: boolean;
   reason: string;
@@ -186,6 +184,21 @@ export async function correctGapRevision(input: {
       "Gap result not found",
       undefined,
       "GAP_REVISION_NOT_FOUND",
+    );
+  }
+  const sourceSnapshotLocale = (
+    sourceRevision.result as { outputLocale?: unknown }
+  ).outputLocale;
+  if (
+    (sourceRevision.outputLocale !== "de" &&
+      sourceRevision.outputLocale !== "en") ||
+    sourceSnapshotLocale !== sourceRevision.outputLocale
+  ) {
+    throw new ApiError(
+      409,
+      "Gap result language metadata is invalid",
+      undefined,
+      "GAP_OUTPUT_LOCALE_INVALID",
     );
   }
   const artifact = await db.query.generatedArtifacts.findFirst({
@@ -370,6 +383,7 @@ export async function correctGapRevision(input: {
           parentRevisionId: sourceRevision.id,
           status: "reviewed",
           result: summary,
+          outputLocale: sourceRevision.outputLocale,
           modelName: sourceRevision.modelName,
           promptVersion: sourceRevision.promptVersion,
           gapAnalysisReleaseId: sourceRevision.gapAnalysisReleaseId,
@@ -499,6 +513,20 @@ export async function approveGapRevision(input: {
       "GAP_REVISION_NOT_FOUND",
     );
   }
+  const revisionSnapshotLocale = (
+    revision.result as { outputLocale?: unknown }
+  ).outputLocale;
+  if (
+    (revision.outputLocale !== "de" && revision.outputLocale !== "en") ||
+    revisionSnapshotLocale !== revision.outputLocale
+  ) {
+    throw new ApiError(
+      409,
+      "Gap result language metadata is invalid",
+      undefined,
+      "GAP_OUTPUT_LOCALE_INVALID",
+    );
+  }
   const artifact = await db.query.generatedArtifacts.findFirst({
     where: and(
       eq(generatedArtifacts.id, revision.artifactId),
@@ -544,7 +572,7 @@ export async function approveGapRevision(input: {
     throw new ApiError(409, "Applicability outcome is missing");
   const release = await loadGapAnalysisRelease(
     revision.gapAnalysisReleaseId,
-    "de",
+    revision.outputLocale,
   );
   if (!release) throw new ApiError(409, "Pinned gap release is unavailable");
   const expectedRequirementVersionIds = release.requirements

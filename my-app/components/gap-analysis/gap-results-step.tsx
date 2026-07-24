@@ -119,6 +119,13 @@ export function GapResultsStep({
           <p className="mt-1 text-sm text-muted-foreground">
             {labels.stepDescriptions.gaps}
           </p>
+          {workflow.revision.outputLocale === "de" ||
+          workflow.revision.outputLocale === "en" ? (
+            <span className="mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs">
+              {labels.resultLanguage}:{" "}
+              {labels.resultLanguages[workflow.revision.outputLocale]}
+            </span>
+          ) : null}
           {workflow.lastWorkflowChange ? (
             <p className="mt-2 text-xs text-muted-foreground">
               {labels.lastChanged}{" "}
@@ -397,18 +404,18 @@ function FindingCard({
         <div className="mt-3 rounded-md border border-primary/35 bg-primary/10 p-3 text-sm text-foreground">
           <p className="font-medium">{labels.questionnaireDisagreement}</p>
           <p className="mt-1">
-            {localized(row.finding.rationale, locale)}
+            {row.finding.rationale}
           </p>
         </div>
       ) : null}
       <dl className="mt-4 grid gap-3 text-sm">
         <Summary
           label={labels.rationale}
-          value={localized(row.finding.rationale, locale)}
+          value={row.finding.rationale}
         />
         <Summary
           label={labels.recommendation}
-          value={localized(row.finding.recommendation, locale)}
+          value={row.finding.recommendation}
         />
       </dl>
       <details className="mt-4 rounded-md bg-muted/30 p-3 text-sm">
