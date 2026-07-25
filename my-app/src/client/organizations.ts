@@ -102,6 +102,32 @@ export const organizationsClient = {
       signal,
     });
   },
+  removeMember(
+    organizationId: string,
+    userId: string,
+    ifMatch: number,
+    signal?: AbortSignal,
+  ) {
+    return request(`${base(organizationId)}/members/${encodeURIComponent(userId)}/deactivate`, {
+      method: "POST",
+      ifMatch,
+      outputSchema: z.object({ member: membershipSchema }),
+      signal,
+    });
+  },
+  restoreMember(
+    organizationId: string,
+    userId: string,
+    ifMatch: number,
+    signal?: AbortSignal,
+  ) {
+    return request(`${base(organizationId)}/members/${encodeURIComponent(userId)}/reactivate`, {
+      method: "POST",
+      ifMatch,
+      outputSchema: z.object({ member: membershipSchema }),
+      signal,
+    });
+  },
   leave(organizationId: string, ifMatch: number, signal?: AbortSignal) {
     return request(`${base(organizationId)}/members/me/leave`, {
       method: "POST",

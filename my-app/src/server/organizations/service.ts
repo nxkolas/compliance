@@ -294,15 +294,93 @@ export async function updateOrganizationMember(input: {
   organizationId: string;
   memberUserId: string;
   role: OrganizationRole;
-  status: "active" | "suspended";
   expectedVersion: number;
 }) {
-  await requireOrganizationCapability(
+  await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
+  return mutateOrganizationMember({
+    ...input,
+    expectedStatus: "active",
+    eventType: "organization_member.role_updated",
+    next: (current) => ({ role: input.role, status: current.status }),
+  });
+}
+
+export async function removeOrganizationMember(input: {
+  userId: string;
+  organizationId: string;
+  memberUserId: string;
+  expectedVersion: number;
+}) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
+  if (input.userId === input.memberUserId) {
+    throw new ApiError(
+      409,
+      "Use the leave command to end your own membership",
+      undefined,
+      "SELF_REMOVAL_REQUIRES_LEAVE",
+    );
+  }
+  return mutateOrganizationMember({
+    ...input,
+    expectedStatus: "active",
+    eventType: "organization_member.removed",
+    next: (current) => ({ role: current.role, status: "removed" }),
+  });
+}
+
+export async function restoreOrganizationMember(input: {
+  userId: string;
+  organizationId: string;
+  memberUserId: string;
+  expectedVersion: number;
+}) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
+  return mutateOrganizationMember({
+    ...input,
+    expectedStatus: "removed",
+    eventType: "organization_member.restored",
+    next: (current) => ({ role: current.role, status: "active" }),
+  });
+}
+
+export async function leaveOrganization(input: {
+  userId: string;
+  organizationId: string;
+  expectedVersion: number;
+}) {
+  await requireOrganizationCapability(input.userId, input.organizationId, "organizations:read");
+  return mutateOrganizationMember({
+    ...input,
+    memberUserId: input.userId,
+    expectedStatus: "active",
+    eventType: "organization_member.left",
+    next: (current) => ({ role: current.role, status: "left" }),
+  });
+}
+
+type MembershipStatus =
+  (typeof organizationMemberships.$inferSelect)["status"];
+type MembershipMutation = {
+  userId: string;
+  organizationId: string;
+  memberUserId: string;
+  expectedVersion: number;
+  expectedStatus: MembershipStatus;
+  eventType:
+    | "organization_member.role_updated"
+    | "organization_member.removed"
+    | "organization_member.restored"
+    | "organization_member.left";
+  next: (
+    current: typeof organizationMemberships.$inferSelect,
+  ) => { role: OrganizationRole; status: MembershipStatus };
+};
+
+async function mutateOrganizationMember(input: MembershipMutation) {
+  const actorAuthorization = await resolveOrganizationCapabilities(
     input.userId,
     input.organizationId,
-    input.userId === input.memberUserId && input.status === "suspended" ? "organizations:read" : "members:manage",
   );
-  const actorAuthorization = await resolveOrganizationCapabilities(input.userId, input.organizationId);
   return db.transaction(async (tx) => {
     // Serialize membership lifecycle changes for one organization. Without this
     // lock, two owners could each observe the other owner and concurrently
@@ -319,15 +397,24 @@ export async function updateOrganizationMember(input: {
       where: and(eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.userId, input.memberUserId)),
     });
     if (!current) throw new ApiError(404, "Organization member not found", undefined, "MEMBER_NOT_FOUND");
+    if (current.status !== input.expectedStatus) {
+      throw new ApiError(
+        409,
+        `Membership must be ${input.expectedStatus}`,
+        undefined,
+        "INVALID_MEMBERSHIP_TRANSITION",
+      );
+    }
+    const next = input.next(current);
     if (
-      (current.role === "owner" || input.role === "owner") &&
+      (current.role === "owner" || next.role === "owner") &&
       !actorAuthorization.capabilities.has("members:manage-owners")
     ) {
       throw new ApiError(403, "Only owners can manage organization owners", undefined, "CAPABILITY_REQUIRED");
     }
     if (
       current.role !== "owner" &&
-      input.role === "owner" &&
+      next.role === "owner" &&
       current.status !== "active"
     ) {
       throw new ApiError(
@@ -337,7 +424,11 @@ export async function updateOrganizationMember(input: {
         "OWNER_PROMOTION_REQUIRES_ACTIVE_MEMBER",
       );
     }
-    if (current.role === "owner" && current.status === "active" && (input.role !== "owner" || input.status !== "active")) {
+    if (
+      current.role === "owner" &&
+      current.status === "active" &&
+      (next.role !== "owner" || next.status !== "active")
+    ) {
       const [owners] = await tx.select({ count: sql<number>`count(*)::int` }).from(organizationMemberships).where(and(
         eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.role, "owner"),
         eq(organizationMemberships.status, "active"), ne(organizationMemberships.userId, input.memberUserId),
@@ -345,32 +436,27 @@ export async function updateOrganizationMember(input: {
       if (owners.count < 1) throw new ApiError(409, "An organization must retain an active owner", undefined, "LAST_OWNER_REQUIRED");
     }
     const [member] = await tx.update(organizationMemberships).set({
-      role: input.role, status: input.status, version: input.expectedVersion + 1, updatedAt: new Date(),
+      role: next.role,
+      status: next.status,
+      version: input.expectedVersion + 1,
+      updatedAt: new Date(),
     }).where(and(eq(organizationMemberships.id, current.id), eq(organizationMemberships.version, input.expectedVersion))).returning();
     if (!member) throw new ApiError(412, "The membership changed", undefined, "PRECONDITION_FAILED");
-    await tx.insert(auditEvents).values({ organizationId: input.organizationId, actorUserId: input.userId, eventType: "organization_member.updated", entityType: "organization_membership", entityId: member.id, metadata: { role: member.role, status: member.status } });
+    await tx.insert(auditEvents).values({
+      organizationId: input.organizationId,
+      actorUserId: input.userId,
+      eventType: input.eventType,
+      entityType: "organization_membership",
+      entityId: member.id,
+      metadata: {
+        previousRole: current.role,
+        role: member.role,
+        previousStatus: current.status,
+        status: member.status,
+      },
+    });
     return member;
   });
-}
-
-export async function leaveOrganization(input: { userId: string; organizationId: string; expectedVersion: number }) {
-  const membership = await requireOrganizationCapability(input.userId, input.organizationId, "organizations:read");
-  return updateOrganizationMember({
-    userId: input.userId, organizationId: input.organizationId, memberUserId: input.userId,
-    role: membership.role, status: "suspended", expectedVersion: input.expectedVersion,
-  });
-}
-
-export async function setOrganizationMemberStatus(input: {
-  userId: string; organizationId: string; memberUserId: string;
-  status: "active" | "suspended"; expectedVersion: number;
-}) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
-  const current = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
-    where: and(eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.userId, input.memberUserId)),
-  });
-  if (!current) throw new ApiError(404, "Organization member not found", undefined, "MEMBER_NOT_FOUND");
-  return updateOrganizationMember({ ...input, role: current.role });
 }
 
 export async function listCurrentOrganizationFactsForUser(
@@ -672,6 +758,7 @@ async function acceptInvitationRecord(
         set: {
           role: invitation.role,
           status: "active",
+          version: sql`${organizationMemberships.version} + 1`,
           updatedAt: new Date(),
         },
       });

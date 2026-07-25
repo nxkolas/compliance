@@ -59,7 +59,7 @@ export const organizationRoleEnum = pgEnum("organization_role", [
 
 export const organizationMembershipStatusEnum = pgEnum(
   "organization_membership_status",
-  ["active", "suspended"],
+  ["active", "removed", "left"],
 );
 
 export const organizationInvitationStatusEnum = pgEnum(

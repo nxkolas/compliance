@@ -47,14 +47,16 @@ export const invitationSchema = z.object({
 });
 export const membershipSchema = z.object({
   id: z.uuid(), organizationId: z.uuid(), userId: z.uuid(), role: organizationRoleSchema,
-  status: z.enum(["active", "suspended"]), version: z.number().int().positive(), createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),
+  status: z.enum(["active", "removed", "left"]), version: z.number().int().positive(), createdAt: z.iso.datetime(), updatedAt: z.iso.datetime(),
 });
 export const organizationMemberSchema = membershipSchema.extend({
   email: z.string(),
   displayName: z.string().nullable(),
   identityResolved: z.boolean(),
 });
-export const memberUpdateSchema = z.object({ role: organizationRoleSchema, status: z.enum(["active", "suspended"]) });
+export const memberUpdateSchema = z
+  .object({ role: organizationRoleSchema })
+  .strict();
 export const acceptOrganizationInvitationSchema = z.object({ token: z.string().trim().min(1) });
 
 export const organizationAiProviderPolicySchema = z.object({

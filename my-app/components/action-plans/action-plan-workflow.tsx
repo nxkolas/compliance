@@ -32,7 +32,10 @@ export function ActionPlanWorkflow({
   current: CurrentPlan;
   canContribute: boolean;
   labels: Labels;
-  members: Array<{ userId: string; status: "active" | "suspended" }>;
+  members: Array<{
+    userId: string;
+    status: "active" | "removed" | "left";
+  }>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -138,7 +141,10 @@ function ActionItem({
   labels: Labels;
   canContribute: boolean;
   busy: boolean;
-  members: Array<{ userId: string; status: "active" | "suspended" }>;
+  members: Array<{
+    userId: string;
+    status: "active" | "removed" | "left";
+  }>;
   save: (changes: {
     status: typeof item.status;
     ownerUserId: string | null;

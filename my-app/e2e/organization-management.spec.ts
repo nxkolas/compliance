@@ -108,7 +108,7 @@ test.describe("organization management redesign", () => {
       await activeOrganizationRow(page, organizationName).getByRole("button", { name: new RegExp(`Aktionen: ${organizationName}`) }).click();
       await page.getByText("Organisation bearbeiten", { exact: true }).click();
       await page.locator("#edit-legal-name").fill(`${organizationName} AG`);
-      await page.getByText("OpenAI für Grounded AI freigeben", { exact: true }).click();
+      await page.getByText("OpenAI erlauben", { exact: true }).click();
       await page.locator("#edit-reason").fill("E2E Richtlinienprüfung");
       await page.getByRole("button", { name: "Änderungen speichern" }).click();
       await expect(page.getByText("Änderungen wurden gespeichert.")).toBeVisible();
@@ -161,18 +161,39 @@ test.describe("organization management redesign", () => {
       const owner = membersBody.data.members.find((member: { role: string }) => member.role === "owner");
       const ownerResponse = await teammatePage.request.patch(`/api/organizations/${organizationId}/members/${owner.userId}`, {
         headers: { "if-match": String(owner.version) },
-        data: { role: "member", status: "active" },
+        data: { role: "member" },
       });
       expect(ownerResponse.status()).toBe(403);
 
-      const teammate = membersBody.data.members.find(
+      let teammate = membersBody.data.members.find(
         (member: { role: string }) => member.role === "admin",
+      );
+      const removeResponse = await page.request.post(
+        `/api/organizations/${organizationId}/members/${teammate.userId}/deactivate`,
+        { headers: { "if-match": String(teammate.version) } },
+      );
+      expect(removeResponse.ok()).toBe(true);
+      await page.goto(`/tool/organizations/${organizationId}/settings/team`);
+      await expect(page.getByText("Ehemalige Mitglieder", { exact: true })).toBeVisible();
+      await expect(page.getByText("Entfernt", { exact: true })).toBeVisible();
+      page.once("dialog", (dialog) => dialog.accept());
+      await page.getByRole("button", { name: "Mitglied wiederherstellen" }).click();
+      await expect(
+        page.getByText("Mitgliedschaft wurde aktualisiert.", { exact: true }),
+      ).toBeVisible();
+
+      const restoredMembersResponse = await page.request.get(
+        `/api/organizations/${organizationId}/members?limit=100`,
+      );
+      const restoredMembersBody = await restoredMembersResponse.json();
+      teammate = restoredMembersBody.data.members.find(
+        (member: { userId: string }) => member.userId === teammate.userId,
       );
       const auditorResponse = await page.request.patch(
         `/api/organizations/${organizationId}/members/${teammate.userId}`,
         {
           headers: { "if-match": String(teammate.version) },
-          data: { role: "auditor", status: "active" },
+          data: { role: "auditor" },
         },
       );
       expect(auditorResponse.ok()).toBe(true);
@@ -183,6 +204,12 @@ test.describe("organization management redesign", () => {
       await teammatePage.getByRole("button", { name: "Organisation verlassen" }).click();
       await expect(teammatePage).toHaveURL(/\/tool\/organizations$/);
       await teammateContext.close();
+
+      await page.goto(`/tool/organizations/${organizationId}/settings/team`);
+      await expect(page.getByText("Selbst ausgetreten", { exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Mitglied wiederherstellen" }),
+      ).toHaveCount(0);
     });
 
     await test.step("owner archive redirects direct routes and restore returns the workspace", async () => {
