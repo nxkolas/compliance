@@ -11,6 +11,11 @@ import { nextCachedGapReleaseReader } from "./next-cached-release-loader";
 import type { GapReleaseReader, LoadedGapRelease } from "./release-loader";
 import { loadGapHistoryPreauthorized } from "./history-reader";
 import { readGeneratedGapInputsPreauthorized } from "./generated-inputs-reader";
+import type { GapPrerequisiteView } from "./applicability-eligibility";
+import {
+  nextCachedRuntimeReleaseReader,
+  type RuntimeReleaseReader,
+} from "../compliance";
 
 export type GapPageReadInput = {
   userId: string;
@@ -74,7 +79,7 @@ export function createGapPageReader<
   loadPrerequisite: (
     input: GapPageReadInput,
     release: TRelease,
-  ) => Promise<{ satisfied: boolean; destination: string }>;
+  ) => Promise<GapPrerequisiteView>;
   loadHistory: (
     input: GapPageReadInput,
   ) => ReturnType<typeof loadGapHistoryPreauthorized>;
@@ -179,7 +184,9 @@ export function createGapPageReader<
           activePlan: null,
           reassessment: null,
           prerequisite: {
-            satisfied: false,
+            satisfied: false as const,
+            status: "missing" as const,
+            supportedCountryCodes: [],
             destination: `/tool/organizations/${input.organizationId}/applicability-check`,
           },
           history: [],
@@ -359,7 +366,11 @@ type ProductionGeneratedInputs = Awaited<
   ReturnType<typeof readGeneratedGapInputsPreauthorized>
 >;
 
-export function createDatabaseGapPageReader(releaseReader: GapReleaseReader) {
+export function createDatabaseGapPageReader(
+  releaseReader: GapReleaseReader,
+  runtimeReleaseReader: RuntimeReleaseReader =
+    nextCachedRuntimeReleaseReader,
+) {
   return createGapPageReader<
     ProductionMembership,
     LoadedGapRelease,
@@ -400,7 +411,12 @@ export function createDatabaseGapPageReader(releaseReader: GapReleaseReader) {
       }),
     loadDocumentsAssessment: postgresGapPageData.loadDocumentsAssessment,
     loadWorkflowSnapshot: postgresGapPageData.loadWorkflowSnapshot,
-    loadPrerequisite: postgresGapPageData.loadGapPrerequisiteState,
+    loadPrerequisite: (input, release) =>
+      postgresGapPageData.loadGapPrerequisiteState(
+        input,
+        release,
+        runtimeReleaseReader,
+      ),
     loadHistory: (input) =>
       loadGapHistoryPreauthorized({
         organizationId: input.organizationId,

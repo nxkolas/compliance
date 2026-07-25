@@ -1,4 +1,5 @@
 import { ApiError } from "../api/errors";
+import type { GapApplicabilityPrerequisite } from "../gap-analysis/domain";
 
 export type ApplicabilityRecalculationLock = {
   locked: boolean;
@@ -12,6 +13,15 @@ export function deriveApplicabilityRecalculationLock(
     locked: Boolean(gapAssessmentId),
     gapAssessmentId: gapAssessmentId ?? null,
   };
+}
+
+export function deriveApplicabilityRecalculationLockForPrerequisite(
+  gapAssessmentId: string | null | undefined,
+  prerequisite: GapApplicabilityPrerequisite,
+): ApplicabilityRecalculationLock {
+  return deriveApplicabilityRecalculationLock(
+    prerequisite.status === "eligible" ? gapAssessmentId : null,
+  );
 }
 
 export function assertApplicabilityRecalculationUnlocked(

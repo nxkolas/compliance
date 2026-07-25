@@ -16,10 +16,22 @@ export const applicabilityResultSchema = z.object({
   assessmentRevisionId: z.uuid().nullable(),
   evidence: z.object({ outcome: z.string() }).loose(),
   result: z.object({ outcome: z.string() }).loose(),
-  release: z.object({ id: z.uuid(), versionLabel: z.string(), isOutdated: z.boolean(), activeVersionLabel: z.string() }),
+  release: z.object({
+    id: z.uuid(),
+    versionLabel: z.string(),
+    isOutdated: z.boolean(),
+    activeVersionLabel: z.string(),
+    supportedCountryCodes: z.array(z.string().length(2)),
+  }),
 });
 export const applicabilityQuestionnaireSchema = z.object({
-  id: z.uuid(), questions: z.array(z.unknown()), latestAnswers: z.record(z.string(), z.unknown()),
+  id: z.uuid(),
+  questions: z.array(z.unknown()),
+  defaultAnswers: z.record(z.string(), z.unknown()),
+  latestAnswers: z.record(z.string(), z.unknown()),
+  release: z
+    .object({ supportedCountryCodes: z.array(z.string().length(2)) })
+    .loose(),
 }).loose();
 export const applicabilityOverviewSchema = z.object({ assessmentId: z.uuid() }).loose();
 export const applicabilityAnswersSchema = z.object({ assessmentId: z.uuid(), answers: z.array(z.unknown()) }).loose();

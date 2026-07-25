@@ -69,9 +69,10 @@ export function ApplicabilityQuestionnaireForm({
   const router = useRouter();
   const [answers, setAnswers] = useState<
     Record<string, ApplicabilityAnswerValue>
-  >(
-    questionnaire.latestAnswers,
-  );
+  >({
+    ...questionnaire.defaultAnswers,
+    ...questionnaire.latestAnswers,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<RequestState>({
     message: null,

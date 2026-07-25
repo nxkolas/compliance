@@ -53,6 +53,7 @@ export type ApplicabilitySubmissionPersistenceCommand = {
     isActive: boolean;
     activeReleaseVersionLabel: string;
     evaluatorKind: string;
+    supportedCountryCodes: string[];
   };
   ruleSet: {
     id: string;
@@ -81,6 +82,7 @@ export type PersistedApplicabilityResult = {
     versionLabel: string;
     isOutdated: boolean;
     activeVersionLabel: string;
+    supportedCountryCodes: string[];
   };
 };
 
@@ -552,6 +554,7 @@ export async function persistApplicabilitySubmission(
         versionLabel: command.release.versionLabel,
         isOutdated: !command.release.isActive,
         activeVersionLabel: command.release.activeReleaseVersionLabel,
+        supportedCountryCodes: command.release.supportedCountryCodes,
       },
     };
   });

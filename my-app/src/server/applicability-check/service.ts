@@ -7,13 +7,15 @@ import {
   complianceCheckReleases,
   generatedArtifactRevisions,
   generatedArtifacts,
+  gapAnalysisReleases,
   guestApplicabilityChecks,
+  organizations,
   questionOptions,
   questions,
   ruleSets,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { ApiError } from "../api/errors";
 import { assertCanAccessOrganization } from "../organizations/service";
@@ -32,6 +34,7 @@ import {
   type ApplicabilityAnswerValue,
 } from "./question-visibility";
 import { evaluateRuleSet } from "./rules";
+import { getSupportedCountryCodes } from "./country-support";
 import { catalogOptionsForCountry } from "./entity-catalog";
 import { guestStartedExpiry, guestSubmittedExpiry } from "./guest-lifecycle";
 import {
@@ -42,8 +45,10 @@ import { persistApplicabilitySubmission } from "./submission-persistence";
 import {
   assertApplicabilityRecalculationUnlocked,
   deriveApplicabilityRecalculationLock,
+  deriveApplicabilityRecalculationLockForPrerequisite,
   type ApplicabilityRecalculationLock,
 } from "./recalculation-lock";
+import { evaluateGapApplicabilityPrerequisite } from "../gap-analysis/domain";
 import {
   submitApplicabilityCheckSchema,
   type SubmitApplicabilityCheckInput,
@@ -59,6 +64,7 @@ export type ApplicabilityQuestionnaireDto = {
   versionLabel: string;
   questions: ApplicabilityQuestionDto[];
   entityCatalogs: Record<string, ApplicabilityOptionDto[]>;
+  defaultAnswers: Record<string, ApplicabilityAnswerValue>;
   latestAnswers: Record<string, ApplicabilityAnswerValue>;
   release: {
     id: string;
@@ -66,6 +72,7 @@ export type ApplicabilityQuestionnaireDto = {
     aggregateHash: string;
     isActive: boolean;
     activeVersionLabel: string;
+    supportedCountryCodes: string[];
   };
   guestSession?: GuestApplicabilitySession;
 };
@@ -130,6 +137,7 @@ export type ApplicabilityResultDto = {
     versionLabel: string;
     isOutdated: boolean;
     activeVersionLabel: string;
+    supportedCountryCodes: string[];
   };
 };
 
@@ -216,6 +224,10 @@ export async function getApplicabilityQuestionnaireForUser(
     organizationId,
     definition.moduleId,
   );
+  const organization = await db.query.organizations.findFirst({
+    columns: { country: true },
+    where: eq(organizations.id, organizationId),
+  });
 
   return {
     id: definition.questionnaireId,
@@ -229,6 +241,11 @@ export async function getApplicabilityQuestionnaireForUser(
       return question;
     }),
     entityCatalogs: getEntityCatalogs(definition.questions),
+    defaultAnswers: getOrganizationCountryDefault({
+      questions: definition.questions,
+      latestAnswers,
+      organizationCountry: organization?.country ?? null,
+    }),
     latestAnswers,
     release: toQuestionnaireRelease(definition),
   };
@@ -269,6 +286,7 @@ export async function getApplicabilityQuestionnaireForGuest(
       return question;
     }),
     entityCatalogs: getEntityCatalogs(definition.questions),
+    defaultAnswers: {},
     latestAnswers: {},
     release: toQuestionnaireRelease(definition),
     guestSession: { id: guestCheck.id, token },
@@ -430,6 +448,9 @@ export async function submitApplicabilityCheckForUser(
       activeReleaseVersionLabel:
         prepared.definition.activeReleaseVersionLabel,
       evaluatorKind: prepared.definition.ruleSet.evaluatorKind,
+      supportedCountryCodes: getSupportedCountryCodes(
+        prepared.definition.ruleSet.rules,
+      ),
     },
     ruleSet: prepared.ruleSet,
     answers: prepared.validatedAnswers,
@@ -452,14 +473,62 @@ async function assertApplicabilityRecalculationMutable(
 async function getApplicabilityRecalculationLock(
   organizationId: string,
 ): Promise<ApplicabilityRecalculationLock> {
-  const gapAssessment = await db.query.assessments.findFirst({
-    where: and(
-      eq(assessments.organizationId, organizationId),
-      isNotNull(assessments.gapAnalysisReleaseId),
-    ),
-    columns: { id: true },
-  });
-  return deriveApplicabilityRecalculationLock(gapAssessment?.id);
+  const [row] = await db
+    .select({
+      assessmentId: assessments.id,
+      compatibleCheckReleaseId:
+        gapAnalysisReleases.compatibleCheckReleaseId,
+      artifactId: generatedArtifactRevisions.id,
+      artifactCheckReleaseId:
+        generatedArtifactRevisions.checkReleaseId,
+      artifactStatus: generatedArtifactRevisions.status,
+      artifactResult: generatedArtifactRevisions.result,
+    })
+    .from(assessments)
+    .innerJoin(
+      gapAnalysisReleases,
+      eq(assessments.gapAnalysisReleaseId, gapAnalysisReleases.id),
+    )
+    .leftJoin(
+      generatedArtifactRevisions,
+      eq(
+        assessments.applicabilityArtifactRevisionId,
+        generatedArtifactRevisions.id,
+      ),
+    )
+    .where(
+      and(
+        eq(assessments.organizationId, organizationId),
+        eq(assessments.status, "active"),
+      ),
+    )
+    .limit(1);
+  if (!row) return deriveApplicabilityRecalculationLock(null);
+  const prerequisite = evaluateGapApplicabilityPrerequisite(
+    row.compatibleCheckReleaseId,
+    row.artifactId
+      ? {
+          id: row.artifactId,
+          checkReleaseId: row.artifactCheckReleaseId,
+          status: row.artifactStatus ?? "",
+          result: row.artifactResult,
+        }
+      : null,
+  );
+  if (
+    prerequisite.status === "invalid" ||
+    prerequisite.status === "release_incompatible"
+  ) {
+    console.warn("Ignoring invalid Gap recalculation lock state", {
+      organizationId,
+      gapAssessmentId: row.assessmentId,
+      prerequisiteStatus: prerequisite.status,
+    });
+  }
+  return deriveApplicabilityRecalculationLockForPrerequisite(
+    row.assessmentId,
+    prerequisite,
+  );
 }
 
 export async function getApplicabilityResultRevisionForUser(
@@ -764,6 +833,9 @@ async function toGuestApplicabilityCheckDto(
         isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
         activeVersionLabel:
           activePointer?.versionLabel ?? release.releaseVersionLabel,
+        supportedCountryCodes: getSupportedCountryCodes(
+          release.ruleSet.rules,
+        ),
       },
     },
   };
@@ -936,6 +1008,7 @@ async function getCurrentResult(
       isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
       activeVersionLabel:
         activePointer?.versionLabel ?? release.releaseVersionLabel,
+      supportedCountryCodes: getSupportedCountryCodes(release.ruleSet.rules),
     },
   };
 }
@@ -1175,7 +1248,27 @@ function toQuestionnaireRelease(definition: ActiveDefinition) {
     aggregateHash: definition.aggregateHash,
     isActive: definition.isActive,
     activeVersionLabel: definition.activeReleaseVersionLabel,
+    supportedCountryCodes: getSupportedCountryCodes(
+      definition.ruleSet.rules,
+    ),
   };
+}
+
+export function getOrganizationCountryDefault(input: {
+  questions: ApplicabilityQuestionDto[];
+  latestAnswers: Record<string, ApplicabilityAnswerValue>;
+  organizationCountry: string | null;
+}): Record<string, ApplicabilityAnswerValue> {
+  const countryQuestion = input.questions.find(
+    (question) => question.stableKey === "bc.jurisdiction_country",
+  );
+  if (!countryQuestion || input.latestAnswers[countryQuestion.id]) return {};
+  const countryCode = input.organizationCountry?.trim().toUpperCase();
+  if (!countryCode || countryCode.length !== 2) return {};
+  const offered = countryQuestion.options.some(
+    (option) => option.stableValue.toUpperCase() === countryCode,
+  );
+  return offered ? { [countryQuestion.id]: countryCode } : {};
 }
 
 function hashRuleInput(input: unknown) {

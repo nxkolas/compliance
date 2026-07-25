@@ -44,6 +44,7 @@ import { runGroundedOperation } from "../ai/grounding/gateway";
 import { assertOutputLocaleMatches } from "../ai/grounding/language-policy";
 import { assertGapInputsMutable } from "./lifecycle-guards";
 import { buildGeneratedGapRevisionMetadata } from "./gap-revision-metadata";
+import { resolveGapGenerationPrerequisites } from "./applicability-eligibility";
 
 export async function generateGapAnalysis(input: {
   userId: string;
@@ -98,13 +99,15 @@ export async function generateGapAnalysis(input: {
       assessment.applicabilityArtifactRevisionId,
     ),
   });
-  if (!applicability || applicability.status !== "approved") {
-    throw new ApiError(409, "Pinned applicability result is not approved");
-  }
-  const applicabilityOutcome = readOutcome(applicability.result);
-  const applicableRequirements = release.requirements.filter((requirement) =>
-    requirement.applicabilityOutcomeCodes.includes(applicabilityOutcome),
-  );
+  const {
+    artifact: applicabilityArtifact,
+    requirements: applicableRequirements,
+  } =
+    resolveGapGenerationPrerequisites({
+      compatibleCheckReleaseId: release.compatibleCheckReleaseId,
+      artifact: applicability,
+      requirements: release.requirements,
+    });
   const answerRows = await db.query.assessmentAnswers.findMany({ columns: { id: true, assessmentRevisionId: true, questionId: true, questionStableKey: true, textValue: true, numberValue: true, booleanValue: true, dateValue: true, structuredValue: true, createdAt: true },
     where: eq(
       assessmentAnswers.assessmentRevisionId,
@@ -151,8 +154,8 @@ export async function generateGapAnalysis(input: {
     gapAnalysisReleaseId: release.id,
     locale: input.locale,
     assessmentRevisionId,
-    applicabilityArtifactRevisionId: applicability.id,
-    applicabilityInputHash: applicability.inputHash,
+    applicabilityArtifactRevisionId: applicabilityArtifact.id,
+    applicabilityInputHash: applicabilityArtifact.inputHash,
     answers: answerRows.map((answer) => ({
       id: answer.id,
       questionStableKey: answer.questionStableKey,
@@ -199,7 +202,7 @@ export async function generateGapAnalysis(input: {
       input,
       release,
       assessmentRevisionId,
-      applicability,
+      applicability: applicabilityArtifact,
       applicableRequirements,
       answerRows,
       answerOptionRows,
@@ -662,14 +665,6 @@ function questionnaireCitations(
         sectionLabel: null,
       };
     });
-}
-
-function readOutcome(result: unknown) {
-  const outcome = (result as { outcome?: unknown })?.outcome;
-  if (typeof outcome !== "string") {
-    throw new ApiError(409, "Pinned applicability result has no outcome");
-  }
-  return outcome;
 }
 
 function requireValue<K, V>(values: Map<K, V>, key: K) {

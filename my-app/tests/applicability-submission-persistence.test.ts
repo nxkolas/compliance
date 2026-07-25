@@ -253,6 +253,7 @@ function fixturePersistenceCommand(
       isActive: true,
       activeReleaseVersionLabel: "2026-v1",
       evaluatorKind: evaluation.evaluatorKind,
+      supportedCountryCodes: ["DE"],
     },
     ruleSet: { id: "rule-set-1", versionLabel: "2026-v1" },
     answers: batch.answers,

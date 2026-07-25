@@ -18,6 +18,7 @@
     "db:activate:compliance": "tsx scripts/activate-compliance-release.ts",
     "db:smoke:nis2": "tsx scripts/smoke-nis2-scope.ts",
     "db:smoke:authenticated-gap": "tsx scripts/smoke-authenticated-gap-workflow.ts",
+    "db:smoke:country-support": "tsx scripts/smoke-country-support.ts",
     "db:benchmark:compliance": "tsx scripts/benchmark-compliance-runtime.ts",
     "db:benchmark:gap": "tsx scripts/benchmark-gap-workflow.ts",
     "db:benchmark:corpus-document": "tsx scripts/benchmark-corpus-document-runtime.ts",

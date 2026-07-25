@@ -23,6 +23,7 @@ export { evaluateRuleSet } from "./rules";
 export {
   parseRuleSetDocument,
 } from "./rule-set-schema";
+export { getSupportedCountryCodes } from "./country-support";
 export type {
   Nis2EntityRule,
   Nis2ScopeRuleSetDocument,

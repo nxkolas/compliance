@@ -33,6 +33,7 @@ import { retryableGapReassessmentStatuses } from "@/src/contracts/gap-analysis/g
 import type { LoadedGapRelease } from "./release-loader";
 import { assertGapInputsMutable } from "./lifecycle-guards";
 import { buildGapGenerationEnqueueFingerprint } from "./generation-identity";
+import { resolveGapGenerationPrerequisites } from "./applicability-eligibility";
 
 export async function prepareGapReassessment(input: {
   userId: string;
@@ -668,6 +669,48 @@ async function enqueueDraftGeneration(input: {
     ),
   });
   if (!candidateAssessment) throw new ApiError(404, "Gap assessment not found");
+  if (
+    !candidateAssessment.gapAnalysisReleaseId ||
+    !candidateAssessment.applicabilityArtifactRevisionId
+  ) {
+    throw new ApiError(
+      409,
+      "The Gap assessment has no pinned release prerequisites",
+      undefined,
+      "GAP_APPLICABILITY_MISSING",
+    );
+  }
+  const [pinnedRelease, pinnedApplicability] = await Promise.all([
+    loadGapAnalysisRelease(
+      candidateAssessment.gapAnalysisReleaseId,
+      outputLocale,
+    ),
+    db.query.generatedArtifactRevisions.findFirst({
+      columns: {
+        id: true,
+        checkReleaseId: true,
+        status: true,
+        result: true,
+      },
+      where: eq(
+        generatedArtifactRevisions.id,
+        candidateAssessment.applicabilityArtifactRevisionId,
+      ),
+    }),
+  ]);
+  if (!pinnedRelease) {
+    throw new ApiError(
+      409,
+      "Pinned Gap release is unavailable",
+      undefined,
+      "GAP_RELEASE_UNAVAILABLE",
+    );
+  }
+  resolveGapGenerationPrerequisites({
+    compatibleCheckReleaseId: pinnedRelease.compatibleCheckReleaseId,
+    artifact: pinnedApplicability,
+    requirements: pinnedRelease.requirements,
+  });
   await assertGapInputsMutable({
     organizationId: input.organizationId,
     moduleId: candidateAssessment.moduleId,

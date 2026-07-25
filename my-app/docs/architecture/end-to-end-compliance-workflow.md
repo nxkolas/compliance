@@ -1,6 +1,6 @@
 # End-to-End Compliance Workflow
 
-Status: canonical description of the implemented workflow as of 2026-07-24.
+Status: canonical description of the implemented workflow as of 2026-07-25.
 
 This document explains the current architecture from the Applicability Check
 (`Betroffenheitscheck`) through the Action Plan (`Maßnahmenplan`). It is the
@@ -36,13 +36,12 @@ flowchart TD
 
     G[Author and activate<br/>Gap Release] --> H[Open Gap assessment]
     E --> H
-    N -. current technical gate also accepts .-> H
-    Q -. current technical gate also accepts .-> H
+    N --> V[Reason-specific blocked Gap state]
+    Q --> V
 
     H --> I[Answer Gap questionnaire]
     I --> J[Select zero or more indexed<br/>organization document versions]
-    J --> K[Review and lock exact inputs]
-    K --> L[Background grounded-AI generation]
+    J --> K[Review exact inputs]
     L --> M[One finding per applicable requirement]
     M --> O{Human review needed?}
     O -->|yes| P[Owner or admin creates<br/>corrected immutable revision]
@@ -52,17 +51,17 @@ flowchart TD
     S --> T[Create one Action Plan]
     T --> U[Create one item per<br/>non-fulfilled finding]
 
-    N -. current release selects zero requirements .-> X[Generation fails closed]
-    Q -. current release selects zero requirements .-> X
+    K --> W{Positive result and<br/>applicable requirements?}
+    W -->|yes| L
+    W -->|no| X[Reject before job or AI run]
 ```
 
-The dashed negative and clarification branches show an implementation
-limitation, not the intended product outcome. The current Gap prerequisite
-checks for a compatible approved applicability revision but does not require a
-positive business outcome. The current requirements apply only to
-`essential_entity` and `important_entity`; other outcomes therefore reach
-generation with zero requirements, where the response-schema builder rejects
-the operation.
+Approved deterministic evaluation and positive Gap eligibility are separate
+concepts. Only `essential_entity` and `important_entity` may create or enter a
+Gap assessment. Non-positive results remain valid artifacts and the Gap page
+remains visible, but the workflow is blocked before mutation. A second
+release-integrity guard rejects a positive outcome with no applicable
+requirements before a job or AI run exists.
 
 ## Architectural boundaries and information sources
 
@@ -864,15 +863,17 @@ therefore broader than the chat-provider policy alone suggests.
 | Applicability evaluation | Required decisive fact unresolved | Successful `clarification_required` business result |
 | Applicability evaluation | Organization outside supported direct scope | Successful `not_directly_in_scope` business result |
 | Guest workflow | Started/submitted session expires | Guest record becomes unavailable/expired; start again |
-| Gap start | No compatible approved applicability revision | Gap assessment creation rejected |
+| Gap start | Missing, incompatible, unapproved, or malformed applicability revision | Gap assessment creation rejected with a distinct stable prerequisite code |
+| Gap start | Approved `clarification_required` or `not_directly_in_scope` result | Page shows a reasoned blocked state; direct creation returns `GAP_APPLICABILITY_NOT_ELIGIBLE` |
 | Gap start | Gap assessment already exists | Existing assessment reused |
-| Applicability resubmission | Any Gap assessment exists | Rejected with `APPLICABILITY_RECALCULATION_LOCKED` |
+| Applicability resubmission | Active Gap assessment pins an approved compatible positive result | Rejected with `APPLICABILITY_RECALCULATION_LOCKED` |
 | Gap questionnaire | Required question missing or option mismatch | Submission rejected |
 | Document upload | Unsupported type, over 10 MB, or no extractable text | Upload/processing rejected; use a supported text document |
 | Evidence selection | Selected version is cross-tenant, non-current, archived, or unindexed | Draft preparation/update rejected |
 | Generation enqueue | Draft changed or another generation owns the slot | Conflict; reload current shared state |
 | Generation enqueue | Reused idempotency key with different input | Rejected |
-| Generation | Zero applicable requirements | Fails closed while building the strict response schema |
+| Generation enqueue or worker | Pinned applicability result is not positive | Rejected before job/AI work |
+| Generation enqueue or worker | Positive result has zero applicable requirements | Rejected with `GAP_REQUIREMENTS_UNAVAILABLE` before job/AI work |
 | Generation | Missing AI provider policy or no permitted configured provider | Fails closed; configure organization/provider policy |
 | Generation | Missing/incomplete pinned corpus releases | Fails closed; fix and republish workflow release |
 | Generation | Job cancelled before persistence | Draft/job become cancelled; explicit retry is available |
@@ -913,29 +914,25 @@ These points describe the implementation, not desired behavior:
 
 1. **The Gap requirement catalogue is demo-derived.** `guided-v3` contains only
    four inherited requirements with demo-labelled legal-reference metadata.
-2. **Positive applicability is not explicitly gated.** Any compatible approved
-   applicability revision satisfies the Gap prerequisite, but the current Gap
-   release maps requirements only to essential/important outcomes. Negative and
-   clarification results therefore fail later with zero requirements.
-3. **Embedding disclosure bypasses organization chat policy.** The OpenAI
+2. **Embedding disclosure bypasses organization chat policy.** The OpenAI
    embedding path is fixed independently of
    `organization_ai_provider_policies`.
-4. **Organization-document processing is synchronous and has no OCR.** Legal
+3. **Organization-document processing is synchronous and has no OCR.** Legal
    corpus processing is worker-based and may use configured Docling fallback;
    Organization Evidence cannot.
-5. **The lifecycle is generate-once.** Although tables and routes retain
+4. **The lifecycle is generate-once.** Although tables and routes retain
    “reassessment” names, lifecycle guards reject a second generation after the
    first result exists.
-6. **There is no plan reconciliation or replacement.** The historical
+5. **There is no plan reconciliation or replacement.** The historical
    reconciliation tables and application routes have been removed.
-7. **The service permits only one plan ever, not merely one active plan.**
+6. **The service permits only one plan ever, not merely one active plan.**
    Finalization rejects when any plan row already exists for the organization.
-8. **Staleness can create a product dead end before finalization.** A new
+7. **Staleness can create a product dead end before finalization.** A new
    selected-document version, document archive, or Gap-release activation can
    make the generated revision non-finalizable, while generate-once guards
    prevent rebuilding it. No current product recovery path reconciles this
    state.
-9. **Grounding policy is currently fixed to NIS2 EU/DE families and retrieves
+8. **Grounding policy is currently fixed to NIS2 EU/DE families and retrieves
     legal context in German.** Output can be German or English, but legal
     retrieval passes `language: "de"`.
 

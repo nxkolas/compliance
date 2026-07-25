@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { randomUUID } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 import { and, desc, eq } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
 import {
@@ -189,7 +190,7 @@ async function main() {
   }
 
   if (draft.status !== "generated") {
-    const worked = await runOneJob(`remediation-smoke-${randomUUID()}`);
+    const worked = await runOneJobWithClockSkewTolerance();
     if (!worked) throw new Error("The queued Gap generation job was not leased");
   }
   const completedDraft = await db.query.gapReassessmentDrafts.findFirst({
@@ -226,7 +227,10 @@ async function main() {
   }
   const existingPlan = await getCurrentActionPlan(userId, organization.id);
   if (existingPlan) {
-    const pageReader = createDatabaseGapPageReader(directGapReleaseReader);
+    const pageReader = createDatabaseGapPageReader(
+      directGapReleaseReader,
+      directRuntimeReleaseReader,
+    );
     const [workflow, repeatedWorkflow] = await Promise.all([
       getGapAnalysisWorkflow({
         userId,
@@ -314,7 +318,10 @@ async function main() {
     gapRevisionId: corrected.id,
     command: claim.record,
   });
-  const pageReader = createDatabaseGapPageReader(directGapReleaseReader);
+  const pageReader = createDatabaseGapPageReader(
+    directGapReleaseReader,
+    directRuntimeReleaseReader,
+  );
   const [workflow, repeatedWorkflow, currentPlan] = await Promise.all([
     getGapAnalysisWorkflow({
       userId,
@@ -397,6 +404,14 @@ async function enableOpenAiForFixture(organizationId: string) {
     expectedVersion: policy.version,
     requestId: `remediation-smoke-${randomUUID()}`,
   });
+}
+
+async function runOneJobWithClockSkewTolerance() {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await runOneJob(`remediation-smoke-${randomUUID()}`)) return true;
+    await delay(250);
+  }
+  return false;
 }
 
 async function requireGapRevision(

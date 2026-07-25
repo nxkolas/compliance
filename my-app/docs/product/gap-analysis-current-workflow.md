@@ -1,7 +1,7 @@
 # Current Gap-Analysis Workflow
 
-Status: single organization lifecycle and compact finding sources implemented
-on 2026-07-24.
+Status: single organization lifecycle, compact finding sources, and positive
+applicability eligibility guard implemented on 2026-07-25.
 
 Each organization can generate one AI Gap Analysis and one action plan:
 
@@ -18,7 +18,18 @@ answer questions
 ## Before generation
 
 The organization must have an approved applicability result compatible with
-the active Gap release. Contributors then complete a numbered four-step
+the active Gap release and its parsed outcome must be `essential_entity` or
+`important_entity`. Approval records successful deterministic evaluation; it
+does not by itself establish Gap eligibility.
+
+The Gap page remains visible when this prerequisite is blocked. It shows a
+reason-specific explanation for a missing result, unsupported country, other
+clarification, not-directly-in-scope result, or release/status failure. It
+offers only applicability-related navigation and exposes no start, prepare,
+generate, or retry action. Direct service and worker calls independently
+enforce the same policy.
+
+For an eligible organization, contributors complete a numbered four-step
 wizard:
 
 1. **Answer questions**
@@ -30,6 +41,11 @@ Step circles always display their number. Documents are optional. Answers and
 document selection remain editable until generation succeeds. While a
 generation job is active, the reviewed inputs are frozen. Failed or cancelled
 jobs return to editable inputs and may be retried.
+
+Before enqueue and again in the worker, the service validates the pinned
+positive outcome and requires at least one applicable requirement. These
+guards run before a background job, draft lock, or AI processing run is
+created.
 
 The first generation uses an immutable assessment revision and the exact
 selected document versions. Every mutation route checks that no successful
@@ -155,5 +171,6 @@ The automated acceptance path is:
 
 ```text
 REMEDIATION_SMOKE_USER_ID=<active-admin-uuid> npm run db:smoke:authenticated-gap
+npm run db:smoke:country-support
 npx tsx scripts/benchmark-gap-workflow.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
 ```

@@ -93,6 +93,26 @@ describe("guided gap workflow navigation", () => {
       }).activeStep,
     ).toBe("questions");
   });
+
+  it.each(["questions", "documents", "review", "gaps"])(
+    "reveals no workflow step for a blocked prerequisite at %s",
+    (requestedStep) => {
+      expect(
+        deriveGapWorkflowNavigation({
+          prerequisiteSatisfied: false,
+          hasAssessment: true,
+          answeredQuestionCount: 4,
+          requiredQuestionCount: 4,
+          hasPreparedInputs: true,
+          hasResult: true,
+          requestedStep,
+        }),
+      ).toMatchObject({
+        activeStep: "questions",
+        allowedSteps: [],
+      });
+    },
+  );
 });
 
 describe("gap result presentation", () => {

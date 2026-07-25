@@ -11,29 +11,23 @@ import {
 import { and, eq, ne } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
-
-export type ApplicabilityArtifactCandidate = {
-  id: string;
-  checkReleaseId: string | null;
-  status: string;
-};
+import {
+  assertGapApplicabilityEligible,
+  evaluateGapApplicabilityPrerequisite,
+  type GapApplicabilityArtifactCandidate,
+} from "./applicability-eligibility";
 
 export function requireApprovedApplicabilityArtifact(
   compatibleCheckReleaseId: string,
-  candidates: ApplicabilityArtifactCandidate[],
+  candidates: GapApplicabilityArtifactCandidate[],
 ) {
-  const match = candidates.find(
-    (candidate) =>
-      candidate.checkReleaseId === compatibleCheckReleaseId &&
-      candidate.status === "approved",
+  const candidate = candidates[0] ?? null;
+  return assertGapApplicabilityEligible(
+    evaluateGapApplicabilityPrerequisite(
+      compatibleCheckReleaseId,
+      candidate,
+    ),
   );
-  if (!match) {
-    throw new ApiError(
-      409,
-      "An approved applicability result for the compatible release is required",
-    );
-  }
-  return match;
 }
 
 export async function createOrOpenGapAssessment(
@@ -58,21 +52,12 @@ export async function createOrOpenGapAssessment(
   if (!questionnaireVersion) {
     throw new ApiError(503, "The gap-analysis questionnaire is unavailable");
   }
-  const existing = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.organizationId, organizationId),
-      eq(assessments.moduleId, release.moduleId),
-      eq(assessments.gapAnalysisReleaseId, release.id),
-      eq(assessments.status, "active"),
-    ),
-  });
-  if (existing) return existing;
-
   const applicabilityCandidates = await db
     .select({
       id: generatedArtifactRevisions.id,
       checkReleaseId: generatedArtifactRevisions.checkReleaseId,
       status: generatedArtifactRevisions.status,
+      result: generatedArtifactRevisions.result,
     })
     .from(generatedArtifacts)
     .innerJoin(
@@ -89,6 +74,15 @@ export async function createOrOpenGapAssessment(
     release.compatibleCheckReleaseId,
     applicabilityCandidates,
   );
+  const existing = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
+    where: and(
+      eq(assessments.organizationId, organizationId),
+      eq(assessments.moduleId, release.moduleId),
+      eq(assessments.gapAnalysisReleaseId, release.id),
+      eq(assessments.status, "active"),
+    ),
+  });
+  if (existing) return existing;
 
   return db.transaction(async (tx) => {
     await tx
@@ -109,7 +103,7 @@ export async function createOrOpenGapAssessment(
         moduleId: release.moduleId,
         questionnaireId: questionnaireVersion.questionnaireId,
         gapAnalysisReleaseId: release.id,
-        applicabilityArtifactRevisionId: applicability.id,
+        applicabilityArtifactRevisionId: applicability.artifactRevisionId,
         createdBy: userId,
       })
       .returning();
@@ -122,7 +116,7 @@ export async function createOrOpenGapAssessment(
       entityId: assessment.id,
       metadata: {
         gapAnalysisReleaseId: release.id,
-        applicabilityArtifactRevisionId: applicability.id,
+        applicabilityArtifactRevisionId: applicability.artifactRevisionId,
       },
     });
     return assessment;

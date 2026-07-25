@@ -74,6 +74,34 @@ export const gapWorkflowReadSchema = z.object({
     candidateRevision: z.unknown().nullable(),
     acceptedFindings: z.array(z.unknown()),
     candidateFindings: z.array(z.unknown()),
+    prerequisite: z.discriminatedUnion("satisfied", [
+      z.object({
+        satisfied: z.literal(true),
+        status: z.literal("eligible"),
+        destination: z.string(),
+      }),
+      z.object({
+        satisfied: z.literal(false),
+        status: z.enum([
+          "missing",
+          "release_incompatible",
+          "not_approved",
+          "invalid",
+          "not_eligible",
+        ]),
+        reason: z
+          .enum([
+            "unsupported_country",
+            "clarification_required",
+            "not_directly_in_scope",
+          ])
+          .optional(),
+        outcome: z.string().optional(),
+        countryCode: z.string().nullable().optional(),
+        supportedCountryCodes: z.array(z.string()),
+        destination: z.string(),
+      }),
+    ]),
   }).loose(),
 });
 

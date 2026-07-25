@@ -381,7 +381,8 @@ describe("Gap page reader", () => {
       loadPrerequisite: vi.fn(async () => {
         queryCount += 1;
         return {
-          satisfied: true,
+          satisfied: true as const,
+          status: "eligible" as const,
           destination: "/applicability-check",
         };
       }),
@@ -447,6 +448,7 @@ describe("Gap page reader", () => {
       reassessment,
       prerequisite: {
         satisfied: true,
+        status: "eligible",
         destination: "/applicability-check",
       },
       history: [],
@@ -481,7 +483,8 @@ describe("Gap page reader", () => {
       runContext: null;
     }>();
     const prerequisite = pending<{
-      satisfied: boolean;
+      satisfied: true;
+      status: "eligible";
       destination: string;
     }>();
     const history = pending<[]>();
@@ -540,6 +543,7 @@ describe("Gap page reader", () => {
     library.resolve({ documents: [] });
     prerequisite.resolve({
       satisfied: true,
+      status: "eligible",
       destination: "/applicability-check",
     });
     history.resolve([]);

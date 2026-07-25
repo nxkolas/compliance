@@ -256,7 +256,7 @@ export async function getGapAnalysisWorkflow(
           },
         }
       : null,
-    prerequisite: workflow.prerequisite,
+    prerequisite: projectPrerequisite(workflow.prerequisite),
     history: workflow.history,
     generatedInputs: workflow.generatedInputs,
     reviewBlockers: workflow.reviewBlockers,
@@ -272,6 +272,59 @@ export async function getGapAnalysisWorkflow(
     gapCounts: countGapStatuses(projectedFindings),
     comparison,
     lastWorkflowChange: workflow.history[0] ?? null,
+  };
+}
+
+function projectPrerequisite<
+  T extends {
+    satisfied: boolean;
+    status: string;
+    destination: string;
+    supportedCountryCodes?: string[];
+    reason?: string;
+    outcome?: string;
+    countryCode?: string | null;
+  },
+>(prerequisite: T | null | undefined) {
+  if (!prerequisite) {
+    return {
+      satisfied: false as const,
+      status: "missing" as const,
+      supportedCountryCodes: [],
+      destination: "",
+    };
+  }
+  if (prerequisite.satisfied) {
+    return {
+      satisfied: true as const,
+      status: "eligible" as const,
+      destination: prerequisite.destination,
+    };
+  }
+  return {
+    satisfied: false as const,
+    status: prerequisite.status as
+      | "missing"
+      | "release_incompatible"
+      | "not_approved"
+      | "invalid"
+      | "not_eligible",
+    ...(prerequisite.reason
+      ? {
+          reason: prerequisite.reason as
+            | "unsupported_country"
+            | "clarification_required"
+            | "not_directly_in_scope",
+        }
+      : {}),
+    ...(prerequisite.outcome
+      ? { outcome: prerequisite.outcome }
+      : {}),
+    ...("countryCode" in prerequisite
+      ? { countryCode: prerequisite.countryCode }
+      : {}),
+    supportedCountryCodes: prerequisite.supportedCountryCodes ?? [],
+    destination: prerequisite.destination,
   };
 }
 

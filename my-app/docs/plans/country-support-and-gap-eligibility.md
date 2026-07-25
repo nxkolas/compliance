@@ -1,8 +1,7 @@
 # Country Support and Gap-Eligibility Guard
 
-Status: proposed on 2026-07-25. Product decisions are confirmed. This document
-is the planning deliverable; no implementation or database reset has been
-performed.
+Status: implemented and environment-verified on 2026-07-25. The disposable
+development database was cleared, reseeded, republished, and smoke-tested.
 
 This plan fixes the country-support dead end documented in
 [`country-support-current-behavior.md`](../product/country-support-current-behavior.md).
@@ -648,6 +647,20 @@ npm.cmd run db:smoke:authenticated-gap
 
 Also run the security, integrity, storage, rollout, localization, and Gap
 requirement verifiers listed in the reset/reseed runbook.
+
+### Implementation record
+
+The implementation passed `npm.cmd run verify`, worker tests, AI evals, and a
+production build. The database reset restored all reviewed security and
+integrity SQL, three private storage buckets, both evaluated legal-corpus
+families, `nis2/2026-v1`, and `nis2-gap/guided-v3`. All environment-backed
+acceptance smokes and runbook verifiers passed.
+
+The reviewed Drizzle push encountered the documented dependency-ordering
+failure while attempting to replace an option constraint. The feature has no
+schema delta, so the push was not retried. The exact security, integrity, and
+index SQL sequence was reapplied after the partial attempt, and the complete
+server-only, remediation-integrity, storage, and rollout verifiers passed.
 
 ## Acceptance Criteria
 

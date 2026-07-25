@@ -35,13 +35,29 @@ import {
   getGapRevisionStalenessBatchPreauthorized,
 } from "./staleness";
 import type { LoadedGapRelease } from "./release-loader";
+import { getSupportedCountryCodes } from "../applicability-check/domain";
+import {
+  nextCachedRuntimeReleaseReader,
+  type RuntimeReleaseReader,
+} from "../compliance";
+import {
+  evaluateGapApplicabilityPrerequisite,
+  projectGapPrerequisiteView,
+} from "./applicability-eligibility";
 
 export async function loadGapPrerequisiteState(
   input: PageInput,
   release: LoadedGapRelease,
+  runtimeReleaseReader: RuntimeReleaseReader =
+    nextCachedRuntimeReleaseReader,
 ) {
   const [row] = await db
-    .select({ id: generatedArtifactRevisions.id })
+    .select({
+      id: generatedArtifactRevisions.id,
+      checkReleaseId: generatedArtifactRevisions.checkReleaseId,
+      status: generatedArtifactRevisions.status,
+      result: generatedArtifactRevisions.result,
+    })
     .from(generatedArtifacts)
     .innerJoin(
       generatedArtifactRevisions,
@@ -51,18 +67,32 @@ export async function loadGapPrerequisiteState(
       and(
         eq(generatedArtifacts.organizationId, input.organizationId),
         eq(generatedArtifacts.artifactType, "affectedness_result"),
-        eq(generatedArtifactRevisions.status, "approved"),
-        eq(
-          generatedArtifactRevisions.checkReleaseId,
-          release.compatibleCheckReleaseId,
-        ),
       ),
     )
     .limit(1);
-  return {
-    satisfied: Boolean(row),
-    destination: `/tool/organizations/${input.organizationId}/applicability-check`,
-  };
+  const applicabilityRelease =
+    await runtimeReleaseReader.getPublished({
+      checkReleaseId: release.compatibleCheckReleaseId,
+      locale: input.locale,
+    });
+  const prerequisite = evaluateGapApplicabilityPrerequisite(
+    release.compatibleCheckReleaseId,
+    row,
+  );
+  const applicabilityBase = `/tool/organizations/${input.organizationId}/applicability-check`;
+  const destination =
+    prerequisite.status === "missing"
+      ? `${applicabilityBase}/new`
+      : prerequisite.status === "not_eligible"
+        ? `${applicabilityBase}/result`
+        : applicabilityBase;
+  return projectGapPrerequisiteView({
+    prerequisite,
+    supportedCountryCodes: applicabilityRelease
+      ? getSupportedCountryCodes(applicabilityRelease.ruleSet.rules)
+      : [],
+    destination,
+  });
 }
 
 type PageInput = {

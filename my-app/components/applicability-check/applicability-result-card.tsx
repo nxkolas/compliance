@@ -32,6 +32,8 @@ type ApplicabilityResultCardProps = {
     overlays: string;
     indirect: string;
     indirectNone: string;
+    unsupportedCountryTitle: string;
+    unsupportedCountryBody: string;
     outcomes: {
       essentialEntity: string;
       importantEntity: string;
@@ -63,6 +65,14 @@ export function ApplicabilityResultCard({
     locale === "en"
       ? evaluation.indirectExposure.reasonsEn
       : evaluation.indirectExposure.reasons;
+  const unsupportedCountry =
+    result.evidence.unresolvedFactCodes.includes(
+      "unresolved_unsupported_profile",
+    );
+  const supportedCountries = formatCountryNames(
+    result.release.supportedCountryCodes,
+    locale,
+  );
 
   return (
     <Card className="overflow-hidden rounded-lg shadow-sm">
@@ -83,6 +93,19 @@ export function ApplicabilityResultCard({
                 <Link href={startCurrentHref}>{labels.startCurrent}</Link>
               </Button>
             ) : null}
+          </div>
+        ) : null}
+        {unsupportedCountry ? (
+          <div className="rounded-md border border-amber-400 bg-amber-50 p-4 text-amber-950">
+            <h2 className="font-semibold">
+              {labels.unsupportedCountryTitle}
+            </h2>
+            <p className="mt-2 text-sm leading-6">
+              {labels.unsupportedCountryBody.replace(
+                "{countries}",
+                supportedCountries,
+              )}
+            </p>
           </div>
         ) : null}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -232,4 +255,12 @@ function formatSize(size: string, locale: Locale) {
     en: { small: "Small", medium: "Medium", large: "Large", unknown: "Unknown" },
   };
   return values[locale][size as keyof (typeof values)[Locale]] ?? size;
+}
+
+function formatCountryNames(countryCodes: string[], locale: Locale) {
+  const names = new Intl.DisplayNames([locale], { type: "region" });
+  return new Intl.ListFormat(locale, {
+    style: "long",
+    type: "conjunction",
+  }).format(countryCodes.map((code) => names.of(code) ?? code));
 }

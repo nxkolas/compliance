@@ -137,6 +137,10 @@ export const modulesMessages = defineFeatureMessages({
               overlays: "Zusätzliche Pflichten und Hinweise",
               indirect: "Indirekte Lieferkettenbetroffenheit",
               indirectNone: "Keine entsprechenden Signale angegeben.",
+              unsupportedCountryTitle:
+                "Dieses Land wird noch nicht unterstützt",
+              unsupportedCountryBody:
+                "Diese Version unterstützt eine nationale NIS2-Einstufung und die Gap-Analyse derzeit nur für {countries}. Ihr Ergebnis wurde gespeichert, kann aber nicht als Grundlage für eine Gap-Analyse verwendet werden.",
               outcomes: {
                 essentialEntity: "Wesentliche Einrichtung",
                 importantEntity: "Wichtige Einrichtung",
@@ -264,6 +268,25 @@ export const modulesMessages = defineFeatureMessages({
               prerequisiteTitle: "Zuerst Betroffenheit prüfen",
               prerequisite: "Bevor Sie die Gap-Analyse beginnen, muss die Betroffenheit Ihrer Organisation bestätigt sein.",
               checkApplicability: "Betroffenheit prüfen",
+              prerequisiteUnsupportedTitle:
+                "Gap-Analyse für dieses Land nicht verfügbar",
+              prerequisiteUnsupported:
+                "Diese Version unterstützt die nationale Einstufung und Gap-Analyse derzeit nur für {countries}. Prüfen Sie Ihr gespeichertes Ergebnis oder berechnen Sie den Betroffenheitscheck neu.",
+              prerequisiteClarificationTitle:
+                "Betroffenheit muss zuerst geklärt werden",
+              prerequisiteClarification:
+                "Das aktuelle Ergebnis enthält noch ungeklärte Angaben und qualifiziert sich deshalb nicht für die Gap-Analyse.",
+              prerequisiteNotInScopeTitle:
+                "Keine direkte NIS2-Betroffenheit festgestellt",
+              prerequisiteNotInScope:
+                "Das aktuelle Ergebnis qualifiziert sich nicht für die Gap-Analyse.",
+              prerequisiteCurrentTitle:
+                "Aktuelles bestätigtes Ergebnis erforderlich",
+              prerequisiteCurrent:
+                "Für diese Gap-Version ist ein gültiges, bestätigtes Ergebnis aus dem kompatiblen Betroffenheitscheck erforderlich.",
+              reviewApplicability: "Ergebnis prüfen oder neu berechnen",
+              viewApplicability: "Ergebnis ansehen",
+              checkCurrentApplicability: "Aktuellen Prüfstand öffnen",
               startTitle: "Bereit für Ihre Gap-Analyse",
               startDescription: "Beantworten Sie zunächst die Fragen. Dokumente können Sie später optional ergänzen.",
               startAnalysis: "Analyse beginnen",
@@ -393,6 +416,13 @@ export const modulesMessages = defineFeatureMessages({
                 GAP_OUTPUT_LOCALE_INVALID: "Die gespeicherte Ergebnissprache ist ungültig. Starten Sie eine neue Analyse.",
                 GAP_OUTPUT_LOCALE_CONFLICT: "Der Analyseauftrag verwendet nicht die gespeicherte Ergebnissprache.",
                 GROUNDING_LOCALE_CONFLICT: "Ein vorhandener Analyseauftrag verwendet eine andere Ergebnissprache.",
+                GAP_APPLICABILITY_MISSING: "Schließen Sie zuerst den Betroffenheitscheck ab.",
+                GAP_APPLICABILITY_RELEASE_INCOMPATIBLE: "Das gespeicherte Ergebnis gehört nicht zur aktuellen Gap-Version. Führen Sie den aktuellen Betroffenheitscheck aus.",
+                GAP_APPLICABILITY_NOT_APPROVED: "Für die Gap-Analyse ist ein bestätigtes Ergebnis des Betroffenheitschecks erforderlich.",
+                GAP_APPLICABILITY_INVALID: "Das gespeicherte Ergebnis ist ungültig. Führen Sie den Betroffenheitscheck erneut aus.",
+                GAP_APPLICABILITY_NOT_ELIGIBLE: "Das aktuelle Betroffenheitsergebnis qualifiziert sich nicht für die Gap-Analyse.",
+                GAP_REQUIREMENTS_UNAVAILABLE: "Für dieses positive Ergebnis enthält die aktuelle Version keine Gap-Anforderungen. Es wurde kein Analyseauftrag gestartet.",
+                GAP_RELEASE_UNAVAILABLE: "Die gespeicherte Gap-Version ist nicht verfügbar.",
                 generic: "Der Gap-Analyse-Workflow konnte nicht aktualisiert werden.",
               },
               unsavedWarning: "Ihre noch nicht gespeicherten Änderungen gehen verloren. Möchten Sie die Seite wirklich verlassen?",
@@ -662,6 +692,10 @@ export const modulesMessages = defineFeatureMessages({
               overlays: "Additional duties and notices",
               indirect: "Indirect supply-chain exposure",
               indirectNone: "No corresponding signals were reported.",
+              unsupportedCountryTitle:
+                "This country is not supported yet",
+              unsupportedCountryBody:
+                "This release currently supports national NIS2 classification and Gap Analysis only for {countries}. Your result has been saved, but it cannot be used to start a Gap Analysis.",
               outcomes: {
                 essentialEntity: "Essential entity",
                 importantEntity: "Important entity",
@@ -788,6 +822,25 @@ export const modulesMessages = defineFeatureMessages({
               prerequisiteTitle: "Check applicability first",
               prerequisite: "Before starting the gap analysis, your organization's applicability must be confirmed.",
               checkApplicability: "Check applicability",
+              prerequisiteUnsupportedTitle:
+                "Gap Analysis is unavailable for this country",
+              prerequisiteUnsupported:
+                "This release currently supports national classification and Gap Analysis only for {countries}. Review your saved result or recalculate the applicability check.",
+              prerequisiteClarificationTitle:
+                "Applicability must be clarified first",
+              prerequisiteClarification:
+                "The current result contains unresolved information and therefore does not qualify for Gap Analysis.",
+              prerequisiteNotInScopeTitle:
+                "No direct NIS2 applicability was identified",
+              prerequisiteNotInScope:
+                "The current result does not qualify for Gap Analysis.",
+              prerequisiteCurrentTitle:
+                "A current approved result is required",
+              prerequisiteCurrent:
+                "This Gap release requires a valid approved result from the compatible applicability check.",
+              reviewApplicability: "Review or recalculate result",
+              viewApplicability: "View result",
+              checkCurrentApplicability: "Open current assessment",
               startTitle: "Ready for your gap analysis",
               startDescription: "Start by answering the questions. You can optionally add documents afterward.",
               startAnalysis: "Start analysis",
@@ -917,6 +970,13 @@ export const modulesMessages = defineFeatureMessages({
                 GAP_OUTPUT_LOCALE_INVALID: "The saved result language is invalid. Start a new analysis.",
                 GAP_OUTPUT_LOCALE_CONFLICT: "The analysis job does not use the saved result language.",
                 GROUNDING_LOCALE_CONFLICT: "An existing analysis job uses a different result language.",
+                GAP_APPLICABILITY_MISSING: "Complete the applicability check first.",
+                GAP_APPLICABILITY_RELEASE_INCOMPATIBLE: "The saved result does not match the current Gap release. Run the current applicability check.",
+                GAP_APPLICABILITY_NOT_APPROVED: "Gap Analysis requires an approved applicability result.",
+                GAP_APPLICABILITY_INVALID: "The saved applicability result is invalid. Run the applicability check again.",
+                GAP_APPLICABILITY_NOT_ELIGIBLE: "The current applicability result does not qualify for Gap Analysis.",
+                GAP_REQUIREMENTS_UNAVAILABLE: "The current release contains no Gap requirements for this positive result. No analysis job was started.",
+                GAP_RELEASE_UNAVAILABLE: "The pinned Gap release is unavailable.",
                 generic: "The gap-analysis workflow could not be updated.",
               },
               unsavedWarning: "Your unsaved changes will be lost. Do you really want to leave this page?",

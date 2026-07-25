@@ -478,6 +478,7 @@ npm.cmd run db:verify:localized-metadata
 npm.cmd run db:verify:gap-requirements
 npm.cmd run db:smoke:nis2
 npm.cmd run db:smoke:gap
+npm.cmd run db:smoke:country-support
 ```
 
 Require `db:verify:server-only` to report every public table, all expected

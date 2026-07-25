@@ -338,16 +338,21 @@ export function GapAnalysisWorkflow({
     return <Notice tone="warning">{labels.unavailable}</Notice>;
   }
   if (!workflow.prerequisite.satisfied) {
+    const blocked = getPrerequisitePresentation(
+      workflow.prerequisite,
+      labels,
+      locale,
+    );
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{labels.prerequisiteTitle}</CardTitle>
-          <CardDescription>{labels.prerequisite}</CardDescription>
+          <CardTitle>{blocked.title}</CardTitle>
+          <CardDescription>{blocked.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild>
             <Link href={workflow.prerequisite.destination}>
-              {labels.checkApplicability}
+              {blocked.action}
             </Link>
           </Button>
         </CardContent>
@@ -523,6 +528,67 @@ export function GapAnalysisWorkflow({
       </Card>
     </div>
   );
+}
+
+function getPrerequisitePresentation(
+  prerequisite: Extract<
+    GapWorkflow["prerequisite"],
+    { satisfied: false }
+  >,
+  labels: GapLabels,
+  locale: GapLocale,
+) {
+  if (
+    prerequisite.status === "not_eligible" &&
+    prerequisite.reason === "unsupported_country"
+  ) {
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    const countries = new Intl.ListFormat(locale, {
+      style: "long",
+      type: "conjunction",
+    }).format(
+      prerequisite.supportedCountryCodes.map(
+        (code) => names.of(code) ?? code,
+      ),
+    );
+    return {
+      title: labels.prerequisiteUnsupportedTitle,
+      description: labels.prerequisiteUnsupported.replace(
+        "{countries}",
+        countries,
+      ),
+      action: labels.reviewApplicability,
+    };
+  }
+  if (
+    prerequisite.status === "not_eligible" &&
+    prerequisite.reason === "not_directly_in_scope"
+  ) {
+    return {
+      title: labels.prerequisiteNotInScopeTitle,
+      description: labels.prerequisiteNotInScope,
+      action: labels.viewApplicability,
+    };
+  }
+  if (prerequisite.status === "not_eligible") {
+    return {
+      title: labels.prerequisiteClarificationTitle,
+      description: labels.prerequisiteClarification,
+      action: labels.reviewApplicability,
+    };
+  }
+  if (prerequisite.status === "missing") {
+    return {
+      title: labels.prerequisiteTitle,
+      description: labels.prerequisite,
+      action: labels.checkApplicability,
+    };
+  }
+  return {
+    title: labels.prerequisiteCurrentTitle,
+    description: labels.prerequisiteCurrent,
+    action: labels.checkCurrentApplicability,
+  };
 }
 
 function Notice({
