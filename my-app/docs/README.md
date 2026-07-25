@@ -9,6 +9,7 @@ Compliance Checker app.
 - [Product docs](./product/README.md)
 - [Current gap-analysis workflow](./product/gap-analysis-current-workflow.md)
 - [Current country support](./product/country-support-current-behavior.md)
+- [Current NIS2 rule set (German and English)](./product/current-nis2-ruleset.de-en.md)
 - [Product structure](./product/product-structure.md)
 - [Architecture docs](./architecture/README.md)
 - [Database structure](./architecture/database-structure.md)
