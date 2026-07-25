@@ -19,5 +19,9 @@ export async function requireAuth() {
     redirect("/auth/login");
   }
 
+  if (user.email) {
+    const { syncAuthenticatedUser } = await import("@/src/server/users");
+    await syncAuthenticatedUser(user);
+  }
   return user;
 }

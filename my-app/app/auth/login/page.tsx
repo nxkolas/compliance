@@ -17,7 +17,7 @@ export default function Page() {
     src="/images/Startseite.svg" // <-- Hier "/images/" davor packen und das große "S" beachten!
     alt=""
     fill
-    className="object-cover"
+    className="pointer-events-none object-cover"
     priority
   />
 </div>

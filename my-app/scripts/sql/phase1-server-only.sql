@@ -13,6 +13,7 @@ alter table public.report_document_sources enable row level security;
 alter table public.background_job_results enable row level security;
 alter table public.idempotency_record_results enable row level security;
 alter table public.upload_session_results enable row level security;
+alter table public.user_directory enable row level security;
 
 revoke all on table public.platform_administrators from anon, authenticated;
 revoke all on table public.platform_audit_events from anon, authenticated;
@@ -27,6 +28,7 @@ revoke all on table public.report_document_sources from anon, authenticated;
 revoke all on table public.background_job_results from anon, authenticated;
 revoke all on table public.idempotency_record_results from anon, authenticated;
 revoke all on table public.upload_session_results from anon, authenticated;
+revoke all on table public.user_directory from anon, authenticated;
 
 grant all on table public.platform_administrators to service_role;
 grant all on table public.platform_audit_events to service_role;
@@ -41,3 +43,4 @@ grant all on table public.report_document_sources to service_role;
 grant all on table public.background_job_results to service_role;
 grant all on table public.idempotency_record_results to service_role;
 grant all on table public.upload_session_results to service_role;
+grant all on table public.user_directory to service_role;

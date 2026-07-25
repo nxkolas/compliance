@@ -1,6 +1,6 @@
 # Internal API Architecture
 
-Status: implemented baseline, 24 July 2026.
+Status: implemented baseline, updated 25 July 2026.
 
 All internal JSON routes use the shared success/error envelopes in
 `src/contracts/common/envelopes.ts`. Routes authenticate, validate untrusted
@@ -30,6 +30,29 @@ applicability, documents, asynchronous Gap analysis, action plans, reports, and
 append-only audit reads. The platform API under `/api/admin` covers the
 administrator registry, legal corpus catalog and ingestion, mandatory review,
 release evaluation/activation, monitors, jobs, and platform audit.
+
+Organization collection reads are status-explicit and use search-scoped opaque
+cursors. Management list items include one aggregated active-member count and
+the current member's effective actions; the compact switcher uses a separate,
+bounded active-only read.
+
+Organization master data and AI-provider disclosure policy are read and
+updated together through `/api/organizations/:organizationId/settings`. The
+composite ETag contains both resource versions. The command locks and validates
+both versions before updating either row, performs one transaction, and writes
+separate audit events for the two logical resources.
+
+Archival is reversible. Only owners receive `organizations:archive`; only
+owners receive `members:manage-owners`. Administrators may manage non-owner
+members but cannot mutate owners or assign ownership. Every organization
+workspace route rejects archived organizations until an owner restores them.
+The final-active-owner invariant remains protected by the organization-level
+transaction lock.
+
+Roster identity is projected from Supabase Auth into the RLS-enabled,
+browser-inaccessible `user_directory` table. Only normalized email and trusted
+`full_name` are stored. Authorized member reads join that safe projection and
+return an explicit fallback for unresolved historical identities.
 
 The complete route inventory is maintained in
 [API route inventory](./api-route-inventory.md).

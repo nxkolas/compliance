@@ -7,7 +7,7 @@ import {
 import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 
@@ -64,6 +64,9 @@ async function OrganizationLayoutContent({
 
   if (!organization) {
     notFound();
+  }
+  if (organization.archivedAt) {
+    redirect("/tool/organizations?notice=archived");
   }
 
   return children;

@@ -12,3 +12,15 @@ export function canContributeToOrganizationWorkflow(role: OrganizationRole) {
 export function canReviewOrganizationWorkflow(role: OrganizationRole) {
   return hasOrganizationCapability(role, "gap:review");
 }
+
+export function organizationActionsForRole(
+  role: OrganizationRole,
+  archived: boolean,
+) {
+  return {
+    edit: !archived && hasOrganizationCapability(role, "organizations:update"),
+    manageMembers: !archived && hasOrganizationCapability(role, "members:manage"),
+    archive: !archived && hasOrganizationCapability(role, "organizations:archive"),
+    restore: archived && hasOrganizationCapability(role, "organizations:archive"),
+  };
+}

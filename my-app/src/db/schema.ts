@@ -342,6 +342,29 @@ export const organizations = pgTable(
   ],
 );
 
+/**
+ * Server-owned projection of the small, non-sensitive subset of Supabase Auth
+ * identity data needed by organization rosters. Browser database roles must
+ * never receive grants on this table.
+ */
+export const userDirectory = pgTable(
+  "user_directory",
+  {
+    userId: uuid("user_id").primaryKey(),
+    email: varchar("email", { length: 255 }).notNull(),
+    displayName: varchar("display_name", { length: 255 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("user_directory_email_idx").on(sql`lower(${table.email})`),
+  ],
+).enableRLS();
+
 export const organizationMemberships = pgTable(
   "organization_memberships",
   {

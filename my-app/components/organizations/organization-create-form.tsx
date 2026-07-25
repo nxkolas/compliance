@@ -18,6 +18,8 @@ import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
+import { CountrySelector } from "./country-selector";
+import type { Locale } from "@/lib/i18n-config";
 
 type CreateOrganizationState = {
   name: string;
@@ -47,10 +49,12 @@ export function OrganizationCreateForm({
   labels,
   redirectAfterCreate = "organization",
   guestApplicabilityClaim,
+  locale,
 }: {
   labels: Dictionary["organizationForm"];
   redirectAfterCreate?: RedirectAfterCreate;
   guestApplicabilityClaim?: GuestApplicabilityClaim;
+  locale: Locale;
 }) {
   const router = useRouter();
   const [organizationForm, setOrganizationForm] = useState(
@@ -120,7 +124,7 @@ export function OrganizationCreateForm({
         </div>
       )}
 
-      <Card className="rounded-lg shadow-sm">
+      <Card className="w-full rounded-xl shadow-sm">
         <CardHeader>
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-background">
@@ -135,7 +139,8 @@ export function OrganizationCreateForm({
           </div>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4" onSubmit={handleCreateOrganization}>
+          <form className="grid gap-6" onSubmit={handleCreateOrganization}>
+            <div className="grid gap-5 lg:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="organization-name">{labels.organizationName}</Label>
               <Input
@@ -165,21 +170,22 @@ export function OrganizationCreateForm({
                 }
               />
             </div>
-            <div className="grid gap-2 sm:max-w-40">
+            <div className="grid gap-2 lg:col-span-2 lg:max-w-md">
               <Label htmlFor="country">{labels.country}</Label>
-              <Input
+              <CountrySelector
                 id="country"
-                maxLength={2}
                 value={organizationForm.country}
-                onChange={(event) =>
+                locale={locale}
+                onChange={(country) =>
                   setOrganizationForm((current) => ({
                     ...current,
-                    country: event.target.value.toUpperCase(),
+                    country,
                   }))
                 }
               />
             </div>
-            <Button type="submit" disabled={isCreatingOrganization}>
+            </div>
+            <Button type="submit" className="justify-self-start" disabled={isCreatingOrganization}>
               {isCreatingOrganization ? (
                 <Loader2 className="animate-spin" />
               ) : (

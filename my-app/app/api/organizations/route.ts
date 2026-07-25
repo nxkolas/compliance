@@ -3,8 +3,7 @@ import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
 import { parseInput, readJsonBody } from "@/src/server/api/request";
 import { createOrganizationForUser, getOrganizationForUser, listOrganizationsForUserPage } from "@/src/server/organizations/service";
-import { paginationQuerySchema } from "@/src/contracts/common/pagination";
-import { organizationInputSchema } from "@/src/contracts/organizations";
+import { organizationInputSchema, organizationListQuerySchema } from "@/src/contracts/organizations";
 import { runIdempotentCommand } from "@/src/server/api/idempotency";
 import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import { ApiError } from "@/src/server/api/errors";
@@ -12,7 +11,7 @@ import { ApiError } from "@/src/server/api/errors";
 export const GET = apiRoute(async ({ request }: { request: Request }) => {
   await connection();
   const user = await requireApiUser();
-  const query = parseInput(paginationQuerySchema, Object.fromEntries(new URL(request.url).searchParams));
+  const query = parseInput(organizationListQuerySchema, Object.fromEntries(new URL(request.url).searchParams));
   const result = await listOrganizationsForUserPage({ userId: user.id, ...query });
   return { data: { organizations: result.organizations }, meta: { nextCursor: result.nextCursor } };
 });

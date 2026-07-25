@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { OrganizationCreateForm } from "@/components/organizations/organization-create-form";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { connection } from "next/server";
 
@@ -18,6 +18,7 @@ export default async function NewOrganizationPage({
   await connection();
   await requireAuth();
   const dictionary = await getDictionary();
+  const locale = await getLocale();
   const params = searchParams ? await searchParams : {};
   const nextParam = Array.isArray(params.next) ? params.next[0] : params.next;
   const guestApplicabilityCheck = Array.isArray(params.guestApplicabilityCheck)
@@ -42,6 +43,7 @@ export default async function NewOrganizationPage({
       </section>
       <OrganizationCreateForm
         labels={dictionary.organizationForm}
+        locale={locale}
         redirectAfterCreate={redirectAfterCreate}
         guestApplicabilityClaim={
           guestApplicabilityCheck

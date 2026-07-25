@@ -1,6 +1,6 @@
 # Organization Management Redesign
 
-Status: planned from the confirmed design interview, 25 July 2026.
+Status: implemented and environment-verified, 25 July 2026.
 
 ## Outcome
 
@@ -680,3 +680,49 @@ before declaring the feature complete.
 - Changing the fixed compliance framework or country-eligibility policy.
 - Deleting organization-fact persistence or its server APIs.
 - Redesigning unrelated compliance modules or the global navigation order.
+
+## Implementation Record
+
+Implemented on 25 July 2026 in the delivery slices described above.
+
+- Added owner-only archival and owner-governance capabilities, searchable
+  status-specific organization list contracts, active-member aggregation, and
+  search-scoped opaque cursors.
+- Added the server-only `user_directory` projection, authenticated-boundary
+  synchronization, idempotent Admin API backfill, grant verification, and
+  localized-safe roster fallback.
+- Rebuilt the always-visible switcher, active/archived management streams,
+  atomic edit modal, archive/restore dialogs, country selection, creation
+  layout, responsive roster, invitation queue/history, and settings
+  placeholder.
+- Added the shared archived-workspace redirect and retained the existing
+  creation, applicability, and guest-claim redirects.
+- Applied the additive user-directory SQL to the approved disposable
+  development Supabase project without a clear or reseed. The final backfill
+  projected three identities with zero missing Auth identities. Server-only
+  verification covered all 123 public tables.
+- Direct database smoke verification found six active memberships, zero
+  fallback identities, and one archived organization (the retained E2E
+  archival fixture).
+- The optional composite membership-status index was deliberately not added:
+  it is not a functional dependency, the development dataset did not provide
+  evidence of a material query-plan improvement, and the existing status and
+  organization/user indexes remain in place.
+
+Final verification:
+
+```text
+npm.cmd run verify
+  87 test files passed
+  483 tests passed
+  i18n guard passed
+
+npm.cmd run build
+  production build passed
+
+RUN_ORGANIZATION_E2E=1 PLAYWRIGHT_PORT=3100 npm.cmd run test:e2e -- e2e/organization-management.spec.ts
+  1 serial Chromium scenario passed
+  covered zero-state creation, mobile creation, switcher navigation, search,
+  atomic edit, resend/revoke, administrator denials, auditor read-only roster,
+  self-leave, final-owner protection, archive redirect, and restore
+```

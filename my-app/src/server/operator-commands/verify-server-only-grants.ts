@@ -12,6 +12,7 @@ const expectedTables = [
   "platform_audit_events",
   "upload_sessions",
   "upload_session_results",
+  "user_directory",
   "active_legal_corpus_releases",
   "ai_processing_run_claim_context",
   "ai_processing_run_claims",

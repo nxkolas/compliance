@@ -12,6 +12,7 @@ const approvedFiles = new Set([
   "scripts/sql/database-remediation-pre-push.sql",
   "scripts/sql/legal-corpus-indexes.sql",
   "scripts/sql/legal-corpus-server-only.sql",
+  "scripts/sql/organization-management-user-directory.sql",
   "scripts/sql/phase1-server-only.sql",
   "scripts/sql/remediation-rehearsal-bootstrap.sql",
   "scripts/sql/workflow-server-only.sql",

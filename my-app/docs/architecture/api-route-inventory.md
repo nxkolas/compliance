@@ -6,7 +6,8 @@ Status: 24 July 2026. Every route below returns the common JSON envelope.
 
 - `/api/jobs/:jobId` and `/api/jobs/:jobId/cancel`
 - `/api/organizations`, `/api/organizations/:organizationId`, archive/restore,
-  facts, members, invitations, and invitation inbox/acceptance
+  atomic organization settings, facts, members, invitations, and invitation
+  inbox/acceptance
 - `/api/organizations/:organizationId/dashboard`
 - `/api/organizations/:organizationId/applicability-check` with questionnaire,
   answers, result, and submissions; guest submission/result/claim routes

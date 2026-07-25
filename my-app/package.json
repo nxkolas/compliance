@@ -28,6 +28,8 @@
     "db:quiesce:remediation": "tsx scripts/quiesce-database-remediation.ts",
     "db:bootstrap:platform-admin": "tsx scripts/bootstrap-platform-administrator.ts",
     "db:verify:server-only": "tsx scripts/verify-server-only-grants.ts",
+    "db:backfill:user-directory": "tsx scripts/backfill-user-directory.ts",
+    "db:verify:organization-management": "tsx scripts/verify-organization-management.ts",
     "db:verify:remediation-integrity": "tsx scripts/verify-database-remediation-integrity.ts",
     "storage:setup:legal-corpus": "tsx scripts/setup-legal-corpus-storage.ts",
     "storage:setup:reports": "tsx scripts/setup-report-storage.ts",

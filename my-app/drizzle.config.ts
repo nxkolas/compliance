@@ -83,6 +83,7 @@ export default defineConfig({
     'organization_fact_values',
     'organization_invitations',
     'organization_memberships',
+    'user_directory',
     'organizations',
     'question_fact_mappings',
     'question_options',

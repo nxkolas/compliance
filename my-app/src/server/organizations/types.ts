@@ -33,6 +33,23 @@ export type AcceptOrganizationInvitationInput = z.infer<
 
 export type OrganizationDto = typeof organizations.$inferSelect;
 
+export type OrganizationListItem = {
+  id: string;
+  name: string;
+  legalName: string | null;
+  country: string;
+  archivedAt: Date | null;
+  version: number;
+  activeMemberCount: number;
+  currentUserRole: OrganizationRole;
+  allowedActions: {
+    edit: boolean;
+    manageMembers: boolean;
+    archive: boolean;
+    restore: boolean;
+  };
+};
+
 export type OrganizationFactDto = typeof organizationFactValues.$inferSelect & {
   value: unknown;
   definition: typeof organizationFactDefinitions.$inferSelect & {
@@ -44,6 +61,12 @@ export type OrganizationFactDto = typeof organizationFactValues.$inferSelect & {
 
 export type OrganizationMembershipDto =
   typeof organizationMemberships.$inferSelect;
+
+export type OrganizationMemberDto = OrganizationMembershipDto & {
+  email: string;
+  displayName: string | null;
+  identityResolved: boolean;
+};
 
 export type OrganizationInvitationDto = Omit<
   typeof organizationInvitations.$inferSelect,

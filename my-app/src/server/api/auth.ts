@@ -19,5 +19,9 @@ export async function requireApiUser() {
     throw new ApiError(401, "Authentication required");
   }
 
+  if (user.email) {
+    const { syncAuthenticatedUser } = await import("@/src/server/users");
+    await syncAuthenticatedUser(user);
+  }
   return user;
 }

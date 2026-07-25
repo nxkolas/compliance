@@ -7,6 +7,7 @@ export const organizationCapabilities = [
   "members:read",
   "members:invite",
   "members:manage",
+  "members:manage-owners",
   "applicability:read",
   "applicability:submit",
   "documents:read",
@@ -42,10 +43,13 @@ export type Capability = OrganizationCapability | PlatformCapability;
 const ownerAndAdminCapabilities = new Set<OrganizationCapability>(
   organizationCapabilities,
 );
+const adminCapabilities = new Set(ownerAndAdminCapabilities);
+adminCapabilities.delete("organizations:archive");
+adminCapabilities.delete("members:manage-owners");
 
 const roleCapabilities: Record<OrganizationRole, ReadonlySet<OrganizationCapability>> = {
   owner: ownerAndAdminCapabilities,
-  admin: ownerAndAdminCapabilities,
+  admin: adminCapabilities,
   member: new Set([
     "organizations:read",
     "members:read",
