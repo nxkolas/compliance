@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildReassessmentEvidenceSelection } from "@/src/server/gap-analysis/reassessment-selection";
 
 describe("buildReassessmentEvidenceSelection", () => {
-  it("carries accepted current evidence, replaces superseded versions, and adds explicit evidence", () => {
+  it("treats the submitted documents as exact and resolves selected names to current versions", () => {
     const result = buildReassessmentEvidenceSelection({
       accepted: [
         { versionId: "policy-v1", documentId: "policy" },
@@ -10,10 +10,14 @@ describe("buildReassessmentEvidenceSelection", () => {
       ],
       candidates: [
         current("policy-v1", "policy"),
+        {
+          ...current("runbook-v1", "runbook"),
+          currentVersionId: "runbook-v2",
+        },
         { ...current("runbook-v2", "runbook"), currentVersionId: "runbook-v2" },
         current("audit-v1", "audit"),
       ],
-      explicitAdditions: ["audit-v1"],
+      explicitAdditions: ["policy-v1", "runbook-v1", "audit-v1"],
     });
 
     expect(result).toEqual({
@@ -27,34 +31,35 @@ describe("buildReassessmentEvidenceSelection", () => {
     });
   });
 
-  it("removes archived accepted documents and blocks unindexed replacements", () => {
+  it("allows removing every previously accepted document", () => {
     const result = buildReassessmentEvidenceSelection({
       accepted: [
         { versionId: "archived-v1", documentId: "archived" },
         { versionId: "pending-v1", documentId: "pending" },
       ],
-      candidates: [
-        {
-          versionId: "archived-v1",
-          documentId: "archived",
-          currentVersionId: "archived-v1",
-          active: false,
-          indexed: true,
-        },
-        {
-          versionId: "pending-v2",
-          documentId: "pending",
-          currentVersionId: "pending-v2",
-          active: true,
-          indexed: false,
-        },
-      ],
+      candidates: [],
       explicitAdditions: [],
     });
 
-    expect(result.removed).toEqual(["archived-v1"]);
-    expect(result.blocked).toEqual(["pending-v1"]);
+    expect(result.removed).toEqual(["archived-v1", "pending-v1"]);
+    expect(result.blocked).toEqual([]);
     expect(result.selection).toEqual([]);
+  });
+
+  it("records omitted carried evidence as removed", () => {
+    const result = buildReassessmentEvidenceSelection({
+      accepted: [
+        { versionId: "policy-v1", documentId: "policy" },
+        { versionId: "runbook-v1", documentId: "runbook" },
+      ],
+      candidates: [current("policy-v1", "policy"), current("runbook-v1", "runbook")],
+      explicitAdditions: ["policy-v1"],
+    });
+
+    expect(result.selection).toEqual([
+      { versionId: "policy-v1", documentId: "policy", origin: "approved_carryover" },
+    ]);
+    expect(result.removed).toEqual(["runbook-v1"]);
   });
 
   it("rejects explicit additions that are not indexed current versions", () => {

@@ -1,6 +1,5 @@
 import "dotenv/config";
-import { publishComplianceRelease } from "../src/server/compliance/publishing/publish-release";
-import { getRepositoryRelease } from "../src/server/compliance/publishing/release-registry";
+import { getRepositoryRelease, publishComplianceRelease } from "@/src/server/compliance";
 
 async function main() {
   if (process.env.NODE_ENV === "production") {

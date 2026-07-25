@@ -3,6 +3,7 @@ import {
   complianceCheckReleaseFactVersions,
   complianceCheckReleaseContentRevisions,
   complianceCheckReleaseProfiles,
+  complianceCheckReleaseCorpusReleases,
   complianceCheckReleases,
   complianceFrameworkVersions,
   complianceFrameworks,
@@ -47,10 +48,11 @@ import { and, desc, eq } from "drizzle-orm";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 import { contentHash } from "./canonical-json";
 import { compileRelease } from "./compile-release";
+import { resolvePublishableCorpusPins } from "@/src/server/corpus";
 
 export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
   const compiled = compileRelease(release);
-  const existing = await db.query.complianceCheckReleases.findFirst({
+  const existing = await db.query.complianceCheckReleases.findFirst({ columns: { id: true, checkCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, scopeModelVersionId: true, scopeThresholdSetId: true, ruleSetId: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, effectiveFrom: true, effectiveTo: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: and(
       eq(complianceCheckReleases.checkCode, release.checkCode),
       eq(complianceCheckReleases.versionLabel, release.versionLabel),
@@ -59,18 +61,22 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
   if (existing) throw new Error(`Release ${release.checkCode}/${release.versionLabel} already exists and cannot be republished`);
 
   return db.transaction(async (tx) => {
+    const corpus = await resolvePublishableCorpusPins(
+      tx,
+      release.requiredCorpusFamilies,
+    );
     const revisionByContentKey = new Map<string, string>();
     for (const source of release.content) {
       await tx.insert(contentItems).values({ stableKey: source.stableKey, format: source.format }).onConflictDoNothing();
-      const item = await tx.query.contentItems.findFirst({ where: eq(contentItems.stableKey, source.stableKey) });
+      const item = await tx.query.contentItems.findFirst({ columns: { id: true, stableKey: true, format: true, createdAt: true, updatedAt: true }, where: eq(contentItems.stableKey, source.stableKey) });
       if (!item || item.format !== source.format) throw new Error(`Conflicting content item ${source.stableKey}`);
 
       const hash = contentHash(source.translations);
-      let revision = await tx.query.contentRevisions.findFirst({
+      let revision = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
         where: and(eq(contentRevisions.contentItemId, item.id), eq(contentRevisions.contentHash, hash)),
       });
       if (!revision) {
-        const latest = await tx.query.contentRevisions.findFirst({
+        const latest = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
           where: eq(contentRevisions.contentItemId, item.id),
           orderBy: [desc(contentRevisions.revisionNumber)],
         });
@@ -98,11 +104,11 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
     const legalProvisionIdByKey = new Map<string, string>();
     for (const source of release.legalInstruments) {
       await tx.insert(legalInstruments).values({ code: source.code, jurisdictionCode: source.jurisdictionCode, instrumentType: source.instrumentType }).onConflictDoNothing();
-      const instrument = await tx.query.legalInstruments.findFirst({ where: eq(legalInstruments.code, source.code) });
+      const instrument = await tx.query.legalInstruments.findFirst({ columns: { id: true, code: true, jurisdictionCode: true, instrumentType: true }, where: eq(legalInstruments.code, source.code) });
       if (!instrument) throw new Error(`Legal instrument insert failed: ${source.code}`);
 
       const instrumentHash = contentHash(source);
-      const existingVersion = await tx.query.legalInstrumentVersions.findFirst({
+      const existingVersion = await tx.query.legalInstrumentVersions.findFirst({ columns: { id: true, legalInstrumentId: true, versionLabel: true, officialIdentifier: true, officialSourceUrl: true, effectiveFrom: true, effectiveTo: true, titleContentRevisionId: true, contentHash: true },
         where: and(eq(legalInstrumentVersions.legalInstrumentId, instrument.id), eq(legalInstrumentVersions.versionLabel, source.versionLabel)),
       });
       if (existingVersion && existingVersion.contentHash !== instrumentHash) throw new Error(`Conflicting legal instrument version ${source.code}/${source.versionLabel}`);
@@ -118,7 +124,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
 
       for (const provisionSource of source.provisions) {
         const citationContentRevisionId = contentRevisionId(provisionSource.citationContentKey);
-        let provision = await tx.query.legalProvisions.findFirst({
+        let provision = await tx.query.legalProvisions.findFirst({ columns: { id: true, legalInstrumentVersionId: true, provisionCode: true, officialSourceUrl: true, citationContentRevisionId: true },
           where: and(
             eq(legalProvisions.legalInstrumentVersionId, version.id),
             eq(legalProvisions.provisionCode, provisionSource.code),
@@ -148,27 +154,35 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       return id;
     };
 
-    await tx.insert(complianceFrameworks).values({ code: "nis2", name: "NIS2", description: "Immutable NIS2 release foundation" }).onConflictDoNothing();
-    const framework = await tx.query.complianceFrameworks.findFirst({ where: eq(complianceFrameworks.code, "nis2") });
-    if (!framework) throw new Error("NIS2 framework insert failed");
+    await tx.insert(complianceFrameworks).values({ code: release.framework.code }).onConflictDoNothing();
+    const framework = await tx.query.complianceFrameworks.findFirst({ columns: { id: true, code: true, createdAt: true },
+      where: eq(complianceFrameworks.code, release.framework.code),
+    });
+    if (!framework) throw new Error(`Framework insert failed: ${release.framework.code}`);
     const [frameworkVersion] = await tx.insert(complianceFrameworkVersions).values({
       frameworkId: framework.id,
       versionLabel: release.versionLabel,
+      nameContentRevisionId: contentRevisionId(
+        release.framework.nameContentKey,
+      ),
+      descriptionContentRevisionId: contentRevisionId(
+        release.framework.descriptionContentKey,
+      ),
       status: "published",
       effectiveFrom: release.effectiveFrom,
     }).returning();
     const [module] = await tx.insert(complianceModules).values({
       frameworkVersionId: frameworkVersion.id,
-      code: "betroffenheitscheck",
-      name: "Betroffenheitscheck",
-      moduleType: "questionnaire",
-      position: 10,
+      code: release.module.code,
+      nameContentRevisionId: contentRevisionId(release.module.nameContentKey),
+      moduleType: release.module.moduleType,
+      position: release.module.position,
     }).returning();
 
     await tx.insert(scopeModels).values({ code: "nis2_eu_core" }).onConflictDoNothing();
-    const scopeModel = await tx.query.scopeModels.findFirst({ where: eq(scopeModels.code, "nis2_eu_core") });
+    const scopeModel = await tx.query.scopeModels.findFirst({ columns: { id: true, code: true }, where: eq(scopeModels.code, "nis2_eu_core") });
     if (!scopeModel) throw new Error("Scope model insert failed");
-    const existingScopeModelVersion = await tx.query.scopeModelVersions.findFirst({
+    const existingScopeModelVersion = await tx.query.scopeModelVersions.findFirst({ columns: { id: true, scopeModelId: true, versionLabel: true, status: true, effectiveFrom: true, effectiveTo: true, contentHash: true, publishedAt: true },
       where: eq(scopeModelVersions.contentHash, compiled.hashes.scopeModel),
     });
     const scopeModelVersion = existingScopeModelVersion ?? (await tx.insert(scopeModelVersions).values({
@@ -185,10 +199,10 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
     const sectorVersionIdByCode = new Map<string, string>();
     for (const source of release.sectors) {
       await tx.insert(scopeSectors).values({ code: source.code }).onConflictDoNothing();
-      const sector = await tx.query.scopeSectors.findFirst({ where: eq(scopeSectors.code, source.code) });
+      const sector = await tx.query.scopeSectors.findFirst({ columns: { id: true, code: true }, where: eq(scopeSectors.code, source.code) });
       if (!sector) throw new Error(`Scope sector insert failed: ${source.code}`);
       const version = scopeModelReused
-        ? await tx.query.scopeSectorVersions.findFirst({
+        ? await tx.query.scopeSectorVersions.findFirst({ columns: { id: true, scopeSectorId: true, scopeModelVersionId: true, labelContentRevisionId: true },
             where: and(
               eq(scopeSectorVersions.scopeSectorId, sector.id),
               eq(scopeSectorVersions.scopeModelVersionId, scopeModelVersion.id),
@@ -206,7 +220,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
     const entityTypeIdByCode = new Map<string, string>();
     for (const source of release.entityTypes) {
       await tx.insert(scopeEntityTypes).values({ code: source.code }).onConflictDoNothing();
-      const entity = await tx.query.scopeEntityTypes.findFirst({ where: eq(scopeEntityTypes.code, source.code) });
+      const entity = await tx.query.scopeEntityTypes.findFirst({ columns: { id: true, code: true }, where: eq(scopeEntityTypes.code, source.code) });
       if (!entity) throw new Error(`Entity type insert failed: ${source.code}`);
       entityTypeIdByCode.set(source.code, entity.id);
       if (scopeModelReused) continue;
@@ -231,14 +245,14 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
     const factVersionIds: string[] = [];
     for (const source of release.facts) {
       await tx.insert(organizationFactDefinitions).values({ key: source.key, dataType: source.dataType }).onConflictDoNothing();
-      const definition = await tx.query.organizationFactDefinitions.findFirst({ where: eq(organizationFactDefinitions.key, source.key) });
+      const definition = await tx.query.organizationFactDefinitions.findFirst({ columns: { key: true, dataType: true, createdAt: true }, where: eq(organizationFactDefinitions.key, source.key) });
       if (!definition || definition.dataType !== source.dataType) throw new Error(`Conflicting fact definition ${source.key}`);
       const factVersionHash = contentHash({
         source,
         labelContentRevisionId: contentRevisionId(source.labelContentKey),
         descriptionContentRevisionId: contentRevisionId(source.descriptionContentKey),
       });
-      const existingFactVersion = await tx.query.organizationFactDefinitionVersions.findFirst({
+      const existingFactVersion = await tx.query.organizationFactDefinitionVersions.findFirst({ columns: { id: true, factKey: true, versionLabel: true, labelContentRevisionId: true, descriptionContentRevisionId: true, contentHash: true },
         where: and(
           eq(organizationFactDefinitionVersions.factKey, source.key),
           eq(organizationFactDefinitionVersions.contentHash, factVersionHash),
@@ -257,7 +271,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
         const scopeEntityTypeId = optionSource.scopeEntityTypeCode
           ? entityTypeIdByCode.get(optionSource.scopeEntityTypeCode)
           : undefined;
-        let option = await tx.query.factOptions.findFirst({
+        let option = await tx.query.factOptions.findFirst({ columns: { id: true, factDefinitionKey: true, stableValue: true, catalogCode: true, scopeEntityTypeId: true, jurisdictionEntityTypeId: true },
           where: and(
             eq(factOptions.factDefinitionKey, source.key),
             eq(factOptions.stableValue, optionSource.stableValue),
@@ -282,10 +296,16 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       }
     }
 
-    const [questionnaire] = await tx.insert(questionnaires).values({ moduleId: module.id, code: "betroffenheitscheck", title: "NIS2 Betroffenheitscheck" }).returning();
+    const [questionnaire] = await tx.insert(questionnaires).values({
+      moduleId: module.id,
+      code: release.questionnaire.code,
+    }).returning();
     const [questionnaireVersion] = await tx.insert(questionnaireVersions).values({
       questionnaireId: questionnaire.id,
       versionLabel: release.versionLabel,
+      titleContentRevisionId: contentRevisionId(
+        release.questionnaire.titleContentKey,
+      ),
       status: "published",
       publishedAt: new Date(),
     }).returning();
@@ -313,7 +333,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       await tx.insert(questionFactMappings).values({ questionId: question.id, factKey: source.factKey, transform: { type: "identity" } });
     }
 
-    const existingThresholdSet = await tx.query.scopeThresholdSets.findFirst({
+    const existingThresholdSet = await tx.query.scopeThresholdSets.findFirst({ columns: { id: true, code: true, versionLabel: true, status: true, mediumEmployeeThreshold: true, mediumTurnoverThreshold: true, mediumBalanceSheetThreshold: true, largeEmployeeThreshold: true, largeTurnoverThreshold: true, largeBalanceSheetThreshold: true, employeeComparison: true, financialComparison: true, contentHash: true, publishedAt: true },
       where: eq(scopeThresholdSets.contentHash, compiled.hashes.thresholds),
     });
     const thresholdSet = existingThresholdSet ?? (await tx.insert(scopeThresholdSets).values({
@@ -342,7 +362,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
     const jurisdictionEntityTypeIdByCode = new Map<string, string>();
     for (const source of release.profiles) {
       await tx.insert(jurisdictionProfiles).values({ code: source.code, countryCode: source.countryCode }).onConflictDoNothing();
-      const profile = await tx.query.jurisdictionProfiles.findFirst({ where: eq(jurisdictionProfiles.code, source.code) });
+      const profile = await tx.query.jurisdictionProfiles.findFirst({ columns: { id: true, code: true, countryCode: true }, where: eq(jurisdictionProfiles.code, source.code) });
       if (!profile) throw new Error(`Jurisdiction profile insert failed: ${source.code}`);
       const profileHash = contentHash({
         source,
@@ -353,7 +373,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
           ),
         ),
       });
-      const conflictingProfileVersion = await tx.query.jurisdictionProfileVersions.findFirst({
+      const conflictingProfileVersion = await tx.query.jurisdictionProfileVersions.findFirst({ columns: { id: true, jurisdictionProfileId: true, versionLabel: true, status: true, supported: true, allowNegativeConclusion: true, effectiveFrom: true, effectiveTo: true, contentHash: true, publishedAt: true },
         where: and(
           eq(jurisdictionProfileVersions.jurisdictionProfileId, profile.id),
           eq(jurisdictionProfileVersions.versionLabel, source.versionLabel),
@@ -362,7 +382,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       if (conflictingProfileVersion && conflictingProfileVersion.contentHash !== profileHash) {
         throw new Error(`Conflicting jurisdiction profile version ${source.code}/${source.versionLabel}`);
       }
-      const existingProfileVersion = conflictingProfileVersion ?? await tx.query.jurisdictionProfileVersions.findFirst({
+      const existingProfileVersion = conflictingProfileVersion ?? await tx.query.jurisdictionProfileVersions.findFirst({ columns: { id: true, jurisdictionProfileId: true, versionLabel: true, status: true, supported: true, allowNegativeConclusion: true, effectiveFrom: true, effectiveTo: true, contentHash: true, publishedAt: true },
         where: eq(jurisdictionProfileVersions.contentHash, profileHash),
       });
       const version = existingProfileVersion ?? (await tx.insert(jurisdictionProfileVersions).values({
@@ -397,7 +417,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
           jurisdictionProfileId: profile.id,
           code: entitySource.code,
         }).onConflictDoNothing();
-        const entity = await tx.query.jurisdictionEntityTypes.findFirst({
+        const entity = await tx.query.jurisdictionEntityTypes.findFirst({ columns: { id: true, jurisdictionProfileId: true, code: true },
           where: and(
             eq(jurisdictionEntityTypes.jurisdictionProfileId, profile.id),
             eq(jurisdictionEntityTypes.code, entitySource.code),
@@ -491,7 +511,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
             `National fact-option link missing for ${factSource.key}.${optionSource.stableValue}`,
           );
         }
-        const existingFactOption = await tx.query.factOptions.findFirst({
+        const existingFactOption = await tx.query.factOptions.findFirst({ columns: { id: true, factDefinitionKey: true, stableValue: true, catalogCode: true, scopeEntityTypeId: true, jurisdictionEntityTypeId: true },
           where: eq(factOptions.id, factOptionId),
         });
         if (
@@ -511,7 +531,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       }
     }
 
-    const existingRuleSet = await tx.query.ruleSets.findFirst({
+    const existingRuleSet = await tx.query.ruleSets.findFirst({ columns: { id: true, moduleId: true, code: true, versionLabel: true, status: true, evaluatorKind: true, evaluatorSchemaVersion: true, rules: true, contentHash: true, createdAt: true, publishedAt: true },
       where: eq(ruleSets.contentHash, compiled.hashes.ruleSet),
     });
     const ruleSet = existingRuleSet ?? (await tx.insert(ruleSets).values({
@@ -530,6 +550,7 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       checkCode: release.checkCode,
       versionLabel: release.versionLabel,
       moduleId: module.id,
+      questionnaireId: questionnaire.id,
       questionnaireVersionId: questionnaireVersion.id,
       scopeModelVersionId: scopeModelVersion.id,
       scopeThresholdSetId: thresholdSet.id,
@@ -540,8 +561,16 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
       effectiveFrom: release.effectiveFrom,
       status: "published",
       aggregateHash: compiled.hashes.aggregate,
+      corpusReleaseSetHash: corpus.releaseSetHash,
       publishedAt: new Date(),
     }).returning();
+    await tx.insert(complianceCheckReleaseCorpusReleases).values(
+      corpus.pins.map((pin) => ({
+        checkReleaseId: checkRelease.id,
+        familyId: pin.familyId,
+        corpusReleaseId: pin.releaseId,
+      })),
+    );
     await tx.insert(complianceCheckReleaseFactVersions).values(
       factVersionIds.map((factDefinitionVersionId) => ({ checkReleaseId: checkRelease.id, factDefinitionVersionId })),
     );

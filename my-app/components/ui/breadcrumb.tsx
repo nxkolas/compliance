@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const Breadcrumb = React.forwardRef<
   HTMLElement,
   React.ComponentPropsWithoutRef<"nav">
->((props, ref) => <nav ref={ref} aria-label="breadcrumb" {...props} />);
+>((props, ref) => <nav ref={ref} {...props} />);
 Breadcrumb.displayName = "Breadcrumb";
 
 const BreadcrumbList = React.forwardRef<
@@ -93,7 +93,6 @@ function BreadcrumbEllipsis({
       {...props}
     >
       <MoreHorizontal className="size-4" />
-      <span className="sr-only">More</span>
     </span>
   );
 }

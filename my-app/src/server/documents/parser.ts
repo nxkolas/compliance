@@ -36,8 +36,13 @@ export function validateDocumentUpload(input: {
 export async function parseDocument(
   bytes: Uint8Array,
   mimeType: string,
+  options: { maxBytes?: number } = {},
 ): Promise<ParsedDocument> {
-  validateDocumentUpload({ fileName: "upload", mimeType, byteSize: bytes.byteLength });
+  if (options.maxBytes === undefined) {
+    validateDocumentUpload({ fileName: "upload", mimeType, byteSize: bytes.byteLength });
+  } else if (bytes.byteLength < 1 || bytes.byteLength > options.maxBytes) {
+    throw new ApiError(413, "The document size is not allowed");
+  }
   if (mimeType === "application/pdf") {
     const parser = new PDFParse({ data: bytes });
     try {

@@ -1,48 +1,334 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import Link from "next/link";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Loader2, Play } from "lucide-react";
-import { OrganizationDocumentManager } from "@/components/documents/organization-document-manager";
+import { History, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import type { getGapAnalysisWorkflow } from "@/src/server/gap-analysis/workflow-reader";
-import type { Dictionary, Locale } from "@/lib/i18n";
-
-type Workflow = Awaited<ReturnType<typeof getGapAnalysisWorkflow>>;
-type Labels = Dictionary["modules"]["gapAnalysis"]["workflow"];
-type DocumentLabels = Dictionary["modules"]["documents"]["workflow"];
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { gapAnalysisClient } from "@/src/client/gap-analysis";
+import { jobsClient } from "@/src/client/jobs";
+import { pollJob } from "@/src/client/job-polling";
+import {
+  deriveGapWorkflowNavigation,
+  resolveGapPostGenerationView,
+  type GapPostGenerationView,
+  type GapWorkflowStep,
+} from "@/src/server/gap-analysis/workflow-state";
+import { GapAnalysisStepper } from "./gap-analysis-stepper";
+import { GapDocumentStep } from "./gap-document-step";
+import { localizeGapError } from "./gap-error";
+import { GapQuestionnaireStep } from "./gap-questionnaire-step";
+import { GapResultsStep } from "./gap-results-step";
+import { GapReviewStep } from "./gap-review-step";
+import type { GapLabels, GapLocale, GapWorkflow } from "./types";
+import { GapInputsUsed } from "./gap-inputs-used";
+import { GapHistory } from "./gap-history";
 
 export function GapAnalysisWorkflow({
   organizationId,
   workflow,
   labels,
-  documentLabels,
   locale,
+  initialStep,
+  initialView,
 }: {
   organizationId: string;
-  workflow: Workflow;
-  labels: Labels;
-  documentLabels: DocumentLabels;
-  locale: Locale;
+  workflow: GapWorkflow;
+  labels: GapLabels;
+  locale: GapLocale;
+  initialStep: GapWorkflowStep;
+  initialView: GapPostGenerationView;
 }) {
   const router = useRouter();
+  const [activeStep, setActiveStep] =
+    useState<GapWorkflowStep>(initialStep);
+  const [activeView, setActiveView] =
+    useState<GapPostGenerationView>(initialView);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>(workflow.answers);
-  const baseUrl = `/api/organizations/${organizationId}/gap-analysis`;
+  const [answers, setAnswers] = useState<Record<string, string>>(
+    workflow.answers,
+  );
+  const [savedAnswers, setSavedAnswers] = useState<Record<string, string>>(
+    workflow.answers,
+  );
+  const initialDocuments =
+    workflow.reassessment?.selected.flatMap((selection) => {
+      const entry = workflow.documentLibrary.documents.find(
+        (candidate) => candidate.document.id === selection.documentId,
+      );
+      return entry?.document.currentVersionId
+        ? [entry.document.currentVersionId]
+        : [];
+    }) ?? [];
+  const [selectedDocuments, setSelectedDocuments] =
+    useState<string[]>(initialDocuments);
+  const [savedDocuments, setSavedDocuments] =
+    useState<string[]>(initialDocuments);
+  const [inputsPrepared, setInputsPrepared] = useState(
+    Boolean(workflow.reassessment),
+  );
+  const [pollingJobId, setPollingJobId] = useState<string | null>(
+    workflow.reassessment?.draft.status === "locked"
+      ? workflow.reassessment.draft.generationJobId
+      : null,
+  );
+  const answerDirty = useMemo(
+    () => JSON.stringify(answers) !== JSON.stringify(savedAnswers),
+    [answers, savedAnswers],
+  );
+  const documentDirty = useMemo(
+    () =>
+      [...selectedDocuments].sort().join("|") !==
+      [...savedDocuments].sort().join("|"),
+    [savedDocuments, selectedDocuments],
+  );
+  const dirty = answerDirty || documentDirty;
+  const requiredQuestionCount =
+    workflow.release?.questions.filter((question) => question.required)
+      .length ?? 0;
+  const answeredQuestionCount =
+    workflow.release?.questions.filter(
+      (question) => question.required && Boolean(answers[question.id]),
+    ).length ?? 0;
+  const navigation = deriveGapWorkflowNavigation({
+    prerequisiteSatisfied: workflow.prerequisite.satisfied,
+    hasAssessment: Boolean(workflow.assessment),
+    answeredQuestionCount,
+    requiredQuestionCount,
+    hasPreparedInputs: inputsPrepared,
+    hasResult: Boolean(workflow.revision),
+    requestedStep: activeStep,
+  });
+  const renderedStep =
+    workflow.lifecycleMode === "generating" ? "review" : activeStep;
 
-  async function mutate(key: string, url: string, init: RequestInit = {}) {
-    setBusy(key);
+  const navigate = useCallback(
+    (step: GapWorkflowStep, replace = false) => {
+      setActiveStep(step);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("step", step);
+        window.history[replace ? "replaceState" : "pushState"](
+          {},
+          "",
+          url,
+        );
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const onPopState = () => {
+      const requested = new URL(window.location.href).searchParams.get(
+        "step",
+      ) as GapWorkflowStep | null;
+      if (
+        requested &&
+        navigation.allowedSteps.includes(requested)
+      ) {
+        setActiveStep(requested);
+      } else {
+        setActiveStep(navigation.defaultStep);
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [navigation.allowedSteps, navigation.defaultStep]);
+
+  useEffect(() => {
+    if (!workflow.lifecycle.showGeneratedViews) return;
+    const onPopState = () => {
+      setActiveView(
+        resolveGapPostGenerationView(
+          new URL(window.location.href).searchParams.get("view"),
+        ),
+      );
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [workflow.lifecycle.showGeneratedViews]);
+
+  useEffect(() => {
+    document.getElementById("gap-step-heading")?.focus();
+  }, [activeStep]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    const onDocumentClick = (event: MouseEvent) => {
+      const link = (event.target as HTMLElement).closest("a");
+      if (!link) return;
+      const target = new URL(link.href, window.location.href);
+      if (
+        target.pathname !== window.location.pathname &&
+        !window.confirm(labels.unsavedWarning)
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("click", onDocumentClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", beforeUnload);
+      document.removeEventListener("click", onDocumentClick, true);
+    };
+  }, [dirty, labels.unsavedWarning]);
+
+  useEffect(() => {
+    if (!pollingJobId) return;
+    const controller = new AbortController();
+    void pollJob({
+      jobId: pollingJobId,
+      signal: controller.signal,
+      finalRefresh: () => {
+        setPollingJobId(null);
+        navigate("gaps", true);
+        router.refresh();
+      },
+    }).catch((caught) => {
+      if (!controller.signal.aborted) {
+        setError(localizeGapError(caught, labels));
+        setPollingJobId(null);
+      }
+    });
+    return () => controller.abort();
+  }, [labels, navigate, pollingJobId, router]);
+
+  async function startAssessment() {
+    setBusy("create");
     setError(null);
     try {
-      const response = await fetch(url, init);
-      const body = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(body.error ?? labels.error);
+      await gapAnalysisClient.createAssessment(organizationId);
+      navigate("questions", true);
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : labels.error);
+      setError(localizeGapError(caught, labels));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveQuestionnaire() {
+    if (!workflow.assessment || !workflow.release) return;
+    setBusy("questionnaire");
+    setError(null);
+    try {
+      await gapAnalysisClient.submitQuestionnaire(organizationId, {
+        assessmentId: workflow.assessment.id,
+        answers: workflow.release.questions.map((question) => ({
+          questionId: question.id,
+          optionId: answers[question.id],
+        })),
+      });
+      setSavedAnswers({ ...answers });
+      navigate("documents");
+      router.refresh();
+    } catch (caught) {
+      setError(localizeGapError(caught, labels));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function saveDocuments() {
+    if (!workflow.assessment) return;
+    setBusy("documents");
+    setError(null);
+    try {
+      if (workflow.reassessment?.draft.status === "open") {
+        await gapAnalysisClient.updateReassessmentEvidence(organizationId, {
+          draftId: workflow.reassessment.draft.id,
+          expectedLockVersion: workflow.reassessment.draft.lockVersion,
+          selectedDocumentVersionIds: selectedDocuments,
+        });
+      } else {
+        await gapAnalysisClient.prepareReassessment(organizationId, {
+          assessmentId: workflow.assessment.id,
+          selectedDocumentVersionIds: selectedDocuments,
+        });
+      }
+      setSavedDocuments([...selectedDocuments]);
+      setInputsPrepared(true);
+      navigate("review");
+      router.refresh();
+    } catch (caught) {
+      setError(localizeGapError(caught, labels));
+      if (
+        caught instanceof Error &&
+        "code" in caught &&
+        caught.code === "GAP_DRAFT_CHANGED"
+      ) {
+        router.refresh();
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function enqueueGeneration(kind: "generate" | "retry") {
+    const reassessment = workflow.reassessment;
+    if (!reassessment) return;
+    setBusy(kind);
+    setError(null);
+    try {
+      const idempotencyKey = crypto.randomUUID();
+      const result =
+        kind === "generate"
+          ? await gapAnalysisClient.generate(
+              organizationId,
+              {
+                draftId: reassessment.draft.id,
+                expectedLockVersion: reassessment.draft.lockVersion,
+              },
+              idempotencyKey,
+            )
+          : await gapAnalysisClient.retry(
+              organizationId,
+              {
+                draftId: reassessment.draft.id,
+                retryNonce: idempotencyKey,
+              },
+              idempotencyKey,
+            );
+      setPollingJobId(result.data.job.id);
+      router.refresh();
+    } catch (caught) {
+      setError(localizeGapError(caught, labels));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function cancelGeneration() {
+    const jobId =
+      workflow.reassessment?.draft.generationJobId ?? pollingJobId;
+    if (!jobId) return;
+    setBusy("cancel-generation");
+    setError(null);
+    try {
+      const result = await jobsClient.cancel(jobId);
+      if (result.data.job.state === "cancelled") setPollingJobId(null);
+      router.refresh();
+    } catch (caught) {
+      setError(localizeGapError(caught, labels));
     } finally {
       setBusy(null);
     }
@@ -51,422 +337,275 @@ export function GapAnalysisWorkflow({
   if (!workflow.release) {
     return <Notice tone="warning">{labels.unavailable}</Notice>;
   }
+  if (!workflow.prerequisite.satisfied) {
+    const blocked = getPrerequisitePresentation(
+      workflow.prerequisite,
+      labels,
+      locale,
+    );
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{blocked.title}</CardTitle>
+          <CardDescription>{blocked.description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link href={workflow.prerequisite.destination}>
+              {blocked.action}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!workflow.assessment && !workflow.lifecycle.showGeneratedViews) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{labels.startTitle}</CardTitle>
+          <CardDescription>{labels.startDescription}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {workflow.canContribute ? (
+            <Button
+              disabled={Boolean(busy)}
+              onClick={() => void startAssessment()}
+            >
+              {busy === "create" ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Play />
+              )}
+              {labels.startAnalysis}
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">{labels.readOnly}</p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
 
-  return (
-    <div className="flex flex-col gap-6">
-      {error ? <Notice tone="error">{error}</Notice> : null}
-      {!workflow.assessment ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{labels.prerequisiteTitle}</CardTitle>
-            <CardDescription>{labels.prerequisite}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {workflow.canContribute ? (
-              <Button
-                disabled={busy !== null}
-                onClick={() => mutate("create", `${baseUrl}/assessments`, { method: "POST" })}
-              >
-                {busy === "create" ? <Loader2 className="animate-spin" /> : <Play />}
-                {labels.create}
-              </Button>
-            ) : null}
+  if (workflow.lifecycle.showGeneratedViews) {
+    const navigateView = (view: GapPostGenerationView) => {
+      setActiveView(view);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("step");
+      url.searchParams.set("view", view);
+      window.history.pushState({}, "", url);
+    };
+    return (
+      <div className="grid gap-6">
+        {error ? <Notice tone="error">{error}</Notice> : null}
+        <nav
+          aria-label={labels.generatedViews}
+          className="flex flex-wrap gap-2 border-b pb-3"
+          role="tablist"
+        >
+          <Button
+            variant={activeView === "results" ? "default" : "outline"}
+            onClick={() => navigateView("results")}
+            role="tab"
+            aria-selected={activeView === "results"}
+          >
+            {labels.resultsView}
+          </Button>
+          <Button
+            variant={activeView === "inputs" ? "default" : "outline"}
+            onClick={() => navigateView("inputs")}
+            role="tab"
+            aria-selected={activeView === "inputs"}
+          >
+            {labels.inputsUsed}
+          </Button>
+          <Button
+            className="ml-auto"
+            size="icon-sm"
+            variant={activeView === "history" ? "default" : "outline"}
+            onClick={() => navigateView("history")}
+            role="tab"
+            aria-selected={activeView === "history"}
+            aria-label={labels.history}
+            title={labels.history}
+          >
+            <History className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </nav>
+        <Card role="tabpanel">
+          <CardContent className="pt-6">
+            {activeView === "history" ? (
+              <GapHistory
+                history={workflow.history}
+                labels={labels}
+                locale={locale}
+              />
+            ) : activeView === "inputs" ? (
+              <GapInputsUsed workflow={workflow} labels={labels} />
+            ) : (
+              <GapResultsStep
+                organizationId={organizationId}
+                workflow={workflow}
+                labels={labels}
+                locale={locale}
+                onError={setError}
+              />
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>{labels.questionnaireSource}</CardTitle>
-              <CardDescription>{workflow.release.versionLabel}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form
-                className="flex flex-col gap-5"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void mutate("questionnaire", `${baseUrl}/questionnaire`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      assessmentId: workflow.assessment!.id,
-                      answers: workflow.release!.questions.map((question) => ({
-                        questionId: question.id,
-                        optionId: answers[question.id],
-                      })),
-                    }),
-                  });
-                }}
-              >
-                {workflow.release.questions.map((question) => (
-                  <fieldset key={question.id} className="rounded-md border p-4">
-                    <legend className="px-1 text-sm font-semibold">
-                      {question.questionText} {question.required ? `· ${labels.required}` : ""}
-                    </legend>
-                    {question.helpText ? (
-                      <p className="mb-3 text-sm text-muted-foreground">{question.helpText}</p>
-                    ) : null}
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {question.options.map((option) => (
-                        <label key={option.id} className="flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm">
-                          <input
-                            type="radio"
-                            name={question.id}
-                            value={option.id}
-                            checked={answers[question.id] === option.id}
-                            onChange={() =>
-                              setAnswers((current) => ({
-                                ...current,
-                                [question.id]: option.id,
-                              }))
-                            }
-                            disabled={!workflow.canContribute}
-                          />
-                          {option.label}
-                        </label>
-                      ))}
-                    </div>
-                  </fieldset>
-                ))}
-                {workflow.canContribute ? (
-                  <Button
-                    className="self-start"
-                    disabled={
-                      busy !== null ||
-                      workflow.release.questions.some((question) => !answers[question.id])
-                    }
-                    type="submit"
-                  >
-                    {busy === "questionnaire" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-                    {labels.submitQuestionnaire}
-                  </Button>
-                ) : null}
-              </form>
-            </CardContent>
-          </Card>
+      </div>
+    );
+  }
 
-          <section className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">{labels.evidencePreparation}</h2>
-            <OrganizationDocumentManager
-              organizationId={organizationId}
-              assessmentId={workflow.assessment.id}
-              library={workflow.documentLibrary}
-              reassessment={workflow.reassessment}
-              labels={documentLabels}
-              compact
-            />
-          </section>
-
-          {workflow.reassessment ? (
-            <ConfirmationCard
+  return (
+    <div className="grid gap-6">
+      {error ? <Notice tone="error">{error}</Notice> : null}
+      {workflow.lifecycleMode !== "generating" ? (
+        <GapAnalysisStepper
+          activeStep={activeStep}
+          availableSteps={navigation.allowedSteps}
+          labels={labels}
+          onNavigate={navigate}
+        />
+      ) : null}
+      <Card>
+        <CardContent className="pt-0">
+          {renderedStep === "questions" ? (
+            <GapQuestionnaireStep
               workflow={workflow}
               labels={labels}
-              busy={busy}
-              mutate={mutate}
-              baseUrl={baseUrl}
+              answers={answers}
+              busy={busy === "questionnaire"}
+              onAnswer={(questionId, optionId) =>
+                setAnswers((current) => ({
+                  ...current,
+                  [questionId]: optionId,
+                }))
+              }
+              onContinue={() => void saveQuestionnaire()}
             />
-          ) : null}
-        </>
-      )}
-
-      <RevisionCard
-        title={labels.candidateResult}
-        empty={null}
-        revision={workflow.candidateRevision}
-        findings={workflow.candidateFindings}
-        staleness={workflow.candidateStaleness}
-        labels={labels}
-        locale={locale}
-        canManage={workflow.canManage}
-        baseUrl={baseUrl}
-        busy={busy}
-        mutate={mutate}
-        candidate
-      />
-      <RevisionCard
-        title={labels.acceptedResult}
-        empty={labels.noAcceptedResult}
-        revision={workflow.acceptedRevision}
-        findings={workflow.acceptedFindings}
-        staleness={workflow.acceptedStaleness}
-        labels={labels}
-        locale={locale}
-        canManage={false}
-        baseUrl={baseUrl}
-        busy={busy}
-        mutate={mutate}
-      />
+          ) : renderedStep === "documents" ? (
+            <GapDocumentStep
+              organizationId={organizationId}
+              workflow={workflow}
+              labels={labels}
+              selected={selectedDocuments}
+              busy={busy === "documents"}
+              onToggle={(versionId, checked) =>
+                setSelectedDocuments((current) =>
+                  checked
+                    ? [...new Set([...current, versionId])]
+                    : current.filter((id) => id !== versionId),
+                )
+              }
+              onContinue={() => void saveDocuments()}
+            />
+          ) : renderedStep === "review" ? (
+            <GapReviewStep
+              workflow={workflow}
+              labels={labels}
+              answers={answers}
+              selected={selectedDocuments}
+              busy={busy}
+              generating={Boolean(pollingJobId)}
+              editable={workflow.lifecycle.inputsEditable}
+              locale={locale}
+              onNavigate={navigate}
+              onGenerate={() => void enqueueGeneration("generate")}
+              onRetry={() => void enqueueGeneration("retry")}
+              onCancel={() => void cancelGeneration()}
+            />
+          ) : (
+            <GapResultsStep
+              organizationId={organizationId}
+              workflow={workflow}
+              labels={labels}
+              locale={locale}
+              onError={setError}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function ConfirmationCard({ workflow, labels, busy, mutate, baseUrl }: {
-  workflow: Workflow;
-  labels: Labels;
-  busy: string | null;
-  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
-  baseUrl: string;
-}) {
-  const reassessment = workflow.reassessment!;
-  const summary = reassessment.summary;
-  const versionName = (id: string) =>
-    workflow.documentLibrary.documents
-      .flatMap((entry) => entry.versions)
-      .find((item) => item.version.id === id)?.version.fileName ?? id;
-  const status = reassessment.draft.status;
-  const canGenerate = workflow.canContribute && status === "open";
-  const canRetry = workflow.canContribute && status === "failed";
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{labels.confirmation}</CardTitle>
-        <CardDescription>{status !== "open" ? labels.inputLocked : labels.documentHint}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <Summary
-            label={labels.baseRevision}
-            value={summary.baseAcceptedGapRevisionNumber
-              ? `#${summary.baseAcceptedGapRevisionNumber}`
-              : "—"}
-          />
-          <Summary
-            label={labels.questionnaireRevision}
-            value={summary.assessmentRevisionNumber
-              ? `#${summary.assessmentRevisionNumber}`
-              : summary.assessmentRevisionId}
-          />
-          <Summary label={labels.release} value={summary.gapAnalysisReleaseVersion ?? summary.gapAnalysisReleaseId} />
-          <Summary label={labels.requirementCount} value={String(summary.requirementCount)} />
-          <Summary label={labels.carriedEvidence} value={names(summary.carried, versionName)} />
-          <Summary label={labels.replacedEvidence} value={names(summary.replaced, versionName)} />
-          <Summary label={labels.addedEvidence} value={names(summary.added, versionName)} />
-          <Summary label={labels.removedEvidence} value={names(summary.removed, versionName)} />
-          <div className="sm:col-span-2">
-            <Summary
-              label={labels.completeEvidence}
-              value={names(summary.selectedDocumentVersionIds, versionName)}
-            />
-          </div>
-        </dl>
-        {canGenerate ? (
-          <Button
-            className="self-start"
-            disabled={busy !== null}
-            onClick={() =>
-              mutate("generate", `${baseUrl}/reassessment/generate`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  draftId: reassessment.draft.id,
-                  expectedLockVersion: reassessment.draft.lockVersion,
-                }),
-              })
-            }
-          >
-            {busy === "generate" ? <Loader2 className="animate-spin" /> : <Play />}
-            {labels.generate}
-          </Button>
-        ) : canRetry ? (
-          <Button
-            className="self-start"
-            disabled={busy !== null}
-            onClick={() =>
-              mutate("retry", `${baseUrl}/reassessment/retry`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  draftId: reassessment.draft.id,
-                  retryNonce: crypto.randomUUID(),
-                }),
-              })
-            }
-          >
-            {busy === "retry" ? <Loader2 className="animate-spin" /> : <Play />}
-            {labels.retry}
-          </Button>
-        ) : null}
-        {workflow.run?.status === "failed" ? (
-          <Notice tone="error">{labels.runFailed} {workflow.run.errorMessage}</Notice>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
+function getPrerequisitePresentation(
+  prerequisite: Extract<
+    GapWorkflow["prerequisite"],
+    { satisfied: false }
+  >,
+  labels: GapLabels,
+  locale: GapLocale,
+) {
+  if (
+    prerequisite.status === "not_eligible" &&
+    prerequisite.reason === "unsupported_country"
+  ) {
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    const countries = new Intl.ListFormat(locale, {
+      style: "long",
+      type: "conjunction",
+    }).format(
+      prerequisite.supportedCountryCodes.map(
+        (code) => names.of(code) ?? code,
+      ),
+    );
+    return {
+      title: labels.prerequisiteUnsupportedTitle,
+      description: labels.prerequisiteUnsupported.replace(
+        "{countries}",
+        countries,
+      ),
+      action: labels.reviewApplicability,
+    };
+  }
+  if (
+    prerequisite.status === "not_eligible" &&
+    prerequisite.reason === "not_directly_in_scope"
+  ) {
+    return {
+      title: labels.prerequisiteNotInScopeTitle,
+      description: labels.prerequisiteNotInScope,
+      action: labels.viewApplicability,
+    };
+  }
+  if (prerequisite.status === "not_eligible") {
+    return {
+      title: labels.prerequisiteClarificationTitle,
+      description: labels.prerequisiteClarification,
+      action: labels.reviewApplicability,
+    };
+  }
+  if (prerequisite.status === "missing") {
+    return {
+      title: labels.prerequisiteTitle,
+      description: labels.prerequisite,
+      action: labels.checkApplicability,
+    };
+  }
+  return {
+    title: labels.prerequisiteCurrentTitle,
+    description: labels.prerequisiteCurrent,
+    action: labels.checkCurrentApplicability,
+  };
 }
 
-function RevisionCard({
-  title,
-  empty,
-  revision,
-  findings,
-  staleness,
-  labels,
-  locale,
-  canManage,
-  baseUrl,
-  busy,
-  mutate,
-  candidate = false,
+function Notice({
+  children,
+  tone,
 }: {
-  title: string;
-  empty: string | null;
-  revision: Workflow["acceptedRevision"] | Workflow["candidateRevision"];
-  findings: Workflow["acceptedFindings"] | Workflow["candidateFindings"];
-  staleness: Workflow["acceptedStaleness"] | Workflow["candidateStaleness"];
-  labels: Labels;
-  locale: Locale;
-  canManage: boolean;
-  baseUrl: string;
-  busy: string | null;
-  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
-  candidate?: boolean;
+  children: ReactNode;
+  tone: "error" | "warning";
 }) {
-  if (!revision && !empty) return null;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          {revision ? `${revision.status} · #${revision.revisionNumber}` : empty}
-        </CardDescription>
-      </CardHeader>
-      {revision ? (
-        <CardContent className="flex flex-col gap-4">
-          {staleness?.stale ? <Notice tone="warning">{labels.stale}</Notice> : null}
-          {staleness?.outdatedRelease ? <Notice tone="warning">{labels.outdatedRelease}</Notice> : null}
-          {findings.map((row) => (
-            <FindingCard
-              key={row.finding.id}
-              row={row}
-              labels={labels}
-              locale={locale}
-              canManage={canManage}
-              revisionId={revision.id}
-              baseUrl={baseUrl}
-              busy={busy}
-              mutate={mutate}
-            />
-          ))}
-          {candidate && canManage ? (
-            <Button
-              className="self-start"
-              disabled={busy !== null || findings.some((row) => row.finding.requiresReview)}
-              onClick={() =>
-                mutate("approve", `${baseUrl}/revisions/${revision.id}/approve`, {
-                  method: "POST",
-                })
-              }
-            >
-              {busy === "approve" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-              {labels.approve}
-            </Button>
-          ) : candidate && !canManage ? (
-            <p className="text-sm text-muted-foreground">{labels.ownerOnly}</p>
-          ) : null}
-        </CardContent>
-      ) : null}
-    </Card>
-  );
-}
-
-function FindingCard({ row, labels, locale, canManage, revisionId, baseUrl, busy, mutate }: {
-  row: Workflow["findings"][number];
-  labels: Labels;
-  locale: Locale;
-  canManage: boolean;
-  revisionId: string;
-  baseUrl: string;
-  busy: string | null;
-  mutate: (key: string, url: string, init?: RequestInit) => Promise<void>;
-}) {
-  const [status, setStatus] = useState(row.finding.status);
-  const [reason, setReason] = useState("");
-  const [resolutionReason, setResolutionReason] = useState("");
-  return (
-    <article className="rounded-md border p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-muted-foreground">{row.requirement.code}</p>
-          <h3 className="font-semibold">{localized(row.requirement.title, locale)}</h3>
-        </div>
-        <span className="rounded-full border px-3 py-1 text-xs">
-          {labels.statuses[row.finding.status]}
-        </span>
-      </div>
-      {row.finding.requiresReview ? (
-        <p className="mt-3 flex items-center gap-2 text-sm text-amber-700">
-          <AlertTriangle className="h-4 w-4" /> {labels.reviewRequired}
-        </p>
-      ) : null}
-      <dl className="mt-4 grid gap-3 text-sm">
-        <Summary label={labels.rationale} value={localized(row.finding.rationale, locale)} />
-        <Summary label={labels.recommendation} value={localized(row.finding.recommendation, locale)} />
-        <div>
-          <dt className="font-medium">{labels.citations}</dt>
-          <dd className="mt-1 grid gap-2">
-            {row.evidence.length ? row.evidence.map((evidence) => (
-              <blockquote key={evidence.id} className="border-l-2 pl-3 text-muted-foreground">
-                {evidence.excerpt}<span className="ml-2 text-xs">[{evidence.citationId}]</span>
-              </blockquote>
-            )) : labels.noCitations}
-          </dd>
-        </div>
-      </dl>
-      {canManage ? (
-        <div className="mt-4 grid gap-3 rounded-md bg-muted/30 p-3">
-          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
-            {Object.entries(labels.statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-          <Textarea value={reason} onChange={(event) => setReason(event.target.value)} placeholder={labels.correctionReason} />
-          {row.finding.requiresReview ? (
-            <Textarea value={resolutionReason} onChange={(event) => setResolutionReason(event.target.value)} placeholder={labels.resolutionReason} />
-          ) : null}
-          <Button
-            variant="outline"
-            className="justify-self-start"
-            disabled={busy !== null || !reason.trim() || (row.finding.requiresReview && !resolutionReason.trim())}
-            onClick={() =>
-              mutate(`correct-${row.finding.id}`, `${baseUrl}/revisions/${revisionId}/correct`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  corrections: [{
-                    findingId: row.finding.id,
-                    status,
-                    reason,
-                    ...(row.finding.requiresReview
-                      ? { requiresReview: false, resolutionReason }
-                      : {}),
-                  }],
-                }),
-              })
-            }
-          >
-            {labels.saveCorrection}
-          </Button>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return <div><dt className="font-medium">{label}</dt><dd className="text-muted-foreground">{value || "—"}</dd></div>;
-}
-
-function names(ids: string[], name: (id: string) => string) {
-  return ids.length ? ids.map(name).join(", ") : "—";
-}
-
-function localized(value: unknown, locale: Locale) {
-  const candidate = value as { de?: unknown; en?: unknown };
-  const result = candidate[locale] ?? candidate.de ?? candidate.en;
-  return typeof result === "string" ? result : "";
-}
-
-function Notice({ children, tone }: { children: ReactNode; tone: "error" | "warning" }) {
-  return (
-    <div className={`rounded-md border px-4 py-3 text-sm ${tone === "error" ? "border-red-300 bg-red-50 text-red-900" : "border-amber-300 bg-amber-50 text-amber-900"}`}>
+    <div
+      className={`rounded-md border px-4 py-3 text-sm ${
+        tone === "error"
+          ? "border-destructive/40 bg-destructive/10 text-foreground"
+          : "border-primary/35 bg-primary/10 text-foreground"
+      }`}
+    >
       {children}
     </div>
   );

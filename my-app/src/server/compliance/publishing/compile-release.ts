@@ -1,5 +1,4 @@
-import { evaluateRuleSet } from "../../applicability-check/rules";
-import { parseRuleSetDocument, type Nis2ScopeRuleSetDocument } from "../../applicability-check/rule-set-schema";
+import { evaluateRuleSet, parseRuleSetDocument, type Nis2ScopeRuleSetDocument } from "@/src/server/applicability-check/domain";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 import { canonicalJson, contentHash } from "./canonical-json";
 import { validateReleaseDefinition } from "./validate-release";
@@ -7,6 +6,7 @@ import { validateReleaseDefinition } from "./validate-release";
 export type CompiledComplianceRelease = {
   artifact: Nis2ScopeRuleSetDocument;
   hashes: {
+    metadata: string;
     content: string;
     legal: string;
     scopeModel: string;
@@ -77,6 +77,11 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
   });
 
   const hashes = {
+    metadata: contentHash({
+      framework: release.framework,
+      module: release.module,
+      questionnaire: release.questionnaire,
+    }),
     content: contentHash(release.content),
     legal: contentHash(release.legalInstruments),
     scopeModel: contentHash({
@@ -114,6 +119,7 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
     versionLabel: release.versionLabel,
     evaluatorKind: release.evaluatorKind,
     evaluatorVersion: release.evaluatorVersion,
+    requiredCorpusFamilies: release.requiredCorpusFamilies,
     components: hashes,
   });
 

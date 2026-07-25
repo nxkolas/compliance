@@ -8,8 +8,10 @@ import { TermsAcceptance } from "@/components/auth/terms-acceptance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { parseSafeToolNext } from "@/lib/auth/route-policy";
 import { isValidAccountPassword } from "@/lib/auth/password-policy";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import { User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,12 +19,9 @@ import { useState } from "react";
 import Image from "next/image";
 
 function getNextPath() {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return parseSafeToolNext(null);
   const next = new URLSearchParams(window.location.search).get("next");
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return null;
-  }
-  return next;
+  return parseSafeToolNext(next);
 }
 
 export function SignUpForm({
@@ -79,19 +78,17 @@ export function SignUpForm({
       if (signUpError) throw signUpError;
 
       const next = getNextPath();
-      if (next && data.session) {
+      if (data.session) {
         router.push(next);
         router.refresh();
         return;
       }
 
-      const loginPath = next
-        ? `/auth/login?registered=true&next=${encodeURIComponent(next)}`
-        : "/auth/login?registered=true";
+      const loginPath = `/auth/login?registered=true&next=${encodeURIComponent(next)}`;
 
       router.push(loginPath);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : labels.errorFallback);
+      setError(localizeUiError(err, { fallback: labels.errorFallback }));
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +110,7 @@ export function SignUpForm({
         <div className="h-16 flex items-center justify-start">
           <Image 
             src="/images/Logo-weiß.svg"
-            alt="complyX Logo"
+            alt={labels.logoAlt}
             width={180}
             height={48}
             priority 
@@ -200,9 +197,7 @@ export function SignUpForm({
           <span className="font-normal">{labels.alreadyHaveAnAccount}</span>
           <Link
             href={
-              getNextPath()
-                ? `/auth/login?next=${encodeURIComponent(getNextPath() ?? "")}`
-                : "/auth/login"
+              `/auth/login?next=${encodeURIComponent(getNextPath())}`
             }
             className="font-semibold hover:underline decoration-2 text-white"
           >

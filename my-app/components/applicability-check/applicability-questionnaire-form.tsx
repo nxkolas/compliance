@@ -29,6 +29,8 @@ import type {
 import { CheckCircle2, Loader2, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { applicabilityCheckClient } from "@/src/client/applicability-check";
+import { localizeUiError } from "@/lib/i18n/errors";
 
 type ApplicabilityQuestionnaireFormProps = {
   submitUrl: string;
@@ -53,6 +55,7 @@ type ApplicabilityQuestionnaireFormLabels = {
   submit: string;
   submitting: string;
   submitError: string;
+  recalculationLocked: string;
   allRequired: string;
 };
 
@@ -66,9 +69,10 @@ export function ApplicabilityQuestionnaireForm({
   const router = useRouter();
   const [answers, setAnswers] = useState<
     Record<string, ApplicabilityAnswerValue>
-  >(
-    questionnaire.latestAnswers,
-  );
+  >({
+    ...questionnaire.defaultAnswers,
+    ...questionnaire.latestAnswers,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<RequestState>({
     message: null,
@@ -127,12 +131,7 @@ export function ApplicabilityQuestionnaireForm({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch(submitUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const response = await applicabilityCheckClient.submit(submitUrl, {
           guestSession: questionnaire.guestSession,
           answers: visibleQuestions
             .filter((question) => isAnswered(answers[question.id]))
@@ -140,19 +139,8 @@ export function ApplicabilityQuestionnaireForm({
               questionId: question.id,
               value: answers[question.id],
             })),
-        }),
-      });
-      const body = (await response.json()) as {
-        result?: unknown;
-        resultUrl?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !body.result) {
-        throw new Error(body.error ?? labels.submitError);
-      }
-
-      const nextUrl = body.resultUrl ?? successUrl;
+        }, questionnaire.guestSession?.token);
+      const nextUrl = response.data.resultUrl ?? successUrl;
 
       if (navigationMode === "document") {
         window.location.assign(nextUrl);
@@ -163,7 +151,12 @@ export function ApplicabilityQuestionnaireForm({
       router.refresh();
     } catch (error) {
       setNotice({
-        message: error instanceof Error ? error.message : labels.submitError,
+        message: localizeUiError(error, {
+          fallback: labels.submitError,
+          codeMessages: {
+            APPLICABILITY_RECALCULATION_LOCKED: labels.recalculationLocked,
+          },
+        }),
         tone: "error",
       });
     } finally {
@@ -178,7 +171,7 @@ export function ApplicabilityQuestionnaireForm({
           className={cn(
             "rounded-md border px-4 py-3 text-sm",
             notice.tone === "error" &&
-              "border-red-200 bg-red-50 text-red-900",
+              "border-destructive/40 bg-destructive/10 text-foreground",
           )}
         >
           {notice.message}

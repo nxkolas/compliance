@@ -9,6 +9,11 @@
 > is evidence inside Gap-Analyse, findings and citations are normalized, and
 > action plans pin an approved gap artifact revision. The schema source of truth
 > is `src/db/schema.ts`.
+>
+> Status update (2026-07-24): the persistence remediation replaced the
+> illustrative polymorphic `artifact_revision_sources` design with typed
+> artifact/assessment/document lineage tables. Gap revision JSON is
+> metadata-only; normalized finding tables are authoritative.
 
 Yes — you need a **flexible, versioned questionnaire/compliance engine**, not a fixed schema like `betroffenheitscheck_question_1`, `question_2`, etc.
 
@@ -211,8 +216,8 @@ CREATE TABLE organization_memberships (
 
 Implementation status: the foundation tables `compliance_frameworks`,
 `compliance_framework_versions`, and `compliance_modules` are implemented in
-`src/db/schema.ts`. The current frontend and seed data are intentionally
-hardcoded to NIS2 only.
+`src/db/schema.ts`. Display metadata is authored bilingually in release
+definitions and pinned to immutable content revisions.
 
 This is what makes NIS-2 changes and additional compliance checks manageable.
 
@@ -220,8 +225,6 @@ This is what makes NIS-2 changes and additional compliance checks manageable.
 CREATE TABLE compliance_frameworks (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     code text NOT NULL UNIQUE, -- nis2, dora, iso27001, gdpr
-    name text NOT NULL,
-    description text,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -230,6 +233,8 @@ CREATE TABLE compliance_framework_versions (
     framework_id uuid NOT NULL REFERENCES compliance_frameworks(id),
 
     version_label text NOT NULL, -- e.g. "2026-v1"
+    name_content_revision_id uuid NOT NULL REFERENCES content_revisions(id) ON DELETE RESTRICT,
+    description_content_revision_id uuid NOT NULL REFERENCES content_revisions(id) ON DELETE RESTRICT,
     status text NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
 
     effective_from date,
@@ -245,7 +250,7 @@ CREATE TABLE compliance_modules (
     framework_version_id uuid NOT NULL REFERENCES compliance_framework_versions(id),
 
     code text NOT NULL, -- betroffenheitscheck, gap_analysis, action_plan, document_analysis
-    name text NOT NULL,
+    name_content_revision_id uuid NOT NULL REFERENCES content_revisions(id) ON DELETE RESTRICT,
     module_type text NOT NULL CHECK (
         module_type IN ('questionnaire', 'generated_artifact', 'document_analysis')
     ),
@@ -285,8 +290,8 @@ ISO27001
 
 Implementation status: the questionnaire-definition foundation is implemented
 in `src/db/schema.ts` with `questionnaires` and `questionnaire_versions`.
-`scripts/seed-compliance-foundation.ts` currently seeds the published NIS2
-`betroffenheitscheck` questionnaire and its `2026-v1` questionnaire version.
+Release publishers create the stable questionnaire identity and pin its
+localized title on the immutable questionnaire version.
 
 You want to seed different questions. So questionnaires need versions.
 
@@ -296,7 +301,6 @@ CREATE TABLE questionnaires (
     module_id uuid NOT NULL REFERENCES compliance_modules(id),
 
     code text NOT NULL,
-    title text NOT NULL,
 
     created_at timestamptz NOT NULL DEFAULT now(),
 
@@ -308,6 +312,7 @@ CREATE TABLE questionnaire_versions (
     questionnaire_id uuid NOT NULL REFERENCES questionnaires(id),
 
     version_label text NOT NULL,
+    title_content_revision_id uuid NOT NULL REFERENCES content_revisions(id) ON DELETE RESTRICT,
     status text NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
 
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -318,6 +323,11 @@ CREATE TABLE questionnaire_versions (
 ```
 
 Once a questionnaire version is published, do **not** mutate it. If you change questions, create a new version.
+
+Gap requirement sets follow the same split: `gap_requirement_sets` retains only
+stable `code` identity, while `gap_requirement_set_versions` requires a
+`title_content_revision_id` referencing `content_revisions(id)` with
+`ON DELETE RESTRICT`.
 
 ---
 

@@ -12,6 +12,7 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
+import { assertGapInputsMutable } from "./lifecycle-guards";
 
 export async function submitGapQuestionnaire(input: {
   userId: string;
@@ -20,7 +21,7 @@ export async function submitGapQuestionnaire(input: {
   answers: Array<{ questionId: string; optionId: string }>;
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
-  const assessment = await db.query.assessments.findFirst({
+  const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
     where: and(
       eq(assessments.id, input.assessmentId),
       eq(assessments.organizationId, input.organizationId),
@@ -30,11 +31,15 @@ export async function submitGapQuestionnaire(input: {
   if (!assessment?.gapAnalysisReleaseId) {
     throw new ApiError(404, "Gap assessment not found");
   }
-  const release = await db.query.gapAnalysisReleases.findFirst({
+  await assertGapInputsMutable({
+    organizationId: input.organizationId,
+    moduleId: assessment.moduleId,
+  });
+  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: eq(gapAnalysisReleases.id, assessment.gapAnalysisReleaseId),
   });
   if (!release) throw new ApiError(409, "Pinned gap release is unavailable");
-  const questionRows = await db.query.questions.findMany({
+  const questionRows = await db.query.questions.findMany({ columns: { id: true, questionnaireVersionId: true, stableKey: true, position: true, questionContentRevisionId: true, helpContentRevisionId: true, answerType: true, required: true, config: true, createdAt: true },
     where: eq(questions.questionnaireVersionId, release.questionnaireVersionId),
   });
   const required = questionRows.filter((question) => question.required);
@@ -51,7 +56,7 @@ export async function submitGapQuestionnaire(input: {
     throw new ApiError(400, "Every required gap question must be answered exactly once");
   }
   const optionRows = input.answers.length
-    ? await db.query.questionOptions.findMany({
+    ? await db.query.questionOptions.findMany({ columns: { id: true, questionId: true, stableValue: true, labelContentRevisionId: true, factOptionId: true, position: true, metadata: true },
         where: inArray(
           questionOptions.id,
           input.answers.map((answer) => answer.optionId),
@@ -73,7 +78,7 @@ export async function submitGapQuestionnaire(input: {
   const questionById = new Map(questionRows.map((question) => [question.id, question]));
 
   return db.transaction(async (tx) => {
-    const latest = await tx.query.assessmentRevisions.findFirst({
+    const latest = await tx.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
       where: eq(assessmentRevisions.assessmentId, assessment.id),
       orderBy: [desc(assessmentRevisions.revisionNumber)],
     });
@@ -112,6 +117,7 @@ export async function submitGapQuestionnaire(input: {
     await tx.insert(assessmentAnswerOptions).values(
       input.answers.map((answer) => ({
         assessmentAnswerId: requireId(answerIdByQuestion, answer.questionId),
+        questionId: answer.questionId,
         questionOptionId: answer.optionId,
       })),
     );
@@ -129,6 +135,15 @@ export async function submitGapQuestionnaire(input: {
     });
     return revision;
   });
+}
+
+export async function getGapQuestionnaireRevision(userId: string, organizationId: string, revisionId: string) {
+  await assertCanContributeToOrganization(userId, organizationId);
+  const [row] = await db.select({ revision: assessmentRevisions }).from(assessmentRevisions)
+    .innerJoin(assessments, eq(assessmentRevisions.assessmentId, assessments.id))
+    .where(and(eq(assessmentRevisions.id, revisionId), eq(assessments.organizationId, organizationId))).limit(1);
+  if (!row) throw new ApiError(404, "Gap questionnaire revision not found", undefined, "GAP_QUESTIONNAIRE_REVISION_NOT_FOUND");
+  return row.revision;
 }
 
 function requireQuestion(

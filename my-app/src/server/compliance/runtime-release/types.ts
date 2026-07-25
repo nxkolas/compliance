@@ -30,7 +30,10 @@ export type PublishedComplianceRelease = {
   aggregateHash: string;
   defaultLocale: string;
   locale: Locale;
+  frameworkName: string;
+  frameworkDescription: string;
   moduleId: string;
+  moduleName: string;
   questionnaireId: string;
   questionnaireVersionId: string;
   questionnaireTitle: string;

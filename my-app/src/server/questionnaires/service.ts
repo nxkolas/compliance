@@ -1,6 +1,5 @@
 import type { Locale } from "@/lib/i18n-config";
-import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
-import { NIS2_CHECK_CODE } from "../compliance/runtime-release";
+import { NIS2_CHECK_CODE, nextCachedRuntimeReleaseReader } from "@/src/server/compliance";
 
 export type QuestionnairePreviewDto = {
   id: string;

@@ -3,12 +3,13 @@ import { GuestApplicabilityActions } from "@/components/applicability-check/gues
 import { Button } from "@/components/ui/button";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
-import { getGuestApplicabilityToken } from "@/src/server/applicability-check/guest-cookie";
-import { getGuestApplicabilityCheck } from "@/src/server/applicability-check/service";
+import { getGuestApplicabilityToken } from "@/src/server/applicability-check";
+import { getGuestApplicabilityCheck } from "@/src/server/applicability-check";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
+import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 
 type GuestApplicabilityResultPageProps = {
   searchParams?: Promise<{
@@ -51,6 +52,7 @@ async function GuestApplicabilityResultPageContent({
   if (!guestCheck) {
     return (
       <main className="min-h-screen bg-background">
+        <PublicLanguageSwitcher />
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
           <Button asChild variant="ghost" className="w-fit">
             <Link href="/check/applicability">
@@ -78,6 +80,7 @@ async function GuestApplicabilityResultPageContent({
       : guestCheck.result.result.label;
   return (
     <main className="min-h-screen bg-background">
+      <PublicLanguageSwitcher />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
         <Button asChild variant="ghost" className="w-fit">
           <Link href="/check/applicability">

@@ -1,4 +1,4 @@
-import { parseRuleSetDocument } from "../../applicability-check/rule-set-schema";
+import { parseRuleSetDocument } from "@/src/server/applicability-check/domain";
 
 export type ActivationCompletenessSnapshot = {
   releasePublished: boolean;
@@ -11,6 +11,7 @@ export type ActivationCompletenessSnapshot = {
   thresholdSetPublished: boolean;
   factVersionCount: number;
   contentRevisionCount: number;
+  corpusPinsComplete?: boolean;
   profiles: Array<{
     countryCode: string;
     published: boolean;
@@ -32,6 +33,7 @@ export function assertActivationCompleteness(
   if (!snapshot.thresholdSetPublished) errors.push("threshold set is not published");
   if (snapshot.factVersionCount !== 12) errors.push(`expected 12 pinned fact versions, found ${snapshot.factVersionCount}`);
   if (snapshot.contentRevisionCount === 0) errors.push("no content revisions are pinned");
+  if (snapshot.corpusPinsComplete === false) errors.push("required corpus releases are not pinned");
   if (snapshot.profiles.length === 0) errors.push("no jurisdiction profile is pinned");
 
   if (snapshot.ruleSet) {

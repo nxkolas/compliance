@@ -1,56 +1,14 @@
-import { ProductModuleContent } from "@/components/product-module-content";
-import { getDictionary } from "@/lib/i18n";
+import { PageHeader } from "@/components/page-header";
+import { ReportWorkflow } from "@/components/reports/report-workflow";
+import { getDictionary, getLocale } from "@/lib/i18n";
+import { requireAuth } from "@/lib/supabase/require-auth";
+import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
+import { assertCanAccessOrganization } from "@/src/server/organizations/service";
+import { listReports } from "@/src/server/reports";
+import { connection } from "next/server";
 
-export default async function PdfExportPage() {
-  const dictionary = await getDictionary();
-
-  return (
-    <ProductModuleContent
-      title={dictionary.modules.pdfExport.title}
-      description={dictionary.modules.pdfExport.description}
-      metrics={dictionary.modules.pdfExport.metrics}
-      cards={[
-        {
-          title: "Inhalt",
-          description: "Abschnitte des spaeteren Berichts.",
-          items: [
-            "Zusammenfassung des aktuellen Status",
-            "Kritische Bereiche",
-            "Massnahmenliste",
-            "Dokumentenpruefung",
-            "Fortschritt der Analyse",
-          ],
-        },
-        {
-          title: "Zielgruppe",
-          description: "Empfaenger und typische Nutzung.",
-          items: [
-            "Geschaeftsfuehrung",
-            "Externe Beratung",
-            "Interne Dokumentation",
-          ],
-        },
-        {
-          title: "Exportstatus",
-          description: "Die spaetere Historie zeigt den Zustand jedes Berichts.",
-          items: [
-            "In Warteschlange",
-            "Wird generiert",
-            "Bereit",
-            "Fehlgeschlagen",
-          ],
-        },
-        {
-          title: "Datenbasis",
-          description: "Berichte entstehen aus dem aktuellen Stand der Organisation.",
-          items: [
-            "Betroffenheitscheck",
-            "Gap-Analyse",
-            "Dokumentenpruefung",
-            "Massnahmenplan",
-          ],
-        },
-      ]}
-    />
-  );
+export default async function PdfExportPage({ params }: { params: Promise<{ organizationId: string }> }) {
+  await connection(); const user = await requireAuth(); const dictionary = await getDictionary(); const locale = await getLocale(); const { organizationId } = await params;
+  const [membership, reports] = await Promise.all([assertCanAccessOrganization(user.id, organizationId), listReports(user.id, organizationId)]);
+  return <section className="flex w-full flex-col gap-8"><PageHeader title={dictionary.modules.pdfExport.title} subtitle={dictionary.modules.pdfExport.description} /><ReportWorkflow organizationId={organizationId} locale={locale} reports={reports} canCreate={hasOrganizationCapability(membership.role, "reports:create")} labels={dictionary.reports.workflow} /></section>;
 }

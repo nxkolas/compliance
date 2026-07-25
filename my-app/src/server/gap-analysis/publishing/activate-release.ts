@@ -3,6 +3,7 @@ import {
   activeGapAnalysisReleases,
   gapAnalysisReleaseActivations,
   gapAnalysisReleaseApplicabilityRules,
+  gapAnalysisReleaseCorpusReleases,
   gapAnalysisReleases,
   gapRequirementSetMembers,
   gapRequirementSetVersions,
@@ -17,6 +18,7 @@ export type GapActivationSnapshot = {
   requirementCount: number;
   applicabilityRuleCount: number;
   promptMetadataComplete: boolean;
+  corpusPinsComplete?: boolean;
 };
 
 export function assertGapActivationCompleteness(
@@ -38,6 +40,9 @@ export function assertGapActivationCompleteness(
   if (!snapshot.promptMetadataComplete) {
     throw new Error("Gap release prompt metadata is incomplete");
   }
+  if (snapshot.corpusPinsComplete === false) {
+    throw new Error("Gap release corpus pins are incomplete");
+  }
 }
 
 export async function activateGapAnalysisRelease(
@@ -46,31 +51,34 @@ export async function activateGapAnalysisRelease(
   activatedBy: string,
 ) {
   return db.transaction(async (tx) => {
-    const release = await tx.query.gapAnalysisReleases.findFirst({
+    const release = await tx.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
       where: and(
         eq(gapAnalysisReleases.releaseCode, releaseCode),
         eq(gapAnalysisReleases.versionLabel, versionLabel),
       ),
     });
     if (!release) throw new Error(`Gap release ${releaseCode}/${versionLabel} is missing`);
-    const [questionnaire, requirementSet, members, rules] = await Promise.all([
-      tx.query.questionnaireVersions.findFirst({
+    const [questionnaire, requirementSet, members, rules, corpusPins] = await Promise.all([
+      tx.query.questionnaireVersions.findFirst({ columns: { id: true, questionnaireId: true, versionLabel: true, titleContentRevisionId: true, status: true, createdAt: true, publishedAt: true },
         where: eq(questionnaireVersions.id, release.questionnaireVersionId),
       }),
-      tx.query.gapRequirementSetVersions.findFirst({
+      tx.query.gapRequirementSetVersions.findFirst({ columns: { id: true, requirementSetId: true, versionLabel: true, titleContentRevisionId: true, status: true, contentHash: true, createdAt: true, publishedAt: true },
         where: eq(gapRequirementSetVersions.id, release.requirementSetVersionId),
       }),
-      tx.query.gapRequirementSetMembers.findMany({
+      tx.query.gapRequirementSetMembers.findMany({ columns: { requirementSetVersionId: true, requirementVersionId: true, position: true },
         where: eq(
           gapRequirementSetMembers.requirementSetVersionId,
           release.requirementSetVersionId,
         ),
       }),
-      tx.query.gapAnalysisReleaseApplicabilityRules.findMany({
+      tx.query.gapAnalysisReleaseApplicabilityRules.findMany({ columns: { id: true, gapAnalysisReleaseId: true, requirementVersionId: true, conditions: true, createdAt: true },
         where: eq(
           gapAnalysisReleaseApplicabilityRules.gapAnalysisReleaseId,
           release.id,
         ),
+      }),
+      tx.query.gapAnalysisReleaseCorpusReleases.findMany({ columns: { gapAnalysisReleaseId: true, familyId: true, corpusReleaseId: true },
+        where: eq(gapAnalysisReleaseCorpusReleases.gapAnalysisReleaseId, release.id),
       }),
     ]);
     assertGapActivationCompleteness({
@@ -92,8 +100,9 @@ export async function activateGapAnalysisRelease(
           release.evaluatorKind &&
           release.evaluatorVersion,
       ),
+      corpusPinsComplete: Boolean(release.corpusReleaseSetHash && corpusPins.length > 0),
     });
-    const current = await tx.query.activeGapAnalysisReleases.findFirst({
+    const current = await tx.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
       where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),
     });
     const activatedAt = new Date();

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { db } from "@/src/db";
 import {
   actionPlans,
-  artifactRevisionSources,
+  artifactRevisionDocumentSources,
   auditEvents,
   documentChunkEmbeddings,
   documentChunks,
@@ -14,10 +14,14 @@ import {
   gapReassessmentDrafts,
   generatedArtifactRevisions,
   generatedArtifacts,
+  uploadSessionResults,
+  uploadSessions,
 } from "@/src/db/schema";
 import { getSupabaseAdminClient } from "../supabase-admin";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import * as z from "zod";
 import { ApiError } from "../api/errors";
+import { hasOrganizationCapability } from "../auth/capabilities";
 import {
   assertCanAccessOrganization,
   assertCanContributeToOrganization,
@@ -33,6 +37,10 @@ import {
   validateEmbeddings,
 } from "./embeddings";
 import { parseDocument, validateDocumentUpload } from "./parser";
+import { createUploadSession, verifyUploadedObject } from "@/src/server/uploads";
+import { MAX_DOCUMENT_BYTES, SUPPORTED_DOCUMENT_TYPES } from "./document-config";
+import { getCursorCodec } from "../api/pagination";
+import { unionAll } from "drizzle-orm/pg-core";
 import {
   deriveDocumentUsageLabels,
   type DocumentUsageLabel,
@@ -178,7 +186,7 @@ export async function uploadOrganizationDocumentVersion(
     mimeType: command.mimeType,
     byteSize: command.bytes.byteLength,
   });
-  const existing = await db.query.documents.findFirst({
+  const existing = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true },
     where: and(
       eq(documents.id, command.documentId),
       eq(documents.organizationId, command.organizationId),
@@ -218,7 +226,7 @@ export async function uploadOrganizationDocumentVersion(
         )
         .returning({ id: documents.id });
       if (!lockedDocument) throw new ApiError(409, "Document is no longer active");
-      const latest = await tx.query.documentVersions.findFirst({
+      const latest = await tx.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true },
         where: eq(documentVersions.documentId, command.documentId),
         orderBy: [desc(documentVersions.versionNumber)],
       });
@@ -306,78 +314,103 @@ export async function listOrganizationDocuments(
 export async function getOrganizationDocumentLibrary(
   userId: string,
   organizationId: string,
+  options: {
+    limit?: number;
+    cursor?: string;
+    documentId?: string;
+    includeUsage?: boolean;
+  } = {},
 ) {
   const membership = await assertCanAccessOrganization(userId, organizationId);
-  const rows = await db
-    .select({
-      document: documents,
-      version: documentVersions,
-      extraction: documentExtractions,
-      embedding: documentEmbeddingGenerations,
-    })
-    .from(documents)
-    .leftJoin(documentVersions, eq(documentVersions.documentId, documents.id))
-    .leftJoin(
-      documentExtractions,
-      eq(documentExtractions.documentVersionId, documentVersions.id),
-    )
-    .leftJoin(
-      documentEmbeddingGenerations,
-      eq(documentEmbeddingGenerations.extractionId, documentExtractions.id),
-    )
-    .where(eq(documents.organizationId, organizationId))
-    .orderBy(desc(documents.createdAt), desc(documentVersions.versionNumber));
+  return getOrganizationDocumentLibraryPreauthorized(
+    membership,
+    organizationId,
+    options,
+  );
+}
 
-  const artifactSources = await db
-    .select({
-      documentVersionId: artifactRevisionSources.sourceId,
-      revisionId: generatedArtifactRevisions.id,
-      currentRevisionId: generatedArtifacts.currentRevisionId,
-      acceptedRevisionId: generatedArtifacts.acceptedRevisionId,
-    })
-    .from(artifactRevisionSources)
-    .innerJoin(
-      generatedArtifactRevisions,
-      eq(artifactRevisionSources.artifactRevisionId, generatedArtifactRevisions.id),
-    )
-    .innerJoin(
-      generatedArtifacts,
-      eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id),
-    )
-    .where(
-      and(
-        eq(generatedArtifacts.organizationId, organizationId),
-        eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-        eq(artifactRevisionSources.sourceType, "document_version"),
-      ),
-    );
-  const draftSources = await db
-    .select({ documentVersionId: gapReassessmentDraftDocuments.documentVersionId })
-    .from(gapReassessmentDraftDocuments)
-    .innerJoin(
-      gapReassessmentDrafts,
-      eq(gapReassessmentDraftDocuments.draftId, gapReassessmentDrafts.id),
-    )
-    .where(
-      and(
-        eq(gapReassessmentDrafts.organizationId, organizationId),
-        inArray(gapReassessmentDrafts.status, ["open", "locked", "failed"]),
-      ),
-    );
-  const planSources = await db
-    .select({ documentVersionId: artifactRevisionSources.sourceId })
-    .from(actionPlans)
-    .innerJoin(
-      artifactRevisionSources,
-      eq(actionPlans.sourceGapArtifactRevisionId, artifactRevisionSources.artifactRevisionId),
-    )
-    .where(
-      and(
-        eq(actionPlans.organizationId, organizationId),
-        eq(actionPlans.status, "active"),
-        eq(artifactRevisionSources.sourceType, "document_version"),
-      ),
-    );
+export async function getOrganizationDocumentLibraryPreauthorized(
+  membership: Awaited<ReturnType<typeof assertCanAccessOrganization>>,
+  organizationId: string,
+  options: {
+    limit?: number;
+    cursor?: string;
+    documentId?: string;
+    includeUsage?: boolean;
+  } = {},
+) {
+  if (
+    membership.organizationId !== organizationId ||
+    membership.status !== "active"
+  ) {
+    throw new ApiError(403, "Active organization membership required");
+  }
+  const limit = Math.max(1, Math.min(100, options.limit ?? 100));
+  const scope = `organization-documents:${organizationId}`;
+  const cursor = options.cursor
+    ? z.tuple([z.iso.datetime(), z.uuid()]).parse(getCursorCodec().decode(options.cursor, scope))
+    : null;
+  const documentPageRows = await db.query.documents.findMany({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true },
+    where: and(
+      eq(documents.organizationId, organizationId),
+      options.documentId ? eq(documents.id, options.documentId) : undefined,
+      cursor ? or(lt(documents.createdAt, new Date(cursor[0])), and(eq(documents.createdAt, new Date(cursor[0])), lt(documents.id, cursor[1]))) : undefined,
+    ),
+    orderBy: [desc(documents.createdAt), desc(documents.id)],
+    limit: options.documentId ? 1 : limit + 1,
+  });
+  const documentPage = documentPageRows.slice(0, limit);
+  const documentIds = documentPage.map((document) => document.id);
+  const [rows, usageRows] = documentIds.length
+    ? await Promise.all([
+        db
+          .select({
+            document: documents,
+            version: documentVersions,
+            extraction: documentExtractions,
+            embedding: documentEmbeddingGenerations,
+          })
+          .from(documents)
+          .leftJoin(
+            documentVersions,
+            eq(documentVersions.documentId, documents.id),
+          )
+          .leftJoin(
+            documentExtractions,
+            eq(documentExtractions.documentVersionId, documentVersions.id),
+          )
+          .leftJoin(
+            documentEmbeddingGenerations,
+            eq(
+              documentEmbeddingGenerations.extractionId,
+              documentExtractions.id,
+            ),
+          )
+          .where(inArray(documents.id, documentIds))
+          .orderBy(
+            desc(documents.createdAt),
+            desc(documentVersions.versionNumber),
+          ),
+        options.includeUsage === false
+          ? Promise.resolve([])
+          : loadDocumentUsageRows(organizationId, documentIds),
+      ])
+    : [[], []];
+
+  const artifactSources = usageRows
+    .filter((source) => source.usageKind === "artifact")
+    .map((source) => ({
+      documentVersionId: source.documentVersionId,
+      revisionId: source.revisionId!,
+      currentRevisionId: source.currentRevisionId,
+      acceptedRevisionId: source.acceptedRevisionId,
+    }));
+  const draftSources = usageRows.filter(
+    (source) => source.usageKind === "draft",
+  );
+  const planSources = usageRows.filter(
+    (source) => source.usageKind === "plan",
+  );
 
   const draftVersionIds = new Set(
     draftSources.map((source) => source.documentVersionId),
@@ -424,28 +457,245 @@ export async function getOrganizationDocumentLibrary(
   }
   return {
     role: membership.role,
-    canContribute: membership.role !== "auditor",
+    canContribute: hasOrganizationCapability(membership.role, "documents:write"),
     documents: [...documentsById.values()],
+    nextCursor: !options.documentId && documentPageRows.length > limit && documentPage.length
+      ? getCursorCodec().encode(scope, [documentPage.at(-1)!.createdAt.toISOString(), documentPage.at(-1)!.id])
+      : undefined,
   };
+}
+
+async function loadDocumentUsageRows(
+  organizationId: string,
+  documentVersionIds: string[],
+) {
+  if (!documentVersionIds.length) {
+    return [] as Array<{
+      usageKind: "artifact" | "draft" | "plan";
+      documentVersionId: string;
+      revisionId: string | null;
+      currentRevisionId: string | null;
+      acceptedRevisionId: string | null;
+    }>;
+  }
+  const artifactUsage = db
+    .select({
+      usageKind: sql<"artifact" | "draft" | "plan">`'artifact'`,
+      documentVersionId: artifactRevisionDocumentSources.documentVersionId,
+      revisionId: sql<string | null>`${generatedArtifactRevisions.id}`,
+      currentRevisionId: generatedArtifacts.currentRevisionId,
+      acceptedRevisionId: generatedArtifacts.acceptedRevisionId,
+    })
+    .from(artifactRevisionDocumentSources)
+    .innerJoin(
+      generatedArtifactRevisions,
+      eq(
+        artifactRevisionDocumentSources.artifactRevisionId,
+        generatedArtifactRevisions.id,
+      ),
+    )
+    .innerJoin(
+      generatedArtifacts,
+      eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id),
+    )
+    .where(
+      and(
+        eq(generatedArtifacts.organizationId, organizationId),
+        eq(generatedArtifacts.artifactType, "gap_analysis_result"),
+        inArray(artifactRevisionDocumentSources.documentVersionId, documentVersionIds),
+      ),
+    );
+  const draftUsage = db
+    .select({
+      usageKind: sql<"artifact" | "draft" | "plan">`'draft'`,
+      documentVersionId:
+        gapReassessmentDraftDocuments.documentVersionId,
+      revisionId: sql<string | null>`null`,
+      currentRevisionId: sql<string | null>`null`,
+      acceptedRevisionId: sql<string | null>`null`,
+    })
+    .from(gapReassessmentDraftDocuments)
+    .innerJoin(
+      gapReassessmentDrafts,
+      eq(gapReassessmentDraftDocuments.draftId, gapReassessmentDrafts.id),
+    )
+    .where(
+      and(
+        eq(gapReassessmentDrafts.organizationId, organizationId),
+        inArray(gapReassessmentDrafts.status, ["open", "locked", "failed"]),
+        inArray(
+          gapReassessmentDraftDocuments.documentVersionId,
+          documentVersionIds,
+        ),
+      ),
+    );
+  const planUsage = db
+    .select({
+      usageKind: sql<"artifact" | "draft" | "plan">`'plan'`,
+      documentVersionId: artifactRevisionDocumentSources.documentVersionId,
+      revisionId: sql<string | null>`null`,
+      currentRevisionId: sql<string | null>`null`,
+      acceptedRevisionId: sql<string | null>`null`,
+    })
+    .from(actionPlans)
+    .innerJoin(
+      artifactRevisionDocumentSources,
+      eq(
+        actionPlans.sourceGapArtifactRevisionId,
+        artifactRevisionDocumentSources.artifactRevisionId,
+      ),
+    )
+    .where(
+      and(
+        eq(actionPlans.organizationId, organizationId),
+        eq(actionPlans.status, "active"),
+        inArray(artifactRevisionDocumentSources.documentVersionId, documentVersionIds),
+      ),
+    );
+
+  return unionAll(artifactUsage, draftUsage, planUsage);
+}
+
+export async function getOrganizationDocumentDetail(userId: string, organizationId: string, documentId: string) {
+  const library = await getOrganizationDocumentLibrary(userId, organizationId, { documentId });
+  return library.documents.find((entry) => entry.document.id === documentId) ?? null;
+}
+
+export async function listOrganizationDocumentVersions(userId: string, organizationId: string, documentId: string) {
+  return (await listOrganizationDocumentVersionsPage({ userId, organizationId, documentId, limit: 100 }))?.versions ?? null;
+}
+
+export async function listOrganizationDocumentVersionsPage(input: { userId: string; organizationId: string; documentId: string; limit: number; cursor?: string }) {
+  await assertCanAccessOrganization(input.userId, input.organizationId);
+  const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: and(eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId)) });
+  if (!document) return null;
+  const scope = `document-versions:${input.organizationId}:${input.documentId}`;
+  const cursor = input.cursor ? z.tuple([z.number().int().positive(), z.uuid()]).parse(getCursorCodec().decode(input.cursor, scope)) : null;
+  const rows = await db.select({ version: documentVersions, extraction: documentExtractions, embedding: documentEmbeddingGenerations })
+    .from(documentVersions)
+    .leftJoin(documentExtractions, eq(documentExtractions.documentVersionId, documentVersions.id))
+    .leftJoin(documentEmbeddingGenerations, eq(documentEmbeddingGenerations.extractionId, documentExtractions.id))
+    .where(and(eq(documentVersions.documentId, document.id), cursor ? or(lt(documentVersions.versionNumber, cursor[0]), and(eq(documentVersions.versionNumber, cursor[0]), lt(documentVersions.id, cursor[1]))) : undefined))
+    .orderBy(desc(documentVersions.versionNumber), desc(documentVersions.id))
+    .limit(input.limit + 1);
+  const page = rows.slice(0, input.limit);
+  const versionIds = page.map((row) => row.version.id);
+  const [artifactSources, draftSources, planSources] = versionIds.length ? await Promise.all([
+    db.select({ documentVersionId: artifactRevisionDocumentSources.documentVersionId, revisionId: generatedArtifactRevisions.id, currentRevisionId: generatedArtifacts.currentRevisionId, acceptedRevisionId: generatedArtifacts.acceptedRevisionId })
+      .from(artifactRevisionDocumentSources)
+      .innerJoin(generatedArtifactRevisions, eq(artifactRevisionDocumentSources.artifactRevisionId, generatedArtifactRevisions.id))
+      .innerJoin(generatedArtifacts, eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id))
+      .where(and(eq(generatedArtifacts.organizationId, input.organizationId), eq(generatedArtifacts.artifactType, "gap_analysis_result"), inArray(artifactRevisionDocumentSources.documentVersionId, versionIds))),
+    db.select({ documentVersionId: gapReassessmentDraftDocuments.documentVersionId }).from(gapReassessmentDraftDocuments)
+      .innerJoin(gapReassessmentDrafts, eq(gapReassessmentDraftDocuments.draftId, gapReassessmentDrafts.id))
+      .where(and(eq(gapReassessmentDrafts.organizationId, input.organizationId), inArray(gapReassessmentDrafts.status, ["open", "locked", "failed"]), inArray(gapReassessmentDraftDocuments.documentVersionId, versionIds))),
+    db.select({ documentVersionId: artifactRevisionDocumentSources.documentVersionId }).from(actionPlans)
+      .innerJoin(artifactRevisionDocumentSources, eq(actionPlans.sourceGapArtifactRevisionId, artifactRevisionDocumentSources.artifactRevisionId))
+      .where(and(eq(actionPlans.organizationId, input.organizationId), eq(actionPlans.status, "active"), inArray(artifactRevisionDocumentSources.documentVersionId, versionIds))),
+  ]) : [[], [], []];
+  const draftVersionIds = new Set(draftSources.map((row) => row.documentVersionId));
+  const activePlanVersionIds = new Set(planSources.map((row) => row.documentVersionId));
+  const versions = page.map((row) => ({
+    ...row,
+    usage: deriveDocumentUsageLabels({ versionId: row.version.id, artifactSources, draftVersionIds, activePlanVersionIds }),
+    eligibleForReassessment: document.status === "active" && document.currentVersionId === row.version.id && !row.version.archivedAt && row.embedding?.status === "succeeded",
+  }));
+  const last = page.at(-1)?.version;
+  return { versions, nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.versionNumber, last.id]) : undefined };
+}
+
+export async function getOrganizationDocumentVersion(userId: string, organizationId: string, versionId: string) {
+  await assertCanAccessOrganization(userId, organizationId);
+  const [row] = await db.select({ version: documentVersions, document: documents, extraction: documentExtractions, embedding: documentEmbeddingGenerations })
+    .from(documentVersions).innerJoin(documents, eq(documentVersions.documentId, documents.id))
+    .leftJoin(documentExtractions, eq(documentExtractions.documentVersionId, documentVersions.id))
+    .leftJoin(documentEmbeddingGenerations, eq(documentEmbeddingGenerations.extractionId, documentExtractions.id))
+    .where(and(eq(documentVersions.id, versionId), eq(documents.organizationId, organizationId))).limit(1);
+  return row ?? null;
+}
+
+export async function createDocumentSourceAccess(
+  userId: string,
+  organizationId: string,
+  versionId: string,
+  options: {
+    mode?: "download" | "inline";
+    page?: number;
+  } = {},
+) {
+  const row = await getOrganizationDocumentVersion(userId, organizationId, versionId);
+  if (!row) throw new ApiError(404, "Document version not found", undefined, "DOCUMENT_VERSION_NOT_FOUND");
+  try {
+    const source = getSupabaseAdminClient().storage.from(row.version.storageBucket);
+    const { data, error } =
+      options.mode === "inline"
+        ? await source.createSignedUrl(row.version.storagePath, 300)
+        : await source.createSignedUrl(row.version.storagePath, 300, {
+            download: sanitizeFileName(row.version.fileName),
+          });
+    if (error || !data?.signedUrl) throw new Error("Signing failed");
+    const page =
+      row.version.mimeType === "application/pdf" &&
+      Number.isInteger(options.page) &&
+      (options.page ?? 0) > 0
+        ? options.page
+        : undefined;
+    const url = new URL(data.signedUrl);
+    if (page) url.hash = `page=${page}`;
+    return {
+      url: url.toString(),
+      expiresAt: new Date(Date.now() + 300_000).toISOString(),
+    };
+  } catch {
+    throw new ApiError(
+      502,
+      "Document source access could not be created",
+      undefined,
+      "SOURCE_ACCESS_FAILED",
+    );
+  }
+}
+
+export async function updateOrganizationDocument(input: { userId: string; organizationId: string; documentId: string; title: string; expectedVersion: number }) {
+  await assertCanContributeToOrganization(input.userId, input.organizationId);
+  const title = input.title.trim();
+  if (!title) throw new ApiError(400, "A document title is required", undefined, "DOCUMENT_TITLE_REQUIRED");
+  const [document] = await db.update(documents).set({ title, version: input.expectedVersion + 1, updatedAt: new Date() }).where(and(
+    eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId), eq(documents.version, input.expectedVersion),
+  )).returning();
+  if (!document) throw new ApiError(412, "The document changed", undefined, "PRECONDITION_FAILED");
+  return document;
+}
+
+export async function restoreOrganizationDocument(userId: string, organizationId: string, documentId: string, expectedVersion: number) {
+  await assertCanContributeToOrganization(userId, organizationId);
+  const [document] = await db.update(documents).set({ status: "active", archivedAt: null, version: sql`${documents.version} + 1`, updatedAt: new Date() }).where(and(
+    eq(documents.id, documentId), eq(documents.organizationId, organizationId), eq(documents.status, "archived"), eq(documents.version, expectedVersion),
+  )).returning();
+  if (!document) throw new ApiError(412, "The document changed or is not archived", undefined, "PRECONDITION_FAILED");
+  return document;
 }
 
 export async function archiveOrganizationDocument(
   userId: string,
   organizationId: string,
   documentId: string,
+  expectedVersion: number,
 ) {
   await assertCanContributeToOrganization(userId, organizationId);
   const [document] = await db
     .update(documents)
-    .set({ status: "archived", archivedAt: new Date(), updatedAt: new Date() })
+    .set({ status: "archived", archivedAt: new Date(), version: sql`${documents.version} + 1`, updatedAt: new Date() })
     .where(
       and(
         eq(documents.id, documentId),
         eq(documents.organizationId, organizationId),
+        eq(documents.status, "active"),
+        eq(documents.version, expectedVersion),
       ),
     )
     .returning();
-  if (!document) throw new ApiError(404, "Document not found");
+  if (!document) throw new ApiError(412, "The document changed or is not active", undefined, "PRECONDITION_FAILED");
   await db.insert(auditEvents).values({
     organizationId,
     actorUserId: userId,
@@ -455,6 +705,140 @@ export async function archiveOrganizationDocument(
     metadata: {},
   });
   return document;
+}
+
+export async function createDocumentUploadSession(input: {
+  userId: string;
+  organizationId: string;
+  documentId?: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  sha256?: string;
+}) {
+  await assertCanContributeToOrganization(input.userId, input.organizationId);
+  if (input.documentId) {
+    const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: and(
+      eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId), eq(documents.status, "active"),
+    ) });
+    if (!document) throw new ApiError(404, "Active document not found", undefined, "DOCUMENT_NOT_FOUND");
+  }
+  return createUploadSession({
+    organizationId: input.organizationId,
+    userId: input.userId,
+    scope: input.documentId ? `document-version:${input.documentId}` : "document:new",
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    size: input.size,
+    sha256: input.sha256,
+    policy: { bucket: DOCUMENT_STORAGE_BUCKET, maxBytes: MAX_DOCUMENT_BYTES, allowedMimeTypes: SUPPORTED_DOCUMENT_TYPES, expiresInSeconds: 600 },
+    signUpload: async ({ bucket, objectPath }) => {
+      const { data, error } = await getSupabaseAdminClient().storage.from(bucket).createSignedUploadUrl(objectPath);
+      if (error) throw error;
+      return data.token;
+    },
+  });
+}
+
+export async function completeDocumentUpload(input: {
+  userId: string;
+  organizationId: string;
+  sessionId: string;
+  title?: string;
+  documentId?: string;
+}) {
+  await assertCanContributeToOrganization(input.userId, input.organizationId);
+  const verified = await verifyUploadedObject({ sessionId: input.sessionId, userId: input.userId, verifyObject: verifyDocumentObject });
+  const expectedScope = input.documentId ? `document-version:${input.documentId}` : "document:new";
+  if (verified.organizationId !== input.organizationId || verified.scope !== expectedScope) {
+    throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
+  }
+  if (verified.state === "completed") {
+    const completedResult = await db.query.uploadSessionResults.findFirst({
+      where: eq(uploadSessionResults.sessionId, verified.id),
+      columns: { documentVersionId: true },
+    });
+    const documentVersionId = completedResult?.documentVersionId;
+    if (!documentVersionId) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
+    const version = await db.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: eq(documentVersions.id, documentVersionId) });
+    if (!version) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
+    return { documentId: version.documentId, documentVersionId: version.id, replayed: true };
+  }
+  const { bytes } = await downloadDocumentObject(verified.bucket, verified.objectPath);
+  const embeddingProvider = createDocumentEmbeddingProvider();
+  const documentId = input.documentId ?? randomUUID();
+  const documentVersionId = randomUUID();
+  const extractionId = randomUUID();
+  const embeddingGenerationId = randomUUID();
+  const result = await db.transaction(async (tx) => {
+    const [locked] = await tx.select({
+      id: uploadSessions.id,
+      fileName: uploadSessions.fileName,
+      bucket: uploadSessions.bucket,
+      objectPath: uploadSessions.objectPath,
+      actualMimeType: uploadSessions.actualMimeType,
+      actualSize: uploadSessions.actualSize,
+      actualSha256: uploadSessions.actualSha256,
+    }).from(uploadSessions).where(and(
+      eq(uploadSessions.id, verified.id), eq(uploadSessions.state, "verified"),
+    )).limit(1).for("update");
+    if (!locked?.actualSha256 || !locked.actualMimeType || !locked.actualSize) throw new ApiError(409, "Upload session is not verified");
+    let versionNumber = 1;
+    if (input.documentId) {
+      const document = await tx.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: and(
+        eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId), eq(documents.status, "active"),
+      ) });
+      if (!document) throw new ApiError(404, "Active document not found", undefined, "DOCUMENT_NOT_FOUND");
+      const latest = await tx.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: eq(documentVersions.documentId, document.id), orderBy: [desc(documentVersions.versionNumber)] });
+      versionNumber = (latest?.versionNumber ?? 0) + 1;
+    } else {
+      const title = input.title?.trim();
+      if (!title) throw new ApiError(400, "A document title is required", undefined, "DOCUMENT_TITLE_REQUIRED");
+      await tx.insert(documents).values({ id: documentId, organizationId: input.organizationId, title, createdBy: input.userId });
+    }
+    await tx.insert(documentVersions).values({
+      id: documentVersionId, documentId, versionNumber, fileName: locked.fileName, mimeType: locked.actualMimeType,
+      byteSize: locked.actualSize, storageBucket: locked.bucket, storagePath: locked.objectPath,
+      contentHash: locked.actualSha256, uploadedBy: input.userId,
+    });
+    await tx.update(documents).set({
+      currentVersionId: documentVersionId,
+      ...(input.documentId ? { version: sql`${documents.version} + 1` } : {}),
+      updatedAt: new Date(),
+    }).where(eq(documents.id, documentId));
+    await tx.insert(documentExtractions).values({
+      id: extractionId, documentVersionId, parserKind: parserKindForMime(locked.actualMimeType), parserVersion: "v1", status: "processing", startedAt: new Date(),
+    });
+    await tx.insert(documentEmbeddingGenerations).values({
+      id: embeddingGenerationId, extractionId, provider: embeddingProvider.provider, model: embeddingProvider.model,
+      dimensions: embeddingProvider.dimensions, chunkingVersion: CHUNKING_VERSION, status: "pending",
+    });
+    await tx.update(uploadSessions).set({ state: "completed", completedAt: new Date(), updatedAt: new Date() }).where(eq(uploadSessions.id, locked.id));
+    await tx.insert(uploadSessionResults).values({ sessionId: locked.id, documentVersionId });
+    await tx.insert(auditEvents).values({
+      organizationId: input.organizationId, actorUserId: input.userId,
+      eventType: input.documentId ? "document.version_uploaded" : "document.uploaded",
+      entityType: "document_version", entityId: documentVersionId,
+      metadata: { documentId, versionNumber, contentHash: locked.actualSha256, uploadSessionId: locked.id },
+    });
+    return { documentId, documentVersionId, versionNumber, extractionId, embeddingGenerationId, replayed: false };
+  });
+  await processDocumentVersion({
+    userId: input.userId, organizationId: input.organizationId, bytes, mimeType: verified.actualMimeType!,
+    documentVersionId, extractionId, embeddingGenerationId, embeddingProvider,
+  });
+  return result;
+}
+
+async function verifyDocumentObject(input: { bucket: string; objectPath: string }) {
+  const downloaded = await downloadDocumentObject(input.bucket, input.objectPath);
+  return { size: downloaded.bytes.byteLength, mimeType: downloaded.mimeType, sha256: sha256(downloaded.bytes) };
+}
+
+async function downloadDocumentObject(bucket: string, objectPath: string) {
+  const { data, error } = await getSupabaseAdminClient().storage.from(bucket).download(objectPath);
+  if (error) throw new ApiError(502, "Stored upload could not be read", undefined, "UPLOAD_VERIFICATION_FAILED");
+  return { bytes: new Uint8Array(await data.arrayBuffer()), mimeType: data.type };
 }
 
 async function processDocumentVersion(input: {

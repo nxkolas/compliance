@@ -1,4 +1,4 @@
-import { getVisibilityCondition } from "../../applicability-check/question-visibility";
+import { getVisibilityCondition } from "@/src/server/applicability-check/domain";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 
 const REQUIRED_LOCALES = ["de", "en"] as const;
@@ -9,6 +9,8 @@ const GENERIC_DESCRIPTION_PATTERNS = [
 
 export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
   const errors: string[] = [];
+  if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
+  if (new Set(release.requiredCorpusFamilies).size !== release.requiredCorpusFamilies.length) errors.push("Required corpus families must be unique");
   const contentByKey = uniqueMap(release.content, (item) => item.stableKey, "content", errors);
   const legalProvisionKeys = new Set<string>();
   const entityCodes = uniqueSet(release.entityTypes.map((item) => item.code), "entity type", errors);
@@ -32,6 +34,11 @@ export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
       if (!item.translations[locale]?.trim()) errors.push(`Missing ${locale} translation for ${item.stableKey}`);
     }
   }
+
+  requireContent(contentByKey, release.framework.nameContentKey, errors);
+  requireContent(contentByKey, release.framework.descriptionContentKey, errors);
+  requireContent(contentByKey, release.module.nameContentKey, errors);
+  requireContent(contentByKey, release.questionnaire.titleContentKey, errors);
 
   for (const instrument of release.legalInstruments) {
     validateOfficialUrl(instrument.officialSourceUrl, `instrument ${instrument.code}`, errors);

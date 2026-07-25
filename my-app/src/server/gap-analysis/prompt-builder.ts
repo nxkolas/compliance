@@ -1,4 +1,4 @@
-import { canonicalJson, contentHash } from "../compliance/publishing/canonical-json";
+import { canonicalJson, contentHash } from "@/src/server/compliance/domain";
 import { GAP_PROMPT_TEMPLATE } from "./prompt-contract";
 import type { SuppliedCitation } from "./generation-schema";
 
@@ -26,6 +26,9 @@ export function buildGapPrompt(requirements: GapPromptRequirement[]) {
       requirementText: requirement.requirementText,
       criticality: requirement.criticality,
       legalReferences: requirement.legalReferences,
+      legalAuthority: requirement.citations
+        .filter((citation) => citation.sourceType === "legal_source_chunk")
+        .map(toPromptCitation),
       questionnaireAssertions: requirement.citations
         .filter((citation) => citation.sourceType === "assessment_answer")
         .map(toPromptCitation),
@@ -37,6 +40,8 @@ export function buildGapPrompt(requirements: GapPromptRequirement[]) {
       findings: "exactly one per requested requirement",
       citations: "only citation IDs supplied above",
       contradictions: "surface and set requiresReview=true",
+      questionnaireDisagreements:
+        "explain interpreted questionnaire/status differences; informational only",
     },
   };
   const prompt = canonicalJson(renderedInput);

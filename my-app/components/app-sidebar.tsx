@@ -45,7 +45,9 @@ export function AppSidebar({
             >
               <OrganizationSwitcherLoader
                 organizationId={organizationId}
-                placeholder={dictionary.sidebar.organizations}
+                placeholder={dictionary.organizations.switcherPlaceholder}
+                createLabel={dictionary.organizations.switcherCreate}
+                manageLabel={dictionary.organizations.switcherManage}
               />
             </Suspense>
           }
@@ -76,9 +78,13 @@ export function AppSidebar({
 async function OrganizationSwitcherLoader({
   organizationId,
   placeholder,
+  createLabel,
+  manageLabel,
 }: {
   organizationId?: string;
   placeholder: string;
+  createLabel: string;
+  manageLabel: string;
 }) {
   const user = await requireAuth();
   const organizations = await listOrganizationsForUser(user.id);
@@ -91,6 +97,8 @@ async function OrganizationSwitcherLoader({
       }))}
       organizationId={organizationId}
       placeholder={placeholder}
+      createLabel={createLabel}
+      manageLabel={manageLabel}
     />
   );
 }

@@ -7,7 +7,9 @@ import {
   complianceCheckReleases,
   generatedArtifactRevisions,
   generatedArtifacts,
+  gapAnalysisReleases,
   guestApplicabilityChecks,
+  organizations,
   questionOptions,
   questions,
   ruleSets,
@@ -17,12 +19,11 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
 import { ApiError } from "../api/errors";
 import { assertCanAccessOrganization } from "../organizations/service";
-import { NIS2_CHECK_CODE } from "../compliance/runtime-release";
-import { nextCachedRuntimeReleaseReader } from "../compliance/runtime-release/next-cached-reader";
+import { NIS2_CHECK_CODE, nextCachedRuntimeReleaseReader } from "@/src/server/compliance";
 import type {
   ResolvedComplianceRelease,
   RuntimeReleaseReader,
-} from "../compliance/runtime-release/types";
+} from "@/src/server/compliance";
 import {
   parseStoredRuleEvaluationResult,
   type StoredRuleEvaluationResult,
@@ -33,6 +34,7 @@ import {
   type ApplicabilityAnswerValue,
 } from "./question-visibility";
 import { evaluateRuleSet } from "./rules";
+import { getSupportedCountryCodes } from "./country-support";
 import { catalogOptionsForCountry } from "./entity-catalog";
 import { guestStartedExpiry, guestSubmittedExpiry } from "./guest-lifecycle";
 import {
@@ -40,6 +42,13 @@ import {
   type LocalizedRuleEvaluationResult,
 } from "./localize-evaluation";
 import { persistApplicabilitySubmission } from "./submission-persistence";
+import {
+  assertApplicabilityRecalculationUnlocked,
+  deriveApplicabilityRecalculationLock,
+  deriveApplicabilityRecalculationLockForPrerequisite,
+  type ApplicabilityRecalculationLock,
+} from "./recalculation-lock";
+import { evaluateGapApplicabilityPrerequisite } from "../gap-analysis/domain";
 import {
   submitApplicabilityCheckSchema,
   type SubmitApplicabilityCheckInput,
@@ -55,6 +64,7 @@ export type ApplicabilityQuestionnaireDto = {
   versionLabel: string;
   questions: ApplicabilityQuestionDto[];
   entityCatalogs: Record<string, ApplicabilityOptionDto[]>;
+  defaultAnswers: Record<string, ApplicabilityAnswerValue>;
   latestAnswers: Record<string, ApplicabilityAnswerValue>;
   release: {
     id: string;
@@ -62,6 +72,7 @@ export type ApplicabilityQuestionnaireDto = {
     aggregateHash: string;
     isActive: boolean;
     activeVersionLabel: string;
+    supportedCountryCodes: string[];
   };
   guestSession?: GuestApplicabilitySession;
 };
@@ -126,6 +137,7 @@ export type ApplicabilityResultDto = {
     versionLabel: string;
     isOutdated: boolean;
     activeVersionLabel: string;
+    supportedCountryCodes: string[];
   };
 };
 
@@ -212,6 +224,10 @@ export async function getApplicabilityQuestionnaireForUser(
     organizationId,
     definition.moduleId,
   );
+  const organization = await db.query.organizations.findFirst({
+    columns: { country: true },
+    where: eq(organizations.id, organizationId),
+  });
 
   return {
     id: definition.questionnaireId,
@@ -225,6 +241,11 @@ export async function getApplicabilityQuestionnaireForUser(
       return question;
     }),
     entityCatalogs: getEntityCatalogs(definition.questions),
+    defaultAnswers: getOrganizationCountryDefault({
+      questions: definition.questions,
+      latestAnswers,
+      organizationCountry: organization?.country ?? null,
+    }),
     latestAnswers,
     release: toQuestionnaireRelease(definition),
   };
@@ -265,10 +286,19 @@ export async function getApplicabilityQuestionnaireForGuest(
       return question;
     }),
     entityCatalogs: getEntityCatalogs(definition.questions),
+    defaultAnswers: {},
     latestAnswers: {},
     release: toQuestionnaireRelease(definition),
     guestSession: { id: guestCheck.id, token },
   };
+}
+
+export async function getApplicabilityRecalculationLockForUser(
+  userId: string,
+  organizationId: string,
+): Promise<ApplicabilityRecalculationLock> {
+  await assertCanAccessOrganization(userId, organizationId);
+  return getApplicabilityRecalculationLock(organizationId);
 }
 
 export async function getApplicabilityOverviewForUser(
@@ -318,7 +348,7 @@ export async function getApplicabilityAnswersForUser(
     : null;
   if (!definition) return null;
 
-  const revision = await db.query.assessmentRevisions.findFirst({
+  const revision = await db.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
     where: eq(assessmentRevisions.id, assessment.currentRevisionId),
   });
 
@@ -398,6 +428,7 @@ export async function submitApplicabilityCheckForUser(
   },
 ): Promise<ApplicabilityResultDto> {
   await assertCanAccessOrganization(userId, organizationId);
+  await assertApplicabilityRecalculationMutable(organizationId);
   const prepared = await prepareApplicabilitySubmission(
     input,
     options?.checkReleaseId,
@@ -417,6 +448,9 @@ export async function submitApplicabilityCheckForUser(
       activeReleaseVersionLabel:
         prepared.definition.activeReleaseVersionLabel,
       evaluatorKind: prepared.definition.ruleSet.evaluatorKind,
+      supportedCountryCodes: getSupportedCountryCodes(
+        prepared.definition.ruleSet.rules,
+      ),
     },
     ruleSet: prepared.ruleSet,
     answers: prepared.validatedAnswers,
@@ -429,12 +463,90 @@ export async function submitApplicabilityCheckForUser(
   });
 }
 
+async function assertApplicabilityRecalculationMutable(
+  organizationId: string,
+) {
+  const lock = await getApplicabilityRecalculationLock(organizationId);
+  assertApplicabilityRecalculationUnlocked(lock);
+}
+
+async function getApplicabilityRecalculationLock(
+  organizationId: string,
+): Promise<ApplicabilityRecalculationLock> {
+  const [row] = await db
+    .select({
+      assessmentId: assessments.id,
+      compatibleCheckReleaseId:
+        gapAnalysisReleases.compatibleCheckReleaseId,
+      artifactId: generatedArtifactRevisions.id,
+      artifactCheckReleaseId:
+        generatedArtifactRevisions.checkReleaseId,
+      artifactStatus: generatedArtifactRevisions.status,
+      artifactResult: generatedArtifactRevisions.result,
+    })
+    .from(assessments)
+    .innerJoin(
+      gapAnalysisReleases,
+      eq(assessments.gapAnalysisReleaseId, gapAnalysisReleases.id),
+    )
+    .leftJoin(
+      generatedArtifactRevisions,
+      eq(
+        assessments.applicabilityArtifactRevisionId,
+        generatedArtifactRevisions.id,
+      ),
+    )
+    .where(
+      and(
+        eq(assessments.organizationId, organizationId),
+        eq(assessments.status, "active"),
+      ),
+    )
+    .limit(1);
+  if (!row) return deriveApplicabilityRecalculationLock(null);
+  const prerequisite = evaluateGapApplicabilityPrerequisite(
+    row.compatibleCheckReleaseId,
+    row.artifactId
+      ? {
+          id: row.artifactId,
+          checkReleaseId: row.artifactCheckReleaseId,
+          status: row.artifactStatus ?? "",
+          result: row.artifactResult,
+        }
+      : null,
+  );
+  if (
+    prerequisite.status === "invalid" ||
+    prerequisite.status === "release_incompatible"
+  ) {
+    console.warn("Ignoring invalid Gap recalculation lock state", {
+      organizationId,
+      gapAssessmentId: row.assessmentId,
+      prerequisiteStatus: prerequisite.status,
+    });
+  }
+  return deriveApplicabilityRecalculationLockForPrerequisite(
+    row.assessmentId,
+    prerequisite,
+  );
+}
+
+export async function getApplicabilityResultRevisionForUser(
+  userId: string,
+  organizationId: string,
+  artifactRevisionId: string,
+  dependencies: ApplicabilityRuntimeDependencies = {},
+) {
+  await assertCanAccessOrganization(userId, organizationId);
+  return getCurrentResult(organizationId, dependencies.runtimeReleaseReader, artifactRevisionId);
+}
+
 export async function submitApplicabilityCheckForGuest(
   input: SubmitApplicabilityCheckInput,
   dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<GuestApplicabilitySession & { result: ApplicabilityResultDto }> {
   if (!input.guestSession) throw new ApiError(400, "Guest session is required");
-  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({
+  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
     where: and(
       eq(guestApplicabilityChecks.id, input.guestSession.id),
       eq(guestApplicabilityChecks.tokenHash, hashGuestToken(input.guestSession.token)),
@@ -652,7 +764,7 @@ async function findGuestApplicabilityCheck(
     return null;
   }
 
-  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({
+  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
     where: guestCheckId
       ? and(
           eq(guestApplicabilityChecks.id, guestCheckId),
@@ -721,6 +833,9 @@ async function toGuestApplicabilityCheckDto(
         isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
         activeVersionLabel:
           activePointer?.versionLabel ?? release.releaseVersionLabel,
+        supportedCountryCodes: getSupportedCountryCodes(
+          release.ruleSet.rules,
+        ),
       },
     },
   };
@@ -745,7 +860,7 @@ export function hashGuestToken(token: string): string {
 }
 
 async function getCurrentAssessment(organizationId: string, moduleId: string) {
-  return db.query.assessments.findFirst({
+  return db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
     where: and(
       eq(assessments.organizationId, organizationId),
       eq(assessments.moduleId, moduleId),
@@ -825,6 +940,7 @@ function createGuestStartedExpiryDate(from: Date): Date {
 async function getCurrentResult(
   organizationId: string,
   reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
+  artifactRevisionId?: string,
 ): Promise<ApplicabilityResultDto | null> {
   const row = await db
     .select({
@@ -838,7 +954,7 @@ async function getCurrentResult(
     .from(generatedArtifacts)
     .innerJoin(
       generatedArtifactRevisions,
-      eq(generatedArtifacts.currentRevisionId, generatedArtifactRevisions.id),
+      eq(generatedArtifacts.id, generatedArtifactRevisions.artifactId),
     )
     .leftJoin(ruleSets, eq(generatedArtifactRevisions.ruleSetId, ruleSets.id))
     .innerJoin(complianceCheckReleases, eq(generatedArtifactRevisions.checkReleaseId, complianceCheckReleases.id))
@@ -847,6 +963,9 @@ async function getCurrentResult(
         eq(generatedArtifacts.organizationId, organizationId),
         eq(generatedArtifacts.artifactType, "affectedness_result"),
         eq(complianceCheckReleases.checkCode, NIS2_CHECK_CODE),
+        artifactRevisionId
+          ? eq(generatedArtifactRevisions.id, artifactRevisionId)
+          : eq(generatedArtifacts.currentRevisionId, generatedArtifactRevisions.id),
       ),
     )
     .orderBy(desc(generatedArtifactRevisions.evaluatedAt))
@@ -889,6 +1008,7 @@ async function getCurrentResult(
       isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
       activeVersionLabel:
         activePointer?.versionLabel ?? release.releaseVersionLabel,
+      supportedCountryCodes: getSupportedCountryCodes(release.ruleSet.rules),
     },
   };
 }
@@ -1128,7 +1248,27 @@ function toQuestionnaireRelease(definition: ActiveDefinition) {
     aggregateHash: definition.aggregateHash,
     isActive: definition.isActive,
     activeVersionLabel: definition.activeReleaseVersionLabel,
+    supportedCountryCodes: getSupportedCountryCodes(
+      definition.ruleSet.rules,
+    ),
   };
+}
+
+export function getOrganizationCountryDefault(input: {
+  questions: ApplicabilityQuestionDto[];
+  latestAnswers: Record<string, ApplicabilityAnswerValue>;
+  organizationCountry: string | null;
+}): Record<string, ApplicabilityAnswerValue> {
+  const countryQuestion = input.questions.find(
+    (question) => question.stableKey === "bc.jurisdiction_country",
+  );
+  if (!countryQuestion || input.latestAnswers[countryQuestion.id]) return {};
+  const countryCode = input.organizationCountry?.trim().toUpperCase();
+  if (!countryCode || countryCode.length !== 2) return {};
+  const offered = countryQuestion.options.some(
+    (option) => option.stableValue.toUpperCase() === countryCode,
+  );
+  return offered ? { [countryQuestion.id]: countryCode } : {};
 }
 
 function hashRuleInput(input: unknown) {

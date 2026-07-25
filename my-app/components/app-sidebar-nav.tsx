@@ -128,12 +128,12 @@ export function AppSidebarNav({
                 complyX
               </span>
               <span className="[font-family:Inter,sans-serif] text-xs font-normal leading-4 text-[#E8F1FF]">
-                NIS2 Compliance Checker
+                {labels.productName}
               </span>
             </span>
           </Link>
           <p className="[font-family:Inter,sans-serif] text-sm font-normal leading-5 tracking-[-0.15px] text-[#E8F1FF]">
-            Compliance &amp; Security Design Validation for Financial Services
+            {labels.productTagline}
           </p>
         </div>
 

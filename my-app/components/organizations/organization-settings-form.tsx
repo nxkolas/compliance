@@ -12,10 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import type { OrganizationDto } from "@/src/server/organizations/types";
 import { Building2, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { organizationsClient } from "@/src/client/organizations";
 
 type SerializedOrganization = SerializeDates<OrganizationDto>;
 
@@ -69,26 +71,11 @@ export function OrganizationSettingsForm({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch(`/api/organizations/${organization.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      await organizationsClient.update(organization.id, {
           name: form.name,
           legalName: form.legalName || null,
           country: form.country || "DE",
-        }),
-      });
-
-      const body = (await response.json()) as {
-        organization?: SerializedOrganization;
-        error?: string;
-      };
-
-      if (!response.ok || !body.organization) {
-        throw new Error(body.error ?? labels.updateError);
-      }
+        }, organization.version);
 
       setNotice({
         message: labels.saveSuccess,
@@ -97,8 +84,9 @@ export function OrganizationSettingsForm({
       router.refresh();
     } catch (error) {
       setNotice({
-        message:
-          error instanceof Error ? error.message : labels.updateErrorFallback,
+        message: localizeUiError(error, {
+          fallback: labels.updateErrorFallback,
+        }),
         tone: "error",
       });
     } finally {

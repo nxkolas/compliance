@@ -5,8 +5,11 @@ Compliance Checker app.
 
 ## Product And Architecture
 
+- [End-to-end compliance workflow](./architecture/end-to-end-compliance-workflow.md)
 - [Product docs](./product/README.md)
 - [Current gap-analysis workflow](./product/gap-analysis-current-workflow.md)
+- [Current country support](./product/country-support-current-behavior.md)
+- [Current NIS2 rule set (German and English)](./product/current-nis2-ruleset.de-en.md)
 - [Product structure](./product/product-structure.md)
 - [Architecture docs](./architecture/README.md)
 - [Database structure](./architecture/database-structure.md)
@@ -15,6 +18,8 @@ Compliance Checker app.
 ## Database Operations
 
 - [Supabase security and retention runbook](./database/supabase-security-runbook.md)
+- [API, corpus, and grounded-AI rollout](./database/api-corpus-rollout-runbook.md)
+- [Development database reset and reseed](./database/database-reset-and-reseed.md)
 
 ## Engineering Guides
 
@@ -23,6 +28,10 @@ Compliance Checker app.
 
 ## Implementation Plans
 
+- [Localized compliance-definition metadata](./plans/localized-compliance-definition-metadata.md)
+- [Guided gap analysis UX and status corrections](./plans/gap-analysis-guided-ux-and-status-corrections.md)
+- [Authoritative legal corpus and grounded AI](./plans/authoritative-legal-corpus-and-grounded-ai.md)
+- [Internal API and client/server service completion](./plans/internal-api-and-service-completion.md)
 - [Gap analysis, evidence, and action plan](./plans/gap-analysis-evidence-and-action-plan.md)
 - [Document management, gap reassessment, and plan reconciliation](./plans/document-management-reassessment-and-plan-reconciliation.md)
 - [Immutable compliance-release architecture](./plans/immutable-compliance-release-architecture.md)

@@ -1,5 +1,6 @@
-import { contentHash } from "../../compliance/publishing/canonical-json";
+import { contentHash } from "@/src/server/compliance/domain";
 import { GAP_PROMPT_TEMPLATE_HASH } from "../prompt-contract";
+import { GAP_PROMPT_V2_TEMPLATE_HASH } from "../prompt-contract-v2";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -9,12 +10,26 @@ export function compileGapAnalysisRelease(
   requireNonEmpty(release.releaseCode, "release code", errors);
   requireNonEmpty(release.versionLabel, "version label", errors);
   requireNonEmpty(release.compatibleCheck.checkCode, "compatible check code", errors);
-  if (release.prompt.templateHash !== GAP_PROMPT_TEMPLATE_HASH) {
+  unique(release.requiredCorpusFamilies, "required corpus family", errors);
+  if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
+  if (
+    ![GAP_PROMPT_V2_TEMPLATE_HASH, GAP_PROMPT_TEMPLATE_HASH].includes(
+      release.prompt.templateHash,
+    )
+  ) {
     errors.push("Prompt template hash does not match the code-defined prompt");
   }
-  if (release.modelPolicy.maxRequirementsPerBatch < 1) {
-    errors.push("Model policy requires a positive batch size");
-  }
+  requireLocalizedText(release.title, "module title", errors);
+  requireLocalizedText(
+    release.questionnaire.title,
+    "questionnaire title",
+    errors,
+  );
+  requireLocalizedText(
+    release.requirementSet.title,
+    "requirement-set title",
+    errors,
+  );
 
   unique(
     release.questionnaire.questions.map((question) => question.stableKey),
@@ -50,6 +65,16 @@ export function compileGapAnalysisRelease(
   );
   const mappedQuestions = new Set<string>();
   for (const requirement of requirements) {
+    requireLocalizedText(
+      requirement.title,
+      `requirement ${requirement.code} title`,
+      errors,
+    );
+    requireLocalizedText(
+      requirement.requirementText,
+      `requirement ${requirement.code} text`,
+      errors,
+    );
     if (requirement.legalReferences.length === 0) {
       errors.push(`Requirement ${requirement.code} has no legal reference`);
     }
@@ -94,6 +119,7 @@ export function compileGapAnalysisRelease(
   );
   const requirementSetHash = contentHash({
     code: release.requirementSet.code,
+    title: release.requirementSet.title,
     versionLabel: release.requirementSet.versionLabel,
     members: requirements.map((requirement) => ({
       code: requirement.code,
@@ -130,4 +156,14 @@ function unique(values: string[], label: string, errors: string[]) {
 
 function requireNonEmpty(value: string, label: string, errors: string[]) {
   if (!value.trim()) errors.push(`Missing ${label}`);
+}
+
+function requireLocalizedText(
+  value: { de: string; en: string },
+  label: string,
+  errors: string[],
+) {
+  for (const locale of ["de", "en"] as const) {
+    if (!value[locale]?.trim()) errors.push(`Missing ${locale} ${label}`);
+  }
 }

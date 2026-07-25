@@ -6,11 +6,14 @@ declare
     'organizations', 'organization_memberships', 'organization_invitations',
     'organization_fact_values', 'organization_fact_value_options',
     'assessments', 'assessment_revisions', 'assessment_answers', 'assessment_answer_options',
-    'generated_artifacts', 'generated_artifact_revisions', 'artifact_revision_sources',
+    'generated_artifacts', 'generated_artifact_revisions',
+    'artifact_revision_assessment_sources', 'artifact_revision_artifact_sources',
+    'artifact_revision_document_sources',
     'nis2_result_projections', 'guest_applicability_checks',
     'documents', 'document_versions', 'document_extractions', 'document_chunks',
     'document_embedding_generations', 'document_chunk_embeddings',
-    'ai_processing_runs', 'ai_processing_run_inputs',
+    'ai_processing_runs', 'ai_processing_run_assessment_inputs',
+    'ai_processing_run_artifact_inputs', 'ai_processing_run_document_inputs',
     'gap_findings', 'gap_finding_evidence', 'gap_finding_review_resolutions',
     'action_plans', 'action_plan_items', 'audit_events'
   ];

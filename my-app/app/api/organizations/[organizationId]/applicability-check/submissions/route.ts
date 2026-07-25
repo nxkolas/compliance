@@ -1,50 +1,18 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse } from "next/server";
+import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
-import { getErrorResponse } from "@/src/server/api/errors";
-import { parseInput, readJsonBody } from "@/src/server/api/request";
-import { submitApplicabilityCheckForUser } from "@/src/server/applicability-check/service";
-import { submitApplicabilityCheckSchema } from "@/src/server/applicability-check/validation";
-import { organizationIdSchema } from "@/src/server/organizations/validation";
-
-type RouteContext = {
-  params: Promise<{
-    organizationId: string;
-  }>;
-};
-
-export async function POST(request: Request, context: RouteContext) {
-  try {
-    const user = await requireApiUser();
-    const { organizationId } = await context.params;
-    const parsedOrganizationId = parseInput(
-      organizationIdSchema,
-      organizationId,
-      "Invalid organizationId",
-    );
-    const body = await readJsonBody(request, submitApplicabilityCheckSchema);
-    const result = await submitApplicabilityCheckForUser(
-      user.id,
-      parsedOrganizationId,
-      body,
-    );
-
-    revalidatePath(
-      `/tool/organizations/${parsedOrganizationId}/applicability-check`,
-    );
-    revalidatePath(
-      `/tool/organizations/${parsedOrganizationId}/applicability-check/new`,
-    );
-    revalidatePath(
-      `/tool/organizations/${parsedOrganizationId}/applicability-check/answers`,
-    );
-    revalidatePath(
-      `/tool/organizations/${parsedOrganizationId}/applicability-check/result`,
-    );
-
-    return NextResponse.json({ result });
-  } catch (error) {
-    const response = getErrorResponse(error);
-    return NextResponse.json(response.body, { status: response.status });
-  }
-}
+import { readJsonBody } from "@/src/server/api/request";
+import { getApplicabilityResultRevisionForUser, submitApplicabilityCheckForUser } from "@/src/server/applicability-check";
+import { applicabilitySubmissionSchema } from "@/src/contracts/applicability-check";
+import { runIdempotentCommand } from "@/src/server/api/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/idempotency"; import { ApiError } from "@/src/server/api/errors";
+export const POST = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string }> } }) => {
+  const user = await requireApiUser(); const { organizationId } = await routeContext.params;
+  const body = await readJsonBody(request, applicabilitySubmissionSchema);
+  const command = await runIdempotentCommand({ repository: databaseIdempotencyRepository, request, actorKey: user.id, organizationId, scope: organizationId,
+    operation: "applicability.submit", requestInput: body, resultType: "generated_artifact_revision", responseStatus: 201,
+    execute: () => submitApplicabilityCheckForUser(user.id, organizationId, body), resultId: (result) => result.artifactRevisionId,
+    replay: async (id) => { const result = await getApplicabilityResultRevisionForUser(user.id, organizationId, id); if (!result) throw new ApiError(409, "Applicability result is unavailable", undefined, "IDEMPOTENCY_RESULT_UNAVAILABLE"); return result; },
+  });
+  for (const suffix of ["", "/new", "/answers", "/result"]) revalidatePath(`/tool/organizations/${organizationId}/applicability-check${suffix}`);
+  return { status: 201, data: { result: command.value, reused: command.reused } };
+});

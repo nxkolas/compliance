@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -39,7 +40,7 @@ export function UpdatePasswordForm({
       if (error) throw error;
       router.push("/tool/organizations");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : labels.errorFallback);
+      setError(localizeUiError(error, { fallback: labels.errorFallback }));
     } finally {
       setIsLoading(false);
     }

@@ -1,9 +1,9 @@
 import {
-  GAP_PROMPT_NAME,
-  GAP_PROMPT_TEMPLATE_HASH,
-  GAP_PROMPT_VERSION,
-  GAP_RESPONSE_SCHEMA_VERSION,
-} from "../../prompt-contract";
+  GAP_PROMPT_V2_NAME,
+  GAP_PROMPT_V2_TEMPLATE_HASH,
+  GAP_PROMPT_V2_VERSION,
+  GAP_RESPONSE_SCHEMA_V2_VERSION,
+} from "../../prompt-contract-v2";
 import type { GapAnalysisReleaseDefinition } from "../types";
 
 const options = [
@@ -27,19 +27,15 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
   versionLabel: "demo-v1",
   title: { de: "NIS2-Gap-Analyse (Demo)", en: "NIS2 gap analysis (demo)" },
   compatibleCheck: { checkCode: "nis2_applicability", versionLabel: "2026-v1" },
+  requiredCorpusFamilies: ["nis2-eu-primary", "nis2-de-primary"],
   defaultLocale: "de",
   prompt: {
-    name: GAP_PROMPT_NAME,
-    version: GAP_PROMPT_VERSION,
-    templateHash: GAP_PROMPT_TEMPLATE_HASH,
-    responseSchemaVersion: GAP_RESPONSE_SCHEMA_VERSION,
+    name: GAP_PROMPT_V2_NAME,
+    version: GAP_PROMPT_V2_VERSION,
+    templateHash: GAP_PROMPT_V2_TEMPLATE_HASH,
+    responseSchemaVersion: GAP_RESPONSE_SCHEMA_V2_VERSION,
   },
   evaluator: { kind: "gap_evidence_v1", version: 1 },
-  modelPolicy: {
-    provider: "openai",
-    model: "gpt-5-mini",
-    maxRequirementsPerBatch: 4,
-  },
   questionnaire: {
     code: "nis2-gap-demo",
     title: { de: "NIS2-Gap-Analyse (Demo)", en: "NIS2 gap analysis (demo)" },
@@ -84,7 +80,10 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
   },
   requirementSet: {
     code: "nis2-security-demo",
-    title: "NIS2 security requirements – demo only",
+    title: {
+      de: "NIS2-Sicherheitsanforderungen – nur Demo",
+      en: "NIS2 security requirements – demo only",
+    },
     versionLabel: "demo-v1",
     requirements: [
       {
@@ -94,7 +93,6 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
         criticality: "high",
         title: { de: "Zugriffskontrolle", en: "Access control" },
         requirementText: { de: "Die Organisation steuert und überprüft Zugriffsrechte nachvollziehbar.", en: "The organization controls and reviews access rights traceably." },
-        recommendation: { de: "Rollenmodell, Freigaben und Rezertifizierung dokumentieren.", en: "Document the role model, approvals, and recertification." },
         legalReferences: legalReference("Art. 21"),
         questionStableKeys: ["gap.access_control"],
         applicableOutcomeCodes: ["essential_entity", "important_entity"],
@@ -106,7 +104,6 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
         criticality: "critical",
         title: { de: "Backup und Wiederherstellung", en: "Backup and recovery" },
         requirementText: { de: "Die Organisation sichert kritische Daten und testet Wiederherstellungen.", en: "The organization backs up critical data and tests restoration." },
-        recommendation: { de: "Backup-Plan, Schutzmaßnahmen und Wiederherstellungstests nachweisen.", en: "Evidence the backup plan, safeguards, and restore tests." },
         legalReferences: legalReference("Art. 21"),
         questionStableKeys: ["gap.backup_recovery"],
         applicableOutcomeCodes: ["essential_entity", "important_entity"],
@@ -118,7 +115,6 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
         criticality: "critical",
         title: { de: "Reaktion auf Sicherheitsvorfälle", en: "Incident response" },
         requirementText: { de: "Die Organisation erkennt, behandelt und meldet Sicherheitsvorfälle nach einem erprobten Prozess.", en: "The organization detects, handles, and reports incidents through an exercised process." },
-        recommendation: { de: "Incident-Response-Plan, Rollen und Übungsnachweise pflegen.", en: "Maintain an incident response plan, roles, and exercise evidence." },
         legalReferences: legalReference("Art. 21/23"),
         questionStableKeys: ["gap.incident_response"],
         applicableOutcomeCodes: ["essential_entity", "important_entity"],
@@ -130,7 +126,6 @@ export const demoGapRelease: GapAnalysisReleaseDefinition = {
         criticality: "high",
         title: { de: "Lieferkettensicherheit", en: "Supply-chain security" },
         requirementText: { de: "Die Organisation bewertet und behandelt Cybersicherheitsrisiken ihrer Lieferanten.", en: "The organization assesses and treats supplier cybersecurity risks." },
-        recommendation: { de: "Lieferantenkriterien, Vertragsanforderungen und Überwachung dokumentieren.", en: "Document supplier criteria, contractual requirements, and monitoring." },
         legalReferences: legalReference("Art. 21"),
         questionStableKeys: ["gap.supply_chain"],
         applicableOutcomeCodes: ["essential_entity", "important_entity"],

@@ -1,10 +1,14 @@
 import { db } from "@/src/db";
 import {
   activeGapAnalysisReleases,
+  complianceFrameworkVersions,
+  complianceModules,
   contentTranslations,
   gapAnalysisReleaseApplicabilityRules,
   gapAnalysisReleases,
+  gapRequirements,
   gapRequirementSetMembers,
+  gapRequirementSetVersions,
   gapRequirementVersions,
   questionOptions,
   questionnaireVersions,
@@ -13,17 +17,18 @@ import {
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { asc, eq, inArray } from "drizzle-orm";
-
-type Localized = { de: string; en: string };
+import { resolveGapContentTranslation } from "./localize-content";
 
 export type LoadedGapRelease = {
   id: string;
   releaseCode: string;
   versionLabel: string;
   moduleId: string;
+  moduleTitle: string;
   questionnaireId: string;
   questionnaireVersionId: string;
   questionnaireTitle: string;
+  requirementSetTitle: string;
   compatibleCheckReleaseId: string;
   prompt: {
     name: string;
@@ -32,7 +37,6 @@ export type LoadedGapRelease = {
     responseSchemaVersion: string;
   };
   evaluator: { kind: string; version: number };
-  modelPolicy: unknown;
   questions: Array<{
     id: string;
     stableKey: string;
@@ -56,47 +60,89 @@ export type LoadedGapRelease = {
     criticality: "low" | "medium" | "high" | "critical";
     title: string;
     requirementText: string;
-    recommendation: string;
     legalReferences: unknown;
     applicabilityOutcomeCodes: string[];
     questionStableKeys: string[];
   }>;
 };
 
-export async function getActiveGapAnalysisRelease(
+export type GapReleaseReader = {
+  getPublished: (input: {
+    releaseId: string;
+    locale: Locale;
+  }) => Promise<LoadedGapRelease | null>;
+  getActive: (input: {
+    releaseCode: string;
+    locale: Locale;
+  }) => Promise<LoadedGapRelease | null>;
+};
+
+export function createGapReleaseReader(input: {
+  loadPublished: GapReleaseReader["getPublished"];
+  loadActivePointer: (
+    releaseCode: string,
+  ) => Promise<{ gapAnalysisReleaseId: string } | null | undefined>;
+}): GapReleaseReader {
+  return {
+    getPublished: input.loadPublished,
+    async getActive({ releaseCode, locale }) {
+      const pointer = await input.loadActivePointer(releaseCode);
+      if (!pointer) return null;
+      return input.loadPublished({
+        releaseId: pointer.gapAnalysisReleaseId,
+        locale,
+      });
+    },
+  };
+}
+
+export async function loadActiveGapAnalysisReleasePointer(
   releaseCode: string,
-  locale: Locale,
 ) {
-  const active = await db.query.activeGapAnalysisReleases.findFirst({
+  return db.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
     where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),
   });
-  if (!active) return null;
-  return loadGapAnalysisRelease(active.gapAnalysisReleaseId, locale);
 }
 
 export async function loadGapAnalysisRelease(
   releaseId: string,
   locale: Locale,
 ): Promise<LoadedGapRelease | null> {
-  const release = await db.query.gapAnalysisReleases.findFirst({
+  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: eq(gapAnalysisReleases.id, releaseId),
   });
   if (!release || release.status !== "published") return null;
-  const questionnaireVersion = await db.query.questionnaireVersions.findFirst({
+  const gapModule = await db.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
+    where: eq(complianceModules.id, release.moduleId),
+  });
+  if (!gapModule) return null;
+  const frameworkVersion = await db.query.complianceFrameworkVersions.findFirst({ columns: { id: true, frameworkId: true, versionLabel: true, nameContentRevisionId: true, descriptionContentRevisionId: true, status: true, effectiveFrom: true, effectiveTo: true, createdAt: true },
+    where: eq(complianceFrameworkVersions.id, gapModule.frameworkVersionId),
+  });
+  if (!frameworkVersion) return null;
+  const questionnaireVersion = await db.query.questionnaireVersions.findFirst({ columns: { id: true, questionnaireId: true, versionLabel: true, titleContentRevisionId: true, status: true, createdAt: true, publishedAt: true },
     where: eq(questionnaireVersions.id, release.questionnaireVersionId),
   });
   if (!questionnaireVersion) return null;
-  const questionnaire = await db.query.questionnaires.findFirst({
+  const questionnaire = await db.query.questionnaires.findFirst({ columns: { id: true, moduleId: true, code: true, createdAt: true },
     where: eq(questionnaires.id, questionnaireVersion.questionnaireId),
   });
   if (!questionnaire) return null;
+  const requirementSetVersion =
+    await db.query.gapRequirementSetVersions.findFirst({ columns: { id: true, requirementSetId: true, versionLabel: true, titleContentRevisionId: true, status: true, contentHash: true, createdAt: true, publishedAt: true },
+      where: eq(
+        gapRequirementSetVersions.id,
+        release.requirementSetVersionId,
+      ),
+    });
+  if (!requirementSetVersion) return null;
 
-  const questionRows = await db.query.questions.findMany({
+  const questionRows = await db.query.questions.findMany({ columns: { id: true, questionnaireVersionId: true, stableKey: true, position: true, questionContentRevisionId: true, helpContentRevisionId: true, answerType: true, required: true, config: true, createdAt: true },
     where: eq(questions.questionnaireVersionId, questionnaireVersion.id),
     orderBy: [asc(questions.position)],
   });
   const optionRows = questionRows.length
-    ? await db.query.questionOptions.findMany({
+    ? await db.query.questionOptions.findMany({ columns: { id: true, questionId: true, stableValue: true, labelContentRevisionId: true, factOptionId: true, position: true, metadata: true },
         where: inArray(
           questionOptions.questionId,
           questionRows.map((question) => question.id),
@@ -104,33 +150,17 @@ export async function loadGapAnalysisRelease(
         orderBy: [asc(questionOptions.position)],
       })
     : [];
-  const contentRevisionIds = [
-    ...questionRows.flatMap((question) => [
-      question.questionContentRevisionId,
-      ...(question.helpContentRevisionId ? [question.helpContentRevisionId] : []),
-    ]),
-    ...optionRows.map((option) => option.labelContentRevisionId),
-  ];
-  const translations = contentRevisionIds.length
-    ? await db.query.contentTranslations.findMany({
-        where: inArray(contentTranslations.contentRevisionId, contentRevisionIds),
-      })
-    : [];
-  const translated = new Map<string, Map<string, string>>();
-  for (const row of translations) {
-    const values = translated.get(row.contentRevisionId) ?? new Map();
-    values.set(row.locale, row.value);
-    translated.set(row.contentRevisionId, values);
-  }
-  const text = (revisionId: string) => {
-    const values = translated.get(revisionId);
-    return values?.get(locale) ?? values?.get("de") ?? values?.get("en") ?? "";
-  };
-
   const members = await db
     .select({
       position: gapRequirementSetMembers.position,
-      requirement: gapRequirementVersions,
+      id: gapRequirementVersions.id,
+      stableRequirementId: gapRequirements.id,
+      code: gapRequirements.code,
+      criticality: gapRequirementVersions.criticality,
+      titleContentRevisionId: gapRequirementVersions.titleContentRevisionId,
+      requirementTextContentRevisionId:
+        gapRequirementVersions.requirementTextContentRevisionId,
+      legalReferences: gapRequirementVersions.legalReferences,
     })
     .from(gapRequirementSetMembers)
     .innerJoin(
@@ -140,6 +170,10 @@ export async function loadGapAnalysisRelease(
         gapRequirementVersions.id,
       ),
     )
+    .innerJoin(
+      gapRequirements,
+      eq(gapRequirementVersions.requirementId, gapRequirements.id),
+    )
     .where(
       eq(
         gapRequirementSetMembers.requirementSetVersionId,
@@ -147,7 +181,42 @@ export async function loadGapAnalysisRelease(
       ),
     )
     .orderBy(asc(gapRequirementSetMembers.position));
-  const rules = await db.query.gapAnalysisReleaseApplicabilityRules.findMany({
+  const contentRevisionIds = [
+    frameworkVersion.nameContentRevisionId,
+    frameworkVersion.descriptionContentRevisionId,
+    gapModule.nameContentRevisionId,
+    questionnaireVersion.titleContentRevisionId,
+    requirementSetVersion.titleContentRevisionId,
+    ...questionRows.flatMap((question) => [
+      question.questionContentRevisionId,
+      ...(question.helpContentRevisionId ? [question.helpContentRevisionId] : []),
+    ]),
+    ...optionRows.map((option) => option.labelContentRevisionId),
+    ...members.flatMap((requirement) => [
+      requirement.titleContentRevisionId,
+      requirement.requirementTextContentRevisionId,
+    ]),
+  ];
+  const translations = contentRevisionIds.length
+    ? await db.query.contentTranslations.findMany({ columns: { contentRevisionId: true, locale: true, value: true },
+        where: inArray(contentTranslations.contentRevisionId, contentRevisionIds),
+      })
+    : [];
+  const translated = new Map<string, Map<string, string>>();
+  for (const row of translations) {
+    const values = translated.get(row.contentRevisionId) ?? new Map();
+    values.set(row.locale, row.value);
+    translated.set(row.contentRevisionId, values);
+  }
+  const text = (revisionId: string) =>
+    resolveGapContentTranslation(
+      translated,
+      revisionId,
+      locale,
+      release.defaultLocale,
+    );
+
+  const rules = await db.query.gapAnalysisReleaseApplicabilityRules.findMany({ columns: { id: true, gapAnalysisReleaseId: true, requirementVersionId: true, conditions: true, createdAt: true },
     where: eq(
       gapAnalysisReleaseApplicabilityRules.gapAnalysisReleaseId,
       release.id,
@@ -162,9 +231,13 @@ export async function loadGapAnalysisRelease(
     releaseCode: release.releaseCode,
     versionLabel: release.versionLabel,
     moduleId: release.moduleId,
+    moduleTitle: text(gapModule.nameContentRevisionId),
     questionnaireId: questionnaire.id,
     questionnaireVersionId: questionnaireVersion.id,
-    questionnaireTitle: questionnaire.title,
+    questionnaireTitle: text(questionnaireVersion.titleContentRevisionId),
+    requirementSetTitle: text(
+      requirementSetVersion.titleContentRevisionId,
+    ),
     compatibleCheckReleaseId: release.compatibleCheckReleaseId,
     prompt: {
       name: release.promptName,
@@ -173,7 +246,6 @@ export async function loadGapAnalysisRelease(
       responseSchemaVersion: release.responseSchemaVersion,
     },
     evaluator: { kind: release.evaluatorKind, version: release.evaluatorVersion },
-    modelPolicy: release.modelPolicy,
     questions: questionRows.map((question) => ({
       id: question.id,
       stableKey: question.stableKey,
@@ -193,30 +265,24 @@ export async function loadGapAnalysisRelease(
           position: option.position,
         })),
     })),
-    requirements: members.map(({ position, requirement }) => {
+    requirements: members.map((requirement) => {
       const conditions = ruleByRequirement.get(requirement.id) ?? {
         applicabilityOutcomeCodes: [],
         questionStableKeys: [],
       };
       return {
         id: requirement.id,
-        stableRequirementId: requirement.requirementId,
+        stableRequirementId: requirement.stableRequirementId,
         code: requirement.code,
-        position,
+        position: requirement.position,
         criticality: requirement.criticality,
-        title: localize(requirement.title, locale),
-        requirementText: localize(requirement.requirementText, locale),
-        recommendation: localize(requirement.recommendation, locale),
+        title: text(requirement.titleContentRevisionId),
+        requirementText: text(requirement.requirementTextContentRevisionId),
         legalReferences: requirement.legalReferences,
         ...conditions,
       };
     }),
   };
-}
-
-function localize(value: unknown, locale: Locale) {
-  const candidate = value as Partial<Localized>;
-  return candidate[locale] ?? candidate.de ?? candidate.en ?? "";
 }
 
 function parseConditions(value: unknown) {
@@ -236,4 +302,17 @@ function parseConditions(value: unknown) {
         )
       : [],
   };
+}
+
+export const directGapReleaseReader = createGapReleaseReader({
+  loadPublished: ({ releaseId, locale }) =>
+    loadGapAnalysisRelease(releaseId, locale),
+  loadActivePointer: loadActiveGapAnalysisReleasePointer,
+});
+
+export async function getActiveGapAnalysisRelease(
+  releaseCode: string,
+  locale: Locale,
+) {
+  return directGapReleaseReader.getActive({ releaseCode, locale });
 }

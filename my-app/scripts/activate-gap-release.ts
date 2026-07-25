@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { activateGapAnalysisRelease } from "../src/server/gap-analysis/publishing/activate-release";
+import { activateGapAnalysisRelease } from "@/src/server/gap-analysis";
 
 async function main() {
   if (process.env.NODE_ENV === "production") {
@@ -17,7 +17,10 @@ async function main() {
 
 function readArgument(name: string) {
   const index = process.argv.indexOf(name);
-  const value = index >= 0 ? process.argv[index + 1] : undefined;
+  const value =
+    index >= 0
+      ? process.argv[index + 1]
+      : process.argv.slice(2).find((argument) => !argument.startsWith("-"));
   if (!value) throw new Error(`${name} is required`);
   return value;
 }

@@ -1,4 +1,4 @@
-import type { Nis2EntityRule } from "../../../applicability-check/rule-set-schema";
+import type { Nis2EntityRule } from "@/src/server/applicability-check/domain";
 
 export type RequiredLocale = "de" | "en";
 
@@ -130,6 +130,22 @@ export type Nis2ReleaseDefinition = {
   evaluatorVersion: 2 | 3;
   defaultLocale: RequiredLocale;
   effectiveFrom: string;
+  requiredCorpusFamilies: string[];
+  framework: {
+    code: string;
+    nameContentKey: string;
+    descriptionContentKey: string;
+  };
+  module: {
+    code: string;
+    nameContentKey: string;
+    moduleType: "questionnaire";
+    position: number;
+  };
+  questionnaire: {
+    code: string;
+    titleContentKey: string;
+  };
   content: LocalizedContentSource[];
   legalInstruments: LegalInstrumentSource[];
   sectors: Array<{ code: string; labelContentKey: string }>;

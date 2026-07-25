@@ -19,12 +19,15 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Dictionary, Locale } from "@/lib/i18n";
+import { formatDate as formatLocalizedDate } from "@/lib/i18n/format";
+import { localizeUiError } from "@/lib/i18n/errors";
 import type {
   OrganizationInvitationDto,
   OrganizationRole,
 } from "@/src/server/organizations/types";
 import { Loader2, Send } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { organizationsClient } from "@/src/client/organizations";
 
 type SerializedInvitation = SerializeDates<OrganizationInvitationDto>;
 
@@ -33,6 +36,7 @@ type OrganizationInvitePanelProps = {
   initialInvitations: SerializedInvitation[];
   labels: Dictionary["invite"];
   locale: Locale;
+  canManage: boolean;
 };
 
 type InviteState = {
@@ -64,6 +68,7 @@ export function OrganizationInvitePanel({
   initialInvitations,
   labels,
   locale,
+  canManage,
 }: OrganizationInvitePanelProps) {
   const [invitations, setInvitations] = useState(initialInvitations);
   const [inviteForm, setInviteForm] = useState<InviteState>({
@@ -71,6 +76,7 @@ export function OrganizationInvitePanel({
     role: "member",
   });
   const [isCreatingInvitation, setIsCreatingInvitation] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [notice, setNotice] = useState<RequestState>({
     message: null,
     tone: "default",
@@ -82,43 +88,61 @@ export function OrganizationInvitePanel({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch(
-        `/api/organizations/${organizationId}/invitations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(inviteForm),
-        },
-      );
-
-      const body = (await response.json()) as {
-        invitation?: SerializedInvitation;
-        error?: string;
-      };
-
-      if (!response.ok || !body.invitation) {
-        throw new Error(body.error ?? labels.createError);
-      }
-
-      setInvitations((current) => [body.invitation!, ...current]);
+      const result = await organizationsClient.invite(organizationId, inviteForm);
+      const invitation = result.data.invitation as SerializedInvitation;
+      setInvitations((current) => [
+        invitation,
+        ...current.map((candidate) =>
+          candidate.email === invitation.email && candidate.status === "pending"
+            ? { ...candidate, status: "revoked" as const }
+            : candidate,
+        ),
+      ]);
       setInviteForm((current) => ({
         email: "",
         role: current.role,
       }));
       setNotice({
-        message: `${labels.successPrefix} ${body.invitation.email} ${labels.successSuffix}`,
+        message: `${labels.successPrefix} ${invitation.email} ${labels.successSuffix}`,
         tone: "success",
       });
     } catch (error) {
       setNotice({
-        message:
-          error instanceof Error ? error.message : labels.createErrorFallback,
+        message: localizeUiError(error, {
+          fallback: labels.createErrorFallback,
+        }),
         tone: "error",
       });
     } finally {
       setIsCreatingInvitation(false);
+    }
+  }
+
+  async function handleInvitationAction(
+    invitation: SerializedInvitation,
+    action: "resend" | "revoke",
+  ) {
+    setPendingAction(invitation.id);
+    try {
+      const result = action === "resend"
+        ? await organizationsClient.resendInvitation(organizationId, invitation.id)
+        : await organizationsClient.revokeInvitation(organizationId, invitation.id);
+      setInvitations((current) => current.map((candidate) =>
+        candidate.id === invitation.id
+          ? result.data.invitation as SerializedInvitation
+          : candidate,
+      ));
+      setNotice({
+        message: action === "resend" ? labels.resent : labels.revoked,
+        tone: "success",
+      });
+    } catch (error) {
+      setNotice({
+        message: localizeUiError(error, { fallback: labels.actionError }),
+        tone: "error",
+      });
+    } finally {
+      setPendingAction(null);
     }
   }
 
@@ -138,7 +162,7 @@ export function OrganizationInvitePanel({
         </div>
       )}
 
-      <Card className="rounded-lg shadow-sm">
+      <Card className={cn("rounded-lg shadow-sm", !canManage && "hidden")}>
         <CardHeader>
           <CardTitle>{labels.title}</CardTitle>
           <CardDescription>
@@ -153,7 +177,7 @@ export function OrganizationInvitePanel({
                 <Input
                   id="invite-email"
                   type="email"
-                  placeholder="teammate@example.com"
+                  placeholder={labels.emailPlaceholder}
                   value={inviteForm.email}
                   onChange={(event) =>
                     setInviteForm((current) => ({
@@ -181,7 +205,7 @@ export function OrganizationInvitePanel({
                   <SelectContent>
                     {roleOptions.map((role) => (
                       <SelectItem key={role} value={role}>
-                        {role}
+                        {labels.roles[role]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -214,12 +238,12 @@ export function OrganizationInvitePanel({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          {invitations.length === 0 ? (
+          {invitations.filter((invitation) => invitation.status === "pending").length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
               {labels.empty}
             </div>
           ) : (
-            invitations.map((invitation) => (
+            invitations.filter((invitation) => invitation.status === "pending").map((invitation) => (
               <div
                 key={invitation.id}
                 className="flex flex-col gap-2 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -227,7 +251,8 @@ export function OrganizationInvitePanel({
                 <div>
                   <p className="font-medium">{invitation.email}</p>
                   <p className="text-sm text-muted-foreground">
-                    {labels.role}: {invitation.role} &middot; {labels.expires}{" "}
+                    {labels.role}: {labels.roles[invitation.role]} {" · "}
+                    {labels.expires}{" "}
                     {formatDate(
                       invitation.expiresAt,
                       locale,
@@ -235,14 +260,35 @@ export function OrganizationInvitePanel({
                     )}
                   </p>
                 </div>
-                <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
-                  {invitation.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border px-2.5 py-1 text-xs text-muted-foreground">
+                    {labels.statuses[invitation.status]}
+                  </span>
+                  {canManage && (
+                    <>
+                      <Button aria-label={`${labels.resend}: ${invitation.email}`} variant="outline" size="sm" disabled={pendingAction === invitation.id} onClick={() => handleInvitationAction(invitation, "resend")}>{labels.resend}</Button>
+                      <Button aria-label={`${labels.revoke}: ${invitation.email}`} variant="ghost" size="sm" disabled={pendingAction === invitation.id} onClick={() => handleInvitationAction(invitation, "revoke")}>{labels.revoke}</Button>
+                    </>
+                  )}
+                </div>
               </div>
             ))
           )}
         </CardContent>
       </Card>
+      {invitations.some((invitation) => invitation.status !== "pending") && (
+        <details className="rounded-lg border bg-card p-4">
+          <summary className="cursor-pointer font-medium">{labels.completedHistory}</summary>
+          <div className="mt-3 grid gap-2">
+            {invitations.filter((invitation) => invitation.status !== "pending").map((invitation) => (
+              <div key={invitation.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
+                <span>{invitation.email}</span>
+                <span className="text-muted-foreground">{labels.statuses[invitation.status]}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }
@@ -252,7 +298,5 @@ function formatDate(value: string | null, locale: Locale, fallback: string) {
     return fallback;
   }
 
-  return new Intl.DateTimeFormat(locale === "de" ? "de-DE" : "en-US", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+  return formatLocalizedDate(value, locale, { dateStyle: "medium" });
 }

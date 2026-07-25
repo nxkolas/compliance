@@ -44,8 +44,6 @@ async function main() {
       "gap_reassessment_drafts",
       "gap_reassessment_draft_documents",
       "action_plans",
-      "action_plan_reconciliations",
-      "action_plan_item_reconciliations",
       "audit_events",
     ];
     const rlsRows = await sql<{ relname: string; relrowsecurity: boolean }[]>`
@@ -54,11 +52,16 @@ async function main() {
       where relnamespace = 'public'::regnamespace
         and relname = any(${protectedTables})
     `;
-    if (
-      rlsRows.length !== protectedTables.length ||
-      rlsRows.some((row) => !row.relrowsecurity)
-    ) {
-      throw new Error("Server-only RLS is incomplete for gap-analysis tables");
+    const rlsByTable = new Map(
+      rlsRows.map((row) => [row.relname, row.relrowsecurity]),
+    );
+    const missingRls = protectedTables.filter(
+      (table) => rlsByTable.get(table) !== true,
+    );
+    if (missingRls.length) {
+      throw new Error(
+        `Server-only RLS is incomplete for: ${missingRls.join(", ")}`,
+      );
     }
     const triggerRows = await sql<{ tgname: string }[]>`
       select tgname from pg_trigger
@@ -98,7 +101,7 @@ async function main() {
         ) duplicate) as duplicate_active_plans
     `;
     if (!consistency || Object.values(consistency).some((count) => count > 0)) {
-      throw new Error("Reassessment or reconciliation consistency checks failed");
+      throw new Error("Gap and action-plan workflow consistency checks failed");
     }
     console.log(`Gap smoke test passed for ${release.release_code}/${release.version_label}.`);
   } finally {

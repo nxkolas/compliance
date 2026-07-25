@@ -1,75 +1,21 @@
 import { ProductModuleContent } from "@/components/product-module-content";
 import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getOrganizationForUser } from "@/src/server/organizations/service";
-import { notFound } from "next/navigation";
+import { getOrganizationDashboard } from "@/src/server/dashboard/service";
 import { connection } from "next/server";
+import { buildDashboardPresentation } from "@/lib/i18n/dashboard";
 
-type OrganizationPageProps = {
-  params: Promise<{
-    organizationId: string;
-  }>;
-};
-
-export default async function OrganizationPage({ params }: OrganizationPageProps) {
-  await connection();
-  const user = await requireAuth();
-  const dictionary = await getDictionary();
-  const { organizationId } = await params;
-  const organization = await getOrganizationForUser(user.id, organizationId);
-
-  if (!organization) {
-    notFound();
-  }
-
-  return (
-    <ProductModuleContent
-      title={dictionary.modules.dashboard.title}
-      description={dictionary.modules.dashboard.description}
-      metrics={dictionary.modules.dashboard.metrics}
-      cards={[
-        {
-          title: "Statusbereiche",
-          description: "Die wichtigsten Informationen fuer den ersten Blick.",
-          items: [
-            "Betroffenheitsstatus",
-            "Sicherheitsmassnahmen",
-            "Analysefortschritt",
-            "Kritische Bereiche",
-            "Dokumentenstatus",
-          ],
-        },
-        {
-          title: "Naechste Schritte",
-          description: "Aufgaben werden spaeter aus Analyse und Dokumentenpruefung abgeleitet.",
-          items: [
-            "Betroffenheitscheck starten",
-            "Gap-Analyse ausfuellen",
-            "Dokumente fuer KI-Pruefung hochladen",
-            "Massnahmen priorisieren",
-          ],
-        },
-        {
-          title: "Kritische Bereiche",
-          description: "Bereiche mit hohem Handlungsbedarf werden hier hervorgehoben.",
-          items: [
-            "Zugriffskontrolle",
-            "Backup & Recovery",
-            "Incident Response",
-            "Lieferkettensicherheit",
-          ],
-        },
-        {
-          title: "Berichtsstatus",
-          description: "PDF-Berichte werden spaeter aus dem aktuellen Arbeitsstand erzeugt.",
-          items: [
-            "Management-Zusammenfassung",
-            "Kritische Bereiche",
-            "Massnahmenliste",
-            "Dokumentenpruefung",
-          ],
-        },
-      ]}
-    />
+export default async function OrganizationPage({ params }: { params: Promise<{ organizationId: string }> }) {
+  await connection(); const user = await requireAuth(); const dictionary = await getDictionary(); const { organizationId } = await params;
+  const dashboard = await getOrganizationDashboard(user.id, organizationId);
+  const presentation = buildDashboardPresentation(
+    dashboard,
+    dictionary.modules.dashboard,
   );
+  return <ProductModuleContent
+    title={dictionary.modules.dashboard.title}
+    description={dictionary.modules.dashboard.description}
+    metrics={presentation.metrics}
+    cards={presentation.cards}
+  />;
 }

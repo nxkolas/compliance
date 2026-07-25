@@ -16,6 +16,7 @@ import { SidebarMenuButton } from "@/components/ui/sidebar";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { Inbox, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
+import { getLanguageOptions } from "@/lib/i18n/language-options";
 
 type ProfileMenuProps = {
   email: string | null;
@@ -28,6 +29,13 @@ type ProfileMenuProps = {
     sidebar?: Dictionary["sidebar"];
   };
 };
+
+export function getProfileMenuLanguageOptions(
+  locale: Locale,
+  languageNames: Dictionary["languages"],
+) {
+  return getLanguageOptions(locale, languageNames);
+}
 
 export function ProfileMenu({
   email,
@@ -135,6 +143,7 @@ function ProfileMenuContent({
           locale={locale}
           label={labels.common.language}
           languageNames={labels.languages}
+          options={getProfileMenuLanguageOptions(locale, labels.languages)}
         />
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
@@ -149,10 +158,10 @@ function ProfileMenuContent({
 }
 
 export function ProfileMenuFallback({
-  label = "Loading profile menu",
+  label,
   variant = "default",
 }: {
-  label?: string;
+  label: string;
   variant?: "default" | "sidebar";
 }) {
   if (variant === "sidebar") {

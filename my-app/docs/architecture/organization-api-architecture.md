@@ -1,230 +1,84 @@
-# Organization API Architecture
+# Internal API Architecture
 
-This is the backend contract for the first organization feature. No frontend
-components are required for this layer.
+Status: implemented baseline, updated 25 July 2026.
 
-## Design
+All internal JSON routes use the shared success/error envelopes in
+`src/contracts/common/envelopes.ts`. Routes authenticate, validate untrusted
+input with shared Zod contracts, and call a server service; authorization and
+business invariants never live only in UI code.
 
-The code is split into three layers:
+Browser code uses feature clients under `src/client`. Client Components do not
+call `fetch` directly, and Server Components call services rather than their
+own HTTP endpoints.
 
-- `app/api/.../route.ts`: Thin Next.js route handlers. They authenticate the
-  request, parse JSON, call a service, and return JSON.
-- `src/server/organizations/service.ts`: Business logic. This owns
-  authorization rules, validation, invitation token handling, and transactions.
-- `src/server/organizations/types.ts`: Request/response/domain types for this
-  feature.
-- `src/server/organizations/validation.ts`: Zod schemas for route params and
-  request bodies. Types for API inputs are inferred from these schemas.
+## Safety contracts
 
-Shared API helpers live in:
+- Mutating shared resources require `If-Match` and return version metadata.
+- Create-once or costly operations require `Idempotency-Key`.
+- Long work returns `202` with a durable common job DTO; `/api/jobs/:jobId`
+  provides authorized polling and cancellation.
+- Files upload directly to private storage using expiring upload sessions.
+- Original evidence, legal renditions, and reports are returned only through
+  authorized short-lived access links.
+- Organization capabilities and platform capabilities are disjoint. An
+  organization owner is not thereby a Platform Administrator.
 
-- `src/server/api/auth.ts`: Authenticated API user lookup through Supabase Auth.
-- `src/server/api/errors.ts`: Consistent JSON error responses.
-- `src/server/api/request.ts`: JSON body parsing and small request validators.
+## Domain surfaces
 
-Request data is validated at the API boundary with Zod before it reaches the
-service layer. This means route handlers validate untrusted JSON and route
-params, while services keep business rules such as role permissions,
-transactions, token hashing, and email ownership checks.
+The organization API covers organizations/members/invitations, dashboard,
+applicability, documents, asynchronous Gap analysis, action plans, reports, and
+append-only audit reads. The platform API under `/api/admin` covers the
+administrator registry, legal corpus catalog and ingestion, mandatory review,
+release evaluation/activation, monitors, jobs, and platform audit.
 
-## Routes
+Organization collection reads are status-explicit and use search-scoped opaque
+cursors. Management list items include one aggregated active-member count and
+the current member's effective actions; the compact switcher uses a separate,
+bounded active-only read.
 
-### `GET /api/organizations`
+Organization master data and AI-provider disclosure policy are read and
+updated together through `/api/organizations/:organizationId/settings`. The
+composite ETag contains both resource versions. The command locks and validates
+both versions before updating either row, performs one transaction, and writes
+separate audit events for the two logical resources.
 
-Returns all organizations where the current Supabase Auth user is a member.
+Archival is reversible. Only owners receive `organizations:archive`; only
+owners receive `members:manage-owners`. Administrators may manage non-owner
+members but cannot mutate owners or assign ownership. Every organization
+workspace route rejects archived organizations until an owner restores them.
+The final-active-owner invariant remains protected by the organization-level
+transaction lock.
 
-Response:
+Roster identity is projected from Supabase Auth into the RLS-enabled,
+browser-inaccessible `user_directory` table. Only normalized email and trusted
+`full_name` are stored. Authorized member reads join that safe projection and
+return an explicit fallback for unresolved historical identities.
 
-```json
-{
-  "organizations": []
-}
-```
+The complete route inventory is maintained in
+[API route inventory](./api-route-inventory.md).
 
-### `POST /api/organizations`
+Each audited business area exposes one public server module entry point:
+applicability, compliance, corpus, documents, Gap analysis, action plans,
+reports, uploads, jobs, and idempotency. Routes, pages, scripts, and worker
+orchestration import those public surfaces instead of private persistence
+files. Cross-module calls also go through public entries. Only schema,
+verification, and benchmark operator commands may access schema definitions
+directly.
 
-Creates an organization and automatically adds the current user as `owner`.
-The creation runs in one transaction so the organization cannot exist without
-its owner membership.
+Production Drizzle reads specify their columns. Full-row relational reads and
+direct `src/db/schema` imports outside the allowed infrastructure surfaces are
+rejected by the persistence architecture test. This keeps DTO shape,
+authorization, and ownership checks inside the owning module.
 
-Request:
+## Grounded AI boundary
 
-```json
-{
-  "name": "Example GmbH",
-  "legalName": "Example GmbH",
-  "country": "DE"
-}
-```
+Every production Gap generation request is a worker job. The worker calls the
+Grounding Gateway, which owns retrieval, authority/date policy, provenance,
+prompt-injection isolation, citation validation, and abstention. Compliance and
+Gap releases cannot activate without immutable corpus-release pins.
 
-Response:
-
-```json
-{
-  "organization": {
-    "id": "..."
-  }
-}
-```
-
-### `GET /api/organizations/:organizationId/invitations`
-
-Lists invitations for one organization. Only `owner` and `admin` members can
-call this route.
-
-Response:
-
-```json
-{
-  "invitations": []
-}
-```
-
-### `POST /api/organizations/:organizationId/invitations`
-
-Creates an invitation. Only `owner` and `admin` members can invite users.
-The API returns the raw token once. The database stores only `token_hash`.
-
-Request:
-
-```json
-{
-  "email": "teammate@example.com",
-  "role": "member",
-  "expiresInDays": 14
-}
-```
-
-Response:
-
-```json
-{
-  "invitation": {
-    "id": "...",
-    "email": "teammate@example.com",
-    "role": "member",
-    "status": "pending",
-    "token": "raw-token-for-link"
-  }
-}
-```
-
-Frontend link shape later:
-
-```text
-/invitations/accept?token=<raw-token-for-link>
-```
-
-There is no email adapter yet. The next layer can either send email through a
-provider or show/copy the invitation link in the UI.
-
-### `POST /api/organization-invitations/accept`
-
-Accepts an invitation for the logged-in user. The logged-in user's Supabase
-Auth email must match the invitation email.
-
-Request:
-
-```json
-{
-  "token": "raw-token-from-link"
-}
-```
-
-Response:
-
-```json
-{
-  "invitation": {
-    "id": "...",
-    "status": "accepted",
-    "acceptedByUserId": "..."
-  }
-}
-```
-
-## Business Rules
-
-- A logged-in user can create an organization.
-- The creator becomes `owner`.
-- Only `owner` and `admin` can list/create invitations for an organization.
-- Invitations can grant `admin`, `member`, or `auditor`.
-- Invitations cannot grant `owner`.
-- Creating a new pending invitation for the same organization and email revokes
-  older pending invitations for that same pair.
-- Invitation tokens are generated with `crypto.randomBytes`.
-- Only a SHA-256 token hash is stored in the database.
-- Invitations expire after 14 days by default.
-- `expiresInDays` must be between 1 and 90.
-- Accepting an invitation creates or reactivates an `organization_memberships`
-  row.
-- Accepting an invitation is idempotent for already-existing memberships because
-  the upsert sets the invited role and `active` status.
-
-## Error Shapes
-
-All API errors return:
-
-```json
-{
-  "error": "Message",
-  "details": []
-}
-```
-
-Common statuses:
-
-- `400`: Invalid input.
-- `401`: User is not logged in.
-- `403`: User is logged in but not allowed.
-- `404`: Organization or invitation not found.
-- `409`: Invitation was already accepted/revoked/expired.
-- `410`: Invitation expired during acceptance.
-- `500`: Unexpected server error.
-
-## Example Client Calls
-
-Create organization:
-
-```ts
-await fetch("/api/organizations", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    name: "Example GmbH",
-    legalName: "Example GmbH",
-    country: "DE",
-  }),
-});
-```
-
-Invite member:
-
-```ts
-await fetch(`/api/organizations/${organizationId}/invitations`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    email: "teammate@example.com",
-    role: "member",
-  }),
-});
-```
-
-Accept invitation:
-
-```ts
-await fetch("/api/organization-invitations/accept", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    token,
-  }),
-});
-```
+Gap revision JSON contains metadata only. Findings, evidence, and review
+resolutions are loaded from normalized tables through the Gap module. Typed AI
+input tables and typed artifact/report lineage tables replace the former
+polymorphic target-kind/target-ID records, so target existence and ownership
+are enforced by PostgreSQL foreign keys.

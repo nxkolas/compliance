@@ -1,4 +1,4 @@
-import type { PublishedComplianceRelease } from "../compliance/runtime-release/types";
+import type { PublishedComplianceRelease } from "@/src/server/compliance/domain";
 import type { StoredRuleEvaluationResult } from "./rule-evaluation-schema";
 import { parseRuleSetDocument } from "./rule-set-schema";
 

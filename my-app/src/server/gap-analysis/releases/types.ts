@@ -21,7 +21,6 @@ export type GapRequirementDefinition = {
   criticality: "low" | "medium" | "high" | "critical";
   title: LocalizedText;
   requirementText: LocalizedText;
-  recommendation: LocalizedText;
   legalReferences: Array<{
     label: LocalizedText;
     url: string;
@@ -36,6 +35,7 @@ export type GapAnalysisReleaseDefinition = {
   versionLabel: string;
   title: LocalizedText;
   compatibleCheck: { checkCode: string; versionLabel: string };
+  requiredCorpusFamilies: string[];
   defaultLocale: "de" | "en";
   prompt: {
     name: string;
@@ -44,11 +44,6 @@ export type GapAnalysisReleaseDefinition = {
     responseSchemaVersion: string;
   };
   evaluator: { kind: string; version: number };
-  modelPolicy: {
-    provider: string;
-    model: string;
-    maxRequirementsPerBatch: number;
-  };
   questionnaire: {
     code: string;
     title: LocalizedText;
@@ -56,7 +51,7 @@ export type GapAnalysisReleaseDefinition = {
   };
   requirementSet: {
     code: string;
-    title: string;
+    title: LocalizedText;
     versionLabel: string;
     requirements: GapRequirementDefinition[];
   };

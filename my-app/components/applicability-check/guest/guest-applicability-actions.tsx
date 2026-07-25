@@ -2,10 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import type { Dictionary } from "@/lib/i18n";
+import { localizeUiError } from "@/lib/i18n/errors";
 import { Building2, LogIn, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { applicabilityCheckClient } from "@/src/client/applicability-check";
 
 type GuestApplicabilityActionsProps = {
   labels: Dictionary["modules"]["applicabilityCheck"]["guest"];
@@ -38,28 +40,12 @@ export function GuestApplicabilityActions({
     setError(null);
 
     try {
-      const response = await fetch("/api/guest/applicability-check/result", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...(guestToken
-            ? {
-                "x-guest-applicability-token": guestToken,
-              }
-            : {}),
-        },
-        body: JSON.stringify({ checkId: guestCheckId }),
-      });
-
-      if (!response.ok) {
-        const body = (await response.json()) as { error?: string };
-        throw new Error(body.error ?? labels.deleteError);
-      }
+      await applicabilityCheckClient.deleteGuest(guestCheckId, guestToken);
 
       router.replace("/");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : labels.deleteError);
+      setError(localizeUiError(caught, { fallback: labels.deleteError }));
     } finally {
       setIsDeleting(false);
     }

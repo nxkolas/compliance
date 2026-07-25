@@ -2,18 +2,22 @@ import { LoginForm } from "../../../components/login-form"; // Mit geschweiften 
 import { getDictionary } from "@/lib/i18n";
 import { Suspense } from "react";
 import Image from "next/image";
+import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 
 export default function Page() {
   return (
     <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
+      <Suspense fallback={null}>
+        <PublicLanguageSwitcher />
+      </Suspense>
       
 {/* HINTERGRUND: Der Pfad zeigt jetzt genau in den images-Ordner */}
 <div className="absolute inset-0 z-0 pointer-events-none">
   <Image 
     src="/images/Startseite.svg" // <-- Hier "/images/" davor packen und das große "S" beachten!
-    alt="Hintergrund" 
+    alt=""
     fill
-    className="object-cover"
+    className="pointer-events-none object-cover"
     priority
   />
 </div>

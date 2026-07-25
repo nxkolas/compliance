@@ -12,10 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
-import type { OrganizationDto } from "@/src/server/organizations/types";
+import { localizeUiError } from "@/lib/i18n/errors";
+import { organizationsClient } from "@/src/client/organizations";
 import { Building2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { applicabilityCheckClient } from "@/src/client/applicability-check";
+import { CountrySelector } from "./country-selector";
+import type { Locale } from "@/lib/i18n-config";
 
 type CreateOrganizationState = {
   name: string;
@@ -26,11 +30,6 @@ type CreateOrganizationState = {
 type RequestState = {
   message: string | null;
   tone: "default" | "success" | "error";
-};
-
-type CreateOrganizationResponse = {
-  organization?: OrganizationDto;
-  error?: string;
 };
 
 type RedirectAfterCreate = "organization" | "assessment";
@@ -50,10 +49,12 @@ export function OrganizationCreateForm({
   labels,
   redirectAfterCreate = "organization",
   guestApplicabilityClaim,
+  locale,
 }: {
   labels: Dictionary["organizationForm"];
   redirectAfterCreate?: RedirectAfterCreate;
   guestApplicabilityClaim?: GuestApplicabilityClaim;
+  locale: Locale;
 }) {
   const router = useRouter();
   const [organizationForm, setOrganizationForm] = useState(
@@ -71,50 +72,18 @@ export function OrganizationCreateForm({
     setNotice({ message: null, tone: "default" });
 
     try {
-      const response = await fetch("/api/organizations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result = await organizationsClient.create({
           name: organizationForm.name,
           legalName: organizationForm.legalName || null,
           country: organizationForm.country || "DE",
-        }),
       });
-
-      const body = (await response.json()) as CreateOrganizationResponse;
-
-      if (!response.ok || !body.organization) {
-        throw new Error(body.error ?? labels.createError);
-      }
-
-      const organizationHref = `/tool/organizations/${body.organization.id}`;
+      const organizationHref = `/tool/organizations/${result.data.organization.id}`;
       if (guestApplicabilityClaim) {
-        const claimResponse = await fetch(
-          "/api/guest/applicability-check/claim",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(guestApplicabilityClaim.token
-                ? {
-                    "x-guest-applicability-token":
-                      guestApplicabilityClaim.token,
-                  }
-                : {}),
-            },
-            body: JSON.stringify({
-              organizationId: body.organization.id,
-              checkId: guestApplicabilityClaim.checkId,
-            }),
-          },
-        );
-        const claimBody = (await claimResponse.json()) as { error?: string };
-
-        if (!claimResponse.ok) {
-          throw new Error(claimBody.error ?? labels.createErrorFallback);
-        }
+        await applicabilityCheckClient.claim({
+          organizationId: result.data.organization.id,
+          checkId: guestApplicabilityClaim.checkId,
+          token: guestApplicabilityClaim.token,
+        });
 
         router.push(`${organizationHref}/applicability-check/result`);
         router.refresh();
@@ -129,8 +98,9 @@ export function OrganizationCreateForm({
       router.refresh();
     } catch (error) {
       setNotice({
-        message:
-          error instanceof Error ? error.message : labels.createErrorFallback,
+        message: localizeUiError(error, {
+          fallback: labels.createErrorFallback,
+        }),
         tone: "error",
       });
     } finally {
@@ -154,7 +124,7 @@ export function OrganizationCreateForm({
         </div>
       )}
 
-      <Card className="rounded-lg shadow-sm">
+      <Card className="w-full rounded-xl shadow-sm">
         <CardHeader>
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-background">
@@ -169,12 +139,13 @@ export function OrganizationCreateForm({
           </div>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4" onSubmit={handleCreateOrganization}>
+          <form className="grid gap-6" onSubmit={handleCreateOrganization}>
+            <div className="grid gap-5 lg:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="organization-name">{labels.organizationName}</Label>
               <Input
                 id="organization-name"
-                placeholder="Example GmbH"
+                placeholder={labels.organizationNamePlaceholder}
                 value={organizationForm.name}
                 onChange={(event) =>
                   setOrganizationForm((current) => ({
@@ -189,7 +160,7 @@ export function OrganizationCreateForm({
               <Label htmlFor="legal-name">{labels.legalName}</Label>
               <Input
                 id="legal-name"
-                placeholder="Example GmbH"
+                placeholder={labels.legalNamePlaceholder}
                 value={organizationForm.legalName}
                 onChange={(event) =>
                   setOrganizationForm((current) => ({
@@ -199,21 +170,22 @@ export function OrganizationCreateForm({
                 }
               />
             </div>
-            <div className="grid gap-2 sm:max-w-40">
+            <div className="grid gap-2 lg:col-span-2 lg:max-w-md">
               <Label htmlFor="country">{labels.country}</Label>
-              <Input
+              <CountrySelector
                 id="country"
-                maxLength={2}
                 value={organizationForm.country}
-                onChange={(event) =>
+                locale={locale}
+                onChange={(country) =>
                   setOrganizationForm((current) => ({
                     ...current,
-                    country: event.target.value.toUpperCase(),
+                    country,
                   }))
                 }
               />
             </div>
-            <Button type="submit" disabled={isCreatingOrganization}>
+            </div>
+            <Button type="submit" className="justify-self-start" disabled={isCreatingOrganization}>
               {isCreatingOrganization ? (
                 <Loader2 className="animate-spin" />
               ) : (

@@ -3,6 +3,9 @@ import {
   activeComplianceCheckReleases,
   complianceCheckReleaseContentRevisions,
   complianceCheckReleases,
+  complianceFrameworkVersions,
+  complianceFrameworks,
+  complianceModules,
   contentItems,
   contentRevisions,
   contentTranslations,
@@ -29,6 +32,9 @@ import {
 
 export type RuntimeReleaseHeader = {
   release: typeof complianceCheckReleases.$inferSelect;
+  frameworkVersion: typeof complianceFrameworkVersions.$inferSelect;
+  framework: typeof complianceFrameworks.$inferSelect;
+  module: typeof complianceModules.$inferSelect;
   questionnaireVersion: typeof questionnaireVersions.$inferSelect;
   questionnaire: typeof questionnaires.$inferSelect;
   ruleSet: typeof ruleSets.$inferSelect;
@@ -75,16 +81,51 @@ export type RuntimeReleaseDataSource = {
   }): Promise<RuntimeContentRow[]>;
 };
 
+export type TranslationFallbackWarning = {
+  event: "compliance.translation_fallback";
+  checkReleaseId: string;
+  releaseVersionLabel: string;
+  contentRevisionId: string;
+  stableKey: string;
+  requestedLocale: Locale;
+  fallbackLocale: string;
+};
+
+type RuntimeReleaseAssemblyOptions = {
+  onTranslationFallback?: (warning: TranslationFallbackWarning) => void;
+};
+
 export const postgresRuntimeReleaseDataSource: RuntimeReleaseDataSource = {
   async loadHeader(checkReleaseId) {
     const rows = await db
       .select({
         release: complianceCheckReleases,
+        frameworkVersion: complianceFrameworkVersions,
+        framework: complianceFrameworks,
+        module: complianceModules,
         questionnaireVersion: questionnaireVersions,
         questionnaire: questionnaires,
         ruleSet: ruleSets,
       })
       .from(complianceCheckReleases)
+      .innerJoin(
+        complianceModules,
+        eq(complianceCheckReleases.moduleId, complianceModules.id),
+      )
+      .innerJoin(
+        complianceFrameworkVersions,
+        eq(
+          complianceModules.frameworkVersionId,
+          complianceFrameworkVersions.id,
+        ),
+      )
+      .innerJoin(
+        complianceFrameworks,
+        eq(
+          complianceFrameworkVersions.frameworkId,
+          complianceFrameworks.id,
+        ),
+      )
       .innerJoin(
         questionnaireVersions,
         eq(
@@ -225,6 +266,7 @@ export async function assemblePublishedComplianceRelease(
   checkReleaseId: string,
   locale: Locale,
   source: RuntimeReleaseDataSource = postgresRuntimeReleaseDataSource,
+  options: RuntimeReleaseAssemblyOptions = {},
 ): Promise<PublishedComplianceRelease | null> {
   const header = await source.loadHeader(checkReleaseId);
   if (
@@ -281,19 +323,53 @@ export async function assemblePublishedComplianceRelease(
       row.value,
     ]),
   );
+  const stableKeyByRevision = new Map(
+    contentRows.map((row) => [row.contentRevisionId, row.stableKey]),
+  );
+  const revisionByStableKey = new Map(
+    contentRows.map((row) => [row.stableKey, row.contentRevisionId]),
+  );
+  const warnedStableKeys = new Set<string>();
+  const emitFallbackWarning = (
+    stableKey: string,
+    contentRevisionId: string,
+  ) => {
+    if (warnedStableKeys.has(stableKey)) return;
+    warnedStableKeys.add(stableKey);
+    const warning: TranslationFallbackWarning = {
+      event: "compliance.translation_fallback",
+      checkReleaseId: header.release.id,
+      releaseVersionLabel: header.release.versionLabel,
+      contentRevisionId,
+      stableKey,
+      requestedLocale: locale,
+      fallbackLocale: header.release.defaultLocale,
+    };
+    if (options.onTranslationFallback) {
+      options.onTranslationFallback(warning);
+    } else {
+      console.warn(JSON.stringify(warning));
+    }
+  };
   const resolveRevision = (revisionId: string | null) => {
     if (!revisionId) return null;
-    const value =
-      contentByRevisionAndLocale.get(`${revisionId}\u0000${locale}`) ??
-      contentByRevisionAndLocale.get(
-        `${revisionId}\u0000${header.release.defaultLocale}`,
+    const requested = contentByRevisionAndLocale.get(
+      `${revisionId}\u0000${locale}`,
+    );
+    if (requested !== undefined) return requested;
+    const fallback = contentByRevisionAndLocale.get(
+      `${revisionId}\u0000${header.release.defaultLocale}`,
+    );
+    if (fallback !== undefined) {
+      emitFallbackWarning(
+        stableKeyByRevision.get(revisionId) ?? revisionId,
+        revisionId,
       );
-    if (value === undefined) {
-      throw new Error(
-        `Published release content ${revisionId} has no runtime translation`,
-      );
+      return fallback;
     }
-    return value;
+    throw new Error(
+      `Published release content ${revisionId} has no runtime translation`,
+    );
   };
   const contentByStableKeyAndLocale = new Map(
     contentRows.map((row) => [
@@ -302,14 +378,23 @@ export async function assemblePublishedComplianceRelease(
     ]),
   );
   const contentByStableKey = Object.fromEntries(
-    [...new Set(contentRows.map((row) => row.stableKey))].map((stableKey) => [
-      stableKey,
-      contentByStableKeyAndLocale.get(`${stableKey}\u0000${locale}`) ??
-        contentByStableKeyAndLocale.get(
-          `${stableKey}\u0000${header.release.defaultLocale}`,
-        ) ??
-        stableKey,
-    ]),
+    [...new Set(contentRows.map((row) => row.stableKey))].map((stableKey) => {
+      const requested = contentByStableKeyAndLocale.get(
+        `${stableKey}\u0000${locale}`,
+      );
+      if (requested !== undefined) return [stableKey, requested];
+      const fallback = contentByStableKeyAndLocale.get(
+        `${stableKey}\u0000${header.release.defaultLocale}`,
+      );
+      if (fallback !== undefined) {
+        emitFallbackWarning(
+          stableKey,
+          revisionByStableKey.get(stableKey) ?? stableKey,
+        );
+        return [stableKey, fallback];
+      }
+      return [stableKey, stableKey];
+    }),
   );
 
   const optionsByQuestionId = new Map<string, RuntimeOptionRow[]>();
@@ -388,10 +473,17 @@ export async function assemblePublishedComplianceRelease(
     aggregateHash: header.release.aggregateHash,
     defaultLocale: header.release.defaultLocale,
     locale,
+    frameworkName:
+      resolveRevision(header.frameworkVersion.nameContentRevisionId) ?? "",
+    frameworkDescription:
+      resolveRevision(header.frameworkVersion.descriptionContentRevisionId) ??
+      "",
     moduleId: header.release.moduleId,
+    moduleName: resolveRevision(header.module.nameContentRevisionId) ?? "",
     questionnaireId: header.questionnaire.id,
     questionnaireVersionId: header.questionnaireVersion.id,
-    questionnaireTitle: header.questionnaire.title,
+    questionnaireTitle:
+      resolveRevision(header.questionnaireVersion.titleContentRevisionId) ?? "",
     questionnaireCode: header.questionnaire.code,
     ruleSet: header.ruleSet,
     scopeModelVersionId: header.release.scopeModelVersionId,

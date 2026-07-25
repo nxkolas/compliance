@@ -1,19 +1,23 @@
-import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { requireApiUser } from "@/src/server/api/auth";
-import { getErrorResponse } from "@/src/server/api/errors";
-import { approveGapRevision } from "@/src/server/gap-analysis/review-service";
+import { ApiError } from "@/src/server/api/errors";
+import { apiRoute } from "@/src/server/api/handler";
 
-export async function POST(_: Request, context: { params: Promise<{ organizationId: string; revisionId: string }> }) {
-  try {
-    const user = await requireApiUser();
-    const { organizationId, revisionId } = await context.params;
-    const revision = await approveGapRevision({ userId: user.id, organizationId, revisionId });
-    revalidatePath(`/tool/organizations/${organizationId}/gap-analysis`);
-    revalidatePath(`/tool/organizations/${organizationId}/action-plan`);
-    return NextResponse.json({ revision });
-  } catch (error) {
-    const response = getErrorResponse(error);
-    return NextResponse.json(response.body, { status: response.status });
-  }
-}
+export const POST = apiRoute(
+  async ({
+    routeContext,
+  }: {
+    request: Request;
+    routeContext: {
+      params: Promise<{ organizationId: string; revisionId: string }>;
+    };
+  }) => {
+    await requireApiUser();
+    await routeContext.params;
+    throw new ApiError(
+      409,
+      "Generate the action plan to finalize the Gap Analysis",
+      undefined,
+      "GAP_FINALIZATION_REQUIRED",
+    );
+  },
+);

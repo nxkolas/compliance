@@ -91,6 +91,53 @@ describe("immutable NIS2 release compiler", () => {
     expect(() => compileRelease(release)).toThrow(/Missing en translation/);
   });
 
+  it("rejects missing metadata content references", () => {
+    const release = structuredClone(nis2ReleaseDefinition);
+    release.framework.nameContentKey = "missing.framework.name";
+
+    expect(() => compileRelease(release)).toThrow(
+      /Unknown content key missing\.framework\.name/,
+    );
+  });
+
+  it("rejects blank metadata translations in either required locale", () => {
+    for (const [key, locale] of [
+      [nis2ReleaseDefinition.framework.descriptionContentKey, "de"],
+      [nis2ReleaseDefinition.module.nameContentKey, "en"],
+      [nis2ReleaseDefinition.questionnaire.titleContentKey, "de"],
+    ] as const) {
+      const release = structuredClone(nis2ReleaseDefinition);
+      const item = release.content.find((candidate) => candidate.stableKey === key);
+      if (!item) throw new Error(`Metadata fixture ${key} is missing`);
+      item.translations[locale] = " ";
+
+      expect(() => compileRelease(release)).toThrow(
+        new RegExp(`Missing ${locale} translation`),
+      );
+    }
+  });
+
+  it("changes aggregate identity for metadata wording or reference changes", () => {
+    const original = compileRelease(nis2ReleaseDefinition);
+    const wordingChange = structuredClone(nis2ReleaseDefinition);
+    const moduleName = wordingChange.content.find(
+      (item) => item.stableKey === wordingChange.module.nameContentKey,
+    );
+    if (!moduleName) throw new Error("Module metadata fixture is missing");
+    moduleName.translations.en += " updated";
+
+    const referenceChange = structuredClone(nis2ReleaseDefinition);
+    referenceChange.module.nameContentKey =
+      referenceChange.questionnaire.titleContentKey;
+
+    expect(compileRelease(wordingChange).hashes.aggregate).not.toBe(
+      original.hashes.aggregate,
+    );
+    expect(compileRelease(referenceChange).hashes.aggregate).not.toBe(
+      original.hashes.aggregate,
+    );
+  });
+
   it("rejects generic entity-description placeholders", () => {
     const release = structuredClone(nis2ReleaseDefinition);
     const descriptionKey = release.entityTypes[0].descriptionContentKey;

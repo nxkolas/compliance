@@ -37,8 +37,83 @@ describe("compliance runtime release", () => {
     );
     expect(release?.questions[0].questionText).toBe("Question EN");
     expect(release?.questions[0].options[0].label).toBe("Option EN");
+    expect(release).toMatchObject({
+      frameworkName: "Framework EN",
+      frameworkDescription: "Framework description EN",
+      moduleName: "Module EN",
+      questionnaireTitle: "Questionnaire EN",
+    });
     expect(release?.contentByStableKey["result.outcome"]).toBe("Outcome EN");
     expect(release?.questionIndexByFactKey.fact_one).toBe(0);
+  });
+
+  it("emits a structured warning only when English content falls back to German", async () => {
+    const warnings: unknown[] = [];
+    const source = fixtureSource([]);
+    source.loadContent = async () =>
+      fixtureContent().filter((row) => row.locale === "de");
+
+    const release = await assemblePublishedComplianceRelease(
+      "release-1",
+      "en",
+      source,
+      { onTranslationFallback: (warning) => warnings.push(warning) },
+    );
+
+    expect(release?.questions[0].questionText).toBe("Frage DE");
+    expect(release?.moduleName).toBe("Modul DE");
+    expect(warnings).toContainEqual({
+      event: "compliance.translation_fallback",
+      checkReleaseId: "release-1",
+      releaseVersionLabel: "2026-v1",
+      contentRevisionId: "content-question",
+      stableKey: "question.one",
+      requestedLocale: "en",
+      fallbackLocale: "de",
+    });
+    expect(warnings).toContainEqual({
+      event: "compliance.translation_fallback",
+      checkReleaseId: "release-1",
+      releaseVersionLabel: "2026-v1",
+      contentRevisionId: "content-module-name",
+      stableKey: "module.name",
+      requestedLocale: "en",
+      fallbackLocale: "de",
+    });
+    expect(
+      warnings.every(
+        (warning) =>
+          !JSON.stringify(warning).includes("Frage DE") &&
+          !JSON.stringify(warning).includes("Option DE"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not warn when the requested translation is present", async () => {
+    const warnings: unknown[] = [];
+
+    await assemblePublishedComplianceRelease(
+      "release-1",
+      "en",
+      fixtureSource([]),
+      { onTranslationFallback: (warning) => warnings.push(warning) },
+    );
+
+    expect(warnings).toEqual([]);
+  });
+
+  it("fails when neither requested nor fallback content is present", async () => {
+    const source = fixtureSource([]);
+    source.loadContent = async () =>
+      fixtureContent().filter(
+        (row) => row.contentRevisionId !== "content-question",
+      );
+
+    await expect(
+      assemblePublishedComplianceRelease("release-1", "en", source),
+    ).rejects.toThrow(
+      "Published release content content-question has no runtime translation",
+    );
   });
 
   it("runs all four post-header operations in one concurrent dependency layer", async () => {
@@ -214,6 +289,7 @@ function fixtureHeader(): RuntimeReleaseHeader {
       checkCode: "check",
       versionLabel: "2026-v1",
       moduleId: "module-1",
+      questionnaireId: "questionnaire-1",
       questionnaireVersionId: "questionnaire-version-1",
       scopeModelVersionId: "scope-model-version-1",
       scopeThresholdSetId: "threshold-1",
@@ -225,6 +301,7 @@ function fixtureHeader(): RuntimeReleaseHeader {
       effectiveTo: null,
       status: "published",
       aggregateHash: "hash",
+      corpusReleaseSetHash: null,
       publishedAt: new Date("2026-01-01T00:00:00Z"),
       createdAt: new Date("2026-01-01T00:00:00Z"),
     },
@@ -232,6 +309,7 @@ function fixtureHeader(): RuntimeReleaseHeader {
       id: "questionnaire-version-1",
       questionnaireId: "questionnaire-1",
       versionLabel: "v1",
+      titleContentRevisionId: "content-questionnaire-title",
       status: "published",
       createdAt: new Date("2026-01-01T00:00:00Z"),
       publishedAt: new Date("2026-01-01T00:00:00Z"),
@@ -240,7 +318,30 @@ function fixtureHeader(): RuntimeReleaseHeader {
       id: "questionnaire-1",
       moduleId: "module-1",
       code: "questionnaire",
-      title: "Questionnaire",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+    },
+    module: {
+      id: "module-1",
+      frameworkVersionId: "framework-version-1",
+      code: "module",
+      nameContentRevisionId: "content-module-name",
+      moduleType: "questionnaire",
+      position: 10,
+    },
+    frameworkVersion: {
+      id: "framework-version-1",
+      frameworkId: "framework-1",
+      versionLabel: "v1",
+      nameContentRevisionId: "content-framework-name",
+      descriptionContentRevisionId: "content-framework-description",
+      status: "published",
+      effectiveFrom: null,
+      effectiveTo: null,
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+    },
+    framework: {
+      id: "framework-1",
+      code: "framework",
       createdAt: new Date("2026-01-01T00:00:00Z"),
     },
     ruleSet: {
@@ -312,6 +413,14 @@ function fixtureProvisions(): RuntimeProvisionRow[] {
 
 function fixtureContent(): RuntimeContentRow[] {
   return [
+    { contentRevisionId: "content-framework-name", stableKey: "framework.name", locale: "de", value: "Framework DE" },
+    { contentRevisionId: "content-framework-name", stableKey: "framework.name", locale: "en", value: "Framework EN" },
+    { contentRevisionId: "content-framework-description", stableKey: "framework.description", locale: "de", value: "Framework-Beschreibung DE" },
+    { contentRevisionId: "content-framework-description", stableKey: "framework.description", locale: "en", value: "Framework description EN" },
+    { contentRevisionId: "content-module-name", stableKey: "module.name", locale: "de", value: "Modul DE" },
+    { contentRevisionId: "content-module-name", stableKey: "module.name", locale: "en", value: "Module EN" },
+    { contentRevisionId: "content-questionnaire-title", stableKey: "questionnaire.title", locale: "de", value: "Fragebogen DE" },
+    { contentRevisionId: "content-questionnaire-title", stableKey: "questionnaire.title", locale: "en", value: "Questionnaire EN" },
     { contentRevisionId: "content-question", stableKey: "question.one", locale: "de", value: "Frage DE" },
     { contentRevisionId: "content-question", stableKey: "question.one", locale: "en", value: "Question EN" },
     { contentRevisionId: "content-option", stableKey: "option.yes", locale: "de", value: "Option DE" },

@@ -8,29 +8,53 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   localeCookieName,
-  locales,
   type Locale,
 } from "@/lib/i18n-config";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Check, Languages } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import {
+  getLanguageOptions,
+  type LanguageOption,
+} from "@/lib/i18n/language-options";
 
 type LanguageSwitcherProps = {
   locale: Locale;
   label: string;
   languageNames: Readonly<Record<Locale, string>>;
+  options?: readonly LanguageOption[];
 };
+
+type LanguageButtonsProps = Pick<
+  LanguageSwitcherProps,
+  "locale" | "languageNames"
+> & {
+  ariaLabel: string;
+  className?: string;
+};
+
+function useLocaleChange() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  function setLocale(nextLocale: Locale) {
+    document.cookie = `${localeCookieName}=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+    startTransition(() => router.refresh());
+  }
+
+  return { isPending, setLocale };
+}
 
 export function LanguageSwitcher({
   locale,
   label,
   languageNames,
+  options,
 }: LanguageSwitcherProps) {
-  const router = useRouter();
-
-  function setLocale(nextLocale: Locale) {
-    document.cookie = `${localeCookieName}=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
-    router.refresh();
-  }
+  const { setLocale } = useLocaleChange();
+  const languageOptions = options ?? getLanguageOptions(locale, languageNames);
 
   return (
     <DropdownMenuSub>
@@ -39,16 +63,50 @@ export function LanguageSwitcher({
         {label}
       </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
-        {locales.map((availableLocale) => (
+        {languageOptions.map((option) => (
           <DropdownMenuItem
-            key={availableLocale}
-            onClick={() => setLocale(availableLocale)}
+            key={option.locale}
+            onClick={() => setLocale(option.locale)}
           >
-            <span className="min-w-20">{languageNames[availableLocale]}</span>
-            {locale === availableLocale && <Check className="ml-auto h-4 w-4" />}
+            <span className="min-w-20">{option.label}</span>
+            {option.active && <Check className="ml-auto h-4 w-4" />}
           </DropdownMenuItem>
         ))}
       </DropdownMenuSubContent>
     </DropdownMenuSub>
+  );
+}
+
+export function LanguageButtons({
+  locale,
+  languageNames,
+  ariaLabel,
+  className,
+}: LanguageButtonsProps) {
+  const { isPending, setLocale } = useLocaleChange();
+
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center rounded-lg border bg-background/90 p-1 shadow-sm backdrop-blur",
+        className,
+      )}
+      aria-label={ariaLabel}
+    >
+      {getLanguageOptions(locale, languageNames).map((option) => (
+        <Button
+          key={option.locale}
+          type="button"
+          size="sm"
+          variant={option.active ? "secondary" : "ghost"}
+          aria-pressed={option.active}
+          disabled={isPending}
+          onClick={() => setLocale(option.locale)}
+          className="min-w-20"
+        >
+          {option.label}
+        </Button>
+      ))}
+    </div>
   );
 }

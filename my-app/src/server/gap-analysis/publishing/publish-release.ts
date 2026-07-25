@@ -6,6 +6,7 @@ import {
   contentRevisions,
   contentTranslations,
   gapAnalysisReleaseApplicabilityRules,
+  gapAnalysisReleaseCorpusReleases,
   gapAnalysisReleases,
   gapRequirements,
   gapRequirementSetMembers,
@@ -18,15 +19,22 @@ import {
   questions,
 } from "@/src/db/schema";
 import { and, desc, eq } from "drizzle-orm";
-import { contentHash } from "../../compliance/publishing/canonical-json";
+import { contentHash } from "@/src/server/compliance";
 import type { GapAnalysisReleaseDefinition, LocalizedText } from "../releases/types";
 import { compileGapAnalysisRelease } from "./compile-release";
+import { resolvePublishableCorpusPins } from "@/src/server/corpus";
+import {
+  assertExactBilingualTranslations,
+  assertRequirementContentPins,
+  requirementContentKeys,
+  requirementContentSources,
+} from "./content-keys";
 
 export async function publishGapAnalysisRelease(
   definition: GapAnalysisReleaseDefinition,
 ) {
   const compiled = compileGapAnalysisRelease(definition);
-  const existing = await db.query.gapAnalysisReleases.findFirst({
+  const existing = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: and(
       eq(gapAnalysisReleases.releaseCode, definition.releaseCode),
       eq(gapAnalysisReleases.versionLabel, definition.versionLabel),
@@ -39,7 +47,11 @@ export async function publishGapAnalysisRelease(
   }
 
   return db.transaction(async (tx) => {
-    const compatibleRelease = await tx.query.complianceCheckReleases.findFirst({
+    const corpus = await resolvePublishableCorpusPins(
+      tx,
+      definition.requiredCorpusFamilies,
+    );
+    const compatibleRelease = await tx.query.complianceCheckReleases.findFirst({ columns: { id: true, checkCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, scopeModelVersionId: true, scopeThresholdSetId: true, ruleSetId: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, effectiveFrom: true, effectiveTo: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
       where: and(
         eq(complianceCheckReleases.checkCode, definition.compatibleCheck.checkCode),
         eq(
@@ -55,56 +67,33 @@ export async function publishGapAnalysisRelease(
     ) {
       throw new Error("Compatible applicability release is not published");
     }
-    const applicabilityModule = await tx.query.complianceModules.findFirst({
+    const applicabilityModule = await tx.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
       where: eq(complianceModules.id, compatibleRelease.moduleId),
     });
     if (!applicabilityModule) throw new Error("Compatible module is missing");
 
-    await tx
-      .insert(complianceModules)
-      .values({
-        frameworkVersionId: applicabilityModule.frameworkVersionId,
-        code: "gap_analysis",
-        name: "Gap-Analyse",
-        moduleType: "questionnaire",
-        position: 20,
-      })
-      .onConflictDoNothing();
-    const gapModule = await tx.query.complianceModules.findFirst({
-      where: and(
-        eq(
-          complianceModules.frameworkVersionId,
-          applicabilityModule.frameworkVersionId,
-        ),
-        eq(complianceModules.code, "gap_analysis"),
-      ),
-    });
-    if (!gapModule || gapModule.moduleType !== "questionnaire") {
-      throw new Error("Gap-analysis module is unavailable or conflicting");
-    }
-
     const contentRevisionByKey = new Map<string, string>();
-    const contentSources = createQuestionnaireContent(definition);
+    const contentSources = createContentSources(definition);
     for (const source of contentSources) {
       await tx
         .insert(contentItems)
         .values({ stableKey: source.key, format: "plain_text" })
         .onConflictDoNothing();
-      const item = await tx.query.contentItems.findFirst({
+      const item = await tx.query.contentItems.findFirst({ columns: { id: true, stableKey: true, format: true, createdAt: true, updatedAt: true },
         where: eq(contentItems.stableKey, source.key),
       });
       if (!item || item.format !== "plain_text") {
         throw new Error(`Conflicting content item ${source.key}`);
       }
       const hash = contentHash(source.translations);
-      let revision = await tx.query.contentRevisions.findFirst({
+      let revision = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
         where: and(
           eq(contentRevisions.contentItemId, item.id),
           eq(contentRevisions.contentHash, hash),
         ),
       });
       if (!revision) {
-        const latest = await tx.query.contentRevisions.findFirst({
+        const latest = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
           where: eq(contentRevisions.contentItemId, item.id),
           orderBy: [desc(contentRevisions.revisionNumber)],
         });
@@ -125,6 +114,15 @@ export async function publishGapAnalysisRelease(
           })),
         );
       }
+      const persistedTranslations =
+        await tx.query.contentTranslations.findMany({ columns: { contentRevisionId: true, locale: true, value: true },
+          where: eq(contentTranslations.contentRevisionId, revision.id),
+        });
+      assertExactBilingualTranslations(
+        source.key,
+        source.translations,
+        persistedTranslations,
+      );
       contentRevisionByKey.set(source.key, revision.id);
     }
     const contentRevisionId = (key: string) => {
@@ -132,21 +130,60 @@ export async function publishGapAnalysisRelease(
       if (!id) throw new Error(`Content revision ${key} is missing`);
       return id;
     };
+    const metadataKeys = definitionMetadataContentKeys(definition);
+    const moduleNameContentRevisionId = contentRevisionId(metadataKeys.module);
 
-    const [questionnaire] = await tx
+    await tx
+      .insert(complianceModules)
+      .values({
+        frameworkVersionId: applicabilityModule.frameworkVersionId,
+        code: "gap_analysis",
+        nameContentRevisionId: moduleNameContentRevisionId,
+        moduleType: "questionnaire",
+        position: 20,
+      })
+      .onConflictDoNothing();
+    const gapModule = await tx.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
+      where: and(
+        eq(
+          complianceModules.frameworkVersionId,
+          applicabilityModule.frameworkVersionId,
+        ),
+        eq(complianceModules.code, "gap_analysis"),
+      ),
+    });
+    if (
+      !gapModule ||
+      gapModule.frameworkVersionId !== applicabilityModule.frameworkVersionId ||
+      gapModule.moduleType !== "questionnaire" ||
+      gapModule.position !== 20 ||
+      gapModule.nameContentRevisionId !== moduleNameContentRevisionId
+    ) {
+      throw new Error("Gap-analysis module is unavailable or conflicting");
+    }
+
+    await tx
       .insert(questionnaires)
       .values({
         moduleId: gapModule.id,
         code: definition.questionnaire.code,
-        title: definition.questionnaire.title.de,
       })
-      .returning();
+      .onConflictDoNothing();
+    const questionnaire = await tx.query.questionnaires.findFirst({ columns: { id: true, moduleId: true, code: true, createdAt: true },
+      where: and(
+        eq(questionnaires.moduleId, gapModule.id),
+        eq(questionnaires.code, definition.questionnaire.code),
+      ),
+    });
     if (!questionnaire) throw new Error("Could not create gap questionnaire");
     const [questionnaireVersion] = await tx
       .insert(questionnaireVersions)
       .values({
         questionnaireId: questionnaire.id,
         versionLabel: definition.versionLabel,
+        titleContentRevisionId: contentRevisionId(
+          metadataKeys.questionnaire,
+        ),
         status: "published",
         publishedAt: new Date(),
       })
@@ -187,10 +224,9 @@ export async function publishGapAnalysisRelease(
       .insert(gapRequirementSets)
       .values({
         code: definition.requirementSet.code,
-        title: definition.requirementSet.title,
       })
       .onConflictDoNothing();
-    const requirementSet = await tx.query.gapRequirementSets.findFirst({
+    const requirementSet = await tx.query.gapRequirementSets.findFirst({ columns: { id: true, code: true, createdAt: true },
       where: eq(gapRequirementSets.code, definition.requirementSet.code),
     });
     if (!requirementSet) throw new Error("Could not create requirement set");
@@ -199,6 +235,9 @@ export async function publishGapAnalysisRelease(
       .values({
         requirementSetId: requirementSet.id,
         versionLabel: definition.requirementSet.versionLabel,
+        titleContentRevisionId: contentRevisionId(
+          metadataKeys.requirementSet,
+        ),
         status: "published",
         contentHash: compiled.hashes.requirementSet,
         publishedAt: new Date(),
@@ -210,14 +249,19 @@ export async function publishGapAnalysisRelease(
 
     const requirementVersionByCode = new Map<string, string>();
     for (const source of definition.requirementSet.requirements) {
+      const contentKeys = requirementContentKeys(definition, source.code);
+      const titleContentRevisionId = contentRevisionId(contentKeys.title);
+      const requirementTextContentRevisionId = contentRevisionId(
+        contentKeys.text,
+      );
       await tx.insert(gapRequirements).values({ code: source.code }).onConflictDoNothing();
-      const stableRequirement = await tx.query.gapRequirements.findFirst({
+      const stableRequirement = await tx.query.gapRequirements.findFirst({ columns: { id: true, code: true, createdAt: true },
         where: eq(gapRequirements.code, source.code),
       });
       if (!stableRequirement) {
         throw new Error(`Could not create stable requirement ${source.code}`);
       }
-      let requirement = await tx.query.gapRequirementVersions.findFirst({
+      let requirement = await tx.query.gapRequirementVersions.findFirst({ columns: { id: true, requirementId: true, versionLabel: true, criticality: true, titleContentRevisionId: true, requirementTextContentRevisionId: true, legalReferences: true, contentHash: true, createdAt: true },
         where: and(
           eq(gapRequirementVersions.requirementId, stableRequirement.id),
           eq(gapRequirementVersions.versionLabel, source.versionLabel),
@@ -229,17 +273,22 @@ export async function publishGapAnalysisRelease(
           `Requirement ${source.code}/${source.versionLabel} already exists with different content`,
         );
       }
+      if (requirement) {
+        assertRequirementContentPins(
+          `${source.code}/${source.versionLabel}`,
+          requirement,
+          { titleContentRevisionId, requirementTextContentRevisionId },
+        );
+      }
       if (!requirement) {
         [requirement] = await tx
           .insert(gapRequirementVersions)
           .values({
             requirementId: stableRequirement.id,
-            code: source.code,
             versionLabel: source.versionLabel,
             criticality: source.criticality,
-            title: source.title,
-            requirementText: source.requirementText,
-            recommendation: source.recommendation,
+            titleContentRevisionId,
+            requirementTextContentRevisionId,
             legalReferences: source.legalReferences,
             contentHash: requirementHash,
           })
@@ -260,6 +309,7 @@ export async function publishGapAnalysisRelease(
         releaseCode: definition.releaseCode,
         versionLabel: definition.versionLabel,
         moduleId: gapModule.id,
+        questionnaireId: questionnaire.id,
         questionnaireVersionId: questionnaireVersion.id,
         requirementSetVersionId: requirementSetVersion.id,
         compatibleCheckReleaseId: compatibleRelease.id,
@@ -269,14 +319,21 @@ export async function publishGapAnalysisRelease(
         responseSchemaVersion: definition.prompt.responseSchemaVersion,
         evaluatorKind: definition.evaluator.kind,
         evaluatorVersion: definition.evaluator.version,
-        modelPolicy: definition.modelPolicy,
         defaultLocale: definition.defaultLocale,
         status: "published",
         aggregateHash: compiled.hashes.aggregate,
+        corpusReleaseSetHash: corpus.releaseSetHash,
         publishedAt: new Date(),
       })
       .returning();
     if (!release) throw new Error("Could not create gap release");
+    await tx.insert(gapAnalysisReleaseCorpusReleases).values(
+      corpus.pins.map((pin) => ({
+        gapAnalysisReleaseId: release.id,
+        familyId: pin.familyId,
+        corpusReleaseId: pin.releaseId,
+      })),
+    );
     await tx.insert(gapAnalysisReleaseApplicabilityRules).values(
       definition.requirementSet.requirements.map((source) => ({
         gapAnalysisReleaseId: release.id,
@@ -299,18 +356,41 @@ export async function publishGapAnalysisRelease(
   });
 }
 
-function createQuestionnaireContent(definition: GapAnalysisReleaseDefinition) {
-  return definition.questionnaire.questions.flatMap((question) => {
-    const prefix = questionContentPrefix(definition, question.stableKey);
-    return [
-      { key: `${prefix}.question`, translations: question.text },
-      { key: `${prefix}.help`, translations: question.help },
-      ...question.options.map((option) => ({
-        key: `${prefix}.option.${option.stableValue}`,
-        translations: option.label,
-      })),
-    ];
-  }) satisfies Array<{ key: string; translations: LocalizedText }>;
+function createContentSources(definition: GapAnalysisReleaseDefinition) {
+  const metadataKeys = definitionMetadataContentKeys(definition);
+  return [
+    { key: metadataKeys.module, translations: definition.title },
+    {
+      key: metadataKeys.questionnaire,
+      translations: definition.questionnaire.title,
+    },
+    {
+      key: metadataKeys.requirementSet,
+      translations: definition.requirementSet.title,
+    },
+    ...definition.questionnaire.questions.flatMap((question) => {
+      const prefix = questionContentPrefix(definition, question.stableKey);
+      return [
+        { key: `${prefix}.question`, translations: question.text },
+        { key: `${prefix}.help`, translations: question.help },
+        ...question.options.map((option) => ({
+          key: `${prefix}.option.${option.stableValue}`,
+          translations: option.label,
+        })),
+      ];
+    }),
+    ...requirementContentSources(definition),
+  ] satisfies Array<{ key: string; translations: LocalizedText }>;
+}
+
+function definitionMetadataContentKeys(
+  definition: GapAnalysisReleaseDefinition,
+) {
+  return {
+    module: `${definition.releaseCode}.module.name`,
+    questionnaire: `${definition.releaseCode}.questionnaire.${definition.questionnaire.code}.title`,
+    requirementSet: `${definition.releaseCode}.requirement-set.${definition.requirementSet.code}.title`,
+  };
 }
 
 function questionContentPrefix(

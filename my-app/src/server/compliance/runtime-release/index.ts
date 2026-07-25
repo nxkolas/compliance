@@ -19,5 +19,4 @@ export type {
   RuntimeReleaseOption,
 } from "./types";
 export { optionIndexKey } from "./types";
-
-export const NIS2_CHECK_CODE = "nis2_applicability";
+export { NIS2_CHECK_CODE } from "./constants";

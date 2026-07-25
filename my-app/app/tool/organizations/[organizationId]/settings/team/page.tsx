@@ -1,100 +1,65 @@
+import { connection } from "next/server";
+import { notFound } from "next/navigation";
 import { OrganizationInvitePanel } from "@/components/organizations/organization-invite-panel";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { OrganizationMemberRoster } from "@/components/organizations/organization-member-roster";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
+import { resolveOrganizationCapabilities } from "@/src/server/auth/capability-service";
 import {
   getOrganizationForUser,
   listOrganizationInvitations,
+  listOrganizationMembersPage,
 } from "@/src/server/organizations/service";
-import { Building2 } from "lucide-react";
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
 
-type OrganizationTeamPageProps = {
-  params: Promise<{
-    organizationId: string;
-  }>;
-};
+type Props = { params: Promise<{ organizationId: string }> };
 
-export default async function OrganizationTeamPage({
-  params,
-}: OrganizationTeamPageProps) {
+export default async function OrganizationTeamPage({ params }: Props) {
   await connection();
   const user = await requireAuth();
-  const dictionary = await getDictionary();
-  const locale = await getLocale();
   const { organizationId } = await params;
-  const organization = await getOrganizationForUser(user.id, organizationId);
-
-  if (!organization) {
-    notFound();
-  }
-
-  const invitations = await listOrganizationInvitations(user.id, organization.id);
+  const [dictionary, locale, organization, authorization, memberResult] = await Promise.all([
+    getDictionary(),
+    getLocale(),
+    getOrganizationForUser(user.id, organizationId),
+    resolveOrganizationCapabilities(user.id, organizationId),
+    listOrganizationMembersPage({ userId: user.id, organizationId, limit: 100 }),
+  ]);
+  if (!organization) notFound();
+  const canManage = authorization.capabilities.has("members:manage");
+  const invitations = canManage
+    ? await listOrganizationInvitations(user.id, organizationId)
+    : [];
 
   return (
     <div className="flex w-full flex-col gap-8">
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold">
-            {organization.name} {dictionary.organizations.teamTitle}
-          </h1>
-          <p className="max-w-2xl text-muted-foreground">
-            {dictionary.organizations.teamDescription}
-          </p>
-        </div>
-      </section>
-
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-background">
-              <Building2 className="h-4 w-4" />
-            </span>
-            <div>
-              <CardTitle>{dictionary.organizations.details}</CardTitle>
-              <CardDescription>
-                {organization.legalName ||
-                  dictionary.organizations.legalNameEmpty}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-          <span className="rounded-md border px-2.5 py-1">
-            {organization.country ?? "DE"}
-          </span>
-        </CardContent>
-      </Card>
-
+      <header className="grid gap-2">
+        <h1 className="text-3xl font-bold">{organization.name} · {dictionary.organizations.teamTitle}</h1>
+        <p className="max-w-2xl text-muted-foreground">{dictionary.organizations.teamDescription}</p>
+      </header>
+      <OrganizationMemberRoster
+        organizationId={organizationId}
+        initialMembers={serialize(memberResult.members)}
+        controls={memberResult.controls}
+        labels={dictionary.teamManagement}
+      />
       <OrganizationInvitePanel
-        organizationId={organization.id}
-        initialInvitations={serializeForClient(invitations)}
+        organizationId={organizationId}
+        initialInvitations={serialize(invitations)}
         labels={dictionary.invite}
         locale={locale}
+        canManage={canManage}
       />
     </div>
   );
 }
 
-function serializeForClient<T>(value: T): JSONValue<T> {
-  return JSON.parse(JSON.stringify(value)) as JSONValue<T>;
+function serialize<T>(value: T): Serialized<T> {
+  return JSON.parse(JSON.stringify(value)) as Serialized<T>;
 }
-
-type JSONValue<T> = T extends null
-  ? null
-  : T extends Date
-    ? string
-    : T extends Date | null
-      ? string | null
-      : T extends Array<infer U>
-        ? Array<JSONValue<U>>
-        : T extends object
-          ? { [K in keyof T]: JSONValue<T[K]> }
-          : T;
+type Serialized<T> = T extends Date
+  ? string
+  : T extends Array<infer U>
+    ? Serialized<U>[]
+    : T extends object
+      ? { [K in keyof T]: Serialized<T[K]> }
+      : T;

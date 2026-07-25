@@ -1,26 +1,99 @@
 import { describe, expect, it, vi } from "vitest";
 import { requireApprovedApplicabilityArtifact } from "@/src/server/gap-analysis/assessment-service";
+import {
+  fixtureCheckReleaseId,
+  storedApplicabilityResult,
+} from "./support/stored-applicability-result";
 
 vi.hoisted(() => {
   process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/test";
 });
 
 describe("gap-assessment applicability prerequisite", () => {
-  it("accepts only an approved artifact for the compatible release", () => {
-    const result = requireApprovedApplicabilityArtifact("release-1", [
-      { id: "old", checkReleaseId: "release-0", status: "approved" },
-      { id: "generated", checkReleaseId: "release-1", status: "generated" },
-      { id: "approved", checkReleaseId: "release-1", status: "approved" },
-    ]);
-    expect(result.id).toBe("approved");
+  it("accepts only a parsed positive approved artifact for the compatible release", () => {
+    const result = requireApprovedApplicabilityArtifact(
+      fixtureCheckReleaseId,
+      [
+        {
+          id: "approved",
+          checkReleaseId: fixtureCheckReleaseId,
+          status: "approved",
+          result: storedApplicabilityResult(),
+        },
+      ],
+    );
+    expect(result).toMatchObject({
+      artifactRevisionId: "approved",
+      outcome: "essential_entity",
+    });
   });
 
-  it("fails closed for generated or incompatible artifacts", () => {
+  it("rejects a compatible approved non-positive artifact with structured details", () => {
     expect(() =>
-      requireApprovedApplicabilityArtifact("release-1", [
-        { id: "generated", checkReleaseId: "release-1", status: "generated" },
-        { id: "other", checkReleaseId: "release-0", status: "approved" },
+      requireApprovedApplicabilityArtifact(fixtureCheckReleaseId, [
+        {
+          id: "unsupported",
+          checkReleaseId: fixtureCheckReleaseId,
+          status: "approved",
+          result: storedApplicabilityResult({
+            outcome: "clarification_required",
+            countryCode: "FR",
+            unresolvedFactCodes: ["unresolved_unsupported_profile"],
+          }),
+        },
       ]),
-    ).toThrow(/approved applicability result/i);
+    ).toThrow(
+      expect.objectContaining({
+        status: 409,
+        code: "GAP_APPLICABILITY_NOT_ELIGIBLE",
+        details: {
+          outcome: "clarification_required",
+          countryCode: "FR",
+          unresolvedFactCodes: ["unresolved_unsupported_profile"],
+        },
+      }),
+    );
+  });
+
+  it("keeps release, approval, and malformed failures distinct", () => {
+    expect(() =>
+      requireApprovedApplicabilityArtifact(fixtureCheckReleaseId, []),
+    ).toThrow(expect.objectContaining({ code: "GAP_APPLICABILITY_MISSING" }));
+    expect(() =>
+      requireApprovedApplicabilityArtifact(fixtureCheckReleaseId, [
+        {
+          id: "other",
+          checkReleaseId: "00000000-0000-4000-8000-000000000099",
+          status: "approved",
+          result: storedApplicabilityResult(),
+        },
+      ]),
+    ).toThrow(
+      expect.objectContaining({
+        code: "GAP_APPLICABILITY_RELEASE_INCOMPATIBLE",
+      }),
+    );
+    expect(() =>
+      requireApprovedApplicabilityArtifact(fixtureCheckReleaseId, [
+        {
+          id: "generated",
+          checkReleaseId: fixtureCheckReleaseId,
+          status: "generated",
+          result: storedApplicabilityResult(),
+        },
+      ]),
+    ).toThrow(
+      expect.objectContaining({ code: "GAP_APPLICABILITY_NOT_APPROVED" }),
+    );
+    expect(() =>
+      requireApprovedApplicabilityArtifact(fixtureCheckReleaseId, [
+        {
+          id: "invalid",
+          checkReleaseId: fixtureCheckReleaseId,
+          status: "approved",
+          result: { outcome: "essential_entity" },
+        },
+      ]),
+    ).toThrow(expect.objectContaining({ code: "GAP_APPLICABILITY_INVALID" }));
   });
 });

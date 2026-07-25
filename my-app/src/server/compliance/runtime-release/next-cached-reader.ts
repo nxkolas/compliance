@@ -1,23 +1,22 @@
-import { cacheLife } from "next/cache";
+import { unstable_cache } from "next/cache";
 import { assemblePublishedComplianceRelease } from "./postgres-assembler";
 import { createRuntimeReleaseReader } from "./direct-reader";
 import { loadActiveReleasePointer } from "./postgres-assembler";
 
-async function loadCachedPublished(
-  checkReleaseId: string,
-  locale: "de" | "en",
-) {
-  "use cache";
-  cacheLife("max");
-  const release = await assemblePublishedComplianceRelease(
-    checkReleaseId,
-    locale,
-  );
-  if (!release) {
-    throw new PublishedReleaseNotFoundError(checkReleaseId);
-  }
-  return release;
-}
+const loadCachedPublished = unstable_cache(
+  async (checkReleaseId: string, locale: "de" | "en") => {
+    const release = await assemblePublishedComplianceRelease(
+      checkReleaseId,
+      locale,
+    );
+    if (!release) {
+      throw new PublishedReleaseNotFoundError(checkReleaseId);
+    }
+    return release;
+  },
+  ["published-compliance-release"],
+  { revalidate: false },
+);
 
 class PublishedReleaseNotFoundError extends Error {
   constructor(checkReleaseId: string) {
