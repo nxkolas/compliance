@@ -20,20 +20,20 @@ export async function handleReportRender(job: BackgroundJobRecord) {
   const [report] = await db.update(reports).set({ state: "rendering", updatedAt: new Date() })
     .where(and(eq(reports.id, reportId), eq(reports.jobId, job.id), eq(reports.state, "queued"))).returning();
   if (!report) {
-    const existing = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: and(eq(reports.id, reportId), eq(reports.jobId, job.id)) });
+    const existing = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: { RAW: (table, operators) => (and(eq(table.id, reportId), eq(table.jobId, job.id))) ?? operators.sql`true` } });
     if (existing?.state === "ready") return { type: "report", id: existing.id };
     throw new Error("Report is unavailable for rendering");
   }
   const snapshot = snapshotSchema.parse(report.inputSnapshot);
   const pdf = await renderComplianceReport({ reportId, organizationId: job.organizationId, locale: report.locale as "de" | "en", snapshot, inputHash: report.inputHash });
   const outputHash = createHash("sha256").update(pdf).digest("hex");
-  const currentJob = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: eq(jobs.id, job.id) });
+  const currentJob = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, job.id)) ?? operators.sql`true` } });
   if (currentJob?.state === "cancellation_requested") throw Object.assign(new Error("Report rendering cancelled"), { name: "JobCancellationError" });
   const path = `${job.organizationId}/${report.id}.pdf`;
   const storage = getSupabaseAdminClient().storage.from(REPORT_STORAGE_BUCKET);
   const { error } = await storage.upload(path, pdf, { contentType: "application/pdf", upsert: true });
   if (error) throw new Error(`Could not store report: ${error.message}`);
-  const afterUpload = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: eq(jobs.id, job.id) });
+  const afterUpload = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, job.id)) ?? operators.sql`true` } });
   if (afterUpload?.state === "cancellation_requested") {
     await storage.remove([path]);
     throw Object.assign(new Error("Report rendering cancelled"), { name: "JobCancellationError" });

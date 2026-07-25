@@ -1,13 +1,5 @@
 import { db } from "@/src/db";
-import {
-  activeGapAnalysisReleases,
-  assessments,
-  auditEvents,
-  gapAnalysisReleases,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-  questionnaireVersions,
-} from "@/src/db/schema";
+import { assessments, auditEvents, generatedArtifactRevisions, generatedArtifacts } from "@/src/db/schema";
 import { and, eq, ne } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
@@ -37,17 +29,17 @@ export async function createOrOpenGapAssessment(
 ) {
   await assertCanContributeToOrganization(userId, organizationId);
   const active = await db.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
-    where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),
+    where: { RAW: (table, operators) => (eq(table.releaseCode, releaseCode)) ?? operators.sql`true` },
   });
   if (!active) throw new ApiError(503, "No active gap-analysis release");
   const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-    where: eq(gapAnalysisReleases.id, active.gapAnalysisReleaseId),
+    where: { RAW: (table, operators) => (eq(table.id, active.gapAnalysisReleaseId)) ?? operators.sql`true` },
   });
   if (!release || release.status !== "published") {
     throw new ApiError(503, "The active gap-analysis release is unavailable");
   }
   const questionnaireVersion = await db.query.questionnaireVersions.findFirst({ columns: { id: true, questionnaireId: true, versionLabel: true, titleContentRevisionId: true, status: true, createdAt: true, publishedAt: true },
-    where: eq(questionnaireVersions.id, release.questionnaireVersionId),
+    where: { RAW: (table, operators) => (eq(table.id, release.questionnaireVersionId)) ?? operators.sql`true` },
   });
   if (!questionnaireVersion) {
     throw new ApiError(503, "The gap-analysis questionnaire is unavailable");
@@ -75,12 +67,12 @@ export async function createOrOpenGapAssessment(
     applicabilityCandidates,
   );
   const existing = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.organizationId, organizationId),
-      eq(assessments.moduleId, release.moduleId),
-      eq(assessments.gapAnalysisReleaseId, release.id),
-      eq(assessments.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, organizationId),
+      eq(table.moduleId, release.moduleId),
+      eq(table.gapAnalysisReleaseId, release.id),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
   });
   if (existing) return existing;
 
@@ -125,9 +117,9 @@ export async function createOrOpenGapAssessment(
 
 export async function getGapAssessment(userId: string, organizationId: string, assessmentId: string) {
   await assertCanContributeToOrganization(userId, organizationId);
-  const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true }, where: and(
-    eq(assessments.id, assessmentId), eq(assessments.organizationId, organizationId),
-  ) });
+  const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true }, where: { RAW: (table, operators) => (and(
+    eq(table.id, assessmentId), eq(table.organizationId, organizationId),
+  )) ?? operators.sql`true` } });
   if (!assessment) throw new ApiError(404, "Gap assessment not found", undefined, "GAP_ASSESSMENT_NOT_FOUND");
   return assessment;
 }

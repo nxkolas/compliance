@@ -1,8 +1,14 @@
-# Development database reset, schema push, and reseed
+# Historical development database reset, schema push, and reseed
 
-This runbook recreates the application state in an existing **disposable,
-non-production** database. It combines the repository's older Supabase
-security sequence with the newer API/corpus rollout sequence.
+> **Historical cutover record (2026-07-24): do not execute this procedure for
+> current operations.** It documents a completed destructive remediation and
+> retains its original commands as evidence. Use the current
+> [Drizzle schema-change workflow](drizzle-workflow.md) instead. Ordinary
+> schema changes must not clear, reset, or reseed the database and no longer
+> use the two-pass constraint sequence or `push --strict`.
+
+This document described how the application state was recreated in a
+**disposable, non-production** database during that historical cutover.
 
 For the 2026-07-24 rollout failure analysis and preventive actions, see
 [`reset-and-reseed-postmortem-2026-07-24.md`](reset-and-reseed-postmortem-2026-07-24.md).

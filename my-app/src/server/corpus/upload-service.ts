@@ -1,15 +1,6 @@
 import { createHash } from "node:crypto";
 import { db } from "@/src/db";
-import {
-  backgroundJobs,
-  legalSourceProcessingGenerations,
-  legalSourceRenditions,
-  legalSources,
-  legalSourceVersions,
-  platformAuditEvents,
-  uploadSessionResults,
-  uploadSessions,
-} from "@/src/db/schema";
+import { backgroundJobs, legalSourceProcessingGenerations, legalSourceRenditions, legalSourceVersions, platformAuditEvents, uploadSessionResults, uploadSessions } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
 import { createUploadSession, verifyUploadedObject } from "@/src/server/uploads";
 import { getSupabaseAdminClient } from "../supabase-admin";
@@ -31,7 +22,7 @@ export async function createLegalSourceUploadSession(input: {
   sha256?: string;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:curate");
-  const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalSources.id, input.sourceId) });
+  const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, input.sourceId)) ?? operators.sql`true` } });
   if (!source || source.withdrawnAt) throw new ApiError(404, "Legal source not found", undefined, "LEGAL_SOURCE_NOT_FOUND");
   return createUploadSession({
     userId: input.actorUserId,
@@ -82,23 +73,23 @@ export async function completeLegalSourceUpload(input: {
   }
   if (verified.state === "completed") {
     const completedResult = await db.query.uploadSessionResults.findFirst({
-      where: eq(uploadSessionResults.sessionId, verified.id),
+      where: { RAW: (table, operators) => (eq(table.sessionId, verified.id)) ?? operators.sql`true` },
       columns: { legalSourceRenditionId: true },
     });
     const renditionId = completedResult?.legalSourceRenditionId;
     if (!renditionId) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
     const rendition = await db.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
-      where: eq(legalSourceRenditions.id, renditionId),
+      where: { RAW: (table, operators) => (eq(table.id, renditionId)) ?? operators.sql`true` },
     });
     if (!rendition) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
     const version = await db.query.legalSourceVersions.findFirst({ columns: { id: true, sourceId: true, versionLabel: true, officialIdentifier: true, upstreamPublishedAt: true, retrievedAt: true, upstreamUrl: true, effectiveFrom: true, effectiveTo: true, contentHash: true, status: true, reviewedBy: true, reviewedAt: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, createdBy: true, createdAt: true },
-      where: eq(legalSourceVersions.id, rendition.sourceVersionId),
+      where: { RAW: (table, operators) => (eq(table.id, rendition.sourceVersionId)) ?? operators.sql`true` },
     });
     const generation = await db.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
-      where: eq(legalSourceProcessingGenerations.renditionId, rendition.id),
+      where: { RAW: (table, operators) => (eq(table.renditionId, rendition.id)) ?? operators.sql`true` },
     });
     const job = generation?.jobId
-      ? await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: eq(backgroundJobs.id, generation.jobId) })
+      ? await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, generation.jobId!)) ?? operators.sql`true` } })
       : undefined;
     if (!version || !generation || !job) throw new ApiError(409, "Completed upload result is incomplete", undefined, "UPLOAD_RESULT_MISSING");
     return { version, rendition, generation, job };
@@ -120,11 +111,11 @@ export async function completeLegalSourceUpload(input: {
     }
     const existingVersion = input.existingVersionId
       ? await tx.query.legalSourceVersions.findFirst({ columns: { id: true, sourceId: true, versionLabel: true, officialIdentifier: true, upstreamPublishedAt: true, retrievedAt: true, upstreamUrl: true, effectiveFrom: true, effectiveTo: true, contentHash: true, status: true, reviewedBy: true, reviewedAt: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, createdBy: true, createdAt: true },
-          where: and(
-            eq(legalSourceVersions.id, input.existingVersionId),
-            eq(legalSourceVersions.sourceId, input.sourceId),
-            eq(legalSourceVersions.status, "draft"),
-          ),
+          where: { RAW: (table, operators) => (and(
+            eq(table.id, input.existingVersionId!),
+            eq(table.sourceId, input.sourceId),
+            eq(table.status, "draft"),
+          )) ?? operators.sql`true` },
         })
       : undefined;
     if (input.existingVersionId && !existingVersion) {
@@ -158,11 +149,11 @@ export async function completeLegalSourceUpload(input: {
         throw new ApiError(400, "A translated rendition requires its authoritative rendition", undefined, "AUTHORITATIVE_RENDITION_REQUIRED");
       }
       const authoritative = await tx.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
-        where: and(
-          eq(legalSourceRenditions.id, input.authoritativeRenditionId),
-          eq(legalSourceRenditions.sourceVersionId, version.id),
-          eq(legalSourceRenditions.translationStatus, "official"),
-        ),
+        where: { RAW: (table, operators) => (and(
+          eq(table.id, input.authoritativeRenditionId!),
+          eq(table.sourceVersionId, version.id),
+          eq(table.translationStatus, "official"),
+        )) ?? operators.sql`true` },
       });
       if (!authoritative) throw new ApiError(400, "Authoritative rendition does not belong to this version", undefined, "INVALID_AUTHORITATIVE_RENDITION");
     }

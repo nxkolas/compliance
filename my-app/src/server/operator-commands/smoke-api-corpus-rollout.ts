@@ -1,20 +1,20 @@
 import "dotenv/config";
 import { and, eq } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
-import { backgroundJobResults, backgroundJobs, legalCorpusReleaseMembers, legalCorpusReleases, legalSourceChunks } from "@/src/db/schema";
+import { backgroundJobResults, backgroundJobs } from "@/src/db/schema";
 import { getLegalCitationSource, createLegalSourceAccess } from "@/src/server/corpus";
 
 const actorUserId = required("CORPUS_SMOKE_PLATFORM_ADMIN_USER_ID");
 const releaseId = required("CORPUS_SMOKE_RELEASE_ID");
 
 async function main() {
-  const release = await db.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalCorpusReleases.id, releaseId) });
+  const release = await db.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, releaseId)) ?? operators.sql`true` } });
   if (!release || release.status !== "published" || release.evaluationState !== "passed") {
     throw new Error("Smoke release must be published and evaluation-passed");
   }
-  const member = await db.query.legalCorpusReleaseMembers.findFirst({ columns: { releaseId: true, sourceVersionId: true, renditionId: true, processingGenerationId: true, position: true }, where: eq(legalCorpusReleaseMembers.releaseId, release.id) });
+  const member = await db.query.legalCorpusReleaseMembers.findFirst({ columns: { releaseId: true, sourceVersionId: true, renditionId: true, processingGenerationId: true, position: true }, where: { RAW: (table, operators) => (eq(table.releaseId, release.id)) ?? operators.sql`true` } });
   if (!member) throw new Error("Smoke release has no member");
-  const chunk = await db.query.legalSourceChunks.findFirst({ columns: { id: true, generationId: true, position: true, text: true, textHash: true, pageNumber: true, sectionPath: true, provisionCode: true, anchorMetadata: true, tokenCount: true, searchVector: true, createdAt: true }, where: eq(legalSourceChunks.generationId, member.processingGenerationId) });
+  const chunk = await db.query.legalSourceChunks.findFirst({ columns: { id: true, generationId: true, position: true, text: true, textHash: true, pageNumber: true, sectionPath: true, provisionCode: true, anchorMetadata: true, tokenCount: true, searchVector: true, createdAt: true }, where: { RAW: (table, operators) => (eq(table.generationId, member.processingGenerationId)) ?? operators.sql`true` } });
   if (!chunk) throw new Error("Smoke release member has no chunk");
   const citation = await getLegalCitationSource({ actorUserId, corpusReleaseId: release.id, chunkId: chunk.id });
   const access = await createLegalSourceAccess({ actorUserId, renditionId: citation.rendition.id, expiresInSeconds: 30 });

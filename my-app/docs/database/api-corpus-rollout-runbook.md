@@ -1,11 +1,9 @@
 # API, corpus, and grounded-AI rollout
 
-The API/corpus feature set is normally forward-only. The 2026-07-24 database
-architecture remediation is a coordinated destructive development cutover
-that removes obsolete polymorphic tables and columns. Use the guarded
-[reset/reseed runbook](database-reset-and-reseed.md) for that cutover. Do not
-apply its destructive pre-push SQL to production or a database whose data must
-be retained.
+The API/corpus feature set is normally forward-only. Use the current
+[Drizzle schema-change workflow](drizzle-workflow.md) for application schema
+changes. The 2026-07-24 reset/reseed document is retained only as historical
+cutover evidence and must not be used for current operations.
 
 ## Required server configuration
 
@@ -29,38 +27,31 @@ API error details.
 
 1. Take and verify a target-database backup. Record the environment and
    operator approving the rollout.
-2. Apply `004_gap_evidence_infrastructure.sql`,
-   `api-corpus-integrity-additions.sql`, and
-   `database-remediation-pre-push.sql` in the exact order documented by the
-   reset/reseed runbook.
-3. Run the guarded `DATABASE_REMEDIATION_UNIQUE_PASS=1` strict Drizzle pass,
-   then apply `database-remediation-identity-fks.sql`. Review every statement
-   and never use `--force` or a second post-security Drizzle push.
-4. Apply `scripts/sql/api-corpus-integrity-additions.sql` again, then
+2. On a new database, install the `vector` extension with
+   `004_gap_evidence_infrastructure.sql`, then follow the complete
+   [Drizzle preview/apply workflow](drizzle-workflow.md). Never use `--force`.
+3. Apply `scripts/sql/api-corpus-integrity-additions.sql`, then
    `scripts/sql/audit-events-append-only.sql`, followed by
    `scripts/sql/database-remediation-integrity.sql`, as a privileged database
-   operator. The second integrity pass adds constraints to newly-created
-   tables and replaces the pre-corpus `gap_finding_evidence_source_check`;
-   Drizzle adds the legal citation column and enum value but does not replace
-   that existing named check constraint.
-5. Configure `API_CURSOR_SECRET` with at least 32 random characters, or ensure
+   operator. These files own audited functions and triggers, not ordinary
+   constraints or indexes.
+4. Configure `API_CURSOR_SECRET` with at least 32 random characters, or ensure
    the server-only `SUPABASE_SECRET_KEY` is available as its fallback.
-6. Run `npm.cmd run storage:setup:legal-corpus` and
+5. Run `npm.cmd run storage:setup:legal-corpus` and
    `npm.cmd run storage:setup:reports`; both buckets must remain private.
-7. Run `npm.cmd run db:verify:server-only` and require every public table, all
+6. Run `npm.cmd run db:verify:server-only` and require every public table, all
    expected rollout tables, and both append-only audit triggers to pass.
    Run `npm.cmd run db:verify:remediation-integrity` to prove typed values,
    composite ownership, metadata-only Gap results, and deferred normalized
    finding coverage.
    Run `npm.cmd run storage:verify` and require all three private buckets.
-8. Optionally seed the deliberately incomplete NIS2 fixture with
+7. Optionally seed the deliberately incomplete NIS2 fixture with
    `npm.cmd run db:seed:legal-corpus-fixture`. It must still be reviewed,
    published, evaluated, and activated by a Platform Administrator.
 
-RLS remains owned by Drizzle and must not appear as drift on a later push.
-Audit triggers and HNSW indexes remain operator-owned, so review any proposed
-changes to those objects separately. Use the dedicated RLS/trigger and storage
-verifiers for final-state proof.
+RLS and both HNSW indexes remain owned by Drizzle and must not appear as drift
+on a later push. Audited triggers remain operator-owned. Use the dedicated
+RLS/trigger and storage verifiers for final-state proof.
 
 ## Deploy
 
@@ -74,11 +65,22 @@ verifiers for final-state proof.
 5. Publish and activate compliance and Gap releases with that corpus release
    pinned. Activation now fails closed when pins are absent.
 
-For the bootstrap fixture, use the generation-pinned, confirmation-guarded
-`db:approve:legal-corpus-fixture` command documented in
-[`database-reset-and-reseed.md`](database-reset-and-reseed.md#3-run-the-worker-and-complete-corpus-governance).
-It records review through the capability-checked service, queues evaluations,
-and only activates passed releases; do not update governance state with SQL.
+For the bootstrap fixture, inspect the imported generations with
+`npm.cmd run db:inspect:legal-corpus-fixture`, then use the generation-pinned,
+confirmation-guarded command below for the reviewed EU and DE generations:
+
+```powershell
+npm.cmd run db:approve:legal-corpus-fixture -- `
+  --actor <platform-admin-uuid> `
+  --eu-generation <approved-eu-generation-uuid> `
+  --de-generation <approved-de-generation-uuid> `
+  --release-label reviewed-bootstrap-YYYY-MM-DD `
+  --confirm-reviewed-sources
+```
+
+It records review through the capability-checked service and queues
+evaluations. After both evaluations pass, rerun it with `--activate-passed`.
+Do not update governance state with SQL.
 
 ## Smoke gate
 
@@ -106,9 +108,15 @@ events exist, and the rollout has no unfinished jobs.
 - Inspect organization audit history and, separately as a Platform
   Administrator, corpus jobs and platform audit history.
 
-Run the Compliance, Gap, Corpus/Document, and structural index benchmarks from
-the reset/reseed runbook. Their assertion modes are deployment gates, not
-diagnostic-only reports.
+Run the Compliance, Gap, Corpus/Document, and structural index benchmarks.
+Their assertion modes are deployment gates, not diagnostic-only reports.
+
+```powershell
+npm.cmd run db:benchmark:compliance -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npm.cmd run db:benchmark:gap -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npm.cmd run db:benchmark:corpus-document -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
+npm.cmd run db:benchmark:index-remediation
+```
 
 ## Durable maintenance and source monitoring
 

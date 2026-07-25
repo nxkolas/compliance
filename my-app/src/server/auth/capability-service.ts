@@ -1,6 +1,4 @@
-import { db } from "@/src/db";
-import { organizationMemberships, organizations, platformAdministrators } from "@/src/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { db } from "@/src/db";import { and, eq, isNull } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import {
   capabilitiesForOrganizationRole,
@@ -14,11 +12,11 @@ export async function resolveOrganizationCapabilities(
   organizationId: string,
 ) {
   const membership = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
-    where: and(
-      eq(organizationMemberships.userId, userId),
-      eq(organizationMemberships.organizationId, organizationId),
-      eq(organizationMemberships.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.userId, userId),
+      eq(table.organizationId, organizationId),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
   });
 
   return {
@@ -43,7 +41,7 @@ export async function requireOrganizationCapability(
   }
   if (!archivedOrganizationCapabilities.has(capability)) {
     const organization = await db.query.organizations.findFirst({
-      where: eq(organizations.id, organizationId),
+      where: { RAW: (table, operators) => (eq(table.id, organizationId)) ?? operators.sql`true` },
       columns: { archivedAt: true },
     });
     if (organization?.archivedAt) {
@@ -67,10 +65,10 @@ const archivedOrganizationCapabilities = new Set<OrganizationCapability>([
 
 export async function resolvePlatformCapabilities(userId: string) {
   const administrator = await db.query.platformAdministrators.findFirst({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true },
-    where: and(
-      eq(platformAdministrators.userId, userId),
-      isNull(platformAdministrators.revokedAt),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.userId, userId),
+      isNull(table.revokedAt),
+    )) ?? operators.sql`true` },
   });
   return administrator
     ? new Set<PlatformCapability>(platformCapabilities)

@@ -1,6 +1,6 @@
 # Drizzle v1 Migration Plan
 
-Status: proposed; no migration work has been applied.
+Status: implemented on 2026-07-25.
 
 This plan follows the official
 [Drizzle v1 upgrade guide](https://orm.drizzle.team/docs/upgrade-v1) and

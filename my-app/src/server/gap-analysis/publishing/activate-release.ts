@@ -1,14 +1,5 @@
 import { db } from "@/src/db";
-import {
-  activeGapAnalysisReleases,
-  gapAnalysisReleaseActivations,
-  gapAnalysisReleaseApplicabilityRules,
-  gapAnalysisReleaseCorpusReleases,
-  gapAnalysisReleases,
-  gapRequirementSetMembers,
-  gapRequirementSetVersions,
-  questionnaireVersions,
-} from "@/src/db/schema";
+import { activeGapAnalysisReleases, gapAnalysisReleaseActivations } from "@/src/db/schema";
 import { and, eq } from "drizzle-orm";
 
 export type GapActivationSnapshot = {
@@ -52,33 +43,33 @@ export async function activateGapAnalysisRelease(
 ) {
   return db.transaction(async (tx) => {
     const release = await tx.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-      where: and(
-        eq(gapAnalysisReleases.releaseCode, releaseCode),
-        eq(gapAnalysisReleases.versionLabel, versionLabel),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.releaseCode, releaseCode),
+        eq(table.versionLabel, versionLabel),
+      )) ?? operators.sql`true` },
     });
     if (!release) throw new Error(`Gap release ${releaseCode}/${versionLabel} is missing`);
     const [questionnaire, requirementSet, members, rules, corpusPins] = await Promise.all([
       tx.query.questionnaireVersions.findFirst({ columns: { id: true, questionnaireId: true, versionLabel: true, titleContentRevisionId: true, status: true, createdAt: true, publishedAt: true },
-        where: eq(questionnaireVersions.id, release.questionnaireVersionId),
+        where: { RAW: (table, operators) => (eq(table.id, release.questionnaireVersionId)) ?? operators.sql`true` },
       }),
       tx.query.gapRequirementSetVersions.findFirst({ columns: { id: true, requirementSetId: true, versionLabel: true, titleContentRevisionId: true, status: true, contentHash: true, createdAt: true, publishedAt: true },
-        where: eq(gapRequirementSetVersions.id, release.requirementSetVersionId),
+        where: { RAW: (table, operators) => (eq(table.id, release.requirementSetVersionId)) ?? operators.sql`true` },
       }),
       tx.query.gapRequirementSetMembers.findMany({ columns: { requirementSetVersionId: true, requirementVersionId: true, position: true },
-        where: eq(
-          gapRequirementSetMembers.requirementSetVersionId,
+        where: { RAW: (table, operators) => (eq(
+          table.requirementSetVersionId,
           release.requirementSetVersionId,
-        ),
+        )) ?? operators.sql`true` },
       }),
       tx.query.gapAnalysisReleaseApplicabilityRules.findMany({ columns: { id: true, gapAnalysisReleaseId: true, requirementVersionId: true, conditions: true, createdAt: true },
-        where: eq(
-          gapAnalysisReleaseApplicabilityRules.gapAnalysisReleaseId,
+        where: { RAW: (table, operators) => (eq(
+          table.gapAnalysisReleaseId,
           release.id,
-        ),
+        )) ?? operators.sql`true` },
       }),
       tx.query.gapAnalysisReleaseCorpusReleases.findMany({ columns: { gapAnalysisReleaseId: true, familyId: true, corpusReleaseId: true },
-        where: eq(gapAnalysisReleaseCorpusReleases.gapAnalysisReleaseId, release.id),
+        where: { RAW: (table, operators) => (eq(table.gapAnalysisReleaseId, release.id)) ?? operators.sql`true` },
       }),
     ]);
     assertGapActivationCompleteness({
@@ -103,7 +94,7 @@ export async function activateGapAnalysisRelease(
       corpusPinsComplete: Boolean(release.corpusReleaseSetHash && corpusPins.length > 0),
     });
     const current = await tx.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
-      where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),
+      where: { RAW: (table, operators) => (eq(table.releaseCode, releaseCode)) ?? operators.sql`true` },
     });
     const activatedAt = new Date();
     await tx

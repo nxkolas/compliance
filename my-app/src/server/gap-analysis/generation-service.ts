@@ -24,7 +24,7 @@ import {
   questionOptions,
 } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { contentHash } from "@/src/server/compliance";
 import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
@@ -59,11 +59,11 @@ export async function generateGapAnalysis(input: {
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.id, input.assessmentId),
-      eq(assessments.organizationId, input.organizationId),
-      eq(assessments.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, input.assessmentId),
+      eq(table.organizationId, input.organizationId),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
   });
   if (
     !assessment?.gapAnalysisReleaseId ||
@@ -80,10 +80,10 @@ export async function generateGapAnalysis(input: {
   }
   const assessmentRevisionId = input.assessmentRevisionId ?? assessment.currentRevisionId!;
   const assessmentRevision = await db.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-    where: and(
-      eq(assessmentRevisions.id, assessmentRevisionId),
-      eq(assessmentRevisions.assessmentId, assessment.id),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, assessmentRevisionId),
+      eq(table.assessmentId, assessment.id),
+    )) ?? operators.sql`true` },
   });
   if (!assessmentRevision) {
     throw new ApiError(409, "Pinned gap questionnaire revision is unavailable");
@@ -94,10 +94,10 @@ export async function generateGapAnalysis(input: {
   );
   if (!release) throw new ApiError(409, "Pinned gap release is unavailable");
   const applicability = await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-    where: eq(
-      generatedArtifactRevisions.id,
-      assessment.applicabilityArtifactRevisionId,
-    ),
+    where: { RAW: (table, operators) => (eq(
+      table.id,
+      assessment.applicabilityArtifactRevisionId!,
+    )) ?? operators.sql`true` },
   });
   const {
     artifact: applicabilityArtifact,
@@ -109,10 +109,10 @@ export async function generateGapAnalysis(input: {
       requirements: release.requirements,
     });
   const answerRows = await db.query.assessmentAnswers.findMany({ columns: { id: true, assessmentRevisionId: true, questionId: true, questionStableKey: true, textValue: true, numberValue: true, booleanValue: true, dateValue: true, structuredValue: true, createdAt: true },
-    where: eq(
-      assessmentAnswers.assessmentRevisionId,
+    where: { RAW: (table, operators) => (eq(
+      table.assessmentRevisionId,
       assessmentRevisionId,
-    ),
+    )) ?? operators.sql`true` },
   });
   const answerOptionRows = answerRows.length
     ? await db
@@ -173,11 +173,11 @@ export async function generateGapAnalysis(input: {
     retryNonce: input.retryNonce ?? "initial",
   });
   const existingRun = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-    where: and(
-      eq(aiProcessingRuns.organizationId, input.organizationId),
-      eq(aiProcessingRuns.operationKind, "gap_analysis"),
-      eq(aiProcessingRuns.idempotencyKey, idempotencyKey),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, input.organizationId),
+      eq(table.operationKind, "gap_analysis"),
+      eq(table.idempotencyKey, idempotencyKey),
+    )) ?? operators.sql`true` },
   });
   if (existingRun) {
     assertOutputLocaleMatches(existingRun.outputLocale, input.locale, {
@@ -185,10 +185,10 @@ export async function generateGapAnalysis(input: {
     });
     const artifactRevision = existingRun.outputArtifactRevisionId
       ? await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-          where: eq(
-            generatedArtifactRevisions.id,
-            existingRun.outputArtifactRevisionId,
-          ),
+          where: { RAW: (table, operators) => (eq(
+            table.id,
+             existingRun.outputArtifactRevisionId!,
+          )) ?? operators.sql`true` },
         })
       : undefined;
     if (existingRun.status === "succeeded" && artifactRevision) {
@@ -332,7 +332,7 @@ async function generateGroundedGapResult(input: {
         ).onConflictDoNothing()
       : Promise.resolve(),
   ]);
-  const run = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true }, where: eq(aiProcessingRuns.id, grounded.runId) });
+  const run = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true }, where: { RAW: (table, operators) => (eq(table.id, grounded.runId)) ?? operators.sql`true` } });
   if (!run) throw new Error("Grounded AI run was not persisted");
   const promptRequirements = input.applicableRequirements.map((requirement) => ({
     code: requirement.code,
@@ -433,11 +433,11 @@ async function persistGeneratedGapResult(input: {
       );
     }
     let artifact = await tx.query.generatedArtifacts.findFirst({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true },
-      where: and(
-        eq(generatedArtifacts.organizationId, input.organizationId),
-        eq(generatedArtifacts.moduleId, input.release.moduleId),
-        eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.organizationId, input.organizationId),
+        eq(table.moduleId, input.release.moduleId),
+        eq(table.artifactType, "gap_analysis_result"),
+      )) ?? operators.sql`true` },
     });
     if (artifact?.currentRevisionId) {
       throw new ApiError(
@@ -459,8 +459,8 @@ async function persistGeneratedGapResult(input: {
     }
     if (!artifact) throw new Error("Could not create gap artifact");
     const latest = await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-      where: eq(generatedArtifactRevisions.artifactId, artifact.id),
-      orderBy: [desc(generatedArtifactRevisions.revisionNumber)],
+      where: { RAW: (table, operators) => (eq(table.artifactId, artifact.id)) ?? operators.sql`true` },
+      orderBy: { revisionNumber: "desc" },
     });
     const summary = buildGeneratedGapRevisionMetadata({
       outputLocale: input.outputLocale,

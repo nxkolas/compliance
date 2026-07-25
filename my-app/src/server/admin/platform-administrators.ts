@@ -1,7 +1,7 @@
 import { db } from "@/src/db";
 import { platformAdministrators, platformAuditEvents } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
-import { and, asc, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
 import * as z from "zod";
 import { ApiError } from "../api/errors";
 import { getCursorCodec } from "../api/pagination";
@@ -74,10 +74,10 @@ export async function revokePlatformAdministrator(input: {
   return db.transaction(async (tx) => {
     await lockAdministratorRegistry(tx);
     const actor = await tx.query.platformAdministrators.findFirst({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true },
-      where: and(
-        eq(platformAdministrators.userId, input.actorUserId),
-        isNull(platformAdministrators.revokedAt),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.userId, input.actorUserId),
+        isNull(table.revokedAt),
+      )) ?? operators.sql`true` },
     });
     if (!actor) {
       throw new ApiError(403, "Platform Administrator access required", undefined, "PLATFORM_CAPABILITY_REQUIRED");
@@ -132,7 +132,7 @@ export async function listActivePlatformAdministrators(actorUserId: string) {
 
 export async function getPlatformAdministrator(actorUserId: string, userId: string) {
   await requirePlatformCapability(actorUserId, "platform-admins:manage");
-  const administrator = await db.query.platformAdministrators.findFirst({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true }, where: eq(platformAdministrators.userId, userId) });
+  const administrator = await db.query.platformAdministrators.findFirst({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.userId, userId)) ?? operators.sql`true` } });
   if (!administrator) throw new ApiError(404, "Platform Administrator not found", undefined, "PLATFORM_ADMIN_NOT_FOUND");
   return administrator;
 }
@@ -142,8 +142,8 @@ export async function listActivePlatformAdministratorsPage(input: { actorUserId:
   const scope = "platform-administrators:active";
   const cursor = input.cursor ? z.tuple([z.iso.datetime(), z.uuid()]).parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.query.platformAdministrators.findMany({ columns: { id: true, userId: true, grantedByUserId: true, grantReason: true, revokedByUserId: true, revokeReason: true, revokedAt: true, createdAt: true, updatedAt: true },
-    where: and(isNull(platformAdministrators.revokedAt), cursor ? or(gt(platformAdministrators.createdAt, new Date(cursor[0])), and(eq(platformAdministrators.createdAt, new Date(cursor[0])), gt(platformAdministrators.userId, cursor[1]))) : undefined),
-    orderBy: [asc(platformAdministrators.createdAt), asc(platformAdministrators.userId)],
+    where: { RAW: (table, operators) => (and(isNull(table.revokedAt), cursor ? or(gt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), gt(table.userId, cursor[1]))) : undefined)) ?? operators.sql`true` },
+    orderBy: { createdAt: "asc", userId: "asc" },
     limit: input.limit + 1,
   });
   const administrators = rows.slice(0, input.limit); const last = administrators.at(-1);

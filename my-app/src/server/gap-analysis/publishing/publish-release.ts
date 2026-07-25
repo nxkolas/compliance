@@ -1,24 +1,6 @@
 import { db } from "@/src/db";
-import {
-  complianceCheckReleases,
-  complianceModules,
-  contentItems,
-  contentRevisions,
-  contentTranslations,
-  gapAnalysisReleaseApplicabilityRules,
-  gapAnalysisReleaseCorpusReleases,
-  gapAnalysisReleases,
-  gapRequirements,
-  gapRequirementSetMembers,
-  gapRequirementSets,
-  gapRequirementSetVersions,
-  gapRequirementVersions,
-  questionOptions,
-  questionnaireVersions,
-  questionnaires,
-  questions,
-} from "@/src/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { complianceModules, contentItems, contentRevisions, contentTranslations, gapAnalysisReleaseApplicabilityRules, gapAnalysisReleaseCorpusReleases, gapAnalysisReleases, gapRequirements, gapRequirementSetMembers, gapRequirementSets, gapRequirementSetVersions, gapRequirementVersions, questionOptions, questionnaireVersions, questionnaires, questions } from "@/src/db/schema";
+import { and, eq } from "drizzle-orm";
 import { contentHash } from "@/src/server/compliance";
 import type { GapAnalysisReleaseDefinition, LocalizedText } from "../releases/types";
 import { compileGapAnalysisRelease } from "./compile-release";
@@ -35,10 +17,10 @@ export async function publishGapAnalysisRelease(
 ) {
   const compiled = compileGapAnalysisRelease(definition);
   const existing = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-    where: and(
-      eq(gapAnalysisReleases.releaseCode, definition.releaseCode),
-      eq(gapAnalysisReleases.versionLabel, definition.versionLabel),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.releaseCode, definition.releaseCode),
+      eq(table.versionLabel, definition.versionLabel),
+    )) ?? operators.sql`true` },
   });
   if (existing) {
     throw new Error(
@@ -52,13 +34,13 @@ export async function publishGapAnalysisRelease(
       definition.requiredCorpusFamilies,
     );
     const compatibleRelease = await tx.query.complianceCheckReleases.findFirst({ columns: { id: true, checkCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, scopeModelVersionId: true, scopeThresholdSetId: true, ruleSetId: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, effectiveFrom: true, effectiveTo: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-      where: and(
-        eq(complianceCheckReleases.checkCode, definition.compatibleCheck.checkCode),
+      where: { RAW: (table, operators) => (and(
+        eq(table.checkCode, definition.compatibleCheck.checkCode),
         eq(
-          complianceCheckReleases.versionLabel,
+          table.versionLabel,
           definition.compatibleCheck.versionLabel,
         ),
-      ),
+      )) ?? operators.sql`true` },
     });
     if (
       !compatibleRelease ||
@@ -68,7 +50,7 @@ export async function publishGapAnalysisRelease(
       throw new Error("Compatible applicability release is not published");
     }
     const applicabilityModule = await tx.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
-      where: eq(complianceModules.id, compatibleRelease.moduleId),
+      where: { RAW: (table, operators) => (eq(table.id, compatibleRelease.moduleId)) ?? operators.sql`true` },
     });
     if (!applicabilityModule) throw new Error("Compatible module is missing");
 
@@ -80,22 +62,22 @@ export async function publishGapAnalysisRelease(
         .values({ stableKey: source.key, format: "plain_text" })
         .onConflictDoNothing();
       const item = await tx.query.contentItems.findFirst({ columns: { id: true, stableKey: true, format: true, createdAt: true, updatedAt: true },
-        where: eq(contentItems.stableKey, source.key),
+        where: { RAW: (table, operators) => (eq(table.stableKey, source.key)) ?? operators.sql`true` },
       });
       if (!item || item.format !== "plain_text") {
         throw new Error(`Conflicting content item ${source.key}`);
       }
       const hash = contentHash(source.translations);
       let revision = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
-        where: and(
-          eq(contentRevisions.contentItemId, item.id),
-          eq(contentRevisions.contentHash, hash),
-        ),
+        where: { RAW: (table, operators) => (and(
+          eq(table.contentItemId, item.id),
+          eq(table.contentHash, hash),
+        )) ?? operators.sql`true` },
       });
       if (!revision) {
         const latest = await tx.query.contentRevisions.findFirst({ columns: { id: true, contentItemId: true, revisionNumber: true, contentHash: true, createdAt: true },
-          where: eq(contentRevisions.contentItemId, item.id),
-          orderBy: [desc(contentRevisions.revisionNumber)],
+          where: { RAW: (table, operators) => (eq(table.contentItemId, item.id)) ?? operators.sql`true` },
+          orderBy: { revisionNumber: "desc" },
         });
         [revision] = await tx
           .insert(contentRevisions)
@@ -116,7 +98,7 @@ export async function publishGapAnalysisRelease(
       }
       const persistedTranslations =
         await tx.query.contentTranslations.findMany({ columns: { contentRevisionId: true, locale: true, value: true },
-          where: eq(contentTranslations.contentRevisionId, revision.id),
+          where: { RAW: (table, operators) => (eq(table.contentRevisionId, revision.id)) ?? operators.sql`true` },
         });
       assertExactBilingualTranslations(
         source.key,
@@ -144,13 +126,13 @@ export async function publishGapAnalysisRelease(
       })
       .onConflictDoNothing();
     const gapModule = await tx.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
-      where: and(
+      where: { RAW: (table, operators) => (and(
         eq(
-          complianceModules.frameworkVersionId,
+          table.frameworkVersionId,
           applicabilityModule.frameworkVersionId,
         ),
-        eq(complianceModules.code, "gap_analysis"),
-      ),
+        eq(table.code, "gap_analysis"),
+      )) ?? operators.sql`true` },
     });
     if (
       !gapModule ||
@@ -170,10 +152,10 @@ export async function publishGapAnalysisRelease(
       })
       .onConflictDoNothing();
     const questionnaire = await tx.query.questionnaires.findFirst({ columns: { id: true, moduleId: true, code: true, createdAt: true },
-      where: and(
-        eq(questionnaires.moduleId, gapModule.id),
-        eq(questionnaires.code, definition.questionnaire.code),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.moduleId, gapModule.id),
+        eq(table.code, definition.questionnaire.code),
+      )) ?? operators.sql`true` },
     });
     if (!questionnaire) throw new Error("Could not create gap questionnaire");
     const [questionnaireVersion] = await tx
@@ -227,7 +209,7 @@ export async function publishGapAnalysisRelease(
       })
       .onConflictDoNothing();
     const requirementSet = await tx.query.gapRequirementSets.findFirst({ columns: { id: true, code: true, createdAt: true },
-      where: eq(gapRequirementSets.code, definition.requirementSet.code),
+      where: { RAW: (table, operators) => (eq(table.code, definition.requirementSet.code)) ?? operators.sql`true` },
     });
     if (!requirementSet) throw new Error("Could not create requirement set");
     const [requirementSetVersion] = await tx
@@ -256,16 +238,16 @@ export async function publishGapAnalysisRelease(
       );
       await tx.insert(gapRequirements).values({ code: source.code }).onConflictDoNothing();
       const stableRequirement = await tx.query.gapRequirements.findFirst({ columns: { id: true, code: true, createdAt: true },
-        where: eq(gapRequirements.code, source.code),
+        where: { RAW: (table, operators) => (eq(table.code, source.code)) ?? operators.sql`true` },
       });
       if (!stableRequirement) {
         throw new Error(`Could not create stable requirement ${source.code}`);
       }
       let requirement = await tx.query.gapRequirementVersions.findFirst({ columns: { id: true, requirementId: true, versionLabel: true, criticality: true, titleContentRevisionId: true, requirementTextContentRevisionId: true, legalReferences: true, contentHash: true, createdAt: true },
-        where: and(
-          eq(gapRequirementVersions.requirementId, stableRequirement.id),
-          eq(gapRequirementVersions.versionLabel, source.versionLabel),
-        ),
+        where: { RAW: (table, operators) => (and(
+          eq(table.requirementId, stableRequirement.id),
+          eq(table.versionLabel, source.versionLabel),
+        )) ?? operators.sql`true` },
       });
       const requirementHash = compiled.hashes.requirements[source.code];
       if (requirement && requirement.contentHash !== requirementHash) {

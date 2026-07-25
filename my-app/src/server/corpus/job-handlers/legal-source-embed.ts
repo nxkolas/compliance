@@ -1,12 +1,7 @@
 import * as z from "zod";
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
-import {
-  backgroundJobs,
-  legalSourceChunkEmbeddings,
-  legalSourceChunks,
-  legalSourceProcessingGenerations,
-} from "@/src/db/schema";
+import { backgroundJobs, legalSourceChunkEmbeddings, legalSourceProcessingGenerations } from "@/src/db/schema";
 import { createContentEmbedder } from "@/src/server/content-processing/defaults";
 import type { ContentEmbedder } from "@/src/server/content-processing/types";
 import { validateEmbeddings } from "@/src/server/documents";
@@ -19,12 +14,12 @@ export async function handleLegalSourceEmbed(
 ) {
   const { generationId } = payloadSchema.parse(job.payload);
   const generation = await db.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
-    where: eq(legalSourceProcessingGenerations.id, generationId),
+    where: { RAW: (table, operators) => (eq(table.id, generationId)) ?? operators.sql`true` },
   });
   if (!generation) throw new Error("Legal processing generation not found");
   const chunks = await db.query.legalSourceChunks.findMany({ columns: { id: true, generationId: true, position: true, text: true, textHash: true, pageNumber: true, sectionPath: true, provisionCode: true, anchorMetadata: true, tokenCount: true, searchVector: true, createdAt: true },
-    where: eq(legalSourceChunks.generationId, generation.id),
-    orderBy: [asc(legalSourceChunks.position)],
+    where: { RAW: (table, operators) => (eq(table.generationId, generation.id)) ?? operators.sql`true` },
+    orderBy: { position: "asc" },
   });
   const embedder = dependencies.embedder ?? createContentEmbedder();
   const embeddings = await embedder.embed(chunks.map((chunk) => chunk.text));

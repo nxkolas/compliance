@@ -5,6 +5,9 @@ cutover. Ordinary tables, constraints, indexes, and relations remain owned by
 Drizzle, except for the explicitly audited remediation integrity
 functions/triggers and the existing Supabase infrastructure SQL.
 
+Use the current [Drizzle schema-change workflow](drizzle-workflow.md) for
+ordinary table, constraint, index, and RLS changes.
+
 ## Preconditions
 
 1. Confirm the direct server connection role:
@@ -21,10 +24,10 @@ functions/triggers and the existing Supabase infrastructure SQL.
 2. `src/db/schema.ts` enables RLS without browser policies on every Drizzle
    table. It deliberately does not use `FORCE ROW LEVEL SECURITY`; do not add
    it unless the direct server role has been proven safe.
-3. `004_gap_evidence_infrastructure.sql` must run once before `db:push` so the
-   `extensions.vector` type exists, and again after `db:push` so it can install
-   the search trigger, HNSW index, private storage bucket, and append-only audit
-   trigger.
+3. On a new database, `004_gap_evidence_infrastructure.sql` must run once
+   before the first `db:push` so the `extensions.vector` type exists. Its
+   table-dependent pass installs the search trigger, private storage bucket,
+   and append-only audit trigger. The HNSW indexes are owned by Drizzle.
 
 ## Execution order
 
@@ -33,8 +36,8 @@ Run the schema and SQL Editor files in this order:
 1. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql`. Before the
    Drizzle tables exist, it creates the vector extension and reports that its
    table-dependent work is deferred.
-2. Run `npm.cmd run db:push`. For ordinary schema changes, no clear, guarded
-   environment variable, or post-push RLS script is required.
+2. Follow the preview, review, apply, RLS verification, and zero-drift steps in
+   the [Drizzle workflow](drizzle-workflow.md).
 3. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
 4. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
 5. Run the API/corpus integrity and append-only SQL files, then
@@ -43,9 +46,9 @@ Run the schema and SQL Editor files in this order:
 All SQL files above are idempotent. RLS is not installed or modified by an
 operator SQL file; Drizzle is its only source of truth.
 
-The destructive database-remediation pre-push and identity-FK sequence is only
-for the historical coordinated cutover documented in the reset/reseed runbook.
-It is not part of the normal `db:push` workflow.
+The database-remediation pre-push and identity-FK sequence belongs only to the
+historical coordinated cutover record. It is not executable through the
+approved operator-SQL runner and is not part of the normal `db:push` workflow.
 
 After the SQL files succeed, publish and activate the repository release separately:
 

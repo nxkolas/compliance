@@ -1,6 +1,4 @@
 import { getTableConfig } from "drizzle-orm/pg-core";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -13,12 +11,14 @@ import {
   assessmentRevisions,
   assessments,
   complianceCheckReleases,
+  documents,
   documentVersions,
   backgroundJobs,
   gapAnalysisReleases,
   gapFindingReviewResolutions,
   gapFindings,
   generatedArtifactRevisions,
+  generatedArtifacts,
   legalCorpusReleases,
   legalSourceVersions,
   questionnaireVersions,
@@ -71,19 +71,19 @@ describe("database remediation relational integrity", () => {
     expect(constraintNames(table)).toContain(name);
   });
 
-  it("installs cyclic owner pointers in the ordered integrity SQL", () => {
-    const sql = readFileSync(
-      resolve(
-        process.cwd(),
-        "scripts/sql/database-remediation-integrity.sql",
-      ),
-      "utf8",
+  it("keeps cyclic owner pointers in the Drizzle schema", () => {
+    expect(constraintNames(generatedArtifacts)).toEqual(
+      expect.arrayContaining([
+        "generated_artifacts_current_revision_owner_fk",
+        "generated_artifacts_accepted_revision_owner_fk",
+      ]),
     );
-
-    expect(sql).toContain("generated_artifacts_current_revision_owner_fk");
-    expect(sql).toContain("generated_artifacts_accepted_revision_owner_fk");
-    expect(sql).toContain("assessments_current_revision_owner_fk");
-    expect(sql).toContain("documents_current_version_owner_fk");
+    expect(constraintNames(assessments)).toContain(
+      "assessments_current_revision_owner_fk",
+    );
+    expect(constraintNames(documents)).toContain(
+      "documents_current_version_owner_fk",
+    );
   });
 
   it.each([

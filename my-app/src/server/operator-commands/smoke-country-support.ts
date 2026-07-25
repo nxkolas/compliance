@@ -1,15 +1,7 @@
 import "dotenv/config";
 
 import { and, eq, isNotNull } from "drizzle-orm";
-import { closeDbConnection, db } from "@/src/db";
-import {
-  aiProcessingRuns,
-  assessments,
-  auditEvents,
-  backgroundJobs,
-  generatedArtifactRevisions,
-} from "@/src/db/schema";
-import {
+import { closeDbConnection, db } from "@/src/db";import {
   getApplicabilityQuestionnaireForUser,
   getApplicabilityRecalculationLockForUser,
   submitApplicabilityCheckForUser,
@@ -215,7 +207,7 @@ async function main() {
 async function assertApprovedRevision(revisionId: string) {
   const revision = await db.query.generatedArtifactRevisions.findFirst({
     columns: { status: true },
-    where: eq(generatedArtifactRevisions.id, revisionId),
+    where: { RAW: (table, operators) => (eq(table.id, revisionId)) ?? operators.sql`true` },
   });
   if (revision?.status !== "approved") {
     throw new Error("Applicability artifact was not approved");
@@ -226,25 +218,25 @@ async function assertNoGapSideEffects(organizationId: string) {
   const [gapAssessment, job, aiRun, audit] = await Promise.all([
     db.query.assessments.findFirst({
       columns: { id: true },
-      where: and(
-        eq(assessments.organizationId, organizationId),
-        isNotNull(assessments.gapAnalysisReleaseId),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.organizationId, organizationId),
+        isNotNull(table.gapAnalysisReleaseId),
+      )) ?? operators.sql`true` },
     }),
     db.query.backgroundJobs.findFirst({
       columns: { id: true },
-      where: eq(backgroundJobs.organizationId, organizationId),
+      where: { RAW: (table, operators) => (eq(table.organizationId, organizationId)) ?? operators.sql`true` },
     }),
     db.query.aiProcessingRuns.findFirst({
       columns: { id: true },
-      where: eq(aiProcessingRuns.organizationId, organizationId),
+      where: { RAW: (table, operators) => (eq(table.organizationId, organizationId)) ?? operators.sql`true` },
     }),
     db.query.auditEvents.findFirst({
       columns: { id: true },
-      where: and(
-        eq(auditEvents.organizationId, organizationId),
-        eq(auditEvents.eventType, "gap_assessment.created"),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.organizationId, organizationId),
+        eq(table.eventType, "gap_assessment.created"),
+      )) ?? operators.sql`true` },
     }),
   ]);
   if (gapAssessment || job || aiRun || audit) {

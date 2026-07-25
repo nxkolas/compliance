@@ -187,11 +187,11 @@ export async function uploadOrganizationDocumentVersion(
     byteSize: command.bytes.byteLength,
   });
   const existing = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true },
-    where: and(
-      eq(documents.id, command.documentId),
-      eq(documents.organizationId, command.organizationId),
-      eq(documents.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, command.documentId),
+      eq(table.organizationId, command.organizationId),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
   });
   if (!existing) throw new ApiError(404, "Active document not found");
 
@@ -227,8 +227,8 @@ export async function uploadOrganizationDocumentVersion(
         .returning({ id: documents.id });
       if (!lockedDocument) throw new ApiError(409, "Document is no longer active");
       const latest = await tx.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true },
-        where: eq(documentVersions.documentId, command.documentId),
-        orderBy: [desc(documentVersions.versionNumber)],
+        where: { RAW: (table, operators) => (eq(table.documentId, command.documentId)) ?? operators.sql`true` },
+        orderBy: { versionNumber: "desc" },
       });
       versionNumber = (latest?.versionNumber ?? 0) + 1;
       await tx.insert(documentVersions).values({
@@ -351,12 +351,12 @@ export async function getOrganizationDocumentLibraryPreauthorized(
     ? z.tuple([z.iso.datetime(), z.uuid()]).parse(getCursorCodec().decode(options.cursor, scope))
     : null;
   const documentPageRows = await db.query.documents.findMany({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true },
-    where: and(
-      eq(documents.organizationId, organizationId),
-      options.documentId ? eq(documents.id, options.documentId) : undefined,
-      cursor ? or(lt(documents.createdAt, new Date(cursor[0])), and(eq(documents.createdAt, new Date(cursor[0])), lt(documents.id, cursor[1]))) : undefined,
-    ),
-    orderBy: [desc(documents.createdAt), desc(documents.id)],
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, organizationId),
+      options.documentId ? eq(table.id, options.documentId) : undefined,
+      cursor ? or(lt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), lt(table.id, cursor[1]))) : undefined,
+    )) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc", id: "desc" },
     limit: options.documentId ? 1 : limit + 1,
   });
   const documentPage = documentPageRows.slice(0, limit);
@@ -567,7 +567,7 @@ export async function listOrganizationDocumentVersions(userId: string, organizat
 
 export async function listOrganizationDocumentVersionsPage(input: { userId: string; organizationId: string; documentId: string; limit: number; cursor?: string }) {
   await assertCanAccessOrganization(input.userId, input.organizationId);
-  const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: and(eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId)) });
+  const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (and(eq(table.id, input.documentId), eq(table.organizationId, input.organizationId))) ?? operators.sql`true` } });
   if (!document) return null;
   const scope = `document-versions:${input.organizationId}:${input.documentId}`;
   const cursor = input.cursor ? z.tuple([z.number().int().positive(), z.uuid()]).parse(getCursorCodec().decode(input.cursor, scope)) : null;
@@ -718,9 +718,9 @@ export async function createDocumentUploadSession(input: {
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   if (input.documentId) {
-    const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: and(
-      eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId), eq(documents.status, "active"),
-    ) });
+    const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (and(
+      eq(table.id, input.documentId!), eq(table.organizationId, input.organizationId), eq(table.status, "active"),
+    )) ?? operators.sql`true` } });
     if (!document) throw new ApiError(404, "Active document not found", undefined, "DOCUMENT_NOT_FOUND");
   }
   return createUploadSession({
@@ -755,12 +755,12 @@ export async function completeDocumentUpload(input: {
   }
   if (verified.state === "completed") {
     const completedResult = await db.query.uploadSessionResults.findFirst({
-      where: eq(uploadSessionResults.sessionId, verified.id),
+      where: { RAW: (table, operators) => (eq(table.sessionId, verified.id)) ?? operators.sql`true` },
       columns: { documentVersionId: true },
     });
     const documentVersionId = completedResult?.documentVersionId;
     if (!documentVersionId) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
-    const version = await db.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: eq(documentVersions.id, documentVersionId) });
+    const version = await db.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: { RAW: (table, operators) => (eq(table.id, documentVersionId)) ?? operators.sql`true` } });
     if (!version) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
     return { documentId: version.documentId, documentVersionId: version.id, replayed: true };
   }
@@ -785,11 +785,11 @@ export async function completeDocumentUpload(input: {
     if (!locked?.actualSha256 || !locked.actualMimeType || !locked.actualSize) throw new ApiError(409, "Upload session is not verified");
     let versionNumber = 1;
     if (input.documentId) {
-      const document = await tx.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: and(
-        eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId), eq(documents.status, "active"),
-      ) });
+      const document = await tx.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (and(
+        eq(table.id, input.documentId!), eq(table.organizationId, input.organizationId), eq(table.status, "active"),
+      )) ?? operators.sql`true` } });
       if (!document) throw new ApiError(404, "Active document not found", undefined, "DOCUMENT_NOT_FOUND");
-      const latest = await tx.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: eq(documentVersions.documentId, document.id), orderBy: [desc(documentVersions.versionNumber)] });
+      const latest = await tx.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: { RAW: (table, operators) => (eq(table.documentId, document.id)) ?? operators.sql`true` }, orderBy: { versionNumber: "desc" } });
       versionNumber = (latest?.versionNumber ?? 0) + 1;
     } else {
       const title = input.title?.trim();

@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { backgroundJobs, legalSources, platformAuditEvents } from "@/src/db/schema";
+import { backgroundJobs, platformAuditEvents } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
 import { eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -19,7 +19,7 @@ export async function enqueueLegalSourceUrlImport(input: {
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:curate");
   const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-    where: eq(legalSources.id, input.sourceId),
+    where: { RAW: (table, operators) => (eq(table.id, input.sourceId)) ?? operators.sql`true` },
   });
   if (!source || source.withdrawnAt) {
     throw new ApiError(404, "Legal source not found", undefined, "LEGAL_SOURCE_NOT_FOUND");

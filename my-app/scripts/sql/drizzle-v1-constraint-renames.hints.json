@@ -1,0 +1,158 @@
+[
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "ai_processing_run_artifact_inputs", "ai_processing_run_artifact_inputs_run_id_artifact_revision_id_p"],
+    "to": ["public", "ai_processing_run_artifact_inputs", "ai_run_artifact_inputs_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "ai_processing_run_assessment_inputs", "ai_processing_run_assessment_inputs_run_id_assessment_revision_"],
+    "to": ["public", "ai_processing_run_assessment_inputs", "ai_run_assessment_inputs_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "ai_processing_runs", "ai_processing_runs_output_artifact_revision_id_generated_artifa"],
+    "to": ["public", "ai_processing_runs", "ai_processing_runs_output_artifact_revision_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "artifact_revision_artifact_sources", "artifact_revision_artifact_sources_artifact_revision_id_source_"],
+    "to": ["public", "artifact_revision_artifact_sources", "artifact_revision_artifact_sources_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "artifact_revision_assessment_sources", "artifact_revision_assessment_sources_artifact_revision_id_asses"],
+    "to": ["public", "artifact_revision_assessment_sources", "artifact_revision_assessment_sources_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "artifact_revision_document_sources", "artifact_revision_document_sources_artifact_revision_id_documen"],
+    "to": ["public", "artifact_revision_document_sources", "artifact_revision_document_sources_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "assessment_answer_options", "assessment_answer_options_assessment_answer_id_question_option_"],
+    "to": ["public", "assessment_answer_options", "assessment_answer_options_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "assessment_revisions", "assessment_revisions_parent_revision_id_assessment_revisions_id"],
+    "to": ["public", "assessment_revisions", "assessment_revisions_parent_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "assessments", "assessments_applicability_artifact_revision_id_generated_artifa"],
+    "to": ["public", "assessments", "assessments_applicability_artifact_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "compliance_check_release_content_revisions", "compliance_check_release_content_revisions_check_release_id_con"],
+    "to": ["public", "compliance_check_release_content_revisions", "check_release_content_revisions_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "compliance_check_release_corpus_releases", "compliance_check_release_corpus_releases_check_release_id_famil"],
+    "to": ["public", "compliance_check_release_corpus_releases", "check_release_corpus_releases_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "compliance_check_release_fact_versions", "compliance_check_release_fact_versions_check_release_id_fact_de"],
+    "to": ["public", "compliance_check_release_fact_versions", "check_release_fact_versions_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "compliance_check_release_profiles", "compliance_check_release_profiles_check_release_id_country_code"],
+    "to": ["public", "compliance_check_release_profiles", "check_release_profiles_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "fact_options", "fact_options_jurisdiction_entity_type_id_jurisdiction_entity_ty"],
+    "to": ["public", "fact_options", "fact_options_jurisdiction_entity_type_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "gap_analysis_release_corpus_releases", "gap_analysis_release_corpus_releases_gap_analysis_release_id_fa"],
+    "to": ["public", "gap_analysis_release_corpus_releases", "gap_release_corpus_releases_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "gap_finding_evidence", "gap_finding_evidence_legal_source_chunk_id_legal_source_chunks_"],
+    "to": ["public", "gap_finding_evidence", "gap_finding_evidence_legal_source_chunk_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "gap_reassessment_draft_documents", "gap_reassessment_draft_documents_draft_id_document_version_id_p"],
+    "to": ["public", "gap_reassessment_draft_documents", "gap_reassessment_draft_documents_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "gap_reassessment_drafts", "gap_reassessment_drafts_ai_processing_run_id_ai_processing_runs"],
+    "to": ["public", "gap_reassessment_drafts", "gap_reassessment_drafts_ai_run_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "gap_requirement_set_members", "gap_requirement_set_members_requirement_set_version_id_requirem"],
+    "to": ["public", "gap_requirement_set_members", "gap_requirement_set_members_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "generated_artifact_revisions", "generated_artifact_revisions_parent_revision_id_generated_artif"],
+    "to": ["public", "generated_artifact_revisions", "generated_artifact_revisions_parent_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "foreign key",
+    "from": ["public", "guest_applicability_checks", "guest_applicability_checks_check_release_id_compliance_check_re"],
+    "to": ["public", "guest_applicability_checks", "guest_applicability_checks_release_fk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "jurisdiction_entity_type_legal_provisions", "jurisdiction_entity_type_legal_provisions_jurisdiction_entity_t"],
+    "to": ["public", "jurisdiction_entity_type_legal_provisions", "jurisdiction_entity_type_legal_provisions_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "jurisdiction_profile_legal_provisions", "jurisdiction_profile_legal_provisions_jurisdiction_profile_vers"],
+    "to": ["public", "jurisdiction_profile_legal_provisions", "jurisdiction_profile_legal_provisions_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "organization_fact_value_options", "organization_fact_value_options_organization_fact_value_id_fact"],
+    "to": ["public", "organization_fact_value_options", "organization_fact_value_options_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "scope_entity_type_legal_provisions", "scope_entity_type_legal_provisions_scope_entity_type_version_id"],
+    "to": ["public", "scope_entity_type_legal_provisions", "scope_entity_type_legal_provisions_pk"]
+  },
+  {
+    "type": "rename",
+    "kind": "primary_key",
+    "from": ["public", "scope_threshold_set_legal_provisions", "scope_threshold_set_legal_provisions_scope_threshold_set_id_leg"],
+    "to": ["public", "scope_threshold_set_legal_provisions", "scope_threshold_set_legal_provisions_pk"]
+  }
+]

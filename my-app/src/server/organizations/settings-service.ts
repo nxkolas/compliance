@@ -22,14 +22,14 @@ export async function getOrganizationSettings(
   await requireOrganizationCapability(userId, organizationId, "organizations:read");
   const [organization, policy, authorization] = await Promise.all([
     db.query.organizations.findFirst({
-      where: eq(organizations.id, organizationId),
+      where: { RAW: (table, operators) => (eq(table.id, organizationId)) ?? operators.sql`true` },
       columns: {
         id: true, name: true, legalName: true, country: true, archivedAt: true,
         version: true, createdAt: true, updatedAt: true,
       },
     }),
     db.query.organizationAiProviderPolicies.findFirst({
-      where: eq(organizationAiProviderPolicies.organizationId, organizationId),
+      where: { RAW: (table, operators) => (eq(table.organizationId, organizationId)) ?? operators.sql`true` },
       columns: {
         organizationId: true, allowedProviderModes: true,
         externalDisclosureAllowed: true, retentionClassification: true,

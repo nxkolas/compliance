@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import type { AiProviderMode } from "@/lib/ai/types";
 import { db } from "@/src/db";
-import { aiProcessingRunContext, aiProcessingRuns } from "@/src/db/schema";
-import { and, asc, eq } from "drizzle-orm";
+import { aiProcessingRuns } from "@/src/db/schema";
+import { and, eq } from "drizzle-orm";
 import { ApiError } from "../../api/errors";
 import { buildGroundedPrompt } from "./context-builder";
 import { retrievePinnedLegalContext } from "./legal-retrieval";
@@ -51,11 +51,11 @@ export async function runGroundedOperation<T>(input: {
   languageDetector?: LanguageDetector;
 } = {}) {
   const existing = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-    where: and(
-      eq(aiProcessingRuns.organizationId, input.organizationId),
-      eq(aiProcessingRuns.operationKind, "gap_analysis"),
-      eq(aiProcessingRuns.idempotencyKey, input.idempotencyKey),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, input.organizationId),
+      eq(table.operationKind, "gap_analysis"),
+      eq(table.idempotencyKey, input.idempotencyKey),
+    )) ?? operators.sql`true` },
   });
   if (existing) {
     assertOutputLocaleMatches(
@@ -67,8 +67,8 @@ export async function runGroundedOperation<T>(input: {
   if (existing?.status === "processing" && existing.validatedOutput !== null) {
     const output = input.outputContract.schema.parse(existing.validatedOutput);
     const rows = await db.query.aiProcessingRunContext.findMany({ columns: { id: true, runId: true, channel: true, citationId: true, queryUnitId: true, queryHash: true, retrievalRank: true, retrievalScore: true, legalChunkId: true, documentChunkId: true, assessmentAnswerId: true, excerptHash: true, excerptSnapshot: true, disclosedExternally: true, promptPosition: true, createdAt: true },
-      where: eq(aiProcessingRunContext.runId, existing.id),
-      orderBy: [asc(aiProcessingRunContext.promptPosition)],
+      where: { RAW: (table, operators) => (eq(table.runId, existing.id)) ?? operators.sql`true` },
+      orderBy: { promptPosition: "asc" },
     });
     const context = rows.map((row): GroundingContextItem => {
       const sourceId = row.legalChunkId ?? row.documentChunkId ?? row.assessmentAnswerId;

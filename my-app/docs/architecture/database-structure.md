@@ -181,29 +181,22 @@ Reviewed applicability release sources live under
 `src/server/gap-analysis/releases/`. Publication validates content and writes an
 immutable release. Publishing never activates.
 
-For a disposable development database, follow the complete
-[reset/reseed runbook](../database/database-reset-and-reseed.md). The
-remediation cutover is coordinated and destructive: quiesce writers, clear the
-approved target, apply the pre-push SQL, run the guarded composite-unique
-Drizzle pass, install the dependent identity foreign keys, then apply the
-post-push integrity/security files before reseeding.
+For ordinary schema changes, follow the current
+[Drizzle schema-change workflow](../database/drizzle-workflow.md): verify the
+target, preview and review the DDL, apply it, verify RLS, and require a second
+zero-drift preview. Drizzle owns tables, constraints, indexes (including both
+HNSW indexes), and RLS enablement. Operator SQL owns extensions, scheduled
+jobs, and audited triggers.
 
 ```powershell
-npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-pre-push.sql
-$env:DATABASE_REMEDIATION_UNIQUE_PASS = '1'
-try {
-  npx.cmd drizzle-kit push --strict --verbose
-} finally {
-  Remove-Item Env:DATABASE_REMEDIATION_UNIQUE_PASS -ErrorAction SilentlyContinue
-}
-npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-identity-fks.sql
-npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-integrity.sql
-npm.cmd run db:verify:remediation-integrity
+npm.cmd run db:push -- --explain
+npm.cmd run db:push
+npm.cmd run db:verify:server-only
+npm.cmd run db:push -- --explain
 ```
 
-Run this destructive sequence only after confirming that the configured
-database is the intended disposable target. Rollback changes active release or
-active plan pointers; it does not rewrite historical records.
+Database clearing, reseeding, the former two-pass constraint procedure,
+`--strict`, and `--force` are not part of ordinary schema operations.
 
 ## Compliance runtime reads
 

@@ -1,22 +1,5 @@
 import { db } from "@/src/db";
-import {
-  aiProcessingRuns,
-  artifactRevisionDocumentSources,
-  assessmentRevisions,
-  assessments,
-  auditEvents,
-  backgroundJobs,
-  documentEmbeddingGenerations,
-  documentExtractions,
-  documentVersions,
-  documents,
-  gapReassessmentDraftDocuments,
-  gapReassessmentDrafts,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-  idempotencyRecordResults,
-  idempotencyRecords,
-} from "@/src/db/schema";
+import { assessmentRevisions, assessments, auditEvents, backgroundJobs, documentEmbeddingGenerations, documentExtractions, documentVersions, documents, gapReassessmentDraftDocuments, gapReassessmentDrafts, generatedArtifactRevisions, idempotencyRecordResults, idempotencyRecords } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -49,10 +32,10 @@ export async function prepareGapReassessment(input: {
     moduleId: context.assessment.moduleId,
   });
   const existing = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
-    where: and(
-      eq(gapReassessmentDrafts.assessmentId, context.assessment.id),
-      eq(gapReassessmentDrafts.status, "open"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.assessmentId, context.assessment.id),
+      eq(table.status, "open"),
+    )) ?? operators.sql`true` },
   });
   if (existing) {
     await updateGapReassessmentEvidence({
@@ -132,10 +115,10 @@ export async function prepareGapReassessment(input: {
   });
   if (!draft) {
     const concurrent = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
-      where: and(
-        eq(gapReassessmentDrafts.assessmentId, context.assessment.id),
-        eq(gapReassessmentDrafts.status, "open"),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.assessmentId, context.assessment.id),
+        eq(table.status, "open"),
+      )) ?? operators.sql`true` },
     });
     if (!concurrent) {
       throw new ApiError(
@@ -169,10 +152,10 @@ export async function updateGapReassessmentEvidence(input: {
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const draft = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
-    where: and(
-      eq(gapReassessmentDrafts.id, input.draftId),
-      eq(gapReassessmentDrafts.organizationId, input.organizationId),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, input.draftId),
+      eq(table.organizationId, input.organizationId),
+    )) ?? operators.sql`true` },
   });
   if (!draft || draft.status !== "open") {
     throw new ApiError(
@@ -183,10 +166,10 @@ export async function updateGapReassessmentEvidence(input: {
     );
   }
   const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.id, draft.assessmentId),
-      eq(assessments.organizationId, input.organizationId),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, draft.assessmentId),
+      eq(table.organizationId, input.organizationId),
+    )) ?? operators.sql`true` },
   });
   if (!assessment) throw new ApiError(404, "Gap assessment not found");
   await assertGapInputsMutable({
@@ -646,10 +629,10 @@ async function enqueueDraftGeneration(input: {
   retryNonce?: string;
 }) {
   const candidate = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
-    where: and(
-      eq(gapReassessmentDrafts.id, input.draftId),
-      eq(gapReassessmentDrafts.organizationId, input.organizationId),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, input.draftId),
+      eq(table.organizationId, input.organizationId),
+    )) ?? operators.sql`true` },
   });
   if (!candidate) throw new ApiError(404, "Reassessment draft not found");
   const outputLocale =
@@ -663,10 +646,10 @@ async function enqueueDraftGeneration(input: {
     );
   }
   const candidateAssessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.id, candidate.assessmentId),
-      eq(assessments.organizationId, input.organizationId),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, candidate.assessmentId),
+      eq(table.organizationId, input.organizationId),
+    )) ?? operators.sql`true` },
   });
   if (!candidateAssessment) throw new ApiError(404, "Gap assessment not found");
   if (
@@ -692,10 +675,10 @@ async function enqueueDraftGeneration(input: {
         status: true,
         result: true,
       },
-      where: eq(
-        generatedArtifactRevisions.id,
-        candidateAssessment.applicabilityArtifactRevisionId,
-      ),
+      where: { RAW: (table, operators) => (eq(
+        table.id,
+        candidateAssessment.applicabilityArtifactRevisionId!,
+      )) ?? operators.sql`true` },
     }),
   ]);
   if (!pinnedRelease) {
@@ -734,25 +717,25 @@ async function enqueueDraftGeneration(input: {
     const [claimed] = await tx.insert(idempotencyRecords).values(claimValues).onConflictDoNothing().returning();
     if (!claimed) {
       const existing = await tx.query.idempotencyRecords.findFirst({ columns: { id: true, actorKey: true, organizationId: true, scope: true, operation: true, key: true, requestFingerprint: true, state: true, responseStatus: true, expiresAt: true, createdAt: true, updatedAt: true },
-        where: and(
-          eq(idempotencyRecords.actorKey, claimValues.actorKey),
-          eq(idempotencyRecords.scope, claimValues.scope),
-          eq(idempotencyRecords.operation, claimValues.operation),
-          eq(idempotencyRecords.key, claimValues.key),
-        ),
+        where: { RAW: (table, operators) => (and(
+          eq(table.actorKey, claimValues.actorKey),
+          eq(table.scope, claimValues.scope),
+          eq(table.operation, claimValues.operation),
+          eq(table.key, claimValues.key),
+        )) ?? operators.sql`true` },
       });
       if (!existing || existing.requestFingerprint !== requestFingerprint) {
         throw new ApiError(409, "Idempotency key was reused with different input", undefined, "IDEMPOTENCY_KEY_REUSED");
       }
       const existingResult = await tx.query.idempotencyRecordResults.findFirst({
-        where: eq(idempotencyRecordResults.recordId, existing.id),
+        where: { RAW: (table, operators) => (eq(table.recordId, existing.id)) ?? operators.sql`true` },
         columns: { backgroundJobId: true },
       });
       if (existing.state !== "succeeded" || !existingResult?.backgroundJobId) {
         throw new ApiError(409, "Generation enqueue is still in progress", undefined, "IDEMPOTENCY_IN_PROGRESS");
       }
-      const replayJob = await tx.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: eq(backgroundJobs.id, existingResult.backgroundJobId) });
-      const replayDraft = await tx.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true }, where: eq(gapReassessmentDrafts.id, input.draftId) });
+      const replayJob = await tx.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, existingResult.backgroundJobId!)) ?? operators.sql`true` } });
+      const replayDraft = await tx.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true }, where: { RAW: (table, operators) => (eq(table.id, input.draftId)) ?? operators.sql`true` } });
       if (!replayJob || !replayDraft) throw new ApiError(409, "Generation replay target is unavailable", undefined, "IDEMPOTENCY_RESULT_MISSING");
       return { draft: replayDraft, job: toJobDto(replayJob), reused: true };
     }
@@ -835,21 +818,21 @@ async function lockAssessmentGenerationSlot(
     .returning();
   if (!assessment) throw new ApiError(409, "Gap assessment is no longer active");
   const competingDraft = await tx.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
-    where: and(
-      eq(gapReassessmentDrafts.assessmentId, draft.assessmentId),
-      eq(gapReassessmentDrafts.status, "locked"),
-      ne(gapReassessmentDrafts.id, draft.id),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.assessmentId, draft.assessmentId),
+      eq(table.status, "locked"),
+      ne(table.id, draft.id),
+    )) ?? operators.sql`true` },
   });
   if (competingDraft) {
     throw new ApiError(409, "Another reassessment generation is still running");
   }
   const artifact = await tx.query.generatedArtifacts.findFirst({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true },
-    where: and(
-      eq(generatedArtifacts.organizationId, draft.organizationId),
-      eq(generatedArtifacts.moduleId, assessment.moduleId),
-      eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, draft.organizationId),
+      eq(table.moduleId, assessment.moduleId),
+      eq(table.artifactType, "gap_analysis_result"),
+    )) ?? operators.sql`true` },
   });
   if (artifact?.currentRevisionId) {
     throw new ApiError(
@@ -932,7 +915,7 @@ async function runLockedDraft(
     );
   }
   const selected = await db.query.gapReassessmentDraftDocuments.findMany({ columns: { draftId: true, organizationId: true, documentId: true, documentVersionId: true, selectionOrigin: true, selectedBy: true, selectedAt: true },
-    where: eq(gapReassessmentDraftDocuments.draftId, draft.id),
+    where: { RAW: (table, operators) => (eq(table.draftId, draft.id)) ?? operators.sql`true` },
   });
   try {
     const result = await generateGapAnalysis(
@@ -983,12 +966,12 @@ async function runLockedDraft(
   } catch (error) {
     if (deferFailure) throw error;
     const run = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-      where: and(
-        eq(aiProcessingRuns.organizationId, input.organizationId),
-        eq(aiProcessingRuns.assessmentRevisionId, draft.assessmentRevisionId),
-        eq(aiProcessingRuns.operationKind, "gap_analysis"),
-      ),
-      orderBy: [desc(aiProcessingRuns.createdAt)],
+      where: { RAW: (table, operators) => (and(
+        eq(table.organizationId, input.organizationId),
+        eq(table.assessmentRevisionId, draft.assessmentRevisionId),
+        eq(table.operationKind, "gap_analysis"),
+      )) ?? operators.sql`true` },
+      orderBy: { createdAt: "desc" },
     });
     await db.transaction(async (tx) => {
       await tx
@@ -1022,11 +1005,11 @@ export async function executeGapGenerationJob(input: {
   retryNonce?: string;
 }) {
   const draft = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
-    where: and(
-      eq(gapReassessmentDrafts.id, input.draftId),
-      eq(gapReassessmentDrafts.organizationId, input.organizationId),
-      eq(gapReassessmentDrafts.generationJobId, input.jobId),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, input.draftId),
+      eq(table.organizationId, input.organizationId),
+      eq(table.generationJobId, input.jobId),
+    )) ?? operators.sql`true` },
   });
   if (!draft) throw new ApiError(404, "Gap generation draft not found", undefined, "GAP_DRAFT_NOT_FOUND");
   if (draft.status === "generated" && draft.outputGapRevisionId) {
@@ -1047,21 +1030,21 @@ export async function executeGapGenerationJob(input: {
 
 async function loadPreparationContext(organizationId: string, assessmentId: string) {
   const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.id, assessmentId),
-      eq(assessments.organizationId, organizationId),
-      eq(assessments.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, assessmentId),
+      eq(table.organizationId, organizationId),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
   });
   if (!assessment?.gapAnalysisReleaseId || !assessment.currentRevisionId) {
     throw new ApiError(409, "Save the gap questionnaire before reassessment");
   }
   const artifact = await db.query.generatedArtifacts.findFirst({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true },
-    where: and(
-      eq(generatedArtifacts.organizationId, organizationId),
-      eq(generatedArtifacts.moduleId, assessment.moduleId),
-      eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, organizationId),
+      eq(table.moduleId, assessment.moduleId),
+      eq(table.artifactType, "gap_analysis_result"),
+    )) ?? operators.sql`true` },
   });
   return { assessment, artifact };
 }
@@ -1069,15 +1052,15 @@ async function loadPreparationContext(organizationId: string, assessmentId: stri
 async function loadAcceptedEvidence(acceptedRevisionId: string | null | undefined) {
   if (!acceptedRevisionId) return [];
   const sources = await db.query.artifactRevisionDocumentSources.findMany({
-    where: eq(artifactRevisionDocumentSources.artifactRevisionId, acceptedRevisionId),
+    where: { RAW: (table, operators) => (eq(table.artifactRevisionId, acceptedRevisionId)) ?? operators.sql`true` },
     columns: { documentVersionId: true },
   });
   if (!sources.length) return [];
   const versions = await db.query.documentVersions.findMany({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true },
-    where: inArray(
-      documentVersions.id,
+    where: { RAW: (table, operators) => (inArray(
+      table.id,
       sources.map((source) => source.documentVersionId),
-    ),
+    )) ?? operators.sql`true` },
   });
   return versions.map((version) => ({
     versionId: version.id,
@@ -1093,16 +1076,16 @@ async function resolveEvidenceSelection(input: {
   const documentIds = new Set(input.accepted.map((item) => item.documentId));
   const explicitVersions = input.explicitAdditions.length
     ? await db.query.documentVersions.findMany({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true },
-        where: inArray(documentVersions.id, [...new Set(input.explicitAdditions)]),
+        where: { RAW: (table, operators) => (inArray(table.id, [...new Set(input.explicitAdditions)])) ?? operators.sql`true` },
       })
     : [];
   explicitVersions.forEach((version) => documentIds.add(version.documentId));
   const documentRows = documentIds.size
     ? await db.query.documents.findMany({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true },
-        where: and(
-          eq(documents.organizationId, input.organizationId),
-          inArray(documents.id, [...documentIds]),
-        ),
+        where: { RAW: (table, operators) => (and(
+          eq(table.organizationId, input.organizationId),
+          inArray(table.id, [...documentIds]),
+        )) ?? operators.sql`true` },
       })
     : [];
   const candidateIds = new Set([

@@ -1,19 +1,6 @@
 import { db } from "@/src/db";
-import {
-  actionPlanItems,
-  actionPlans,
-  artifactRevisionAssessmentSources,
-  assessmentRevisions,
-  assessments,
-  auditEvents,
-  gapFindingEvidence,
-  gapFindings,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-  idempotencyRecordResults,
-  idempotencyRecords,
-} from "@/src/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { actionPlanItems, actionPlans, auditEvents, generatedArtifactRevisions, generatedArtifacts, idempotencyRecordResults, idempotencyRecords } from "@/src/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { buildActionPlanItems } from "@/src/server/action-plans";
 import { ApiError } from "../api/errors";
 import { assertCanManageOrganization } from "../organizations/service";
@@ -75,10 +62,10 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       }
       const revision =
         await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-          where: and(
-            eq(generatedArtifactRevisions.id, input.gapRevisionId),
-            eq(generatedArtifactRevisions.artifactId, artifact.id),
-          ),
+          where: { RAW: (table, operators) => (and(
+            eq(table.id, input.gapRevisionId),
+            eq(table.artifactId, artifact.id),
+          )) ?? operators.sql`true` },
         });
       if (!revision?.gapAnalysisReleaseId) {
         throw new ApiError(
@@ -103,16 +90,16 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       }
       const outputLocale = revision.outputLocale;
       const existingPlan = await tx.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
-        where: eq(actionPlans.organizationId, input.organizationId),
-        orderBy: [desc(actionPlans.createdAt)],
+        where: { RAW: (table, operators) => (eq(table.organizationId, input.organizationId)) ?? operators.sql`true` },
+        orderBy: { createdAt: "desc" },
       });
       if (existingPlan) {
         const existingSourceRevision =
           await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-            where: eq(
-              generatedArtifactRevisions.id,
+            where: { RAW: (table, operators) => (eq(
+              table.id,
               existingPlan.sourceGapArtifactRevisionId,
-            ),
+            )) ?? operators.sql`true` },
           });
         const existingSnapshotLocale = existingSourceRevision
           ? readGapRevisionMetadata(existingSourceRevision.result).outputLocale
@@ -139,10 +126,10 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       }
 
       const assessmentSources = await tx.query.artifactRevisionAssessmentSources.findMany({
-        where: eq(
-          artifactRevisionAssessmentSources.artifactRevisionId,
+        where: { RAW: (table, operators) => (eq(
+          table.artifactRevisionId,
           revision.id,
-        ),
+        )) ?? operators.sql`true` },
         columns: { assessmentRevisionId: true },
       });
       if (assessmentSources.length !== 1) {
@@ -155,17 +142,17 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       }
       const assessmentRevision =
         await tx.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-          where: eq(
-            assessmentRevisions.id,
+          where: { RAW: (table, operators) => (eq(
+            table.id,
             assessmentSources[0]!.assessmentRevisionId,
-          ),
+          )) ?? operators.sql`true` },
         });
       const assessment = assessmentRevision
         ? await tx.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-            where: and(
-              eq(assessments.id, assessmentRevision.assessmentId),
-              eq(assessments.organizationId, input.organizationId),
-            ),
+            where: { RAW: (table, operators) => (and(
+              eq(table.id, assessmentRevision.assessmentId),
+              eq(table.organizationId, input.organizationId),
+            )) ?? operators.sql`true` },
           })
         : null;
       if (!assessment?.applicabilityArtifactRevisionId) {
@@ -178,10 +165,10 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       }
       const applicability =
         await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-          where: eq(
-            generatedArtifactRevisions.id,
-            assessment.applicabilityArtifactRevisionId,
-          ),
+          where: { RAW: (table, operators) => (eq(
+            table.id,
+             assessment.applicabilityArtifactRevisionId!,
+          )) ?? operators.sql`true` },
         });
       const outcome = (
         applicability?.result as { outcome?: unknown } | undefined
@@ -212,14 +199,14 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
         )
         .map((requirement) => requirement.id);
       const findings = await tx.query.gapFindings.findMany({ columns: { id: true, artifactRevisionId: true, requirementVersionId: true, status: true, evidenceSufficiency: true, severity: true, rationale: true, recommendation: true, assumptions: true, requiresReview: true, createdAt: true },
-        where: eq(gapFindings.artifactRevisionId, revision.id),
+        where: { RAW: (table, operators) => (eq(table.artifactRevisionId, revision.id)) ?? operators.sql`true` },
       });
       const evidence = findings.length
         ? await tx.query.gapFindingEvidence.findMany({ columns: { id: true, findingId: true, citationId: true, sourceType: true, assessmentAnswerId: true, documentChunkId: true, legalSourceChunkId: true, excerpt: true, pageNumber: true, sectionLabel: true, createdAt: true },
-            where: inArray(
-              gapFindingEvidence.findingId,
+            where: { RAW: (table, operators) => (inArray(
+              table.findingId,
               findings.map((finding) => finding.id),
-            ),
+            )) ?? operators.sql`true` },
           })
         : [];
       assertGapRevisionApprovable({

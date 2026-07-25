@@ -1,16 +1,7 @@
 import "dotenv/config";
 
 import { closeDbConnection, db } from "@/src/db";
-import {
-  activeLegalCorpusReleases,
-  legalCorpusFamilies,
-  legalCorpusReleaseMembers,
-  legalCorpusReleases,
-  legalSourceProcessingGenerations,
-  legalSourceRenditions,
-  legalSources,
-  legalSourceVersions,
-} from "@/src/db/schema";
+import { legalCorpusFamilies, legalSourceProcessingGenerations, legalSourceRenditions, legalSources, legalSourceVersions } from "@/src/db/schema";
 import { NIS2_CORPUS_BOOTSTRAP_FIXTURE } from "@/src/server/corpus";
 import {
   activateCorpusRelease,
@@ -62,10 +53,10 @@ async function approveFixture(fixture: Fixture, generationId: string) {
   }
 
   let release = await db.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-    where: and(
-      eq(legalCorpusReleases.familyId, selected.familyId),
-      eq(legalCorpusReleases.versionLabel, releaseLabel),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.familyId, selected.familyId),
+      eq(table.versionLabel, releaseLabel),
+    )) ?? operators.sql`true` },
   });
   if (!release) {
     release = await createCorpusRelease({
@@ -84,7 +75,7 @@ async function approveFixture(fixture: Fixture, generationId: string) {
     processingGenerationId: selected.generationId,
   };
   const members = await db.query.legalCorpusReleaseMembers.findMany({ columns: { releaseId: true, sourceVersionId: true, renditionId: true, processingGenerationId: true, position: true },
-    where: eq(legalCorpusReleaseMembers.releaseId, release.id),
+    where: { RAW: (table, operators) => (eq(table.releaseId, release!.id)) ?? operators.sql`true` },
   });
   const exactMember = members.length === 1
     && members[0]?.sourceVersionId === expectedMember.sourceVersionId
@@ -115,12 +106,12 @@ async function approveFixture(fixture: Fixture, generationId: string) {
     const job = await enqueueCorpusEvaluation({ actorUserId, releaseId: release.id });
     evaluationJobId = job.id;
     release = (await db.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-      where: eq(legalCorpusReleases.id, release.id),
+      where: { RAW: (table, operators) => (eq(table.id, release!.id)) ?? operators.sql`true` },
     }))!;
   }
 
   let active = await db.query.activeLegalCorpusReleases.findFirst({ columns: { familyId: true, releaseId: true, activatedBy: true, activatedAt: true },
-    where: eq(activeLegalCorpusReleases.familyId, selected.familyId),
+    where: { RAW: (table, operators) => (eq(table.familyId, selected.familyId)) ?? operators.sql`true` },
   });
   if (activatePassed && active?.releaseId !== release.id) {
     if (release.evaluationState !== "passed") {
@@ -134,7 +125,7 @@ async function approveFixture(fixture: Fixture, generationId: string) {
       requestId: `operator-activate-corpus:${release.id}`,
     });
     active = await db.query.activeLegalCorpusReleases.findFirst({ columns: { familyId: true, releaseId: true, activatedBy: true, activatedAt: true },
-      where: eq(activeLegalCorpusReleases.familyId, selected.familyId),
+      where: { RAW: (table, operators) => (eq(table.familyId, selected.familyId)) ?? operators.sql`true` },
     });
   }
 

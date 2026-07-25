@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sql } from "drizzle-orm";
+import { contentTranslations } from "@/src/db/schema";
 
 const { mockedDb, findTranslations } = vi.hoisted(() => {
   const findTranslations = vi.fn();
@@ -148,9 +150,16 @@ describe("Gap release loader", () => {
     expect(english?.requirements[0]).not.toHaveProperty("recommendation");
     expect(findTranslations).toHaveBeenCalledOnce();
     const queryInput = findTranslations.mock.calls[0][0] as {
-      where: unknown;
+      where: {
+        RAW: (
+          table: typeof contentTranslations,
+          operators: { sql: typeof sql },
+        ) => unknown;
+      };
     };
-    const queryStrings = collectStrings(queryInput.where);
+    const queryStrings = collectStrings(
+      queryInput.where.RAW(contentTranslations, { sql }),
+    );
     expect(queryStrings).toContain("requirement-title");
     expect(queryStrings).toContain("requirement-text");
   });

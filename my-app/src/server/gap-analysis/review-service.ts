@@ -1,21 +1,6 @@
 import { db } from "@/src/db";
-import {
-  artifactRevisionArtifactSources,
-  artifactRevisionAssessmentSources,
-  artifactRevisionDocumentSources,
-  actionPlans,
-  assessmentRevisions,
-  assessments,
-  auditEvents,
-  gapFindingEvidence,
-  gapFindingReviewResolutions,
-  gapFindings,
-  gapRequirements,
-  gapRequirementVersions,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-} from "@/src/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { artifactRevisionArtifactSources, artifactRevisionAssessmentSources, artifactRevisionDocumentSources, auditEvents, gapFindingEvidence, gapFindingReviewResolutions, gapFindings, gapRequirements, gapRequirementVersions, generatedArtifactRevisions, generatedArtifacts } from "@/src/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { contentHash } from "@/src/server/compliance";
 import {
   buildCorrectedGapRevisionMetadata,
@@ -183,7 +168,7 @@ export async function correctGapRevision(input: {
   await assertCanManageOrganization(input.userId, input.organizationId);
   await assertGapFindingsMutable(input.organizationId);
   const sourceRevision = await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-    where: eq(generatedArtifactRevisions.id, input.sourceRevisionId),
+    where: { RAW: (table, operators) => (eq(table.id, input.sourceRevisionId)) ?? operators.sql`true` },
   });
   if (!sourceRevision?.gapAnalysisReleaseId) {
     throw new ApiError(
@@ -209,11 +194,11 @@ export async function correctGapRevision(input: {
     );
   }
   const artifact = await db.query.generatedArtifacts.findFirst({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true },
-    where: and(
-      eq(generatedArtifacts.id, sourceRevision.artifactId),
-      eq(generatedArtifacts.organizationId, input.organizationId),
-      eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, sourceRevision.artifactId),
+      eq(table.organizationId, input.organizationId),
+      eq(table.artifactType, "gap_analysis_result"),
+    )) ?? operators.sql`true` },
   });
   if (!artifact || artifact.currentRevisionId !== sourceRevision.id) {
     throw new ApiError(
@@ -244,7 +229,7 @@ export async function correctGapRevision(input: {
   }
   assertGapCorrectionReasons(input.corrections);
   const sourceFindings = await db.query.gapFindings.findMany({ columns: { id: true, artifactRevisionId: true, requirementVersionId: true, status: true, evidenceSufficiency: true, severity: true, rationale: true, recommendation: true, assumptions: true, requiresReview: true, createdAt: true },
-    where: eq(gapFindings.artifactRevisionId, sourceRevision.id),
+    where: { RAW: (table, operators) => (eq(table.artifactRevisionId, sourceRevision.id)) ?? operators.sql`true` },
   });
   if (
     input.corrections.some(
@@ -261,10 +246,10 @@ export async function correctGapRevision(input: {
   }
   const sourceEvidence = sourceFindings.length
     ? await db.query.gapFindingEvidence.findMany({ columns: { id: true, findingId: true, citationId: true, sourceType: true, assessmentAnswerId: true, documentChunkId: true, legalSourceChunkId: true, excerpt: true, pageNumber: true, sectionLabel: true, createdAt: true },
-        where: inArray(
-          gapFindingEvidence.findingId,
+        where: { RAW: (table, operators) => (inArray(
+          table.findingId,
           sourceFindings.map((finding) => finding.id),
-        ),
+        )) ?? operators.sql`true` },
       })
     : [];
   const requirements = sourceFindings.length
@@ -289,21 +274,21 @@ export async function correctGapRevision(input: {
   const requirementById = new Map(requirements.map((item) => [item.id, item]));
   const [assessmentSources, artifactSources, documentSources] = await Promise.all([
     db.query.artifactRevisionAssessmentSources.findMany({
-      where: eq(artifactRevisionAssessmentSources.artifactRevisionId, sourceRevision.id),
+      where: { RAW: (table, operators) => (eq(table.artifactRevisionId, sourceRevision.id)) ?? operators.sql`true` },
       columns: { assessmentRevisionId: true },
     }),
     db.query.artifactRevisionArtifactSources.findMany({
-      where: eq(artifactRevisionArtifactSources.artifactRevisionId, sourceRevision.id),
+      where: { RAW: (table, operators) => (eq(table.artifactRevisionId, sourceRevision.id)) ?? operators.sql`true` },
       columns: { sourceArtifactRevisionId: true },
     }),
     db.query.artifactRevisionDocumentSources.findMany({
-      where: eq(artifactRevisionDocumentSources.artifactRevisionId, sourceRevision.id),
+      where: { RAW: (table, operators) => (eq(table.artifactRevisionId, sourceRevision.id)) ?? operators.sql`true` },
       columns: { documentVersionId: true },
     }),
   ]);
   const latest = await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-    where: eq(generatedArtifactRevisions.artifactId, artifact.id),
-    orderBy: [desc(generatedArtifactRevisions.revisionNumber)],
+    where: { RAW: (table, operators) => (eq(table.artifactId, artifact.id)) ?? operators.sql`true` },
+    orderBy: { revisionNumber: "desc" },
   });
 
   try {
@@ -325,10 +310,10 @@ export async function correctGapRevision(input: {
         );
       }
       const activePlan = await tx.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
-        where: and(
-          eq(actionPlans.organizationId, input.organizationId),
-          eq(actionPlans.status, "active"),
-        ),
+        where: { RAW: (table, operators) => (and(
+          eq(table.organizationId, input.organizationId),
+          eq(table.status, "active"),
+        )) ?? operators.sql`true` },
       });
       if (activePlan) {
         throw new ApiError(
@@ -510,7 +495,7 @@ export async function approveGapRevision(input: {
 }) {
   await assertCanManageOrganization(input.userId, input.organizationId);
   const revision = await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-    where: eq(generatedArtifactRevisions.id, input.revisionId),
+    where: { RAW: (table, operators) => (eq(table.id, input.revisionId)) ?? operators.sql`true` },
   });
   if (!revision?.gapAnalysisReleaseId) {
     throw new ApiError(
@@ -535,11 +520,11 @@ export async function approveGapRevision(input: {
     );
   }
   const artifact = await db.query.generatedArtifacts.findFirst({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true },
-    where: and(
-      eq(generatedArtifacts.id, revision.artifactId),
-      eq(generatedArtifacts.organizationId, input.organizationId),
-      eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, revision.artifactId),
+      eq(table.organizationId, input.organizationId),
+      eq(table.artifactType, "gap_analysis_result"),
+    )) ?? operators.sql`true` },
   });
   if (!artifact || artifact.currentRevisionId !== revision.id) {
     throw new ApiError(
@@ -550,27 +535,27 @@ export async function approveGapRevision(input: {
     );
   }
   const assessmentSource = await db.query.artifactRevisionAssessmentSources.findFirst({
-    where: eq(artifactRevisionAssessmentSources.artifactRevisionId, revision.id),
+    where: { RAW: (table, operators) => (eq(table.artifactRevisionId, revision.id)) ?? operators.sql`true` },
     columns: { assessmentRevisionId: true },
   });
   if (!assessmentSource)
     throw new ApiError(409, "Gap revision assessment source is missing");
   const assessmentRevision = await db.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-    where: eq(assessmentRevisions.id, assessmentSource.assessmentRevisionId),
+    where: { RAW: (table, operators) => (eq(table.id, assessmentSource.assessmentRevisionId)) ?? operators.sql`true` },
   });
   if (!assessmentRevision)
     throw new ApiError(409, "Gap assessment revision is missing");
   const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: eq(assessments.id, assessmentRevision.assessmentId),
+    where: { RAW: (table, operators) => (eq(table.id, assessmentRevision.assessmentId)) ?? operators.sql`true` },
   });
   if (!assessment?.applicabilityArtifactRevisionId) {
     throw new ApiError(409, "Pinned applicability source is missing");
   }
   const applicability = await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-    where: eq(
-      generatedArtifactRevisions.id,
-      assessment.applicabilityArtifactRevisionId,
-    ),
+    where: { RAW: (table, operators) => (eq(
+      table.id,
+      assessment.applicabilityArtifactRevisionId!,
+    )) ?? operators.sql`true` },
   });
   const outcome = (applicability?.result as { outcome?: unknown })?.outcome;
   if (typeof outcome !== "string")
@@ -586,14 +571,14 @@ export async function approveGapRevision(input: {
     )
     .map((requirement) => requirement.id);
   const findings = await db.query.gapFindings.findMany({ columns: { id: true, artifactRevisionId: true, requirementVersionId: true, status: true, evidenceSufficiency: true, severity: true, rationale: true, recommendation: true, assumptions: true, requiresReview: true, createdAt: true },
-    where: eq(gapFindings.artifactRevisionId, revision.id),
+    where: { RAW: (table, operators) => (eq(table.artifactRevisionId, revision.id)) ?? operators.sql`true` },
   });
   const evidence = findings.length
     ? await db.query.gapFindingEvidence.findMany({ columns: { id: true, findingId: true, citationId: true, sourceType: true, assessmentAnswerId: true, documentChunkId: true, legalSourceChunkId: true, excerpt: true, pageNumber: true, sectionLabel: true, createdAt: true },
-        where: inArray(
-          gapFindingEvidence.findingId,
+        where: { RAW: (table, operators) => (inArray(
+          table.findingId,
           findings.map((finding) => finding.id),
-        ),
+        )) ?? operators.sql`true` },
       })
     : [];
   assertGapRevisionApprovable({

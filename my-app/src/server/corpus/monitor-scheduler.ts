@@ -1,10 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
-import { backgroundJobs, legalSourceMonitors } from "@/src/db/schema";
+import { backgroundJobs } from "@/src/db/schema";
 
 export async function ensureScheduledLegalSourceMonitorJobs() {
   const monitors = await db.query.legalSourceMonitors.findMany({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-    where: eq(legalSourceMonitors.active, true),
+    where: { RAW: (table, operators) => (eq(table.active, true)) ?? operators.sql`true` },
   });
   let created = 0;
   for (const monitor of monitors) {

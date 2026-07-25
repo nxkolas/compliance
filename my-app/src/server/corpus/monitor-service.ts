@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { backgroundJobs, legalSourceChangeAlerts, legalSourceMonitorChecks, legalSourceMonitors, legalSources, legalSourceVersions, platformAuditEvents } from "@/src/db/schema";
+import { backgroundJobs, legalSourceChangeAlerts, legalSourceMonitors, legalSourceVersions, platformAuditEvents } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -15,7 +15,7 @@ export async function createLegalSourceMonitor(input: {
   requestId?: string;
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:operate");
-  const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalSources.id, input.sourceId) });
+  const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, input.sourceId)) ?? operators.sql`true` } });
   if (!source) throw new ApiError(404, "Legal source not found", undefined, "LEGAL_SOURCE_NOT_FOUND");
   const url = await validateControlledUrl(input.exactUrl);
   const schedule = legalSourceMonitorScheduleSchema.parse(input.schedule);
@@ -42,12 +42,13 @@ export async function createLegalSourceMonitor(input: {
 
 export async function getLegalSourceMonitorCreationResult(actorUserId: string, jobId: string) {
   await requirePlatformCapability(actorUserId, "corpus:read");
-  const job = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: eq(backgroundJobs.id, jobId) });
+  const job = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, jobId)) ?? operators.sql`true` } });
   const payload = job?.payload && typeof job.payload === "object" ? job.payload as Record<string, unknown> : null;
   if (!job || job.kind !== "legal-source-monitor" || typeof payload?.monitorId !== "string") {
     throw new ApiError(409, "Created monitor result is unavailable", undefined, "IDEMPOTENCY_RESULT_UNAVAILABLE");
   }
-  const monitor = await db.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalSourceMonitors.id, payload.monitorId) });
+  const monitorId = payload.monitorId;
+  const monitor = await db.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, monitorId)) ?? operators.sql`true` } });
   if (!monitor) throw new ApiError(409, "Created monitor result is unavailable", undefined, "IDEMPOTENCY_RESULT_UNAVAILABLE");
   return { monitor, job };
 }
@@ -67,12 +68,12 @@ export async function resolveLegalSourceChangeAlert(input: {
   if (!reason) throw new ApiError(400, "A resolution reason is required", undefined, "RESOLUTION_REASON_REQUIRED");
   return db.transaction(async (tx) => {
     const alert = await tx.query.legalSourceChangeAlerts.findFirst({ columns: { id: true, monitorCheckId: true, sourceId: true, oldHash: true, newHash: true, candidateVersionId: true, state: true, resolvedBy: true, resolutionReason: true, resolvedAt: true, version: true, createdAt: true },
-      where: and(eq(legalSourceChangeAlerts.id, input.alertId), eq(legalSourceChangeAlerts.state, "open"), eq(legalSourceChangeAlerts.version, input.expectedVersion)),
+      where: { RAW: (table, operators) => (and(eq(table.id, input.alertId), eq(table.state, "open"), eq(table.version, input.expectedVersion))) ?? operators.sql`true` },
     });
     if (!alert) throw new ApiError(412, "The change alert changed or is no longer open", undefined, "PRECONDITION_FAILED");
-    const check = await tx.query.legalSourceMonitorChecks.findFirst({ columns: { id: true, monitorId: true, responseStatus: true, finalUrl: true, responseMetadata: true, contentHash: true, changeDetected: true, safeErrorCode: true, checkedAt: true }, where: eq(legalSourceMonitorChecks.id, alert.monitorCheckId) });
+    const check = await tx.query.legalSourceMonitorChecks.findFirst({ columns: { id: true, monitorId: true, responseStatus: true, finalUrl: true, responseMetadata: true, contentHash: true, changeDetected: true, safeErrorCode: true, checkedAt: true }, where: { RAW: (table, operators) => (eq(table.id, alert.monitorCheckId)) ?? operators.sql`true` } });
     if (!check) throw new ApiError(409, "Monitor check is missing", undefined, "MONITOR_CHECK_MISSING");
-    const monitor = await tx.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalSourceMonitors.id, check.monitorId) });
+    const monitor = await tx.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, check.monitorId)) ?? operators.sql`true` } });
     if (!monitor) throw new ApiError(409, "Source monitor is missing", undefined, "MONITOR_MISSING");
     let candidateVersionId: string | undefined;
     let jobId: string | undefined;

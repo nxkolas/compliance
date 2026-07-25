@@ -1,7 +1,7 @@
-import { and, desc, eq, gte, lt, lte, or } from "drizzle-orm";
+import { and, eq, gte, lt, lte, or } from "drizzle-orm";
 import * as z from "zod";
 import { db } from "@/src/db";
-import { backgroundJobs, platformAuditEvents } from "@/src/db/schema";
+import { backgroundJobs } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
 import { toJobDto } from "@/src/server/jobs";
 import { getCursorCodec } from "@/src/server/api/pagination";
@@ -13,12 +13,12 @@ export async function listPlatformJobs(input: { userId: string; limit: number; c
   const scope = `platform-jobs:${JSON.stringify({ kind: input.kind ?? null, state: input.state ?? null })}`;
   const cursor = input.cursor ? cursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.query.backgroundJobs.findMany({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
-    where: and(
-      input.kind ? eq(backgroundJobs.kind, input.kind) : undefined,
-      input.state ? eq(backgroundJobs.state, input.state as typeof backgroundJobs.$inferSelect.state) : undefined,
-      cursor ? or(lt(backgroundJobs.createdAt, new Date(cursor[0])), and(eq(backgroundJobs.createdAt, new Date(cursor[0])), lt(backgroundJobs.id, cursor[1]))) : undefined,
-    ),
-    orderBy: [desc(backgroundJobs.createdAt), desc(backgroundJobs.id)],
+    where: { RAW: (table, operators) => (and(
+      input.kind ? eq(table.kind, input.kind) : undefined,
+      input.state ? eq(table.state, input.state as typeof backgroundJobs.$inferSelect.state) : undefined,
+      cursor ? or(lt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), lt(table.id, cursor[1]))) : undefined,
+    )) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc", id: "desc" },
     limit: input.limit + 1,
   });
   const page = rows.slice(0, input.limit);
@@ -32,16 +32,16 @@ export async function listPlatformAuditEvents(input: { userId: string; limit: nu
   const scope = `platform-audit:${JSON.stringify(filters)}`;
   const cursor = input.cursor ? cursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.query.platformAuditEvents.findMany({ columns: { id: true, actorUserId: true, eventType: true, entityType: true, entityId: true, requestId: true, metadata: true, createdAt: true },
-    where: and(
-      input.eventType ? eq(platformAuditEvents.eventType, input.eventType) : undefined,
-      input.entityType ? eq(platformAuditEvents.entityType, input.entityType) : undefined,
-      input.entityId ? eq(platformAuditEvents.entityId, input.entityId) : undefined,
-      input.actorUserId ? eq(platformAuditEvents.actorUserId, input.actorUserId) : undefined,
-      input.dateFrom ? gte(platformAuditEvents.createdAt, input.dateFrom) : undefined,
-      input.dateTo ? lte(platformAuditEvents.createdAt, input.dateTo) : undefined,
-      cursor ? or(lt(platformAuditEvents.createdAt, new Date(cursor[0])), and(eq(platformAuditEvents.createdAt, new Date(cursor[0])), lt(platformAuditEvents.id, cursor[1]))) : undefined,
-    ),
-    orderBy: [desc(platformAuditEvents.createdAt), desc(platformAuditEvents.id)],
+    where: { RAW: (table, operators) => (and(
+      input.eventType ? eq(table.eventType, input.eventType) : undefined,
+      input.entityType ? eq(table.entityType, input.entityType) : undefined,
+      input.entityId ? eq(table.entityId, input.entityId) : undefined,
+      input.actorUserId ? eq(table.actorUserId, input.actorUserId) : undefined,
+      input.dateFrom ? gte(table.createdAt, input.dateFrom) : undefined,
+      input.dateTo ? lte(table.createdAt, input.dateTo) : undefined,
+      cursor ? or(lt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), lt(table.id, cursor[1]))) : undefined,
+    )) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc", id: "desc" },
     limit: input.limit + 1,
   });
   const page = rows.slice(0, input.limit);
