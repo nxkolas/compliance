@@ -1,6 +1,7 @@
 "use client";
 
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { GapLabels, GapWorkflow } from "./types";
 
@@ -9,56 +10,105 @@ export function GapQuestionnaireStep({
   labels,
   answers,
   busy,
+  saveState,
   onAnswer,
+  onFlush,
   onContinue,
 }: {
   workflow: GapWorkflow;
   labels: GapLabels;
   answers: Record<string, string>;
   busy: boolean;
-  onAnswer: (questionId: string, optionId: string) => void;
+  saveState: "idle" | "saving" | "saved" | "error" | "conflict";
+  onAnswer: (questionId: string, optionId: string) => Promise<void>;
+  onFlush: () => Promise<void>;
   onContinue: () => void;
 }) {
   const release = workflow.release!;
-  const missing = release.questions.filter(
+  const [categoryIndex, setCategoryIndex] = useState(0);
+  const categories = useMemo(
+    () =>
+      [...release.requirements]
+        .sort((left, right) => left.position - right.position)
+        .map((requirement) => ({
+          ...requirement,
+          questions: release.questions.filter((question) =>
+            requirement.questionStableKeys.includes(question.stableKey),
+          ),
+        })),
+    [release],
+  );
+  const category = categories[categoryIndex];
+  if (!category) return null;
+  const missing = category.questions.filter(
     (question) => question.required && !answers[question.id],
   );
+  const answeredCount = release.questions.filter(
+    (question) => question.required && answers[question.id],
+  ).length;
+  const isLast = categoryIndex === categories.length - 1;
+
+  async function move(nextIndex: number) {
+    await onFlush();
+    setCategoryIndex(nextIndex);
+  }
+
   return (
     <section aria-labelledby="gap-step-heading" className="grid gap-5">
       <div>
+        <p className="text-sm font-medium text-primary">
+          {labels.categoryProgress
+            .replace("{current}", String(categoryIndex + 1))
+            .replace("{total}", String(categories.length))}
+        </p>
         <h2
           id="gap-step-heading"
           tabIndex={-1}
-          className="text-xl font-semibold outline-none"
+          className="mt-1 text-xl font-semibold outline-none"
         >
-          {labels.steps.questions}
+          {category.title}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {labels.stepDescriptions.questions}
+          {labels.questionProgress
+            .replace("{answered}", String(answeredCount))
+            .replace("{total}", String(release.questions.length))}
         </p>
+      </div>
+      <div
+        aria-live="polite"
+        className="min-h-5 text-sm text-muted-foreground"
+      >
+        {saveState === "saving" ? (
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> {labels.saving}
+          </span>
+        ) : saveState === "saved" ? (
+          labels.saved
+        ) : saveState === "conflict" ? (
+          <span className="text-destructive">{labels.draftConflict}</span>
+        ) : saveState === "error" ? (
+          <span className="text-destructive">{labels.saveError}</span>
+        ) : null}
       </div>
       <form
         className="grid gap-5"
         onSubmit={(event) => {
           event.preventDefault();
-          onContinue();
+          if (isLast) onContinue();
+          else void move(categoryIndex + 1);
         }}
       >
-        {release.questions.map((question) => (
+        {category.questions.map((question) => (
           <fieldset key={question.id} className="rounded-lg border p-4">
             <legend className="px-1 font-semibold">
               {question.questionText}{" "}
-              {question.required ? (
-                <span className="text-xs text-muted-foreground">
-                  · {labels.required}
-                </span>
-              ) : null}
+              <span className="text-xs text-muted-foreground">
+                · {labels.required}
+              </span>
             </legend>
-            {question.helpText ? (
-              <p className="mb-3 text-sm text-muted-foreground">
-                {question.helpText}
-              </p>
-            ) : null}
+            <p className="mb-3 text-sm text-muted-foreground">
+              {question.helpText}
+            </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {question.options.map((option) => (
                 <label
@@ -70,8 +120,8 @@ export function GapQuestionnaireStep({
                     name={question.id}
                     value={option.id}
                     checked={answers[question.id] === option.id}
-                    onChange={() => onAnswer(question.id, option.id)}
-                    disabled={!workflow.canContribute}
+                    onChange={() => void onAnswer(question.id, option.id)}
+                    disabled={!workflow.canContribute || busy}
                   />
                   {option.label}
                 </label>
@@ -79,22 +129,45 @@ export function GapQuestionnaireStep({
             </div>
           </fieldset>
         ))}
-        {workflow.canContribute ? (
+        {missing.length > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {labels.categoryIncomplete}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap justify-between gap-3">
           <Button
-            className="justify-self-start"
-            disabled={busy || missing.length > 0}
-            type="submit"
+            type="button"
+            variant="outline"
+            disabled={categoryIndex === 0 || saveState === "saving"}
+            onClick={() => void move(categoryIndex - 1)}
           >
-            {busy ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <CheckCircle2 />
-            )}
-            {labels.continueDocuments}
+            <ChevronLeft />
+            {labels.previousCategory}
           </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">{labels.readOnly}</p>
-        )}
+          {workflow.canContribute ? (
+            <Button
+              disabled={
+                busy ||
+                saveState === "saving" ||
+                saveState === "error" ||
+                saveState === "conflict" ||
+                missing.length > 0
+              }
+              type="submit"
+            >
+              {busy ? (
+                <Loader2 className="animate-spin" />
+              ) : isLast ? (
+                <CheckCircle2 />
+              ) : (
+                <ChevronRight />
+              )}
+              {isLast ? labels.continueDocuments : labels.nextCategory}
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">{labels.readOnly}</p>
+          )}
+        </div>
       </form>
     </section>
   );

@@ -38,6 +38,65 @@ export type GroundedGapModelResponse = {
   findings: Record<string, z.infer<typeof groundedGapModelFindingSchema>>;
 };
 
+const groundedGapModelFindingV5Schema = gapModelFindingSchema
+  .omit({
+    requirementCode: true,
+    status: true,
+  })
+  .strict();
+
+export type GroundedGapModelResponseV5 = {
+  findings: Record<
+    string,
+    z.infer<typeof groundedGapModelFindingV5Schema>
+  >;
+};
+
+export function buildGapModelResponseSchemaV5(requirementCodes: string[]) {
+  if (requirementCodes.length === 0) {
+    throw new Error("At least one requirement code is required");
+  }
+  return z.object({
+    findings: z
+      .object(
+        Object.fromEntries(
+          requirementCodes.map((requirementCode) => [
+            requirementCode,
+            groundedGapModelFindingV5Schema,
+          ]),
+        ),
+      )
+      .strict(),
+  }) as z.ZodType<GroundedGapModelResponseV5>;
+}
+
+export function normalizeGroundedGapModelResponseV5(
+  value: GroundedGapModelResponseV5,
+) {
+  return {
+    findings: Object.entries(value.findings).map(
+      ([requirementCode, finding]) => ({
+        requirementCode,
+        ...finding,
+      }),
+    ),
+  };
+}
+
+export function extractGapGeneratedProseV5(
+  value: GroundedGapModelResponseV5,
+): string[] {
+  return normalizeGroundedGapModelResponseV5(value).findings.flatMap(
+    (finding) => [
+      finding.rationale,
+      finding.recommendation,
+      ...finding.assumptions,
+      ...finding.contradictions,
+      ...finding.questionnaireDisagreements,
+    ],
+  );
+}
+
 export function buildGapModelResponseSchema(requirementCodes: string[]) {
   if (requirementCodes.length === 0) throw new Error("At least one requirement code is required");
   const findings = Object.fromEntries(

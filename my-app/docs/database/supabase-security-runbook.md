@@ -53,8 +53,8 @@ approved operator-SQL runner and is not part of the normal `db:push` workflow.
 After the SQL files succeed, publish and activate the repository release separately:
 
 ```powershell
-npm.cmd run db:publish:compliance -- --release nis2/2026-v1
-npm.cmd run db:activate:compliance -- --release nis2/2026-v1
+npm.cmd run db:publish:compliance -- --release nis2/2026-v2
+npm.cmd run db:activate:compliance -- --release nis2/2026-v2
 ```
 
 Publishing never changes the active pointer.
@@ -63,8 +63,8 @@ Publish and activate the separate demo Gap-Analyse release when that workflow
 is required:
 
 ```powershell
-npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
-npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
+npm.cmd run db:publish:gap -- --release nis2-gap/guided-v4
+npm.cmd run db:activate:gap -- --release nis2-gap/guided-v4
 npm.cmd run db:smoke:gap
 ```
 

@@ -4,6 +4,7 @@ import {
   gapEntitySchema,
   gapGenerationEnqueueResponseSchema,
   gapQuestionnaireInputSchema,
+  gapQuestionnaireDraftAnswerSchema,
   gapRevisionReadSchema,
   gapWorkflowReadSchema,
 } from "@/src/contracts/gap-analysis/generation";
@@ -56,6 +57,32 @@ export const gapAnalysisClient = {
     return request(`${gapBase(organizationId)}/questionnaire-submissions`, {
       method: "POST", input: gapQuestionnaireInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ revision: gapEntitySchema }), signal,
     });
+  },
+
+  saveQuestionnaireAnswer(
+    organizationId: string,
+    questionId: string,
+    input: z.infer<typeof gapQuestionnaireDraftAnswerSchema>,
+    signal?: AbortSignal,
+  ) {
+    return request(
+      `${gapBase(organizationId)}/questionnaire-draft/answers/${encodeURIComponent(questionId)}`,
+      {
+        method: "PATCH",
+        input: gapQuestionnaireDraftAnswerSchema.parse(input),
+        ifMatch: input.expectedVersion,
+        outputSchema: z.object({
+          answer: z.object({
+            draftId: z.uuid(),
+            version: z.number().int().positive(),
+            questionId: z.uuid(),
+            optionId: z.uuid(),
+            updatedAt: z.string(),
+          }),
+        }),
+        signal,
+      },
+    );
   },
 
   correctRevision(organizationId: string, revisionId: string, input: z.infer<typeof gapCorrectionInputSchema>, signal?: AbortSignal) {

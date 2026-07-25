@@ -3,10 +3,13 @@ export type LocalizedText = { de: string; en: string };
 export type GapQuestionDefinition = {
   stableKey: string;
   position: number;
+  sourceNumber?: number;
+  sourcePriority?: "low" | "medium" | "high" | "critical";
   text: LocalizedText;
   help: LocalizedText;
   required: true;
   answerType: "single_choice";
+  legalProvisionKeys?: string[];
   options: Array<{
     stableValue: string;
     position: number;
@@ -21,6 +24,7 @@ export type GapRequirementDefinition = {
   criticality: "low" | "medium" | "high" | "critical";
   title: LocalizedText;
   requirementText: LocalizedText;
+  /** Legacy demo-only references. guided-v4 derives these relationally. */
   legalReferences: Array<{
     label: LocalizedText;
     url: string;

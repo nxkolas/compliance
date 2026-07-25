@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -65,6 +66,14 @@ export function GapAnalysisWorkflow({
   const [savedAnswers, setSavedAnswers] = useState<Record<string, string>>(
     workflow.answers,
   );
+  const [answerSaveState, setAnswerSaveState] = useState<
+    "idle" | "saving" | "saved" | "error" | "conflict"
+  >("idle");
+  const questionnaireVersionRef = useRef(
+    workflow.questionnaireDraft?.version ?? 1,
+  );
+  const questionnaireSaveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const questionnaireSaveFailedRef = useRef(false);
   const initialDocuments =
     workflow.reassessment?.selected.flatMap((selection) => {
       const entry = workflow.documentLibrary.documents.find(
@@ -227,16 +236,20 @@ export function GapAnalysisWorkflow({
   }
 
   async function saveQuestionnaire() {
-    if (!workflow.assessment || !workflow.release) return;
+    if (
+      !workflow.assessment ||
+      !workflow.release ||
+      !workflow.questionnaireDraft
+    ) return;
     setBusy("questionnaire");
     setError(null);
     try {
+      await questionnaireSaveChainRef.current;
+      if (questionnaireSaveFailedRef.current) return;
       await gapAnalysisClient.submitQuestionnaire(organizationId, {
         assessmentId: workflow.assessment.id,
-        answers: workflow.release.questions.map((question) => ({
-          questionId: question.id,
-          optionId: answers[question.id],
-        })),
+        draftId: workflow.questionnaireDraft.id,
+        expectedVersion: questionnaireVersionRef.current,
       });
       setSavedAnswers({ ...answers });
       navigate("documents");
@@ -246,6 +259,42 @@ export function GapAnalysisWorkflow({
     } finally {
       setBusy(null);
     }
+  }
+
+  function saveQuestionnaireAnswer(questionId: string, optionId: string) {
+    const draft = workflow.questionnaireDraft;
+    if (!draft) return Promise.resolve();
+    setAnswers((current) => ({ ...current, [questionId]: optionId }));
+    setAnswerSaveState("saving");
+    questionnaireSaveFailedRef.current = false;
+    const task = questionnaireSaveChainRef.current.then(async () => {
+      try {
+        const result = await gapAnalysisClient.saveQuestionnaireAnswer(
+          organizationId,
+          questionId,
+          {
+            draftId: draft.id,
+            optionId,
+            expectedVersion: questionnaireVersionRef.current,
+          },
+        );
+        questionnaireVersionRef.current = result.data.answer.version;
+        setSavedAnswers((current) => ({ ...current, [questionId]: optionId }));
+        setAnswerSaveState("saved");
+      } catch (caught) {
+        questionnaireSaveFailedRef.current = true;
+        const conflict =
+          caught instanceof Error &&
+          "code" in caught &&
+          caught.code === "GAP_QUESTIONNAIRE_DRAFT_CHANGED";
+        setAnswerSaveState(conflict ? "conflict" : "error");
+        setError(localizeGapError(caught, labels));
+        if (conflict) router.refresh();
+        throw caught;
+      }
+    });
+    questionnaireSaveChainRef.current = task.catch(() => undefined);
+    return task;
   }
 
   async function saveDocuments() {
@@ -476,12 +525,9 @@ export function GapAnalysisWorkflow({
               labels={labels}
               answers={answers}
               busy={busy === "questionnaire"}
-              onAnswer={(questionId, optionId) =>
-                setAnswers((current) => ({
-                  ...current,
-                  [questionId]: optionId,
-                }))
-              }
+              saveState={answerSaveState}
+              onAnswer={saveQuestionnaireAnswer}
+              onFlush={() => questionnaireSaveChainRef.current}
               onContinue={() => void saveQuestionnaire()}
             />
           ) : renderedStep === "documents" ? (

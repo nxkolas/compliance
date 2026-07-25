@@ -39,7 +39,11 @@ export type GroundedOutputContract<T> = {
     }
 );
 
-export type QueryUnit = { id: string; query: string };
+export type QueryUnit = {
+  id: string;
+  query: string;
+  retrievalQuery?: string;
+};
 
 export type GroundedProvider = {
   mode: string;

@@ -8,6 +8,7 @@ import {
   evaluateGapApplicabilityPrerequisite,
   type GapApplicabilityArtifactCandidate,
 } from "./applicability-eligibility";
+import { createOrOpenQuestionnaireDraft } from "./questionnaire-draft-service";
 
 export function requireApprovedApplicabilityArtifact(
   compatibleCheckReleaseId: string,
@@ -74,9 +75,17 @@ export async function createOrOpenGapAssessment(
       eq(table.status, "active"),
     )) ?? operators.sql`true` },
   });
-  if (existing) return existing;
+  if (existing) {
+    await createOrOpenQuestionnaireDraft({
+      userId,
+      organizationId,
+      assessment: existing,
+      questionnaireVersionId: release.questionnaireVersionId,
+    });
+    return existing;
+  }
 
-  return db.transaction(async (tx) => {
+  const assessment = await db.transaction(async (tx) => {
     await tx
       .update(assessments)
       .set({ status: "archived" })
@@ -113,6 +122,13 @@ export async function createOrOpenGapAssessment(
     });
     return assessment;
   });
+  await createOrOpenQuestionnaireDraft({
+    userId,
+    organizationId,
+    assessment,
+    questionnaireVersionId: release.questionnaireVersionId,
+  });
+  return assessment;
 }
 
 export async function getGapAssessment(userId: string, organizationId: string, assessmentId: string) {

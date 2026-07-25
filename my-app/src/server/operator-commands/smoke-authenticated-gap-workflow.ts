@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
 import { generatedArtifactRevisions, generatedArtifacts } from "@/src/db/schema";
 import {
@@ -27,6 +27,7 @@ import {
   getGapAnalysisWorkflow,
   prepareGapReassessment,
   retryGapReassessment,
+  saveQuestionnaireDraftAnswer,
   submitGapQuestionnaire,
 } from "@/src/server/gap-analysis";
 import { databaseIdempotencyRepository } from "@/src/server/idempotency";
@@ -81,57 +82,89 @@ async function main() {
     where: { RAW: (table, operators) => (and(
       eq(table.organizationId, organization.id),
       eq(table.status, "active"),
+      isNotNull(table.gapAnalysisReleaseId),
     )) ?? operators.sql`true` },
     orderBy: { createdAt: "desc" },
   });
   let applicabilityArtifactRevisionId = assessment?.applicabilityArtifactRevisionId;
   let questionnaireRevisionId = assessment?.currentRevisionId;
-  if (!assessment) {
-    const questionnaire = await getApplicabilityQuestionnaireForUser(
-      userId,
-      organization.id,
-      "de",
-      { runtimeReleaseReader: directRuntimeReleaseReader },
-    );
-    if (!questionnaire) {
-      throw new Error("Active applicability questionnaire is unavailable");
-    }
-    const applicability = await submitApplicabilityCheckForUser(
-      userId,
-      organization.id,
-      {
-        answers: questionnaire.questions.map((question) => {
-          const value = applicabilityFacts[question.stableKey];
-          if (value === undefined) {
-            throw new Error(`No acceptance answer for ${question.stableKey}`);
-          }
-          return { questionId: question.id, value };
-        }),
-      },
-      { runtimeReleaseReader: directRuntimeReleaseReader },
-    );
-    if (applicability.result.outcome !== "essential_entity") {
-      throw new Error(
-        `Acceptance applicability outcome was ${applicability.result.outcome}`,
+  if (!assessment?.currentRevisionId) {
+    if (!assessment) {
+      const questionnaire = await getApplicabilityQuestionnaireForUser(
+        userId,
+        organization.id,
+        "de",
+        { runtimeReleaseReader: directRuntimeReleaseReader },
       );
+      if (!questionnaire) {
+        throw new Error("Active applicability questionnaire is unavailable");
+      }
+      const applicability = await submitApplicabilityCheckForUser(
+        userId,
+        organization.id,
+        {
+          answers: questionnaire.questions.map((question) => {
+            const value = applicabilityFacts[question.stableKey];
+            if (value === undefined) {
+              throw new Error(`No acceptance answer for ${question.stableKey}`);
+            }
+            return { questionId: question.id, value };
+          }),
+        },
+        { runtimeReleaseReader: directRuntimeReleaseReader },
+      );
+      if (applicability.result.outcome !== "essential_entity") {
+        throw new Error(
+          `Acceptance applicability outcome was ${applicability.result.outcome}`,
+        );
+      }
+      applicabilityArtifactRevisionId = applicability.artifactRevisionId;
     }
-    applicabilityArtifactRevisionId = applicability.artifactRevisionId;
-    assessment = await createOrOpenGapAssessment(userId, organization.id);
+    const createdAssessment = await createOrOpenGapAssessment(
+      userId,
+      organization.id,
+    );
+    assessment = createdAssessment;
     const release = await getActiveGapAnalysisRelease("nis2-gap", "de");
     if (!release) throw new Error("Active Gap release is unavailable");
+    const questionnaireDraft =
+      await db.query.gapQuestionnaireDrafts.findFirst({
+        columns: { id: true, version: true },
+        where: {
+          RAW: (table, operators) =>
+            and(
+              eq(table.assessmentId, createdAssessment.id),
+              eq(table.status, "open"),
+            ) ?? operators.sql`true`,
+        },
+      });
+    if (!questionnaireDraft) {
+      throw new Error("Gap questionnaire draft is unavailable");
+    }
+    let draftVersion = questionnaireDraft.version;
+    for (const question of release.questions.filter(
+      (candidate) => candidate.required,
+    )) {
+      const option = question.options[0];
+      if (!option) {
+        throw new Error(`Gap question ${question.stableKey} has no option`);
+      }
+      const saved = await saveQuestionnaireDraftAnswer({
+        userId,
+        organizationId: organization.id,
+        draftId: questionnaireDraft.id,
+        questionId: question.id,
+        optionId: option.id,
+        expectedVersion: draftVersion,
+      });
+      draftVersion = saved.version;
+    }
     const questionnaireRevision = await submitGapQuestionnaire({
       userId,
       organizationId: organization.id,
-      assessmentId: assessment.id,
-      answers: release.questions
-        .filter((question) => question.required)
-        .map((question) => {
-          const option = question.options[0];
-          if (!option) {
-            throw new Error(`Gap question ${question.stableKey} has no option`);
-          }
-          return { questionId: question.id, optionId: option.id };
-        }),
+      assessmentId: createdAssessment.id,
+      draftId: questionnaireDraft.id,
+      expectedVersion: draftVersion,
     });
     questionnaireRevisionId = questionnaireRevision.id;
   }

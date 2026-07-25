@@ -1143,4 +1143,174 @@ after insert or update or delete on public.gap_findings
 deferrable initially deferred
 for each row execute function public.enforce_gap_revision_finding_coverage();
 
+create or replace function public.enforce_gap_requirement_question_mapping_owner()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if not exists (
+    select 1
+    from public.gap_analysis_releases release
+    join public.gap_requirement_set_members member
+      on member.requirement_set_version_id = release.requirement_set_version_id
+     and member.requirement_version_id = new.requirement_version_id
+    join public.questions question on question.id = new.question_id
+    where release.id = new.gap_analysis_release_id
+      and question.questionnaire_version_id = release.questionnaire_version_id
+  ) then
+    raise exception using errcode = '23514',
+      message = 'Gap requirement/question mapping crosses release ownership';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists gap_requirement_question_mappings_owner_trigger
+  on public.gap_requirement_question_mappings;
+create constraint trigger gap_requirement_question_mappings_owner_trigger
+after insert or update
+on public.gap_requirement_question_mappings
+deferrable initially deferred
+for each row execute function public.enforce_gap_requirement_question_mapping_owner();
+
+create or replace function public.enforce_open_gap_questionnaire_draft_answer()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  target_draft_id uuid;
+begin
+  target_draft_id := case when tg_op = 'DELETE'
+    then old.draft_id else new.draft_id end;
+  if not exists (
+    select 1 from public.gap_questionnaire_drafts draft
+    where draft.id = target_draft_id and draft.status = 'open'
+  ) then
+    raise exception using errcode = '23514',
+      message = 'Only open Gap questionnaire drafts are mutable';
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists gap_questionnaire_draft_answers_open_trigger
+  on public.gap_questionnaire_draft_answers;
+create trigger gap_questionnaire_draft_answers_open_trigger
+before insert or update or delete
+on public.gap_questionnaire_draft_answers
+for each row execute function public.enforce_open_gap_questionnaire_draft_answer();
+
+create or replace function public.prevent_closed_gap_questionnaire_draft_mutation()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if old.status <> 'open' and new is distinct from old then
+    raise exception using errcode = '23514',
+      message = 'Closed Gap questionnaire drafts are immutable';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists gap_questionnaire_drafts_closed_immutable_trigger
+  on public.gap_questionnaire_drafts;
+create trigger gap_questionnaire_drafts_closed_immutable_trigger
+before update on public.gap_questionnaire_drafts
+for each row execute function public.prevent_closed_gap_questionnaire_draft_mutation();
+
+create or replace function public.prevent_assessment_requirement_evaluation_mutation()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  raise exception using errcode = '23514',
+    message = 'Assessment requirement evaluations are immutable';
+end;
+$$;
+
+drop trigger if exists assessment_requirement_evaluations_immutable_trigger
+  on public.assessment_requirement_evaluations;
+create trigger assessment_requirement_evaluations_immutable_trigger
+before update or delete on public.assessment_requirement_evaluations
+for each row execute function public.prevent_assessment_requirement_evaluation_mutation();
+
+create or replace function public.validate_guided_v4_assessment_evaluations(
+  target_revision_id uuid
+)
+returns void
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  target_release record;
+  expected_count integer;
+  actual_count integer;
+begin
+  select release.*
+  into target_release
+  from public.assessment_revisions revision
+  join public.assessments assessment on assessment.id = revision.assessment_id
+  join public.gap_analysis_releases release
+    on release.id = assessment.gap_analysis_release_id
+  where revision.id = target_revision_id
+    and revision.status in ('submitted', 'superseded')
+    and release.release_code = 'nis2-gap'
+    and release.version_label = 'guided-v4';
+  if not found then return; end if;
+
+  select count(*)::integer into expected_count
+  from public.gap_requirement_set_members member
+  where member.requirement_set_version_id =
+    target_release.requirement_set_version_id;
+  select count(*)::integer into actual_count
+  from public.assessment_requirement_evaluations evaluation
+  where evaluation.assessment_revision_id = target_revision_id
+    and evaluation.evaluator_kind = target_release.evaluator_kind
+    and evaluation.evaluator_version = target_release.evaluator_version;
+
+  if expected_count <> 10 or actual_count <> expected_count then
+    raise exception using errcode = '23514',
+      message = 'guided-v4 assessment requires exactly ten pinned evaluations';
+  end if;
+end;
+$$;
+
+create or replace function public.enforce_guided_v4_assessment_evaluations()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  target_revision_id uuid;
+begin
+  target_revision_id := case
+    when tg_table_name = 'assessment_revisions'
+      then (to_jsonb(new) ->> 'id')::uuid
+    else (to_jsonb(new) ->> 'assessment_revision_id')::uuid
+  end;
+  perform public.validate_guided_v4_assessment_evaluations(target_revision_id);
+  return new;
+end;
+$$;
+
+drop trigger if exists assessment_revisions_guided_v4_evaluations_trigger
+  on public.assessment_revisions;
+create constraint trigger assessment_revisions_guided_v4_evaluations_trigger
+after insert or update of status on public.assessment_revisions
+deferrable initially deferred
+for each row execute function public.enforce_guided_v4_assessment_evaluations();
+
+drop trigger if exists assessment_requirement_evaluations_coverage_trigger
+  on public.assessment_requirement_evaluations;
+create constraint trigger assessment_requirement_evaluations_coverage_trigger
+after insert on public.assessment_requirement_evaluations
+deferrable initially deferred
+for each row execute function public.enforce_guided_v4_assessment_evaluations();
+
 commit;

@@ -12,6 +12,7 @@ describe("Gap requirement dictionary schema", () => {
 
     expect(columns).not.toContain("title");
     expect(columns).not.toContain("requirement_text");
+    expect(columns).not.toContain("legal_references");
   });
 
   it.each([
@@ -51,6 +52,8 @@ describe("Gap requirement dictionary schema", () => {
     expect(publisher).not.toMatch(/requirementText:\s*source\.requirementText/);
     expect(publisher).not.toMatch(/recommendation:\s*source\.recommendation/);
     expect(publisher).not.toMatch(/code:\s*source\.code,\s+versionLabel/);
-    expect(publisher).toMatch(/legalReferences:\s*source\.legalReferences/);
+    expect(publisher).not.toMatch(/legalReferences:\s*source\.legalReferences/);
+    expect(publisher).toMatch(/gapQuestionLegalProvisions/);
+    expect(publisher).toMatch(/gapRequirementQuestionMappings/);
   });
 });

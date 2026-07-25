@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { complianceModules, contentItems, contentRevisions, contentTranslations, gapAnalysisReleaseApplicabilityRules, gapAnalysisReleaseCorpusReleases, gapAnalysisReleases, gapRequirements, gapRequirementSetMembers, gapRequirementSets, gapRequirementSetVersions, gapRequirementVersions, questionOptions, questionnaireVersions, questionnaires, questions } from "@/src/db/schema";
+import { complianceModules, contentItems, contentRevisions, contentTranslations, gapAnalysisReleaseApplicabilityRules, gapAnalysisReleaseCorpusReleases, gapAnalysisReleases, gapQuestionLegalProvisions, gapRequirementQuestionMappings, gapRequirements, gapRequirementSetMembers, gapRequirementSets, gapRequirementSetVersions, gapRequirementVersions, legalInstruments, legalInstrumentVersions, legalProvisions, questionOptions, questionnaireVersions, questionnaires, questions } from "@/src/db/schema";
 import { and, eq } from "drizzle-orm";
 import { contentHash } from "@/src/server/compliance";
 import type { GapAnalysisReleaseDefinition, LocalizedText } from "../releases/types";
@@ -11,6 +11,7 @@ import {
   requirementContentKeys,
   requirementContentSources,
 } from "./content-keys";
+import { getRepositoryRelease } from "@/src/server/compliance";
 
 export async function publishGapAnalysisRelease(
   definition: GapAnalysisReleaseDefinition,
@@ -48,6 +49,59 @@ export async function publishGapAnalysisRelease(
       !compatibleRelease.publishedAt
     ) {
       throw new Error("Compatible applicability release is not published");
+    }
+    const compatibleDefinition = getRepositoryRelease(
+      `nis2/${definition.compatibleCheck.versionLabel}`,
+    );
+    const legalCatalogue = await tx
+      .select({
+        id: legalProvisions.id,
+        instrumentCode: legalInstruments.code,
+        instrumentVersion: legalInstrumentVersions.versionLabel,
+        provisionCode: legalProvisions.provisionCode,
+      })
+      .from(legalProvisions)
+      .innerJoin(
+        legalInstrumentVersions,
+        eq(
+          legalProvisions.legalInstrumentVersionId,
+          legalInstrumentVersions.id,
+        ),
+      )
+      .innerJoin(
+        legalInstruments,
+        eq(legalInstrumentVersions.legalInstrumentId, legalInstruments.id),
+      );
+    const compatibleInstrumentVersions = new Map(
+      compatibleDefinition.legalInstruments.map((instrument) => [
+        instrument.code,
+        instrument.versionLabel,
+      ]),
+    );
+    const legalProvisionIdByKey = new Map(
+      legalCatalogue
+        .filter(
+          (row) =>
+            compatibleInstrumentVersions.get(row.instrumentCode) ===
+            row.instrumentVersion,
+        )
+        .map((row) => [
+          `${row.instrumentCode}.${row.provisionCode}`,
+          row.id,
+        ]),
+    );
+    const requestedLegalKeys = new Set(
+      definition.questionnaire.questions.flatMap(
+        (question) => question.legalProvisionKeys ?? [],
+      ),
+    );
+    const unknownLegalKeys = [...requestedLegalKeys].filter(
+      (key) => !legalProvisionIdByKey.has(key),
+    );
+    if (unknownLegalKeys.length > 0) {
+      throw new Error(
+        `Unknown compatible legal provision keys: ${unknownLegalKeys.join(", ")}`,
+      );
     }
     const applicabilityModule = await tx.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
       where: { RAW: (table, operators) => (eq(table.id, compatibleRelease.moduleId)) ?? operators.sql`true` },
@@ -173,6 +227,7 @@ export async function publishGapAnalysisRelease(
     if (!questionnaireVersion) {
       throw new Error("Could not create gap questionnaire version");
     }
+    const questionIdByStableKey = new Map<string, string>();
     for (const source of definition.questionnaire.questions) {
       const prefix = questionContentPrefix(definition, source.stableKey);
       const [question] = await tx
@@ -189,6 +244,7 @@ export async function publishGapAnalysisRelease(
         })
         .returning();
       if (!question) throw new Error(`Could not create question ${source.stableKey}`);
+      questionIdByStableKey.set(source.stableKey, question.id);
       await tx.insert(questionOptions).values(
         source.options.map((option) => ({
           questionId: question.id,
@@ -243,7 +299,7 @@ export async function publishGapAnalysisRelease(
       if (!stableRequirement) {
         throw new Error(`Could not create stable requirement ${source.code}`);
       }
-      let requirement = await tx.query.gapRequirementVersions.findFirst({ columns: { id: true, requirementId: true, versionLabel: true, criticality: true, titleContentRevisionId: true, requirementTextContentRevisionId: true, legalReferences: true, contentHash: true, createdAt: true },
+      let requirement = await tx.query.gapRequirementVersions.findFirst({ columns: { id: true, requirementId: true, versionLabel: true, criticality: true, titleContentRevisionId: true, requirementTextContentRevisionId: true, contentHash: true, createdAt: true },
         where: { RAW: (table, operators) => (and(
           eq(table.requirementId, stableRequirement.id),
           eq(table.versionLabel, source.versionLabel),
@@ -271,7 +327,6 @@ export async function publishGapAnalysisRelease(
             criticality: source.criticality,
             titleContentRevisionId,
             requirementTextContentRevisionId,
-            legalReferences: source.legalReferences,
             contentHash: requirementHash,
           })
           .returning();
@@ -325,9 +380,39 @@ export async function publishGapAnalysisRelease(
         ),
         conditions: {
           applicabilityOutcomeCodes: source.applicableOutcomeCodes,
-          questionStableKeys: source.questionStableKeys,
         },
       })),
+    );
+    await tx.insert(gapRequirementQuestionMappings).values(
+      definition.requirementSet.requirements.flatMap((requirement) =>
+        requirement.questionStableKeys.map((questionStableKey, index) => ({
+          gapAnalysisReleaseId: release.id,
+          requirementVersionId: requireRequirementId(
+            requirementVersionByCode,
+            requirement.code,
+          ),
+          questionId: requireQuestionId(
+            questionIdByStableKey,
+            questionStableKey,
+          ),
+          position: index + 1,
+        })),
+      ),
+    );
+    await tx.insert(gapQuestionLegalProvisions).values(
+      definition.questionnaire.questions.flatMap((question) =>
+        (question.legalProvisionKeys ?? []).map((key, index) => ({
+          questionId: requireQuestionId(
+            questionIdByStableKey,
+            question.stableKey,
+          ),
+          legalProvisionId: requireLegalProvisionId(
+            legalProvisionIdByKey,
+            key,
+          ),
+          position: index + 1,
+        })),
+      ),
     );
 
     return {
@@ -385,5 +470,17 @@ function questionContentPrefix(
 function requireRequirementId(values: Map<string, string>, code: string) {
   const id = values.get(code);
   if (!id) throw new Error(`Requirement ${code} is missing`);
+  return id;
+}
+
+function requireQuestionId(values: Map<string, string>, stableKey: string) {
+  const id = values.get(stableKey);
+  if (!id) throw new Error(`Question ${stableKey} is missing`);
+  return id;
+}
+
+function requireLegalProvisionId(values: Map<string, string>, key: string) {
+  const id = values.get(key);
+  if (!id) throw new Error(`Legal provision ${key} is missing`);
   return id;
 }

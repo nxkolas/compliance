@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildGroundedPrompt } from "@/src/server/ai/grounding/context-builder";
 import { defaultOrganizationAiProviderPolicy, selectGroundedProvider } from "@/src/server/ai/grounding/provider-policy";
 import { validateGroundedClaims } from "@/src/server/ai/grounding/validation";
 import type { GroundedProvider, GroundingContextItem } from "@/src/server/ai/grounding/types";
@@ -11,6 +12,20 @@ const provider = (mode: string): GroundedProvider => ({
 });
 
 describe("Grounding Gateway safety", () => {
+  it("keeps retrieval-only legal identifiers out of the model prompt", () => {
+    const prompt = buildGroundedPrompt(
+      [{
+        id: "r1",
+        query: "Visible requirement",
+        retrievalQuery: "Visible requirement de_bsig.section_30_1",
+      }],
+      [],
+    );
+
+    expect(prompt.prompt).toContain("Visible requirement");
+    expect(prompt.prompt).not.toContain("de_bsig.section_30_1");
+  });
+
   it("provisions new organizations without enabling external disclosure", () => {
     expect(defaultOrganizationAiProviderPolicy).toEqual({
       allowedProviderModes: ["company_hosted", "self_hosted"],

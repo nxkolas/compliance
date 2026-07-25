@@ -1,23 +1,48 @@
 import { db } from "@/src/db";
-import { assessmentAnswerOptions, assessmentAnswers, assessmentRevisions, assessments, auditEvents, questions } from "@/src/db/schema";
+import {
+  assessmentAnswerOptions,
+  assessmentAnswers,
+  assessmentRequirementEvaluations,
+  assessmentRevisions,
+  assessments,
+  auditEvents,
+  gapQuestionnaireDrafts,
+} from "@/src/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
+import {
+  evaluateGapRequirement,
+  GAP_CATEGORY_EVALUATOR_KIND,
+  GAP_CATEGORY_EVALUATOR_VERSION,
+} from "./deterministic-evaluator";
 import { assertGapInputsMutable } from "./lifecycle-guards";
 
 export async function submitGapQuestionnaire(input: {
   userId: string;
   organizationId: string;
   assessmentId: string;
-  answers: Array<{ questionId: string; optionId: string }>;
+  draftId: string;
+  expectedVersion: number;
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
-  const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.id, input.assessmentId),
-      eq(table.organizationId, input.organizationId),
-      eq(table.status, "active"),
-    )) ?? operators.sql`true` },
+  const assessment = await db.query.assessments.findFirst({
+    columns: {
+      id: true,
+      organizationId: true,
+      moduleId: true,
+      gapAnalysisReleaseId: true,
+      currentRevisionId: true,
+      status: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, input.assessmentId),
+          eq(table.organizationId, input.organizationId),
+          eq(table.status, "active"),
+        ) ?? operators.sql`true`,
+    },
   });
   if (!assessment?.gapAnalysisReleaseId) {
     throw new ApiError(404, "Gap assessment not found");
@@ -26,51 +51,144 @@ export async function submitGapQuestionnaire(input: {
     organizationId: input.organizationId,
     moduleId: assessment.moduleId,
   });
-  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-    where: { RAW: (table, operators) => (eq(table.id, assessment.gapAnalysisReleaseId!)) ?? operators.sql`true` },
+  const release = await db.query.gapAnalysisReleases.findFirst({
+    columns: {
+      id: true,
+      questionnaireVersionId: true,
+      evaluatorKind: true,
+      evaluatorVersion: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        eq(table.id, assessment.gapAnalysisReleaseId!) ??
+        operators.sql`true`,
+    },
   });
   if (!release) throw new ApiError(409, "Pinned gap release is unavailable");
-  const questionRows = await db.query.questions.findMany({ columns: { id: true, questionnaireVersionId: true, stableKey: true, position: true, questionContentRevisionId: true, helpContentRevisionId: true, answerType: true, required: true, config: true, createdAt: true },
-    where: { RAW: (table, operators) => (eq(table.questionnaireVersionId, release.questionnaireVersionId)) ?? operators.sql`true` },
-  });
-  const required = questionRows.filter((question) => question.required);
-  const answerByQuestion = new Map(
-    input.answers.map((answer) => [answer.questionId, answer]),
-  );
   if (
-    answerByQuestion.size !== input.answers.length ||
-    required.some((question) => !answerByQuestion.has(question.id)) ||
-    input.answers.some(
-      (answer) => !questionRows.some((question) => question.id === answer.questionId),
-    )
+    release.evaluatorKind !== GAP_CATEGORY_EVALUATOR_KIND ||
+    release.evaluatorVersion !== GAP_CATEGORY_EVALUATOR_VERSION
   ) {
-    throw new ApiError(400, "Every required gap question must be answered exactly once");
+    throw new ApiError(409, "Pinned gap evaluator is unsupported");
   }
-  const optionRows = input.answers.length
-    ? await db.query.questionOptions.findMany({ columns: { id: true, questionId: true, stableValue: true, labelContentRevisionId: true, factOptionId: true, position: true, metadata: true },
-        where: { RAW: (table, operators) => (inArray(
-          table.id,
-          input.answers.map((answer) => answer.optionId),
-        )) ?? operators.sql`true` },
-      })
-    : [];
-  if (
-    optionRows.length !== input.answers.length ||
-    input.answers.some(
-      (answer) =>
-        !optionRows.some(
-          (option) =>
-            option.id === answer.optionId && option.questionId === answer.questionId,
-        ),
-    )
-  ) {
-    throw new ApiError(400, "A selected answer option does not belong to its question");
-  }
-  const questionById = new Map(questionRows.map((question) => [question.id, question]));
 
   return db.transaction(async (tx) => {
-    const latest = await tx.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-      where: { RAW: (table, operators) => (eq(table.assessmentId, assessment.id)) ?? operators.sql`true` },
+    const [draft] = await tx
+      .select({
+        id: gapQuestionnaireDrafts.id,
+        organizationId: gapQuestionnaireDrafts.organizationId,
+        assessmentId: gapQuestionnaireDrafts.assessmentId,
+        gapAnalysisReleaseId: gapQuestionnaireDrafts.gapAnalysisReleaseId,
+        questionnaireVersionId:
+          gapQuestionnaireDrafts.questionnaireVersionId,
+        status: gapQuestionnaireDrafts.status,
+        version: gapQuestionnaireDrafts.version,
+      })
+      .from(gapQuestionnaireDrafts)
+      .where(
+        and(
+          eq(gapQuestionnaireDrafts.id, input.draftId),
+          eq(gapQuestionnaireDrafts.organizationId, input.organizationId),
+          eq(gapQuestionnaireDrafts.assessmentId, input.assessmentId),
+        ),
+      )
+      .limit(1)
+      .for("update");
+    if (!draft) throw new ApiError(404, "Questionnaire draft not found");
+    if (draft.status !== "open") {
+      throw new ApiError(409, "Questionnaire draft is locked");
+    }
+    if (
+      draft.version !== input.expectedVersion ||
+      draft.gapAnalysisReleaseId !== release.id ||
+      draft.questionnaireVersionId !== release.questionnaireVersionId
+    ) {
+      throw new ApiError(
+        412,
+        "A newer questionnaire draft is available",
+        undefined,
+        "GAP_QUESTIONNAIRE_DRAFT_CHANGED",
+      );
+    }
+    const questionRows = await tx.query.questions.findMany({
+      columns: {
+        id: true,
+        stableKey: true,
+        required: true,
+        position: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          eq(
+            table.questionnaireVersionId,
+            release.questionnaireVersionId,
+          ) ?? operators.sql`true`,
+      },
+      orderBy: { position: "asc" },
+    });
+    const draftAnswers =
+      await tx.query.gapQuestionnaireDraftAnswers.findMany({
+        columns: {
+          draftId: true,
+          questionId: true,
+          questionOptionId: true,
+        },
+        where: {
+          RAW: (table, operators) =>
+            eq(table.draftId, draft.id) ?? operators.sql`true`,
+        },
+      });
+    const required = questionRows.filter((question) => question.required);
+    const answerByQuestion = new Map(
+      draftAnswers.map((answer) => [answer.questionId, answer]),
+    );
+    if (
+      draftAnswers.length !== answerByQuestion.size ||
+      required.some((question) => !answerByQuestion.has(question.id)) ||
+      draftAnswers.some(
+        (answer) =>
+          !questionRows.some((question) => question.id === answer.questionId),
+      )
+    ) {
+      throw new ApiError(
+        400,
+        "Every required gap question must be answered exactly once",
+      );
+    }
+    const optionRows = draftAnswers.length
+      ? await tx.query.questionOptions.findMany({
+          columns: { id: true, questionId: true, stableValue: true },
+          where: {
+            RAW: (table, operators) =>
+              inArray(
+                table.id,
+                draftAnswers.map((answer) => answer.questionOptionId),
+              ) ?? operators.sql`true`,
+          },
+        })
+      : [];
+    if (
+      optionRows.length !== draftAnswers.length ||
+      draftAnswers.some(
+        (answer) =>
+          !optionRows.some(
+            (option) =>
+              option.id === answer.questionOptionId &&
+              option.questionId === answer.questionId,
+          ),
+      )
+    ) {
+      throw new ApiError(
+        400,
+        "A selected answer option does not belong to its question",
+      );
+    }
+    const latest = await tx.query.assessmentRevisions.findFirst({
+      columns: { id: true, revisionNumber: true },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.assessmentId, assessment.id) ?? operators.sql`true`,
+      },
       orderBy: { revisionNumber: "desc" },
     });
     const [revision] = await tx
@@ -92,13 +210,19 @@ export async function submitGapQuestionnaire(input: {
         .set({ status: "superseded" })
         .where(eq(assessmentRevisions.id, assessment.currentRevisionId));
     }
+    const questionById = new Map(
+      questionRows.map((question) => [question.id, question]),
+    );
     const answerRows = await tx
       .insert(assessmentAnswers)
       .values(
-        input.answers.map((answer) => ({
+        draftAnswers.map((answer) => ({
           assessmentRevisionId: revision.id,
           questionId: answer.questionId,
-          questionStableKey: requireQuestion(questionById, answer.questionId).stableKey,
+          questionStableKey: requireValue(
+            questionById,
+            answer.questionId,
+          ).stableKey,
         })),
       )
       .returning({ id: assessmentAnswers.id, questionId: assessmentAnswers.questionId });
@@ -106,48 +230,142 @@ export async function submitGapQuestionnaire(input: {
       answerRows.map((answer) => [answer.questionId, answer.id]),
     );
     await tx.insert(assessmentAnswerOptions).values(
-      input.answers.map((answer) => ({
-        assessmentAnswerId: requireId(answerIdByQuestion, answer.questionId),
+      draftAnswers.map((answer) => ({
+        assessmentAnswerId: requireValue(
+          answerIdByQuestion,
+          answer.questionId,
+        ),
         questionId: answer.questionId,
-        questionOptionId: answer.optionId,
+        questionOptionId: answer.questionOptionId,
       })),
     );
+
+    const mappings = await tx.query.gapRequirementQuestionMappings.findMany({
+      columns: {
+        requirementVersionId: true,
+        questionId: true,
+        position: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.gapAnalysisReleaseId, release.id) ?? operators.sql`true`,
+      },
+      orderBy: { position: "asc" },
+    });
+    const requirementIds = [...new Set(
+      mappings.map((mapping) => mapping.requirementVersionId),
+    )];
+    if (
+      requirementIds.length !== 10 ||
+      mappings.length !== questionRows.length
+    ) {
+      throw new ApiError(
+        409,
+        "Gap category evaluation coverage is incomplete",
+      );
+    }
+    const optionById = new Map(optionRows.map((option) => [option.id, option]));
+    const evaluations = requirementIds.map((requirementVersionId) => {
+      const categoryMappings = mappings
+        .filter(
+          (mapping) =>
+            mapping.requirementVersionId === requirementVersionId,
+        )
+        .sort((left, right) => left.position - right.position);
+      const evaluated = evaluateGapRequirement({
+        gapAnalysisReleaseId: release.id,
+        questionnaireVersionId: release.questionnaireVersionId,
+        assessmentRevisionId: revision.id,
+        requirementVersionId,
+        answers: categoryMappings.map((mapping) => {
+          const draftAnswer = requireValue(
+            answerByQuestion,
+            mapping.questionId,
+          );
+          return {
+            questionStableKey: requireValue(
+              questionById,
+              mapping.questionId,
+            ).stableKey,
+            stableValue: requireValue(
+              optionById,
+              draftAnswer.questionOptionId,
+            ).stableValue,
+          };
+        }),
+      });
+      return {
+        assessmentRevisionId: revision.id,
+        requirementVersionId,
+        status: evaluated.status,
+        evaluatorKind: release.evaluatorKind,
+        evaluatorVersion: release.evaluatorVersion,
+        inputHash: evaluated.inputHash,
+      };
+    });
+    await tx.insert(assessmentRequirementEvaluations).values(evaluations);
     await tx
       .update(assessments)
       .set({ currentRevisionId: revision.id })
       .where(eq(assessments.id, assessment.id));
+    await tx
+      .update(gapQuestionnaireDrafts)
+      .set({
+        lastSubmittedAssessmentRevisionId: revision.id,
+        updatedBy: input.userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(gapQuestionnaireDrafts.id, draft.id));
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType: "gap_questionnaire.submitted",
       entityType: "assessment_revision",
       entityId: revision.id,
-      metadata: { assessmentId: assessment.id },
+      metadata: {
+        assessmentId: assessment.id,
+        draftId: draft.id,
+        draftVersion: draft.version,
+        answeredCount: draftAnswers.length,
+      },
     });
     return revision;
   });
 }
 
-export async function getGapQuestionnaireRevision(userId: string, organizationId: string, revisionId: string) {
+export async function getGapQuestionnaireRevision(
+  userId: string,
+  organizationId: string,
+  revisionId: string,
+) {
   await assertCanContributeToOrganization(userId, organizationId);
-  const [row] = await db.select({ revision: assessmentRevisions }).from(assessmentRevisions)
-    .innerJoin(assessments, eq(assessmentRevisions.assessmentId, assessments.id))
-    .where(and(eq(assessmentRevisions.id, revisionId), eq(assessments.organizationId, organizationId))).limit(1);
-  if (!row) throw new ApiError(404, "Gap questionnaire revision not found", undefined, "GAP_QUESTIONNAIRE_REVISION_NOT_FOUND");
+  const [row] = await db
+    .select({ revision: assessmentRevisions })
+    .from(assessmentRevisions)
+    .innerJoin(
+      assessments,
+      eq(assessmentRevisions.assessmentId, assessments.id),
+    )
+    .where(
+      and(
+        eq(assessmentRevisions.id, revisionId),
+        eq(assessments.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  if (!row) {
+    throw new ApiError(
+      404,
+      "Gap questionnaire revision not found",
+      undefined,
+      "GAP_QUESTIONNAIRE_REVISION_NOT_FOUND",
+    );
+  }
   return row.revision;
 }
 
-function requireQuestion(
-  questionsById: Map<string, Pick<typeof questions.$inferSelect, "stableKey">>,
-  id: string,
-) {
-  const question = questionsById.get(id);
-  if (!question) throw new ApiError(400, "Unknown question");
-  return question;
-}
-
-function requireId(values: Map<string, string>, key: string) {
-  const id = values.get(key);
-  if (!id) throw new ApiError(500, "Assessment answer persistence is incomplete");
-  return id;
+function requireValue<K, V>(values: Map<K, V>, key: K) {
+  const value = values.get(key);
+  if (!value) throw new ApiError(500, `Required value ${String(key)} is missing`);
+  return value;
 }

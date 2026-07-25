@@ -78,21 +78,39 @@ export function GapReviewStep({
         onEdit={() => onNavigate("questions")}
         editable={editable}
       >
-        <dl className="grid gap-3">
-          {release.questions.map((question) => {
-            const option = question.options.find(
-              (candidate) => candidate.id === answers[question.id],
-            );
-            return (
-              <div key={question.id}>
-                <dt className="text-sm font-medium">{question.questionText}</dt>
-                <dd className="text-sm text-muted-foreground">
-                  {option?.label ?? "—"}
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
+        <div className="grid gap-5">
+          {[...release.requirements]
+            .sort((left, right) => left.position - right.position)
+            .map((requirement) => (
+              <section key={requirement.id}>
+                <h4 className="mb-2 font-medium">{requirement.title}</h4>
+                <dl className="grid gap-3 border-l pl-4">
+                  {release.questions
+                    .filter((question) =>
+                      requirement.questionStableKeys.includes(
+                        question.stableKey,
+                      ),
+                    )
+                    .map((question) => {
+                      const option = question.options.find(
+                        (candidate) =>
+                          candidate.id === answers[question.id],
+                      );
+                      return (
+                        <div key={question.id}>
+                          <dt className="text-sm font-medium">
+                            {question.questionText}
+                          </dt>
+                          <dd className="text-sm text-muted-foreground">
+                            {option?.label ?? "—"}
+                          </dd>
+                        </div>
+                      );
+                    })}
+                </dl>
+              </section>
+            ))}
+        </div>
       </SummarySection>
       <SummarySection
         title={labels.reviewDocuments}

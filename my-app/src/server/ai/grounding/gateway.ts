@@ -42,6 +42,7 @@ export async function runGroundedOperation<T>(input: {
     excerpt: string;
   }>;
   queryUnits: QueryUnit[];
+  systemInstruction?: string;
   outputContract: GroundedOutputContract<T>;
   idempotencyKey: string;
   assessmentRevisionId?: string;
@@ -113,7 +114,7 @@ export async function runGroundedOperation<T>(input: {
       asOfDate: input.asOfDate,
       language: "de",
       queryUnitId: unit.id,
-      query: unit.query,
+      query: unit.retrievalQuery ?? unit.query,
     });
     const organization = input.organizationEvidenceVersionIds.length
       ? await retrieveOrganizationContext({
@@ -149,6 +150,9 @@ export async function runGroundedOperation<T>(input: {
   const prompt = buildGroundedPrompt(input.queryUnits, context);
   if (input.operation === "gap_analysis") {
     prompt.system += ` ${GAP_GROUNDING_INSTRUCTION} ${gapOutputLocaleInstruction(input.outputLocale)}`;
+  }
+  if (input.systemInstruction) {
+    prompt.system += ` ${input.systemInstruction}`;
   }
   const promptHash = createHash("sha256").update(`${prompt.system}\n${prompt.prompt}`).digest("hex");
   const corpusReleaseSetHash = createHash("sha256").update(context.filter((item) => item.channel === "legal").map((item) => item.metadata.corpusReleaseId).sort().join("\n")).digest("hex");
