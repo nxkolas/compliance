@@ -111,6 +111,19 @@ rules were explicitly confirmed with one of these values:
 
 - `verified_de_without_it_exception`
 - `verified_de_with_it_exception`
+- `not_applicable_no_partner_or_linked_enterprises`
+
+Der dritte Wert bedeutet, dass keine Partner- oder verbundenen Unternehmen
+bestehen und deshalb keine Aggregation mit anderen Unternehmen erforderlich
+ist. Er gilt sowohl im deutschen Profil als auch im EU-Kern als bestätigter
+Größenstatus. `no` bedeutet weiterhin, dass relevante Unternehmen nicht
+korrekt einbezogen wurden; `unsure` bleibt ebenfalls ungeklärt.
+
+The third value means that there are no partner or linked enterprises and
+therefore no aggregation with other enterprises is required. It is accepted
+as a verified-size state in both the German profile and the EU-core path.
+`no` still means that relevant enterprises were not included correctly;
+`unsure` also remains unresolved.
 
 Andernfalls ist die Größe `unknown`; bei Anlage 1, Anlage 2 oder
 Telekommunikation führt das zu `clarification_required`.

@@ -85,8 +85,12 @@ function evaluateV3RuleSet(
     context.facts,
     ruleSet.thresholds,
     profile?.countryCode === "DE"
-      ? ["verified_de_without_it_exception", "verified_de_with_it_exception"]
-      : ["yes"],
+      ? [
+          "verified_de_without_it_exception",
+          "verified_de_with_it_exception",
+          "not_applicable_no_partner_or_linked_enterprises",
+        ]
+      : ["yes", "not_applicable_no_partner_or_linked_enterprises"],
   );
 
   let outcome: Nis2Outcome = "clarification_required";

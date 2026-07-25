@@ -188,7 +188,8 @@ The Betroffenheitscheck source is authored under
 
 A Compliance Release includes:
 
-- questionnaire wording, options, visibility, and fact mappings;
+- localized question wording, permanently visible short descriptions,
+  supplementary tooltips, options, visibility, and fact mappings;
 - stable EU and national entity identities;
 - thresholds and comparison semantics;
 - jurisdiction profiles, national mappings, designations, and effective-state
@@ -199,9 +200,10 @@ A Compliance Release includes:
 - required Legal Corpus families.
 
 Publication validates and hashes the definition, creates immutable component
-versions, resolves active Legal Corpus pins, and creates one aggregate
-`compliance_check_releases` record. Publication never activates the release.
-Activation validates completeness and advances
+versions, pins every question, short-description, tooltip, and option-label
+content revision to the release, resolves active Legal Corpus pins, and creates
+one aggregate `compliance_check_releases` record. Publication never activates
+the release. Activation validates completeness and advances
 `active_compliance_check_releases`.
 
 Non-production commands:
@@ -280,7 +282,9 @@ Primary implementation:
 #### Load
 
 The server loads the active `nis2_applicability` release through the runtime
-release reader. The UI receives localized questions and option catalogues.
+release reader. The UI receives localized questions, permanently visible short
+descriptions, supplementary tooltips, and option catalogues from those pinned
+content revisions.
 Immutable published bundles may be cached; the active-release pointer,
 organization state, answers, and results are not cached as immutable content.
 
@@ -300,8 +304,8 @@ On submission, the server:
 6. builds an input hash from the answers, facts, Compliance Release ID, and
    rule-set ID.
 
-Question text and labels are display content. Stable option values and derived
-facts drive the evaluator.
+Question text, short descriptions, tooltips, and labels are display content.
+Stable option values and derived facts—not localized prose—drive the evaluator.
 
 #### Evaluate without AI
 

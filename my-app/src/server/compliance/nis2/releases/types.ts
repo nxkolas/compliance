@@ -54,6 +54,7 @@ export type ReleaseQuestionSource = {
   position: number;
   questionContentKey: string;
   helpContentKey?: string;
+  tooltipContentKey?: string;
   answerType: "single_choice" | "multi_choice";
   required: boolean;
   factKey: string;

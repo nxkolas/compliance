@@ -16,6 +16,7 @@ export type RuntimeReleaseQuestion = {
   position: number;
   questionText: string;
   helpText: string | null;
+  tooltipText: string | null;
   answerType: string;
   required: boolean;
   config: unknown;

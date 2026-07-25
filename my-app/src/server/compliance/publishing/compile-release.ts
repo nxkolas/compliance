@@ -98,7 +98,24 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
       ),
     }),
     thresholds: contentHash(release.thresholds),
-    questionnaire: contentHash({ facts: release.facts, questions: release.questions }),
+    questionnaire: contentHash({
+      facts: release.facts,
+      questions: release.questions,
+      content: selectContent(
+        release,
+        release.facts.flatMap((fact) => [
+          fact.labelContentKey,
+          fact.descriptionContentKey,
+        ]).concat(
+          release.questions.flatMap((question) => [
+            question.questionContentKey,
+            ...(question.helpContentKey ? [question.helpContentKey] : []),
+            ...(question.tooltipContentKey ? [question.tooltipContentKey] : []),
+            ...question.options.map((option) => option.labelContentKey),
+          ]),
+        ),
+      ),
+    }),
     profiles: contentHash({
       profiles: release.profiles,
       content: selectContent(

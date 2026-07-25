@@ -43,9 +43,12 @@ export async function getActiveApplicabilityQuestionnaire(
     title: release.questionnaireTitle,
     code: release.questionnaireCode,
     versionLabel: release.releaseVersionLabel,
-    questions: release.questions.map(({ factMappings, ...question }) => {
+    questions: release.questions.map(
+      ({ factMappings, tooltipText, ...question }) => {
       void factMappings;
+      void tooltipText;
       return question;
-    }),
+      },
+    ),
   };
 }

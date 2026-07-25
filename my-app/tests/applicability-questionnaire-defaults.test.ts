@@ -11,6 +11,7 @@ const countryQuestion = {
   position: 2,
   questionText: "Country",
   helpText: null,
+  tooltipText: null,
   answerType: "single_choice",
   required: true,
   config: {},

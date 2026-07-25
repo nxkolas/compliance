@@ -973,6 +973,7 @@ export const questions = pgTable.withRLS(
     position: integer("position").notNull(),
     questionContentRevisionId: uuid("question_content_revision_id").notNull(),
     helpContentRevisionId: uuid("help_content_revision_id"),
+    tooltipContentRevisionId: uuid("tooltip_content_revision_id"),
     answerType: questionAnswerTypeEnum("answer_type").notNull(),
     required: boolean("required").default(false).notNull(),
     config: jsonb("config").default(sql`'{}'::jsonb`).notNull(),
@@ -988,6 +989,7 @@ export const questions = pgTable.withRLS(
     }).onDelete("restrict"),
     foreignKey({ name: "questions_question_content_fk", columns: [table.questionContentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
     foreignKey({ name: "questions_help_content_fk", columns: [table.helpContentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
+    foreignKey({ name: "questions_tooltip_content_fk", columns: [table.tooltipContentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
     uniqueIndex("questions_version_stable_key_unique").on(
       table.questionnaireVersionId,
       table.stableKey,

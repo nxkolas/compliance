@@ -36,6 +36,7 @@ describe("compliance runtime release", () => {
       new Set(["questions", "options", "provisions", "content"]),
     );
     expect(release?.questions[0].questionText).toBe("Question EN");
+    expect(release?.questions[0].tooltipText).toBe("Tooltip EN");
     expect(release?.questions[0].options[0].label).toBe("Option EN");
     expect(release).toMatchObject({
       frameworkName: "Framework EN",
@@ -61,6 +62,7 @@ describe("compliance runtime release", () => {
     );
 
     expect(release?.questions[0].questionText).toBe("Frage DE");
+    expect(release?.questions[0].tooltipText).toBe("Tooltip DE");
     expect(release?.moduleName).toBe("Modul DE");
     expect(warnings).toContainEqual({
       event: "compliance.translation_fallback",
@@ -68,6 +70,15 @@ describe("compliance runtime release", () => {
       releaseVersionLabel: "2026-v1",
       contentRevisionId: "content-question",
       stableKey: "question.one",
+      requestedLocale: "en",
+      fallbackLocale: "de",
+    });
+    expect(warnings).toContainEqual({
+      event: "compliance.translation_fallback",
+      checkReleaseId: "release-1",
+      releaseVersionLabel: "2026-v1",
+      contentRevisionId: "content-tooltip",
+      stableKey: "question.one.tooltip",
       requestedLocale: "en",
       fallbackLocale: "de",
     });
@@ -100,6 +111,23 @@ describe("compliance runtime release", () => {
     );
 
     expect(warnings).toEqual([]);
+  });
+
+  it("returns null when a shared question has no tooltip revision", async () => {
+    const source = fixtureSource([]);
+    source.loadQuestions = async () => {
+      const rows = fixtureQuestions();
+      rows[0].question.tooltipContentRevisionId = null;
+      return rows;
+    };
+
+    const release = await assemblePublishedComplianceRelease(
+      "release-1",
+      "de",
+      source,
+    );
+
+    expect(release?.questions[0].tooltipText).toBeNull();
   });
 
   it("fails when neither requested nor fallback content is present", async () => {
@@ -370,6 +398,7 @@ function fixtureQuestions(): RuntimeQuestionRow[] {
         position: 1,
         questionContentRevisionId: "content-question",
         helpContentRevisionId: null,
+        tooltipContentRevisionId: "content-tooltip",
         answerType: "single_choice",
         required: true,
         config: {},
@@ -423,6 +452,8 @@ function fixtureContent(): RuntimeContentRow[] {
     { contentRevisionId: "content-questionnaire-title", stableKey: "questionnaire.title", locale: "en", value: "Questionnaire EN" },
     { contentRevisionId: "content-question", stableKey: "question.one", locale: "de", value: "Frage DE" },
     { contentRevisionId: "content-question", stableKey: "question.one", locale: "en", value: "Question EN" },
+    { contentRevisionId: "content-tooltip", stableKey: "question.one.tooltip", locale: "de", value: "Tooltip DE" },
+    { contentRevisionId: "content-tooltip", stableKey: "question.one.tooltip", locale: "en", value: "Tooltip EN" },
     { contentRevisionId: "content-option", stableKey: "option.yes", locale: "de", value: "Option DE" },
     { contentRevisionId: "content-option", stableKey: "option.yes", locale: "en", value: "Option EN" },
     { contentRevisionId: "content-result", stableKey: "result.outcome", locale: "de", value: "Outcome DE" },

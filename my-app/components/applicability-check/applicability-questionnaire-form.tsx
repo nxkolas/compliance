@@ -11,6 +11,12 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   getQuestionControl,
@@ -26,7 +32,7 @@ import type {
   ApplicabilityQuestionDto,
   ApplicabilityQuestionnaireDto,
 } from "@/src/server/applicability-check/service";
-import { CheckCircle2, Loader2, Save, X } from "lucide-react";
+import { CheckCircle2, Info, Loader2, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
@@ -52,6 +58,7 @@ type ApplicabilityQuestionnaireFormLabels = {
   selectPlaceholder: string;
   noResults: string;
   required: string;
+  moreInformation: string;
   submit: string;
   submitting: string;
   submitError: string;
@@ -201,24 +208,26 @@ export function ApplicabilityQuestionnaireForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        {visibleQuestions.map((question) => (
-          <QuestionBlock
-            key={question.id}
-            answer={answers[question.id] ?? ""}
-            labels={labels}
-            onChange={(value) =>
-              setAnswers((current) =>
-                reconcileCatalogAnswers(questionnaire.questions, {
-                  ...current,
-                  [question.id]: value,
-                }),
-              )
-            }
-            question={question}
-          />
-        ))}
-      </div>
+      <TooltipProvider>
+        <div className="flex flex-col gap-4">
+          {visibleQuestions.map((question) => (
+            <QuestionBlock
+              key={question.id}
+              answer={answers[question.id] ?? ""}
+              labels={labels}
+              onChange={(value) =>
+                setAnswers((current) =>
+                  reconcileCatalogAnswers(questionnaire.questions, {
+                    ...current,
+                    [question.id]: value,
+                  }),
+                )
+              }
+              question={question}
+            />
+          ))}
+        </div>
+      </TooltipProvider>
 
       <div className="flex justify-end">
         <Button
@@ -272,6 +281,22 @@ function QuestionBlock({
               <h3 className="text-base font-semibold leading-7">
                 {question.questionText}
               </h3>
+              {question.tooltipText ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={labels.moreInformation}
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <Info aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm whitespace-normal text-left leading-5 text-pretty">
+                    {question.tooltipText}
+                  </TooltipContent>
+                </Tooltip>
+              ) : null}
               {question.required ? (
                 <span className="mt-1 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
                   {labels.required}

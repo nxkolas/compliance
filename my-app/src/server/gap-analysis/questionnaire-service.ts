@@ -138,7 +138,7 @@ export async function getGapQuestionnaireRevision(userId: string, organizationId
 }
 
 function requireQuestion(
-  questionsById: Map<string, typeof questions.$inferSelect>,
+  questionsById: Map<string, Pick<typeof questions.$inferSelect, "stableKey">>,
   id: string,
 ) {
   const question = questionsById.get(id);

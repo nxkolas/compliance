@@ -458,6 +458,7 @@ export async function assemblePublishedComplianceRelease(
       position: entry.question.position,
       questionText: resolveRevision(entry.question.questionContentRevisionId) ?? "",
       helpText: resolveRevision(entry.question.helpContentRevisionId),
+      tooltipText: resolveRevision(entry.question.tooltipContentRevisionId),
       answerType: entry.question.answerType,
       required: entry.question.required,
       config: entry.question.config,

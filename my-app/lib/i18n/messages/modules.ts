@@ -155,6 +155,7 @@ export const modulesMessages = defineFeatureMessages({
               selectPlaceholder: "Einrichtungsart suchen oder auswählen",
               noResults: "Keine Treffer",
               required: "Pflichtfrage",
+              moreInformation: "Weitere Informationen",
               submit: "Betroffenheitscheck berechnen",
               submitting: "Wird berechnet...",
               submitError:
@@ -710,6 +711,7 @@ export const modulesMessages = defineFeatureMessages({
               selectPlaceholder: "Search or select entity type",
               noResults: "No results",
               required: "Required question",
+              moreInformation: "More information",
               submit: "Calculate applicability check",
               submitting: "Calculating...",
               submitError: "The applicability check could not be calculated.",

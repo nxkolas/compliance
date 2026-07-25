@@ -316,6 +316,9 @@ export async function publishComplianceRelease(release: Nis2ReleaseDefinition) {
         position: source.position,
         questionContentRevisionId: contentRevisionId(source.questionContentKey),
         helpContentRevisionId: source.helpContentKey ? contentRevisionId(source.helpContentKey) : null,
+        tooltipContentRevisionId: source.tooltipContentKey
+          ? contentRevisionId(source.tooltipContentKey)
+          : null,
         answerType: source.answerType,
         required: source.required,
         config: source.config,
