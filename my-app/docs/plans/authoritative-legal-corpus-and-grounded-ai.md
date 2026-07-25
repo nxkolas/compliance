@@ -421,7 +421,7 @@ remain explicit and cost-gated.
    audit events.
 3. Implement leases, heartbeats, retries, cancellation, cleanup, and common job
    status service.
-4. Apply server-only RLS/grant SQL and verification queries.
+4. Declare server-only RLS in Drizzle and add verification queries.
 
 ### Phase 2: Corpus storage and immutable model
 
@@ -512,7 +512,7 @@ Required automated checks:
 - exact context disclosure and citation resolution;
 - unsupported-claim, conflict, and prompt-injection behavior;
 - Gap-Analyse idempotency and accepted-result preservation;
-- RLS/grant verification and append-only audit triggers.
+- RLS verification and append-only audit triggers.
 
 Run at minimum:
 

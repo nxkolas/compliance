@@ -1042,8 +1042,8 @@ Apply the exact runbook sequence, including:
 
 Set up and verify all private storage buckets.
 
-Do not run a second Drizzle push as a drift check. Supabase-only RLS, triggers,
-and HNSW indexes intentionally live outside the Drizzle model.
+RLS lives in the Drizzle model. Operator-owned triggers and HNSW indexes remain
+outside it and require their dedicated verifiers.
 
 ### 7. Reseed and govern the corpus
 

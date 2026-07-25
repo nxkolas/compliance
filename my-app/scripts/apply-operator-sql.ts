@@ -11,13 +11,8 @@ const approvedFiles = new Set([
   "scripts/sql/database-remediation-integrity.sql",
   "scripts/sql/database-remediation-pre-push.sql",
   "scripts/sql/legal-corpus-indexes.sql",
-  "scripts/sql/legal-corpus-server-only.sql",
   "scripts/sql/organization-management-user-directory.sql",
-  "scripts/sql/phase1-server-only.sql",
   "scripts/sql/remediation-rehearsal-bootstrap.sql",
-  "scripts/sql/workflow-server-only.sql",
-  "supabase/sql-editor/001_server_only_definition_rls.sql",
-  "supabase/sql-editor/002_server_only_application_data_rls.sql",
   "supabase/sql-editor/003_guest_retention_cleanup.sql",
   "supabase/sql-editor/004_gap_evidence_infrastructure.sql",
 ]);

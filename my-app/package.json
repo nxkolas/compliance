@@ -27,7 +27,7 @@
     "db:preflight:remediation": "tsx scripts/preflight-database-remediation.ts",
     "db:quiesce:remediation": "tsx scripts/quiesce-database-remediation.ts",
     "db:bootstrap:platform-admin": "tsx scripts/bootstrap-platform-administrator.ts",
-    "db:verify:server-only": "tsx scripts/verify-server-only-grants.ts",
+    "db:verify:server-only": "tsx scripts/verify-server-only-rls.ts",
     "db:backfill:user-directory": "tsx scripts/backfill-user-directory.ts",
     "db:verify:organization-management": "tsx scripts/verify-organization-management.ts",
     "db:verify:remediation-integrity": "tsx scripts/verify-database-remediation-integrity.ts",

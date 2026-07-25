@@ -689,7 +689,7 @@ Implemented on 25 July 2026 in the delivery slices described above.
   status-specific organization list contracts, active-member aggregation, and
   search-scoped opaque cursors.
 - Added the server-only `user_directory` projection, authenticated-boundary
-  synchronization, idempotent Admin API backfill, grant verification, and
+  synchronization, idempotent Admin API backfill, RLS verification, and
   localized-safe roster fallback.
 - Rebuilt the always-visible switcher, active/archived management streams,
   atomic edit modal, archive/restore dialogs, country selection, creation

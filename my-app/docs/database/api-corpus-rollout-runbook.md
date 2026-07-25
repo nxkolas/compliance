@@ -37,8 +37,6 @@ API error details.
    then apply `database-remediation-identity-fks.sql`. Review every statement
    and never use `--force` or a second post-security Drizzle push.
 4. Apply `scripts/sql/api-corpus-integrity-additions.sql` again, then
-   `scripts/sql/phase1-server-only.sql`,
-   `scripts/sql/legal-corpus-server-only.sql`, and
    `scripts/sql/audit-events-append-only.sql`, followed by
    `scripts/sql/database-remediation-integrity.sql`, as a privileged database
    operator. The second integrity pass adds constraints to newly-created
@@ -59,10 +57,10 @@ API error details.
    `npm.cmd run db:seed:legal-corpus-fixture`. It must still be reviewed,
    published, evaluated, and activated by a Platform Administrator.
 
-After the post-push SQL is installed, do not approve another Drizzle push as a
-"zero drift" check. Supabase-only RLS, audit triggers, and HNSW indexes are
-outside the Drizzle model, so that preview can propose removing them. Use the
-dedicated grant/trigger and storage verifiers for final-state proof.
+RLS remains owned by Drizzle and must not appear as drift on a later push.
+Audit triggers and HNSW indexes remain operator-owned, so review any proposed
+changes to those objects separately. Use the dedicated RLS/trigger and storage
+verifiers for final-state proof.
 
 ## Deploy
 

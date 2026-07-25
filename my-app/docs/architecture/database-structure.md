@@ -3,10 +3,11 @@
 Status: current schema overview as of 2026-07-24.
 
 `src/db/schema.ts` is the source of truth for ordinary application tables,
-columns, enums, relations, constraints, and indexes. Apply it with
-`npm.cmd run db:push`. Supabase-only extensions, search infrastructure, storage,
-privilege, RLS, audit-trigger, and retention operations live under
-`supabase/sql-editor/` and are documented in the
+columns, enums, relations, constraints, indexes, and RLS enablement. Every
+Drizzle table enables RLS and declares no browser policy, so browser access is
+default-deny. Apply it with `npm.cmd run db:push`. Supabase-only extensions,
+search infrastructure, storage, audit-trigger, and retention operations live
+under `supabase/sql-editor/` and are documented in the
 [Supabase security runbook](../database/supabase-security-runbook.md).
 
 ## Ownership and authorization
@@ -18,8 +19,7 @@ or are constrained through organization-scoped foreign keys.
 
 Browser roles have no supported direct table-access path. Next.js pages and API
 routes authenticate the user and enforce organization permissions in server
-services. RLS and revoked browser grants are defense in depth and must be
-verified after every schema rollout.
+services. Default-deny RLS must be verified after every schema rollout.
 
 ## Immutable compliance releases
 

@@ -235,45 +235,25 @@ only after reviewing the target and SQL diff. Never use `--force`. If Drizzle
 proposes an unexpected drop, rename, or unrelated schema change, answer **No**
 and investigate.
 
-### 6. Apply post-push Supabase infrastructure and base security
+### 6. Apply post-push Supabase infrastructure
 
-**Documented:** preserve the existing SQL Editor order `004`, `001`, `002`,
-`003`. The explicit five-table revoke is also documented because `001` and
-`002` predate those workflow tables; it is captured in the idempotent
-[`workflow-server-only.sql`](../../scripts/sql/workflow-server-only.sql) file.
+RLS is already enabled by the Drizzle schema for every table. No post-push RLS
+or table-grant script is required.
 
 ```powershell
 npm.cmd run db:apply-operator-sql -- supabase/sql-editor/004_gap_evidence_infrastructure.sql
-npm.cmd run db:apply-operator-sql -- supabase/sql-editor/001_server_only_definition_rls.sql
-npm.cmd run db:apply-operator-sql -- supabase/sql-editor/002_server_only_application_data_rls.sql
-```
-
-Apply the documented workflow-table revoke through its allow-listed repository
-file between `002` and `003`:
-
-```powershell
-npm.cmd run db:apply-operator-sql -- scripts/sql/workflow-server-only.sql
-```
-
-Then continue with the runner:
-
-```powershell
 npm.cmd run db:apply-operator-sql -- supabase/sql-editor/003_guest_retention_cleanup.sql
 ```
 
 The statement and its placement come from
 [`supabase-security-runbook.md`](supabase-security-runbook.md#execution-order).
 
-### 7. Apply API/corpus integrity, privileges, and audit protection
+### 7. Apply API/corpus integrity and audit protection
 
-**Documented:** run the integrity file a second time, followed by Phase 1
-server-only privileges, legal-corpus server-only privileges, and append-only
-audit protection.
+Run the integrity file a second time, followed by append-only audit protection.
 
 ```powershell
 npm.cmd run db:apply-operator-sql -- scripts/sql/api-corpus-integrity-additions.sql
-npm.cmd run db:apply-operator-sql -- scripts/sql/phase1-server-only.sql
-npm.cmd run db:apply-operator-sql -- scripts/sql/legal-corpus-server-only.sql
 npm.cmd run db:apply-operator-sql -- scripts/sql/audit-events-append-only.sql
 npm.cmd run db:apply-operator-sql -- scripts/sql/database-remediation-integrity.sql
 ```
@@ -462,12 +442,10 @@ finally {
 
 ### Schema, security, and storage
 
-Do not use a second Drizzle push as a post-security "zero drift" check.
-Supabase-only RLS state, audit triggers, and HNSW indexes are intentionally
-installed outside the Drizzle model. A post-SQL `drizzle-kit push` preview can
-therefore propose disabling RLS, dropping those indexes, or normalizing
-PostgreSQL-truncated constraint names. Abort such a preview. Prove the final
-state with the dedicated security and storage checks below instead.
+RLS is part of the Drizzle model, so a later push must never propose disabling
+it. Operator-owned audit triggers and HNSW indexes remain outside the Drizzle
+model; review any proposed changes to those objects and to
+PostgreSQL-truncated constraint names separately.
 
 ```powershell
 npm.cmd run db:verify:server-only
@@ -484,10 +462,9 @@ npm.cmd run db:smoke:country-support
 Require `db:verify:server-only` to report every public table, all expected
 rollout tables, and both append-only audit triggers. Its exact coverage is
 defined in
-[`scripts/verify-server-only-grants.ts`](../../scripts/verify-server-only-grants.ts).
-The verifier rejects any public table with RLS disabled or direct `anon` /
-`authenticated` grants. The diagnostic policy queries and optional browser-role
-simulation remain documented in
+[`scripts/verify-server-only-rls.ts`](../../scripts/verify-server-only-rls.ts).
+The verifier rejects any public table with RLS disabled. The diagnostic policy
+queries and optional browser-role simulation remain documented in
 [`supabase-security-runbook.md`](supabase-security-runbook.md#verification).
 
 Confirm all three buckets exist and are private:

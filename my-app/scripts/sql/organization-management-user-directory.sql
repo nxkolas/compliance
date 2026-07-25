@@ -10,8 +10,3 @@ create table if not exists public.user_directory (
 
 create index if not exists user_directory_email_idx
   on public.user_directory (lower(email));
-
-alter table public.user_directory enable row level security;
-revoke all on table public.user_directory from anon, authenticated;
-grant all on table public.user_directory to service_role;
-

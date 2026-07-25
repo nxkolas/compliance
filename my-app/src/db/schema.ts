@@ -340,7 +340,7 @@ export const organizations = pgTable(
     index("organizations_country_idx").on(table.country),
     check("organizations_version_positive", sql`${table.version} > 0`),
   ],
-);
+).enableRLS();
 
 /**
  * Server-owned projection of the small, non-sensitive subset of Supabase Auth
@@ -397,7 +397,7 @@ export const organizationMemberships = pgTable(
     index("organization_memberships_status_idx").on(table.status),
     check("organization_memberships_version_positive", sql`${table.version} > 0`),
   ],
-);
+).enableRLS();
 
 export const organizationInvitations = pgTable(
   "organization_invitations",
@@ -434,7 +434,7 @@ export const organizationInvitations = pgTable(
     index("organization_invitations_email_idx").on(table.email),
     index("organization_invitations_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const contentItems = pgTable(
   "content_items",
@@ -450,7 +450,7 @@ export const contentItems = pgTable(
       .notNull(),
   },
   (table) => [uniqueIndex("content_items_stable_key_unique").on(table.stableKey)],
-);
+).enableRLS();
 
 export const contentRevisions = pgTable(
   "content_revisions",
@@ -478,7 +478,7 @@ export const contentRevisions = pgTable(
       table.contentHash,
     ),
   ],
-);
+).enableRLS();
 
 export const contentTranslations = pgTable(
   "content_translations",
@@ -496,7 +496,7 @@ export const contentTranslations = pgTable(
     }).onDelete("restrict"),
     index("content_translations_locale_idx").on(table.locale),
   ],
-);
+).enableRLS();
 
 export const legalInstruments = pgTable(
   "legal_instruments",
@@ -507,7 +507,7 @@ export const legalInstruments = pgTable(
     instrumentType: text("instrument_type").notNull(),
   },
   (table) => [uniqueIndex("legal_instruments_code_unique").on(table.code)],
-);
+).enableRLS();
 
 export const legalInstrumentVersions = pgTable(
   "legal_instrument_versions",
@@ -539,7 +539,7 @@ export const legalInstrumentVersions = pgTable(
     ),
     uniqueIndex("legal_instrument_versions_hash_unique").on(table.contentHash),
   ],
-);
+).enableRLS();
 
 export const legalProvisions = pgTable(
   "legal_provisions",
@@ -566,7 +566,7 @@ export const legalProvisions = pgTable(
       table.provisionCode,
     ),
   ],
-);
+).enableRLS();
 
 export const scopeModels = pgTable(
   "scope_models",
@@ -575,7 +575,7 @@ export const scopeModels = pgTable(
     code: text("code").notNull(),
   },
   (table) => [uniqueIndex("scope_models_code_unique").on(table.code)],
-);
+).enableRLS();
 
 export const scopeModelVersions = pgTable(
   "scope_model_versions",
@@ -601,7 +601,7 @@ export const scopeModelVersions = pgTable(
     ),
     uniqueIndex("scope_model_versions_hash_unique").on(table.contentHash),
   ],
-);
+).enableRLS();
 
 export const scopeSectors = pgTable(
   "scope_sectors",
@@ -610,7 +610,7 @@ export const scopeSectors = pgTable(
     code: text("code").notNull(),
   },
   (table) => [uniqueIndex("scope_sectors_code_unique").on(table.code)],
-);
+).enableRLS();
 
 export const scopeSectorVersions = pgTable(
   "scope_sector_versions",
@@ -626,7 +626,7 @@ export const scopeSectorVersions = pgTable(
     foreignKey({ name: "scope_sector_versions_label_content_fk", columns: [table.labelContentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
     uniqueIndex("scope_sector_versions_model_sector_unique").on(table.scopeModelVersionId, table.scopeSectorId),
   ],
-);
+).enableRLS();
 
 export const scopeEntityTypes = pgTable(
   "scope_entity_types",
@@ -635,7 +635,7 @@ export const scopeEntityTypes = pgTable(
     code: text("code").notNull(),
   },
   (table) => [uniqueIndex("scope_entity_types_code_unique").on(table.code)],
-);
+).enableRLS();
 
 export const scopeEntityTypeVersions = pgTable(
   "scope_entity_type_versions",
@@ -659,7 +659,7 @@ export const scopeEntityTypeVersions = pgTable(
     uniqueIndex("scope_entity_type_versions_model_entity_unique").on(table.scopeModelVersionId, table.scopeEntityTypeId),
     check("scope_entity_type_versions_annex_check", sql`${table.annex} is null or ${table.annex} in (1, 2)`),
   ],
-);
+).enableRLS();
 
 export const scopeEntityTypeLegalProvisions = pgTable(
   "scope_entity_type_legal_provisions",
@@ -672,7 +672,7 @@ export const scopeEntityTypeLegalProvisions = pgTable(
     foreignKey({ name: "scope_entity_type_legal_entity_fk", columns: [table.scopeEntityTypeVersionId], foreignColumns: [scopeEntityTypeVersions.id] }).onDelete("restrict"),
     foreignKey({ name: "scope_entity_type_legal_provision_fk", columns: [table.legalProvisionId], foreignColumns: [legalProvisions.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const organizationFactDefinitions = pgTable(
   "organization_fact_definitions",
@@ -684,7 +684,7 @@ export const organizationFactDefinitions = pgTable(
   (table) => [
     index("organization_fact_definitions_data_type_idx").on(table.dataType),
   ],
-);
+).enableRLS();
 
 export const organizationFactDefinitionVersions = pgTable(
   "organization_fact_definition_versions",
@@ -703,7 +703,7 @@ export const organizationFactDefinitionVersions = pgTable(
     uniqueIndex("organization_fact_definition_versions_label_unique").on(table.factKey, table.versionLabel),
     uniqueIndex("organization_fact_definition_versions_hash_unique").on(table.factKey, table.contentHash),
   ],
-);
+).enableRLS();
 
 export const factOptions = pgTable(
   "fact_options",
@@ -729,7 +729,7 @@ export const factOptions = pgTable(
     check("fact_options_single_catalog_identity_check", sql`num_nonnulls(${table.scopeEntityTypeId}, ${table.jurisdictionEntityTypeId}) <= 1`),
     check("fact_options_catalog_identity_check", sql`(${table.scopeEntityTypeId} is null or ${table.catalogCode} = 'eu_core') and (${table.jurisdictionEntityTypeId} is null or ${table.catalogCode} like 'country:%')`),
   ],
-);
+).enableRLS();
 
 export const organizationFactValues = pgTable(
   "organization_fact_values",
@@ -775,7 +775,7 @@ export const organizationFactValues = pgTable(
       sql`num_nonnulls(${table.textValue}, ${table.numberValue}, ${table.booleanValue}, ${table.structuredValue}) <= 1`,
     ),
   ],
-);
+).enableRLS();
 
 export const organizationFactValueOptions = pgTable(
   "organization_fact_value_options",
@@ -805,7 +805,7 @@ export const organizationFactValueOptions = pgTable(
       : []),
     index("organization_fact_value_options_option_idx").on(table.factOptionId),
   ],
-);
+).enableRLS();
 
 export const complianceFrameworks = pgTable(
   "compliance_frameworks",
@@ -819,7 +819,7 @@ export const complianceFrameworks = pgTable(
   (table) => [
     uniqueIndex("compliance_frameworks_code_unique").on(table.code),
   ],
-);
+).enableRLS();
 
 export const complianceFrameworkVersions = pgTable(
   "compliance_framework_versions",
@@ -860,7 +860,7 @@ export const complianceFrameworkVersions = pgTable(
     ),
     index("compliance_framework_versions_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const complianceModules = pgTable(
   "compliance_modules",
@@ -889,7 +889,7 @@ export const complianceModules = pgTable(
     ),
     index("compliance_modules_code_idx").on(table.code),
   ],
-);
+).enableRLS();
 
 export const questionnaires = pgTable(
   "questionnaires",
@@ -914,7 +914,7 @@ export const questionnaires = pgTable(
     unique("questionnaires_id_module_unique").on(table.id, table.moduleId),
     index("questionnaires_code_idx").on(table.code),
   ],
-);
+).enableRLS();
 
 export const questionnaireVersions = pgTable(
   "questionnaire_versions",
@@ -950,7 +950,7 @@ export const questionnaireVersions = pgTable(
     ),
     index("questionnaire_versions_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const questions = pgTable(
   "questions",
@@ -983,7 +983,7 @@ export const questions = pgTable(
     unique("questions_id_stable_key_unique").on(table.id, table.stableKey),
     index("questions_stable_key_idx").on(table.stableKey),
   ],
-);
+).enableRLS();
 
 export const questionOptions = pgTable(
   "question_options",
@@ -1014,7 +1014,7 @@ export const questionOptions = pgTable(
     ),
     index("question_options_fact_option_idx").on(table.factOptionId),
   ],
-);
+).enableRLS();
 
 export const questionFactMappings = pgTable(
   "question_fact_mappings",
@@ -1044,7 +1044,7 @@ export const questionFactMappings = pgTable(
     ),
     index("question_fact_mappings_fact_key_idx").on(table.factKey),
   ],
-);
+).enableRLS();
 
 export const scopeThresholdSets = pgTable(
   "scope_threshold_sets",
@@ -1069,7 +1069,7 @@ export const scopeThresholdSets = pgTable(
     uniqueIndex("scope_threshold_sets_hash_unique").on(table.contentHash),
     check("scope_threshold_sets_positive_check", sql`${table.mediumEmployeeThreshold} > 0 and ${table.largeEmployeeThreshold} > ${table.mediumEmployeeThreshold}`),
   ],
-);
+).enableRLS();
 
 export const scopeThresholdSetLegalProvisions = pgTable(
   "scope_threshold_set_legal_provisions",
@@ -1082,7 +1082,7 @@ export const scopeThresholdSetLegalProvisions = pgTable(
     foreignKey({ name: "scope_threshold_legal_set_fk", columns: [table.scopeThresholdSetId], foreignColumns: [scopeThresholdSets.id] }).onDelete("restrict"),
     foreignKey({ name: "scope_threshold_legal_provision_fk", columns: [table.legalProvisionId], foreignColumns: [legalProvisions.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const jurisdictionProfiles = pgTable(
   "jurisdiction_profiles",
@@ -1095,7 +1095,7 @@ export const jurisdictionProfiles = pgTable(
     uniqueIndex("jurisdiction_profiles_code_unique").on(table.code),
     uniqueIndex("jurisdiction_profiles_country_unique").on(table.countryCode),
   ],
-);
+).enableRLS();
 
 export const jurisdictionProfileVersions = pgTable(
   "jurisdiction_profile_versions",
@@ -1116,7 +1116,7 @@ export const jurisdictionProfileVersions = pgTable(
     uniqueIndex("jurisdiction_profile_versions_label_unique").on(table.jurisdictionProfileId, table.versionLabel),
     uniqueIndex("jurisdiction_profile_versions_hash_unique").on(table.contentHash),
   ],
-);
+).enableRLS();
 
 export const jurisdictionEntityTypes = pgTable(
   "jurisdiction_entity_types",
@@ -1129,7 +1129,7 @@ export const jurisdictionEntityTypes = pgTable(
     foreignKey({ name: "jurisdiction_entity_types_profile_fk", columns: [table.jurisdictionProfileId], foreignColumns: [jurisdictionProfiles.id] }).onDelete("restrict"),
     uniqueIndex("jurisdiction_entity_types_profile_code_unique").on(table.jurisdictionProfileId, table.code),
   ],
-);
+).enableRLS();
 
 export const jurisdictionEntityTypeVersions = pgTable(
   "jurisdiction_entity_type_versions",
@@ -1152,7 +1152,7 @@ export const jurisdictionEntityTypeVersions = pgTable(
     uniqueIndex("jurisdiction_entity_type_versions_profile_entity_unique").on(table.jurisdictionProfileVersionId, table.jurisdictionEntityTypeId),
     check("jurisdiction_entity_type_versions_annex_check", sql`${table.annex} is null or ${table.annex} in (1, 2)`),
   ],
-);
+).enableRLS();
 
 export const jurisdictionEntityTypeLegalProvisions = pgTable(
   "jurisdiction_entity_type_legal_provisions",
@@ -1165,7 +1165,7 @@ export const jurisdictionEntityTypeLegalProvisions = pgTable(
     foreignKey({ name: "jurisdiction_entity_type_legal_entity_fk", columns: [table.jurisdictionEntityTypeVersionId], foreignColumns: [jurisdictionEntityTypeVersions.id] }).onDelete("restrict"),
     foreignKey({ name: "jurisdiction_entity_type_legal_provision_fk", columns: [table.legalProvisionId], foreignColumns: [legalProvisions.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const jurisdictionEntityTypeMappings = pgTable(
   "jurisdiction_entity_type_mappings",
@@ -1181,7 +1181,7 @@ export const jurisdictionEntityTypeMappings = pgTable(
     uniqueIndex("jurisdiction_entity_type_mappings_unique").on(table.jurisdictionEntityTypeVersionId, table.scopeEntityTypeId),
     check("jurisdiction_entity_type_mappings_kind_check", sql`${table.relationshipKind} in ('exact', 'subset', 'aggregate', 'overlap')`),
   ],
-);
+).enableRLS();
 
 export const jurisdictionProfileThresholdPolicies = pgTable(
   "jurisdiction_profile_threshold_policies",
@@ -1197,7 +1197,7 @@ export const jurisdictionProfileThresholdPolicies = pgTable(
     foreignKey({ name: "jurisdiction_profile_threshold_policy_profile_fk", columns: [table.jurisdictionProfileVersionId], foreignColumns: [jurisdictionProfileVersions.id] }).onDelete("restrict"),
     foreignKey({ name: "jurisdiction_profile_threshold_policy_threshold_fk", columns: [table.scopeThresholdSetId], foreignColumns: [scopeThresholdSets.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const jurisdictionProfileJurisdictionRules = pgTable(
   "jurisdiction_profile_jurisdiction_rules",
@@ -1215,7 +1215,7 @@ export const jurisdictionProfileJurisdictionRules = pgTable(
     foreignKey({ name: "jurisdiction_profile_jurisdiction_rules_provision_fk", columns: [table.legalProvisionId], foreignColumns: [legalProvisions.id] }).onDelete("restrict"),
     uniqueIndex("jurisdiction_profile_jurisdiction_rules_unique").on(table.jurisdictionProfileVersionId, table.jurisdictionEntityTypeId, table.basisCode),
   ],
-);
+).enableRLS();
 
 export const jurisdictionProfileEffectiveStates = pgTable(
   "jurisdiction_profile_effective_states",
@@ -1236,7 +1236,7 @@ export const jurisdictionProfileEffectiveStates = pgTable(
     foreignKey({ name: "jurisdiction_profile_effective_states_provision_fk", columns: [table.legalProvisionId], foreignColumns: [legalProvisions.id] }).onDelete("restrict"),
     uniqueIndex("jurisdiction_profile_effective_states_code_unique").on(table.jurisdictionProfileVersionId, table.code),
   ],
-);
+).enableRLS();
 
 export const jurisdictionProfileLegalProvisions = pgTable(
   "jurisdiction_profile_legal_provisions",
@@ -1249,7 +1249,7 @@ export const jurisdictionProfileLegalProvisions = pgTable(
     foreignKey({ name: "jurisdiction_profile_legal_profile_fk", columns: [table.jurisdictionProfileVersionId], foreignColumns: [jurisdictionProfileVersions.id] }).onDelete("restrict"),
     foreignKey({ name: "jurisdiction_profile_legal_provision_fk", columns: [table.legalProvisionId], foreignColumns: [legalProvisions.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const jurisdictionProfileDesignations = pgTable(
   "jurisdiction_profile_designations",
@@ -1265,7 +1265,7 @@ export const jurisdictionProfileDesignations = pgTable(
     foreignKey({ name: "jurisdiction_profile_designations_provision_fk", columns: [table.legalProvisionId], foreignColumns: [legalProvisions.id] }).onDelete("restrict"),
     uniqueIndex("jurisdiction_profile_designations_code_unique").on(table.jurisdictionProfileVersionId, table.designationCode),
   ],
-);
+).enableRLS();
 
 export const assessments = pgTable(
   "assessments",
@@ -1349,7 +1349,7 @@ export const assessments = pgTable(
       table.applicabilityArtifactRevisionId,
     ),
   ],
-);
+).enableRLS();
 
 export const assessmentRevisions = pgTable(
   "assessment_revisions",
@@ -1393,7 +1393,7 @@ export const assessmentRevisions = pgTable(
     ),
     index("assessment_revisions_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const assessmentAnswers = pgTable(
   "assessment_answers",
@@ -1437,7 +1437,7 @@ export const assessmentAnswers = pgTable(
       sql`num_nonnulls(${table.textValue}, ${table.numberValue}, ${table.booleanValue}, ${table.dateValue}, ${table.structuredValue}) <= 1`,
     ),
   ],
-);
+).enableRLS();
 
 export const assessmentAnswerOptions = pgTable(
   "assessment_answer_options",
@@ -1464,7 +1464,7 @@ export const assessmentAnswerOptions = pgTable(
       : []),
     index("assessment_answer_options_option_idx").on(table.questionOptionId),
   ],
-);
+).enableRLS();
 
 export const guestApplicabilityChecks = pgTable(
   "guest_applicability_checks",
@@ -1514,7 +1514,7 @@ export const guestApplicabilityChecks = pgTable(
       table.claimedByUserId,
     ),
   ],
-);
+).enableRLS();
 
 export const ruleSets = pgTable(
   "rule_sets",
@@ -1547,7 +1547,7 @@ export const ruleSets = pgTable(
     index("rule_sets_status_idx").on(table.status),
     uniqueIndex("rule_sets_content_hash_unique").on(table.contentHash),
   ],
-);
+).enableRLS();
 
 export const complianceCheckReleases = pgTable(
   "compliance_check_releases",
@@ -1603,7 +1603,7 @@ export const complianceCheckReleases = pgTable(
     ),
     index("compliance_check_releases_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const complianceCheckReleaseProfiles = pgTable(
   "compliance_check_release_profiles",
@@ -1617,7 +1617,7 @@ export const complianceCheckReleaseProfiles = pgTable(
     foreignKey({ name: "compliance_check_release_profiles_release_fk", columns: [table.checkReleaseId], foreignColumns: [complianceCheckReleases.id] }).onDelete("restrict"),
     foreignKey({ name: "compliance_check_release_profiles_profile_fk", columns: [table.jurisdictionProfileVersionId], foreignColumns: [jurisdictionProfileVersions.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const complianceCheckReleaseFactVersions = pgTable(
   "compliance_check_release_fact_versions",
@@ -1630,7 +1630,7 @@ export const complianceCheckReleaseFactVersions = pgTable(
     foreignKey({ name: "compliance_check_release_fact_versions_release_fk", columns: [table.checkReleaseId], foreignColumns: [complianceCheckReleases.id] }).onDelete("restrict"),
     foreignKey({ name: "compliance_check_release_fact_versions_fact_fk", columns: [table.factDefinitionVersionId], foreignColumns: [organizationFactDefinitionVersions.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const complianceCheckReleaseContentRevisions = pgTable(
   "compliance_check_release_content_revisions",
@@ -1643,7 +1643,7 @@ export const complianceCheckReleaseContentRevisions = pgTable(
     foreignKey({ name: "compliance_release_content_release_fk", columns: [table.checkReleaseId], foreignColumns: [complianceCheckReleases.id] }).onDelete("restrict"),
     foreignKey({ name: "compliance_release_content_revision_fk", columns: [table.contentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
   ],
-);
+).enableRLS();
 
 export const activeComplianceCheckReleases = pgTable(
   "active_compliance_check_releases",
@@ -1668,7 +1668,7 @@ export const activeComplianceCheckReleases = pgTable(
       : []),
     uniqueIndex("active_compliance_check_releases_release_unique").on(table.checkReleaseId),
   ],
-);
+).enableRLS();
 
 export const complianceCheckReleaseActivations = pgTable(
   "compliance_check_release_activations",
@@ -1703,7 +1703,7 @@ export const complianceCheckReleaseActivations = pgTable(
       : []),
     index("compliance_release_activations_check_idx").on(table.checkCode, table.activatedAt),
   ],
-);
+).enableRLS();
 
 export const generatedArtifacts = pgTable(
   "generated_artifacts",
@@ -1742,7 +1742,7 @@ export const generatedArtifacts = pgTable(
       table.acceptedRevisionId,
     ),
   ],
-);
+).enableRLS();
 
 export const generatedArtifactRevisions = pgTable(
   "generated_artifact_revisions",
@@ -1838,7 +1838,7 @@ export const generatedArtifactRevisions = pgTable(
       )`,
     ),
   ],
-);
+).enableRLS();
 
 export const nis2ResultProjections = pgTable(
   "nis2_result_projections",
@@ -1854,7 +1854,7 @@ export const nis2ResultProjections = pgTable(
     index("nis2_result_projections_country_idx").on(table.countryCode),
     index("nis2_result_projections_size_idx").on(table.sizeClassification),
   ],
-);
+).enableRLS();
 
 export const artifactRevisionAssessmentSources = pgTable(
   "artifact_revision_assessment_sources",
@@ -1879,7 +1879,7 @@ export const artifactRevisionAssessmentSources = pgTable(
     }).onDelete("restrict"),
     index("artifact_revision_assessment_sources_assessment_idx").on(table.assessmentRevisionId),
   ],
-);
+).enableRLS();
 
 export const artifactRevisionArtifactSources = pgTable(
   "artifact_revision_artifact_sources",
@@ -1902,7 +1902,7 @@ export const artifactRevisionArtifactSources = pgTable(
     }).onDelete("restrict"),
     index("artifact_revision_artifact_sources_source_idx").on(table.sourceArtifactRevisionId),
   ],
-);
+).enableRLS();
 
 export const artifactRevisionDocumentSources = pgTable(
   "artifact_revision_document_sources",
@@ -1925,7 +1925,7 @@ export const artifactRevisionDocumentSources = pgTable(
     }).onDelete("restrict"),
     index("artifact_revision_document_sources_document_idx").on(table.documentVersionId),
   ],
-);
+).enableRLS();
 
 export const gapRequirementSets = pgTable(
   "gap_requirement_sets",
@@ -1937,7 +1937,7 @@ export const gapRequirementSets = pgTable(
       .notNull(),
   },
   (table) => [uniqueIndex("gap_requirement_sets_code_unique").on(table.code)],
-);
+).enableRLS();
 
 export const gapRequirements = pgTable(
   "gap_requirements",
@@ -2025,7 +2025,7 @@ export const gapRequirementSetVersions = pgTable(
       table.contentHash,
     ),
   ],
-);
+).enableRLS();
 
 export const gapRequirementSetMembers = pgTable(
   "gap_requirement_set_members",
@@ -2053,7 +2053,7 @@ export const gapRequirementSetMembers = pgTable(
       table.position,
     ),
   ],
-);
+).enableRLS();
 
 export const gapAnalysisReleases = pgTable(
   "gap_analysis_releases",
@@ -2126,7 +2126,7 @@ export const gapAnalysisReleases = pgTable(
     uniqueIndex("gap_analysis_releases_hash_unique").on(table.aggregateHash),
     index("gap_analysis_releases_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const activeGapAnalysisReleases = pgTable(
   "active_gap_analysis_releases",
@@ -2155,7 +2155,7 @@ export const activeGapAnalysisReleases = pgTable(
       table.gapAnalysisReleaseId,
     ),
   ],
-);
+).enableRLS();
 
 export const gapAnalysisReleaseActivations = pgTable(
   "gap_analysis_release_activations",
@@ -2195,7 +2195,7 @@ export const gapAnalysisReleaseActivations = pgTable(
       table.activatedAt,
     ),
   ],
-);
+).enableRLS();
 
 export const gapAnalysisReleaseApplicabilityRules = pgTable(
   "gap_analysis_release_applicability_rules",
@@ -2224,7 +2224,7 @@ export const gapAnalysisReleaseApplicabilityRules = pgTable(
       table.requirementVersionId,
     ),
   ],
-);
+).enableRLS();
 
 export const documents = pgTable(
   "documents",
@@ -2262,7 +2262,7 @@ export const documents = pgTable(
       table.organizationId,
     ),
   ],
-);
+).enableRLS();
 
 export const documentVersions = pgTable(
   "document_versions",
@@ -2307,7 +2307,7 @@ export const documentVersions = pgTable(
     ),
     check("document_versions_byte_size_positive", sql`${table.byteSize} > 0`),
   ],
-);
+).enableRLS();
 
 export const gapReassessmentDrafts = pgTable(
   "gap_reassessment_drafts",
@@ -2462,7 +2462,7 @@ export const documentExtractions = pgTable(
     ),
     index("document_extractions_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const documentChunks = pgTable(
   "document_chunks",
@@ -2492,7 +2492,7 @@ export const documentChunks = pgTable(
     ),
     index("document_chunks_search_idx").using("gin", table.searchVector),
   ],
-);
+).enableRLS();
 
 export const documentEmbeddingGenerations = pgTable(
   "document_embedding_generations",
@@ -2531,7 +2531,7 @@ export const documentEmbeddingGenerations = pgTable(
       sql`${table.dimensions} > 0`,
     ),
   ],
-);
+).enableRLS();
 
 export const documentChunkEmbeddings = pgTable(
   "document_chunk_embeddings",
@@ -2557,7 +2557,7 @@ export const documentChunkEmbeddings = pgTable(
     }).onDelete("restrict"),
     index("document_chunk_embeddings_chunk_idx").on(table.chunkId),
   ],
-);
+).enableRLS();
 
 export const aiProcessingRuns = pgTable(
   "ai_processing_runs",
@@ -2675,7 +2675,7 @@ export const aiProcessingRuns = pgTable(
       )`,
     ),
   ],
-);
+).enableRLS();
 
 export const aiProcessingRunAssessmentInputs = pgTable(
   "ai_processing_run_assessment_inputs",
@@ -2699,7 +2699,7 @@ export const aiProcessingRunAssessmentInputs = pgTable(
     }).onDelete("restrict"),
     index("ai_processing_run_assessment_inputs_assessment_idx").on(table.assessmentRevisionId),
   ],
-);
+).enableRLS();
 
 export const aiProcessingRunArtifactInputs = pgTable(
   "ai_processing_run_artifact_inputs",
@@ -2723,7 +2723,7 @@ export const aiProcessingRunArtifactInputs = pgTable(
     }).onDelete("restrict"),
     index("ai_processing_run_artifact_inputs_artifact_idx").on(table.artifactRevisionId),
   ],
-);
+).enableRLS();
 
 export const aiProcessingRunDocumentInputs = pgTable(
   "ai_processing_run_document_inputs",
@@ -2747,7 +2747,7 @@ export const aiProcessingRunDocumentInputs = pgTable(
     }).onDelete("restrict"),
     index("ai_processing_run_document_inputs_document_idx").on(table.documentVersionId),
   ],
-);
+).enableRLS();
 
 export const gapFindings = pgTable(
   "gap_findings",
@@ -2789,7 +2789,7 @@ export const gapFindings = pgTable(
     ),
     index("gap_findings_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const gapFindingEvidence = pgTable(
   "gap_finding_evidence",
@@ -2860,7 +2860,7 @@ export const gapFindingEvidence = pgTable(
       )`,
     ),
   ],
-);
+).enableRLS();
 
 export const gapFindingReviewResolutions = pgTable(
   "gap_finding_review_resolutions",
@@ -2889,7 +2889,7 @@ export const gapFindingReviewResolutions = pgTable(
       table.findingId,
     ),
   ],
-);
+).enableRLS();
 
 export const actionPlans = pgTable(
   "action_plans",
@@ -2955,7 +2955,7 @@ export const actionPlans = pgTable(
       )`,
     ),
   ],
-);
+).enableRLS();
 
 export const actionPlanItems = pgTable(
   "action_plan_items",
@@ -2994,7 +2994,7 @@ export const actionPlanItems = pgTable(
     ),
     index("action_plan_items_status_idx").on(table.status),
   ],
-);
+).enableRLS();
 
 export const reports = pgTable(
   "reports",
@@ -3117,7 +3117,7 @@ export const auditEvents = pgTable(
     ),
     index("audit_events_entity_idx").on(table.entityType, table.entityId),
   ],
-);
+).enableRLS();
 
 export const platformAdministrators = pgTable(
   "platform_administrators",
