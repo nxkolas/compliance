@@ -2,12 +2,15 @@
 
 This runbook applies the Supabase-specific part of the immutable NIS2 release
 cutover. Ordinary tables, constraints, indexes, and relations remain owned by
-Drizzle, except for the explicitly audited remediation integrity
+Drizzle, except for the explicitly audited integrity
 functions/triggers and the existing Supabase infrastructure SQL.
+
+Use the current [Drizzle schema-change workflow](drizzle-workflow.md) for
+ordinary table, constraint, index, and RLS changes.
 
 ## Preconditions
 
-1. Confirm the direct server connection role before changing privileges:
+1. Confirm the direct server connection role:
 
    ```sql
    select current_user,
@@ -18,11 +21,13 @@ functions/triggers and the existing Supabase infrastructure SQL.
    where rolname = current_user;
    ```
 
-2. The application server role must remain able to use the tables after browser grants are revoked. These scripts deliberately do not use `FORCE ROW LEVEL SECURITY`; do not add it unless the direct server role has been proven safe.
-3. `004_gap_evidence_infrastructure.sql` must run once before `db:push` so the
-   `extensions.vector` type exists, and again after `db:push` so it can install
-   the search trigger, HNSW index, private storage bucket, and append-only audit
-   trigger.
+2. `src/db/schema.ts` enables RLS without browser policies on every Drizzle
+   table. It deliberately does not use `FORCE ROW LEVEL SECURITY`; do not add
+   it unless the direct server role has been proven safe.
+3. On a new database, `004_gap_evidence_infrastructure.sql` must run once
+   before the first `db:push` so the `extensions.vector` type exists. Its
+   table-dependent pass installs the search trigger, private storage bucket,
+   and append-only audit trigger. The HNSW indexes are owned by Drizzle.
 
 ## Execution order
 
@@ -31,22 +36,19 @@ Run the schema and SQL Editor files in this order:
 1. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql`. Before the
    Drizzle tables exist, it creates the vector extension and reports that its
    table-dependent work is deferred.
-2. Apply `scripts/sql/database-remediation-pre-push.sql`.
-3. Run the guarded strict Drizzle pass and
-   `scripts/sql/database-remediation-identity-fks.sql` exactly as documented in
-   the reset/reseed runbook.
-4. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
-5. Run `supabase/sql-editor/001_server_only_definition_rls.sql`.
-6. Run `supabase/sql-editor/002_server_only_application_data_rls.sql`.
-7. Run `scripts/sql/workflow-server-only.sql`.
-8. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
-9. Run the API/corpus server-only and append-only SQL files, then
-   `scripts/sql/database-remediation-integrity.sql`.
+2. Follow the preview, review, apply, RLS verification, and zero-drift steps in
+   the [Drizzle workflow](drizzle-workflow.md).
+3. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
+4. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
+5. Run the API/corpus integrity and append-only SQL files, then
+   `scripts/sql/database-integrity-triggers.sql`.
 
-All SQL files above are idempotent. `001` and `002` fail immediately when an
-expected Drizzle table is absent. The reassessment tables enable RLS in
-`src/db/schema.ts`; the grant verification below remains mandatory for every
-public table, including those workflow tables.
+All SQL files above are idempotent. RLS is not installed or modified by an
+operator SQL file; Drizzle is its only source of truth.
+
+The database-remediation pre-push and identity-FK sequence belongs only to the
+historical coordinated cutover record. It is not executable through the
+approved operator-SQL runner and is not part of the normal `db:push` workflow.
 
 After the SQL files succeed, publish and activate the repository release separately:
 
@@ -84,17 +86,9 @@ where schemaname = 'public'
 order by tablename, policyname;
 ```
 
-Verify browser-role grants are absent:
-
-```sql
-select grantee, table_name, privilege_type
-from information_schema.role_table_grants
-where table_schema = 'public'
-  and grantee in ('anon', 'authenticated')
-order by grantee, table_name, privilege_type;
-```
-
-When permitted, simulate the browser roles. Both selects must fail:
+When permitted, simulate the browser roles. With Supabase's default table
+privileges, both selects must return no rows because no permissive policy
+exists. A permission error is also safe.
 
 ```sql
 begin;
@@ -114,11 +108,11 @@ Run the automated verifiers:
 
 ```powershell
 npm.cmd run db:verify:server-only
-npm.cmd run db:verify:remediation-integrity
+npm.cmd run db:verify:integrity
 npm.cmd run storage:verify
 ```
 
-The remediation verifier exercises both valid and deliberately invalid
+The integrity verifier exercises both valid and deliberately invalid
 transactions. It proves composite owner/identity foreign keys, typed-value
 checks, metadata-only Gap JSON, and the deferred trigger that requires exactly
 one normalized finding per applicable requirement.
@@ -170,4 +164,7 @@ $block$;
 drop function if exists public.cleanup_expired_guest_applicability_checks();
 ```
 
-If browser access must be restored during an operational rollback, explicitly grant only the previously documented privileges and disable RLS only on the affected tables. Do not use blanket grants. The previous code revision and schema can then be restored with the approved development clear/push flow; do not use `db:reset`.
+If browser access must be introduced, add an explicitly reviewed Drizzle policy
+for only the affected table and operation. Do not disable RLS or add blanket
+policies. The previous code revision and schema can be restored with a reviewed
+Drizzle push; do not use `db:reset`.

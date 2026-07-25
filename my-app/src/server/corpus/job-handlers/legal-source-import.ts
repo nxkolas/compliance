@@ -2,14 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import * as z from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/src/db";
-import {
-  backgroundJobs,
-  legalSourceProcessingGenerations,
-  legalSourceRenditions,
-  legalSources,
-  legalSourceVersions,
-  platformAuditEvents,
-} from "@/src/db/schema";
+import { backgroundJobs, legalSourceProcessingGenerations, legalSourceRenditions, legalSourceVersions, platformAuditEvents } from "@/src/db/schema";
 import { LEGAL_CORPUS_BUCKET, LEGAL_SOURCE_MIME_TYPES, MAX_LEGAL_SOURCE_BYTES } from "../config";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { fetchControlledUrl } from "../controlled-url";
@@ -28,12 +21,12 @@ const payloadSchema = z.object({
 
 export async function handleLegalSourceImport(job: typeof backgroundJobs.$inferSelect) {
   const existing = await db.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
-    where: eq(legalSourceRenditions.importJobId, job.id),
+    where: { RAW: (table, operators) => (eq(table.importJobId, job.id)) ?? operators.sql`true` },
   });
   if (existing) return { type: "legal_source_rendition", id: existing.id };
   const payload = payloadSchema.parse(job.payload);
   const source = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-    where: eq(legalSources.id, payload.sourceId),
+    where: { RAW: (table, operators) => (eq(table.id, payload.sourceId)) ?? operators.sql`true` },
   });
   if (!source || source.withdrawnAt) throw new Error("Legal source is unavailable");
   const fetched = await fetchControlledUrl({
@@ -51,12 +44,12 @@ export async function handleLegalSourceImport(job: typeof backgroundJobs.$inferS
 
   return db.transaction(async (tx) => {
     const duplicate = await tx.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
-      where: eq(legalSourceRenditions.importJobId, job.id),
+      where: { RAW: (table, operators) => (eq(table.importJobId, job.id)) ?? operators.sql`true` },
     });
     if (duplicate) return { type: "legal_source_rendition", id: duplicate.id };
     const existingVersion = payload.existingVersionId
       ? await tx.query.legalSourceVersions.findFirst({ columns: { id: true, sourceId: true, versionLabel: true, officialIdentifier: true, upstreamPublishedAt: true, retrievedAt: true, upstreamUrl: true, effectiveFrom: true, effectiveTo: true, contentHash: true, status: true, reviewedBy: true, reviewedAt: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, createdBy: true, createdAt: true },
-          where: eq(legalSourceVersions.id, payload.existingVersionId),
+          where: { RAW: (table, operators) => (eq(table.id, payload.existingVersionId!)) ?? operators.sql`true` },
         })
       : undefined;
     if (existingVersion && (existingVersion.sourceId !== source.id || existingVersion.status !== "draft" || existingVersion.contentHash !== contentHash)) {

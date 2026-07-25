@@ -90,7 +90,7 @@ export async function verifyUploadedObject(input: {
 }) {
   const now = input.now ?? new Date();
   const session = await db.query.uploadSessions.findFirst({ columns: { id: true, organizationId: true, createdByUserId: true, scope: true, bucket: true, objectPath: true, fileName: true, expectedMimeType: true, expectedSize: true, expectedSha256: true, actualMimeType: true, actualSize: true, actualSha256: true, state: true, safeErrorCode: true, expiresAt: true, completedAt: true, createdAt: true, updatedAt: true },
-    where: and(eq(uploadSessions.id, input.sessionId), eq(uploadSessions.createdByUserId, input.userId)),
+    where: { RAW: (table, operators) => (and(eq(table.id, input.sessionId), eq(table.createdByUserId, input.userId))) ?? operators.sql`true` },
   });
   if (!session) throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
   if (session.state === "completed" || session.state === "verified") return session;
@@ -154,7 +154,7 @@ export async function markUploadSessionCompleted(input: {
 
 export async function getUploadSessionResult(sessionId: string) {
   return db.query.uploadSessionResults.findFirst({
-    where: eq(uploadSessionResults.sessionId, sessionId),
+    where: { RAW: (table, operators) => (eq(table.sessionId, sessionId)) ?? operators.sql`true` },
     columns: {
       documentVersionId: true,
       legalSourceRenditionId: true,

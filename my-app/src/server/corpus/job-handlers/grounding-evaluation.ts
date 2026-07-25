@@ -15,12 +15,12 @@ const payloadSchema = z.object({ releaseId: z.uuid() });
 
 export async function handleGroundingEvaluation(job: typeof backgroundJobs.$inferSelect) {
   const existing = await db.query.legalCorpusEvaluations.findFirst({ columns: { id: true, releaseId: true, jobId: true, fixtureSetVersion: true, passed: true, metrics: true, failures: true, evaluatedAt: true },
-    where: eq(legalCorpusEvaluations.jobId, job.id),
+    where: { RAW: (table, operators) => (eq(table.jobId, job.id)) ?? operators.sql`true` },
   });
   if (existing) return { type: "legal_corpus_evaluation", id: existing.id };
   const { releaseId } = payloadSchema.parse(job.payload);
   const release = await db.query.legalCorpusReleases.findFirst({ columns: { id: true, familyId: true, versionLabel: true, contentHash: true, status: true, evaluationState: true, evaluationJobId: true, publishedBy: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-    where: eq(legalCorpusReleases.id, releaseId),
+    where: { RAW: (table, operators) => (eq(table.id, releaseId)) ?? operators.sql`true` },
   });
   if (!release || release.status !== "published") throw new Error("Published corpus release not found");
   const [integrity] = await db.select({

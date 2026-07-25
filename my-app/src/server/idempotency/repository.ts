@@ -25,7 +25,14 @@ export const databaseIdempotencyRepository: IdempotencyRepository = {
   async find(input) {
     const { db } = await import("@/src/db");
     const row = await db.query.idempotencyRecords.findFirst({
-      where: claimWhere(input),
+      where: {
+        RAW: (table, operators) => (and(
+            eq(table.actorKey, input.actorKey),
+            eq(table.scope, input.scope),
+            eq(table.operation, input.operation),
+            eq(table.key, input.key),
+          )) ?? operators.sql`true`,
+      },
       columns: {
         id: true,
         actorKey: true,
@@ -40,7 +47,7 @@ export const databaseIdempotencyRepository: IdempotencyRepository = {
     });
     if (!row) return null;
     const result = await db.query.idempotencyRecordResults.findFirst({
-      where: eq(idempotencyRecordResults.recordId, row.id),
+      where: { RAW: (table, operators) => (eq(table.recordId, row.id)) ?? operators.sql`true` },
       columns: {
         recordId: true,
         platformAdministratorUserId: true,

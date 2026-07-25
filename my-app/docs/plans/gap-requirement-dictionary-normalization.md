@@ -382,7 +382,7 @@ change:
    title/text as stored on `gap_requirement_versions`.
 3. Reconcile references in the AI-output-language plan so recommendation and
    legal-reference normalization remain explicitly out of this change.
-4. Follow `docs/database/database-reset-and-reseed.md`; do not invent a
+4. Follow `docs/database/development-database-reset-and-bootstrap.md`; do not invent a
    separate reset sequence.
 5. Push the reviewed schema to the disposable target and republish/activate the
    required releases.
@@ -456,7 +456,7 @@ git diff --check
 
 The database cutover is intentionally destructive and applies only to a
 verified disposable development target. Follow
-`docs/database/database-reset-and-reseed.md` completely, including:
+`docs/database/development-database-reset-and-bootstrap.md` completely, including:
 
 1. verify the non-secret `DATABASE_URL`/`DRIZZLE_DATABASE_URL` target identity;
 2. quiesce web, worker, and scheduled writers;

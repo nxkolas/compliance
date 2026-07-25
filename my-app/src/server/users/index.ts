@@ -28,7 +28,7 @@ export async function syncAuthenticatedUser(user: User) {
   return (
     row ??
     db.query.userDirectory.findFirst({
-      where: eq(userDirectory.userId, identity.userId),
+      where: { RAW: (table, operators) => (eq(table.userId, identity.userId)) ?? operators.sql`true` },
       columns: {
         userId: true,
         email: true,

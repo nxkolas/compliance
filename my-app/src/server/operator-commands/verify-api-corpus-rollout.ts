@@ -1,20 +1,7 @@
 import "dotenv/config";
 
 import { closeDbConnection, db } from "@/src/db";
-import {
-  activeComplianceCheckReleases,
-  activeGapAnalysisReleases,
-  activeLegalCorpusReleases,
-  backgroundJobs,
-  complianceCheckReleaseCorpusReleases,
-  complianceCheckReleases,
-  gapAnalysisReleaseCorpusReleases,
-  gapAnalysisReleases,
-  legalCorpusEvaluations,
-  legalCorpusFamilies,
-  legalCorpusReleases,
-  platformAuditEvents,
-} from "@/src/db/schema";
+import { activeLegalCorpusReleases, legalCorpusFamilies, legalCorpusReleases } from "@/src/db/schema";
 import { and, eq, inArray, lte, or } from "drizzle-orm";
 
 const expectedFamilies = ["nis2-eu-primary", "nis2-de-primary"];
@@ -45,36 +32,36 @@ async function main() {
     assert(row.releaseStatus === "published", `${code} active release must be published`);
     assert(row.evaluationState === "passed", `${code} active release evaluation must have passed`);
     const evaluation = await db.query.legalCorpusEvaluations.findFirst({ columns: { id: true, releaseId: true, jobId: true, fixtureSetVersion: true, passed: true, metrics: true, failures: true, evaluatedAt: true },
-      where: and(
-        eq(legalCorpusEvaluations.releaseId, row.releaseId),
-        eq(legalCorpusEvaluations.passed, true),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.releaseId, row.releaseId),
+        eq(table.passed, true),
+      )) ?? operators.sql`true` },
     });
     assert(evaluation, `${code} must retain its passing evaluation record`);
   }
 
   const compliancePointer = await db.query.activeComplianceCheckReleases.findFirst({ columns: { checkCode: true, checkReleaseId: true, activatedBy: true, activatedAt: true },
-    where: eq(activeComplianceCheckReleases.checkCode, "nis2_applicability"),
+    where: { RAW: (table, operators) => (eq(table.checkCode, "nis2_applicability")) ?? operators.sql`true` },
   });
   assert(compliancePointer, "The NIS2 compliance release must be active");
   const complianceRelease = await db.query.complianceCheckReleases.findFirst({ columns: { id: true, checkCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, scopeModelVersionId: true, scopeThresholdSetId: true, ruleSetId: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, effectiveFrom: true, effectiveTo: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-    where: eq(complianceCheckReleases.id, compliancePointer.checkReleaseId),
+    where: { RAW: (table, operators) => (eq(table.id, compliancePointer.checkReleaseId)) ?? operators.sql`true` },
   });
   assert(
     complianceRelease?.status === "published" && complianceRelease.versionLabel === "2026-v1",
     "The active NIS2 compliance release must be published 2026-v1",
   );
   const compliancePins = await db.query.complianceCheckReleaseCorpusReleases.findMany({ columns: { checkReleaseId: true, familyId: true, corpusReleaseId: true },
-    where: eq(complianceCheckReleaseCorpusReleases.checkReleaseId, complianceRelease.id),
+    where: { RAW: (table, operators) => (eq(table.checkReleaseId, complianceRelease.id)) ?? operators.sql`true` },
   });
   assertExactPins("Compliance", compliancePins, corpusRows);
 
   const gapPointer = await db.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
-    where: eq(activeGapAnalysisReleases.releaseCode, "nis2-gap"),
+    where: { RAW: (table, operators) => (eq(table.releaseCode, "nis2-gap")) ?? operators.sql`true` },
   });
   assert(gapPointer, "The NIS2 Gap release must be active");
   const gapRelease = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-    where: eq(gapAnalysisReleases.id, gapPointer.gapAnalysisReleaseId),
+    where: { RAW: (table, operators) => (eq(table.id, gapPointer.gapAnalysisReleaseId)) ?? operators.sql`true` },
   });
   assert(
     gapRelease?.status === "published" && gapRelease.versionLabel === "guided-v3",
@@ -85,19 +72,19 @@ async function main() {
     "The active Gap release must pin the active compatible compliance release",
   );
   const gapPins = await db.query.gapAnalysisReleaseCorpusReleases.findMany({ columns: { gapAnalysisReleaseId: true, familyId: true, corpusReleaseId: true },
-    where: eq(gapAnalysisReleaseCorpusReleases.gapAnalysisReleaseId, gapRelease.id),
+    where: { RAW: (table, operators) => (eq(table.gapAnalysisReleaseId, gapRelease.id)) ?? operators.sql`true` },
   });
   assertExactPins("Gap", gapPins, corpusRows);
 
   const unfinishedJobs = await db.query.backgroundJobs.findMany({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
-    where: or(
-      and(eq(backgroundJobs.state, "queued"), lte(backgroundJobs.runAfter, new Date())),
-      inArray(backgroundJobs.state, ["running", "cancellation_requested"]),
-    ),
+    where: { RAW: (table, operators) => (or(
+      and(eq(table.state, "queued"), lte(table.runAfter, new Date())),
+      inArray(table.state, ["running", "cancellation_requested"]),
+    )) ?? operators.sql`true` },
   });
   assert(unfinishedJobs.length === 0, `Rollout has ${unfinishedJobs.length} unfinished background job(s)`);
   const scheduledCleanup = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
-    where: and(eq(backgroundJobs.kind, "cleanup"), eq(backgroundJobs.state, "queued")),
+    where: { RAW: (table, operators) => (and(eq(table.kind, "cleanup"), eq(table.state, "queued"))) ?? operators.sql`true` },
   });
   assert(scheduledCleanup, "A future maintenance cleanup job must be scheduled");
 
@@ -107,7 +94,7 @@ async function main() {
     "legal_corpus_release.activated",
   ]) {
     const event = await db.query.platformAuditEvents.findFirst({ columns: { id: true, actorUserId: true, eventType: true, entityType: true, entityId: true, requestId: true, metadata: true, createdAt: true },
-      where: eq(platformAuditEvents.eventType, eventType),
+      where: { RAW: (table, operators) => (eq(table.eventType, eventType)) ?? operators.sql`true` },
     });
     assert(event, `Missing platform audit event ${eventType}`);
   }

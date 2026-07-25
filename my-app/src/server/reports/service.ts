@@ -1,12 +1,9 @@
 import { db } from "@/src/db";
-import {
-  actionPlans, auditEvents, backgroundJobs, documents, generatedArtifactRevisions, generatedArtifacts,
-  reportActionPlanSources, reportArtifactSources, reportDocumentSources, reports,
-} from "@/src/db/schema";
+import { auditEvents, backgroundJobs, generatedArtifactRevisions, generatedArtifacts, reportActionPlanSources, reportArtifactSources, reportDocumentSources, reports } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { localizedFilename } from "@/lib/i18n/format";
 import { reportsMessages } from "@/lib/i18n/messages/reports";
-import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { contentHash } from "@/src/server/compliance";
 import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
 import { ApiError } from "@/src/server/api/errors";
@@ -26,12 +23,12 @@ export async function createReport(input: { userId: string; organizationId: stri
     inArray(reports.state, ["queued", "rendering"]),
   ));
   assertReportConcurrency(active.count);
-  const artifacts = await db.query.generatedArtifacts.findMany({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true }, where: and(
-    eq(generatedArtifacts.organizationId, input.organizationId),
-    inArray(generatedArtifacts.artifactType, ["affectedness_result", "gap_analysis_result"]),
-  ) });
-  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true }, where: and(eq(actionPlans.organizationId, input.organizationId), eq(actionPlans.status, "active")) });
-  const documentRows = await db.query.documents.findMany({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: eq(documents.organizationId, input.organizationId) });
+  const artifacts = await db.query.generatedArtifacts.findMany({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true }, where: { RAW: (table, operators) => (and(
+    eq(table.organizationId, input.organizationId),
+    inArray(table.artifactType, ["affectedness_result", "gap_analysis_result"]),
+  )) ?? operators.sql`true` } });
+  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true }, where: { RAW: (table, operators) => (and(eq(table.organizationId, input.organizationId), eq(table.status, "active"))) ?? operators.sql`true` } });
+  const documentRows = await db.query.documents.findMany({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (eq(table.organizationId, input.organizationId)) ?? operators.sql`true` } });
   const sources: Source[] = [
     ...artifacts.flatMap((artifact) => artifact.acceptedRevisionId ? [{ sourceType: artifact.artifactType, sourceId: artifact.acceptedRevisionId }] : []),
     ...(plan ? [{ sourceType: "action_plan", sourceId: plan.id }] : []),
@@ -92,11 +89,11 @@ export async function listReportsPage(input: { userId: string; organizationId: s
   const scope = `reports:${input.organizationId}`;
   const cursor = input.cursor ? reportCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.query.reports.findMany({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true },
-    where: and(
-      eq(reports.organizationId, input.organizationId),
-      cursor ? or(lt(reports.createdAt, new Date(cursor[0])), and(eq(reports.createdAt, new Date(cursor[0])), lt(reports.id, cursor[1]))) : undefined,
-    ),
-    orderBy: [desc(reports.createdAt), desc(reports.id)],
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, input.organizationId),
+      cursor ? or(lt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), lt(table.id, cursor[1]))) : undefined,
+    )) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc", id: "desc" },
     limit: input.limit + 1,
   });
   const page = rows.slice(0, input.limit);
@@ -109,7 +106,7 @@ export async function listReportsPage(input: { userId: string; organizationId: s
 
 export async function getReportDetail(userId: string, organizationId: string, reportId: string) {
   await requireOrganizationCapability(userId, organizationId, "reports:read");
-  const report = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: and(eq(reports.id, reportId), eq(reports.organizationId, organizationId)) });
+  const report = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: { RAW: (table, operators) => (and(eq(table.id, reportId), eq(table.organizationId, organizationId))) ?? operators.sql`true` } });
   if (!report) throw new ApiError(404, "Report not found", undefined, "REPORT_NOT_FOUND");
   const [artifactSources, actionPlanSources, documentSources, job] = await Promise.all([
     db.select({
@@ -125,7 +122,7 @@ export async function getReportDetail(userId: string, organizationId: string, re
     db.select({ sourceId: reportDocumentSources.documentVersionId })
       .from(reportDocumentSources)
       .where(eq(reportDocumentSources.reportId, report.id)),
-    report.jobId ? db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: eq(backgroundJobs.id, report.jobId) }) : null,
+    report.jobId ? db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, report.jobId!)) ?? operators.sql`true` } }) : null,
   ]);
   const sources: Source[] = [
     ...artifactSources,
@@ -137,7 +134,7 @@ export async function getReportDetail(userId: string, organizationId: string, re
 
 export async function createReportDownload(userId: string, organizationId: string, reportId: string) {
   await requireOrganizationCapability(userId, organizationId, "reports:read");
-  const report = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: and(eq(reports.id, reportId), eq(reports.organizationId, organizationId), eq(reports.state, "ready")) });
+  const report = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: { RAW: (table, operators) => (and(eq(table.id, reportId), eq(table.organizationId, organizationId), eq(table.state, "ready"))) ?? operators.sql`true` } });
   if (!report?.storageBucket || !report.storagePath) throw new ApiError(409, "Report is not ready", undefined, "REPORT_NOT_READY");
   const locale = report.locale as Locale;
   const fileName = localizedFilename(

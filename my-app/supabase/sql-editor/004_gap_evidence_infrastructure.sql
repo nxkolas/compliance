@@ -30,16 +30,9 @@ begin
   set search_vector = to_tsvector('simple', coalesce(content, ''))
   where search_vector is null;
 
-  create index if not exists document_chunk_embeddings_hnsw_idx
-    on public.document_chunk_embeddings
-    using hnsw (embedding extensions.vector_cosine_ops);
-
   insert into storage.buckets (id, name, public)
   values ('organization-evidence', 'organization-evidence', false)
   on conflict (id) do update set public = false;
-
-  revoke all privileges on table public.documents from anon, authenticated;
-  revoke all privileges on table public.document_versions from anon, authenticated;
 
   create or replace function public.reject_audit_event_mutation()
   returns trigger

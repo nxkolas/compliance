@@ -1,20 +1,5 @@
 import { db } from "@/src/db";
-import {
-  artifactRevisionAssessmentSources,
-  assessmentAnswerOptions,
-  assessmentAnswers,
-  assessmentRevisions,
-  assessments,
-  complianceCheckReleaseProfiles,
-  complianceCheckReleases,
-  factOptions,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-  guestApplicabilityChecks,
-  nis2ResultProjections,
-  organizationFactValueOptions,
-  organizationFactValues,
-} from "@/src/db/schema";
+import { artifactRevisionAssessmentSources, assessmentAnswerOptions, assessmentAnswers, assessmentRevisions, assessments, complianceCheckReleases, factOptions, generatedArtifactRevisions, generatedArtifacts, guestApplicabilityChecks, nis2ResultProjections, organizationFactValueOptions, organizationFactValues } from "@/src/db/schema";
 import { and, eq, inArray, or } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import type { LocalizedRuleEvaluationResult } from "./localize-evaluation";
@@ -566,12 +551,12 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
       work({
         async findActiveAssessment({ organizationId, moduleId, checkReleaseId }) {
           return (await tx.query.assessments.findFirst({
-            where: and(
-              eq(assessments.organizationId, organizationId),
-              eq(assessments.moduleId, moduleId),
-              eq(assessments.checkReleaseId, checkReleaseId),
-              eq(assessments.status, "active"),
-            ),
+            where: { RAW: (table, operators) => (and(
+              eq(table.organizationId, organizationId),
+              eq(table.moduleId, moduleId),
+              eq(table.checkReleaseId, checkReleaseId),
+              eq(table.status, "active"),
+            )) ?? operators.sql`true` },
             columns: { id: true, currentRevisionId: true },
           })) ?? null;
         },
@@ -609,8 +594,8 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
         },
         async findLatestAssessmentRevision(assessmentId) {
           return (await tx.query.assessmentRevisions.findFirst({
-            where: eq(assessmentRevisions.assessmentId, assessmentId),
-            orderBy: (revision, { desc }) => [desc(revision.revisionNumber)],
+            where: { RAW: (table, operators) => (eq(table.assessmentId, assessmentId)) ?? operators.sql`true` },
+            orderBy: { revisionNumber: "desc" },
             columns: { id: true, revisionNumber: true },
           })) ?? null;
         },
@@ -641,11 +626,11 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
         },
         async findArtifact({ organizationId, moduleId }) {
           return (await tx.query.generatedArtifacts.findFirst({
-            where: and(
-              eq(generatedArtifacts.organizationId, organizationId),
-              eq(generatedArtifacts.moduleId, moduleId),
-              eq(generatedArtifacts.artifactType, "affectedness_result"),
-            ),
+            where: { RAW: (table, operators) => (and(
+              eq(table.organizationId, organizationId),
+              eq(table.moduleId, moduleId),
+              eq(table.artifactType, "affectedness_result"),
+            )) ?? operators.sql`true` },
             columns: { id: true, currentRevisionId: true },
           })) ?? null;
         },
@@ -665,8 +650,8 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
         },
         async findLatestArtifactRevision(artifactId) {
           return (await tx.query.generatedArtifactRevisions.findFirst({
-            where: eq(generatedArtifactRevisions.artifactId, artifactId),
-            orderBy: (revision, { desc }) => [desc(revision.revisionNumber)],
+            where: { RAW: (table, operators) => (eq(table.artifactId, artifactId)) ?? operators.sql`true` },
+            orderBy: { revisionNumber: "desc" },
             columns: {
               id: true,
               revisionNumber: true,
@@ -693,13 +678,13 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
         async findProfileVersion({ checkReleaseId, countryCode }) {
           const profile =
             await tx.query.complianceCheckReleaseProfiles.findFirst({
-              where: and(
+              where: { RAW: (table, operators) => (and(
                 eq(
-                  complianceCheckReleaseProfiles.checkReleaseId,
+                  table.checkReleaseId,
                   checkReleaseId,
                 ),
-                eq(complianceCheckReleaseProfiles.countryCode, countryCode),
-              ),
+                eq(table.countryCode, countryCode),
+              )) ?? operators.sql`true` },
               columns: { jurisdictionProfileVersionId: true },
             });
           return profile?.jurisdictionProfileVersionId ?? null;

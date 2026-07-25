@@ -1,3 +1,4 @@
+// Structural database-index benchmark for permanent schema verification.
 import "dotenv/config";
 
 import postgres from "postgres";

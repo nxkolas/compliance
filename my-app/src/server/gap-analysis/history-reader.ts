@@ -1,8 +1,6 @@
-import { db } from "@/src/db";
-import { auditEvents } from "@/src/db/schema";
-import type { Locale } from "@/lib/i18n-config";
+import { db } from "@/src/db";import type { Locale } from "@/lib/i18n-config";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 const gapEventTypes = [
   "gap_assessment.created",
@@ -75,11 +73,11 @@ export async function loadGapHistoryPreauthorized(input: {
   limit?: number;
 }) {
   const rows = await db.query.auditEvents.findMany({ columns: { id: true, organizationId: true, actorUserId: true, eventType: true, entityType: true, entityId: true, metadata: true, createdAt: true },
-    where: and(
-      eq(auditEvents.organizationId, input.organizationId),
-      inArray(auditEvents.eventType, [...gapEventTypes]),
-    ),
-    orderBy: [desc(auditEvents.createdAt), desc(auditEvents.id)],
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, input.organizationId),
+      inArray(table.eventType, [...gapEventTypes]),
+    )) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc", id: "desc" },
     limit: input.limit ?? 30,
   });
   const actors = await resolveActors(

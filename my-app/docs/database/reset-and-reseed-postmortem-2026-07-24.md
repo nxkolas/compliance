@@ -202,13 +202,12 @@ destructive boundary.
   SQL.
 - Never resume application traffic until the dedicated security, storage,
   rollout, corpus, applicability, Gap, test, and build gates pass.
-- Do not use a second Drizzle push as the final drift verifier because
-  Supabase-only RLS, triggers, and indexes are intentionally installed outside
-  the current Drizzle model.
+- RLS is now declared in the Drizzle model. Operator-owned triggers and HNSW
+  indexes still require their dedicated verifiers.
 
 ## Related references
 
-- [Development database reset, schema push, and reseed](database-reset-and-reseed.md)
+- [Current development database reset and bootstrap](development-database-reset-and-bootstrap.md)
 - [API and legal-corpus rollout runbook](api-corpus-rollout-runbook.md)
 - [Supabase security runbook](supabase-security-runbook.md)
 - [AI-generated output-language pinning plan](../plans/ai-generated-output-language-pinning.md)

@@ -240,7 +240,7 @@ A clear/reseed is not required for this additive change. Preferred rollout:
 If existing development-database drift makes the additive application unsafe
 or harder than a clean rebuild, the user has authorized a guarded development
 clear and reseed. In that case follow
-`docs/database/database-reset-and-reseed.md` exactly: verify the target is the
+`docs/database/development-database-reset-and-bootstrap.md` exactly: verify the target is the
 disposable development database, run all preflight checks, stop on the first
 failed gate, restore every reviewed security/integrity SQL layer, republish
 required releases, and run the complete smoke suite. Do not clear or reseed
@@ -689,7 +689,7 @@ Implemented on 25 July 2026 in the delivery slices described above.
   status-specific organization list contracts, active-member aggregation, and
   search-scoped opaque cursors.
 - Added the server-only `user_directory` projection, authenticated-boundary
-  synchronization, idempotent Admin API backfill, grant verification, and
+  synchronization, idempotent Admin API backfill, RLS verification, and
   localized-safe roster fallback.
 - Rebuilt the always-visible switcher, active/archived management streams,
   atomic edit modal, archive/restore dialogs, country selection, creation

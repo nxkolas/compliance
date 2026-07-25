@@ -1,15 +1,6 @@
 import { db } from "@/src/db";
-import {
-  assessmentAnswerOptions,
-  assessmentAnswers,
-  assessmentRevisions,
-  assessments,
-  auditEvents,
-  gapAnalysisReleases,
-  questionOptions,
-  questions,
-} from "@/src/db/schema";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { assessmentAnswerOptions, assessmentAnswers, assessmentRevisions, assessments, auditEvents, questions } from "@/src/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
 import { assertGapInputsMutable } from "./lifecycle-guards";
@@ -22,11 +13,11 @@ export async function submitGapQuestionnaire(input: {
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.id, input.assessmentId),
-      eq(assessments.organizationId, input.organizationId),
-      eq(assessments.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, input.assessmentId),
+      eq(table.organizationId, input.organizationId),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
   });
   if (!assessment?.gapAnalysisReleaseId) {
     throw new ApiError(404, "Gap assessment not found");
@@ -36,11 +27,11 @@ export async function submitGapQuestionnaire(input: {
     moduleId: assessment.moduleId,
   });
   const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-    where: eq(gapAnalysisReleases.id, assessment.gapAnalysisReleaseId),
+    where: { RAW: (table, operators) => (eq(table.id, assessment.gapAnalysisReleaseId!)) ?? operators.sql`true` },
   });
   if (!release) throw new ApiError(409, "Pinned gap release is unavailable");
   const questionRows = await db.query.questions.findMany({ columns: { id: true, questionnaireVersionId: true, stableKey: true, position: true, questionContentRevisionId: true, helpContentRevisionId: true, answerType: true, required: true, config: true, createdAt: true },
-    where: eq(questions.questionnaireVersionId, release.questionnaireVersionId),
+    where: { RAW: (table, operators) => (eq(table.questionnaireVersionId, release.questionnaireVersionId)) ?? operators.sql`true` },
   });
   const required = questionRows.filter((question) => question.required);
   const answerByQuestion = new Map(
@@ -57,10 +48,10 @@ export async function submitGapQuestionnaire(input: {
   }
   const optionRows = input.answers.length
     ? await db.query.questionOptions.findMany({ columns: { id: true, questionId: true, stableValue: true, labelContentRevisionId: true, factOptionId: true, position: true, metadata: true },
-        where: inArray(
-          questionOptions.id,
+        where: { RAW: (table, operators) => (inArray(
+          table.id,
           input.answers.map((answer) => answer.optionId),
-        ),
+        )) ?? operators.sql`true` },
       })
     : [];
   if (
@@ -79,8 +70,8 @@ export async function submitGapQuestionnaire(input: {
 
   return db.transaction(async (tx) => {
     const latest = await tx.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-      where: eq(assessmentRevisions.assessmentId, assessment.id),
-      orderBy: [desc(assessmentRevisions.revisionNumber)],
+      where: { RAW: (table, operators) => (eq(table.assessmentId, assessment.id)) ?? operators.sql`true` },
+      orderBy: { revisionNumber: "desc" },
     });
     const [revision] = await tx
       .insert(assessmentRevisions)

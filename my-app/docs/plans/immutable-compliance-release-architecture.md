@@ -573,8 +573,6 @@ Ordinary schema changes remain in `src/db/schema.ts` and are applied with `db:pu
 
 ```text
 supabase/sql-editor/
-  001_server_only_definition_rls.sql
-  002_server_only_application_data_rls.sql
   003_guest_retention_cleanup.sql
 docs/database/supabase-security-runbook.md
 ```
@@ -658,7 +656,7 @@ Document:
 
 ### Phase 5 — Supabase security and operations
 
-1. Add the idempotent SQL Editor RLS/privilege files.
+1. Enable default-deny RLS on every table in the Drizzle schema.
 2. Add the guest cleanup function and optional daily cron schedule.
 3. Add the SQL Editor security/rollback runbook.
 4. Verify browser roles cannot read or write app tables and server APIs continue working.
@@ -762,8 +760,8 @@ Expected additions:
 ### Security and retention
 
 - `anon` and `authenticated` cannot directly select, insert, update, or delete compliance or application data tables.
-- Existing server API flows continue to work after RLS/privilege SQL is applied.
-- RLS and grants can be verified and rolled back using the runbook.
+- Existing server API flows continue to work after the RLS-enabled schema is applied.
+- RLS can be verified and rolled back using the runbook.
 - Abandoned guest sessions are eligible for deletion after 24 hours.
 - Submitted unclaimed guest results are eligible for deletion after 14 days.
 - Cleanup SQL is idempotent and has a documented manual fallback.

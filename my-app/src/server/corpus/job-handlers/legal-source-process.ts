@@ -2,12 +2,7 @@ import { createHash } from "node:crypto";
 import * as z from "zod";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
-import {
-  backgroundJobs,
-  legalSourceChunks,
-  legalSourceProcessingGenerations,
-  legalSourceRenditions,
-} from "@/src/db/schema";
+import { backgroundJobs, legalSourceChunks, legalSourceProcessingGenerations } from "@/src/db/schema";
 import { legalContentParser, paragraphContentChunker } from "@/src/server/content-processing/defaults";
 import type { ContentChunker, ContentParser } from "@/src/server/content-processing/types";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
@@ -30,13 +25,13 @@ export async function handleLegalSourceProcess(
 ) {
   const { renditionId, generationId } = payloadSchema.parse(job.payload);
   const rendition = await db.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
-    where: eq(legalSourceRenditions.id, renditionId),
+    where: { RAW: (table, operators) => (eq(table.id, renditionId)) ?? operators.sql`true` },
   });
   if (!rendition) throw new Error("Legal source rendition not found");
   const generation = await db.query.legalSourceProcessingGenerations.findFirst({ columns: { id: true, renditionId: true, jobId: true, embeddingJobId: true, generationNumber: true, state: true, parserConfig: true, ocrConfig: true, chunkerConfig: true, embeddingConfig: true, extractionHash: true, normalizedTextHash: true, qualityMetrics: true, reliableAnchors: true, reviewerId: true, reviewedAt: true, safeErrorCode: true, createdAt: true, updatedAt: true },
-    where: generationId
-      ? and(eq(legalSourceProcessingGenerations.id, generationId), eq(legalSourceProcessingGenerations.renditionId, rendition.id))
-      : and(eq(legalSourceProcessingGenerations.renditionId, rendition.id), eq(legalSourceProcessingGenerations.jobId, job.id)),
+    where: { RAW: (table, operators) => (generationId
+      ? and(eq(table.id, generationId), eq(table.renditionId, rendition.id))
+      : and(eq(table.renditionId, rendition.id), eq(table.jobId, job.id))) ?? operators.sql`true` },
   });
   if (!generation) throw new Error("Legal processing generation not found");
   if (generation.embeddingJobId) return { type: "legal_processing_generation", id: generation.id };

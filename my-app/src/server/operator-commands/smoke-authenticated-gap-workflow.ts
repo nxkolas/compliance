@@ -2,15 +2,9 @@ import "dotenv/config";
 
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
-import {
-  assessments,
-  gapFindings,
-  gapReassessmentDrafts,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-} from "@/src/db/schema";
+import { generatedArtifactRevisions, generatedArtifacts } from "@/src/db/schema";
 import {
   getApplicabilityQuestionnaireForUser,
   submitApplicabilityCheckForUser,
@@ -84,11 +78,11 @@ async function main() {
       applicabilityArtifactRevisionId: true,
       currentRevisionId: true,
     },
-    where: and(
-      eq(assessments.organizationId, organization.id),
-      eq(assessments.status, "active"),
-    ),
-    orderBy: [desc(assessments.createdAt)],
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, organization.id),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc" },
   });
   let applicabilityArtifactRevisionId = assessment?.applicabilityArtifactRevisionId;
   let questionnaireRevisionId = assessment?.currentRevisionId;
@@ -149,11 +143,11 @@ async function main() {
       status: true,
       lockVersion: true,
     },
-    where: and(
-      eq(gapReassessmentDrafts.organizationId, organization.id),
-      eq(gapReassessmentDrafts.assessmentId, assessment.id),
-    ),
-    orderBy: [desc(gapReassessmentDrafts.createdAt)],
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, organization.id),
+      eq(table.assessmentId, assessment.id),
+    )) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc" },
   });
   if (!draft) {
     const prepared = await prepareGapReassessment({
@@ -194,7 +188,7 @@ async function main() {
     if (!worked) throw new Error("The queued Gap generation job was not leased");
   }
   const completedDraft = await db.query.gapReassessmentDrafts.findFirst({
-    where: eq(gapReassessmentDrafts.id, draft.id),
+    where: { RAW: (table, operators) => (eq(table.id, draft.id)) ?? operators.sql`true` },
     columns: {
       generationJobId: true,
       outputGapRevisionId: true,
@@ -220,7 +214,7 @@ async function main() {
       rationale: true,
       requiresReview: true,
     },
-    where: eq(gapFindings.artifactRevisionId, generated.id),
+    where: { RAW: (table, operators) => (eq(table.artifactRevisionId, generated.id)) ?? operators.sql`true` },
   });
   if (!generatedFindings.length) {
     throw new Error("Generated Gap revision has no findings");

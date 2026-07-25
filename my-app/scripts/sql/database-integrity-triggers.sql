@@ -1,40 +1,5 @@
+-- Permanent audited integrity functions and triggers outside Drizzle ownership.
 begin;
-
-alter table public.generated_artifacts
-  drop constraint if exists generated_artifacts_current_revision_id_generated_artifact_revisions_id_fk,
-  drop constraint if exists generated_artifacts_accepted_revision_id_generated_artifact_revisions_id_fk,
-  drop constraint if exists generated_artifacts_current_revision_owner_fk,
-  drop constraint if exists generated_artifacts_accepted_revision_owner_fk;
-
-alter table public.generated_artifacts
-  add constraint generated_artifacts_current_revision_owner_fk
-    foreign key (id, current_revision_id)
-    references public.generated_artifact_revisions (artifact_id, id)
-    on delete restrict,
-  add constraint generated_artifacts_accepted_revision_owner_fk
-    foreign key (id, accepted_revision_id)
-    references public.generated_artifact_revisions (artifact_id, id)
-    on delete restrict;
-
-alter table public.assessments
-  drop constraint if exists assessments_current_revision_id_assessment_revisions_id_fk,
-  drop constraint if exists assessments_current_revision_owner_fk;
-
-alter table public.assessments
-  add constraint assessments_current_revision_owner_fk
-    foreign key (id, current_revision_id)
-    references public.assessment_revisions (assessment_id, id)
-    on delete restrict;
-
-alter table public.documents
-  drop constraint if exists documents_current_version_id_document_versions_id_fk,
-  drop constraint if exists documents_current_version_owner_fk;
-
-alter table public.documents
-  add constraint documents_current_version_owner_fk
-    foreign key (id, current_version_id)
-    references public.document_versions (document_id, id)
-    on delete restrict;
 
 create or replace function public.enforce_assessment_revision_questionnaire()
 returns trigger

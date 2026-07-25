@@ -38,7 +38,7 @@ export async function recordWorkerDomainFailure(
     const payload = z.object({ monitorId: z.uuid() }).safeParse(job.payload);
     if (!payload.success) return;
     const monitor = await db.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-      where: eq(legalSourceMonitors.id, payload.data.monitorId),
+      where: { RAW: (table, operators) => (eq(table.id, payload.data.monitorId)) ?? operators.sql`true` },
     });
     if (monitor) {
       const checkedAt = new Date();

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import * as z from "zod";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import { backgroundJobs, legalSourceChangeAlerts, legalSourceMonitorChecks, legalSourceMonitors } from "@/src/db/schema";
 import { LEGAL_SOURCE_MIME_TYPES, MAX_LEGAL_SOURCE_BYTES } from "../config";
@@ -11,11 +11,11 @@ const payloadSchema = z.object({ monitorId: z.uuid() });
 
 export async function handleLegalSourceMonitor(job: typeof backgroundJobs.$inferSelect) {
   const { monitorId } = payloadSchema.parse(job.payload);
-  const monitor = await db.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: eq(legalSourceMonitors.id, monitorId) });
+  const monitor = await db.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, monitorId)) ?? operators.sql`true` } });
   if (!monitor?.active) return { type: "legal_source_monitor", id: monitorId };
   const previous = await db.query.legalSourceMonitorChecks.findFirst({ columns: { id: true, monitorId: true, responseStatus: true, finalUrl: true, responseMetadata: true, contentHash: true, changeDetected: true, safeErrorCode: true, checkedAt: true },
-    where: eq(legalSourceMonitorChecks.monitorId, monitor.id),
-    orderBy: [desc(legalSourceMonitorChecks.checkedAt)],
+    where: { RAW: (table, operators) => (eq(table.monitorId, monitor.id)) ?? operators.sql`true` },
+    orderBy: { checkedAt: "desc" },
   });
   const fetched = await fetchControlledUrl({
     url: monitor.exactUrl,
@@ -37,11 +37,11 @@ export async function handleLegalSourceMonitor(job: typeof backgroundJobs.$infer
   const checkedAt = new Date();
   await db.transaction(async (tx) => {
     const current = await tx.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-      where: and(
-        eq(legalSourceMonitors.id, monitor.id),
-        eq(legalSourceMonitors.active, true),
-        eq(legalSourceMonitors.version, monitor.version),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.id, monitor.id),
+        eq(table.active, true),
+        eq(table.version, monitor.version),
+      )) ?? operators.sql`true` },
     });
     if (!current) return;
     const [check] = await tx.insert(legalSourceMonitorChecks).values({

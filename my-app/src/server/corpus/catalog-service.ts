@@ -5,7 +5,7 @@ import {
   platformAuditEvents,
 } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
-import { and, asc, eq, gt, isNull, or } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import * as z from "zod";
 import { ApiError } from "../api/errors";
 import { getCursorCodec } from "../api/pagination";
@@ -19,8 +19,8 @@ export async function listCorpusFamiliesPage(input: { userId: string; limit: num
   const scope = "corpus-families";
   const cursor = input.cursor ? z.tuple([z.string(), z.uuid()]).parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.query.legalCorpusFamilies.findMany({ columns: { id: true, code: true, frameworkCode: true, jurisdictionCode: true, title: true, archivedAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-    where: cursor ? or(gt(legalCorpusFamilies.code, cursor[0]), and(eq(legalCorpusFamilies.code, cursor[0]), gt(legalCorpusFamilies.id, cursor[1]))) : undefined,
-    orderBy: [asc(legalCorpusFamilies.code), asc(legalCorpusFamilies.id)],
+    where: { RAW: (table, operators) => (cursor ? or(gt(table.code, cursor[0]), and(eq(table.code, cursor[0]), gt(table.id, cursor[1]))) : undefined) ?? operators.sql`true` },
+    orderBy: { code: "asc", id: "asc" },
     limit: input.limit + 1,
   });
   const families = rows.slice(0, input.limit); const last = families.at(-1);
@@ -70,7 +70,7 @@ export async function createLegalSource(input: {
 }) {
   await requirePlatformCapability(input.actorUserId, "corpus:curate");
   const family = await db.query.legalCorpusFamilies.findFirst({ columns: { id: true, code: true, frameworkCode: true, jurisdictionCode: true, title: true, archivedAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-    where: and(eq(legalCorpusFamilies.id, input.familyId), isNull(legalCorpusFamilies.archivedAt)),
+    where: { RAW: (table, operators) => (and(eq(table.id, input.familyId), isNull(table.archivedAt))) ?? operators.sql`true` },
   });
   if (!family) throw new ApiError(404, "Corpus family not found", undefined, "CORPUS_FAMILY_NOT_FOUND");
   return db.transaction(async (tx) => {

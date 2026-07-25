@@ -1,28 +1,5 @@
 import { db } from "@/src/db";
-import {
-  actionPlans,
-  aiProcessingRuns,
-  assessmentAnswerOptions,
-  assessmentAnswers,
-  assessments,
-  documentChunks,
-  documentExtractions,
-  documentVersions,
-  documents,
-  gapFindingEvidence,
-  gapFindings,
-  gapReassessmentDrafts,
-  gapRequirementVersions,
-  gapAnalysisReleases,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-  legalSourceChunks,
-  legalSourceProcessingGenerations,
-  legalSourceRenditions,
-  legalSources,
-  legalSourceVersions,
-  questionOptions,
-} from "@/src/db/schema";
+import { actionPlans, assessmentAnswerOptions, assessmentAnswers, assessments, documentChunks, documentExtractions, documentVersions, documents, gapFindingEvidence, gapFindings, gapReassessmentDrafts, gapRequirementVersions, gapAnalysisReleases, generatedArtifactRevisions, generatedArtifacts, legalSourceChunks, legalSourceProcessingGenerations, legalSourceRenditions, legalSources, legalSourceVersions, questionOptions } from "@/src/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
@@ -106,12 +83,12 @@ export async function loadDocumentsAssessment(
 ) {
   return (
     (await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-      where: and(
-        eq(assessments.organizationId, input.organizationId),
-        eq(assessments.moduleId, release.moduleId),
-        eq(assessments.gapAnalysisReleaseId, release.id),
-        eq(assessments.status, "active"),
-      ),
+      where: { RAW: (table, operators) => (and(
+        eq(table.organizationId, input.organizationId),
+        eq(table.moduleId, release.moduleId),
+        eq(table.gapAnalysisReleaseId, release.id),
+        eq(table.status, "active"),
+      )) ?? operators.sql`true` },
     })) ?? null
   );
 }
@@ -396,30 +373,30 @@ export async function loadRun(
   if (context.aiProcessingRunId) {
     return (
       (await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-        where: eq(aiProcessingRuns.id, context.aiProcessingRunId),
+        where: { RAW: (table, operators) => (eq(table.id, context.aiProcessingRunId!)) ?? operators.sql`true` },
       })) ?? null
     );
   }
   if (context.generationJobId) {
     return (
       (await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-        where: eq(aiProcessingRuns.jobId, context.generationJobId),
-        orderBy: [desc(aiProcessingRuns.createdAt)],
+        where: { RAW: (table, operators) => (eq(table.jobId, context.generationJobId!)) ?? operators.sql`true` },
+        orderBy: { createdAt: "desc" },
       })) ?? null
     );
   }
   if (!context.assessmentRevisionId) return null;
   return (
     (await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-      where: and(
-        eq(aiProcessingRuns.organizationId, input.organizationId),
+      where: { RAW: (table, operators) => (and(
+        eq(table.organizationId, input.organizationId),
         eq(
-          aiProcessingRuns.assessmentRevisionId,
-          context.assessmentRevisionId,
+          table.assessmentRevisionId,
+          context.assessmentRevisionId!,
         ),
-        eq(aiProcessingRuns.operationKind, "gap_analysis"),
-      ),
-      orderBy: [desc(aiProcessingRuns.createdAt)],
+        eq(table.operationKind, "gap_analysis"),
+      )) ?? operators.sql`true` },
+      orderBy: { createdAt: "desc" },
     })) ?? null
   );
 }

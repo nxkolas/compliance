@@ -54,43 +54,40 @@ async function main() {
   const allTableResult = await db.execute<{
     table_name: string;
     row_security: boolean;
-    anon_privileges: string[] | null;
-    authenticated_privileges: string[] | null;
   }>(sql`
     select
       c.relname as table_name,
-      c.relrowsecurity as row_security,
-      array_remove(array_agg(distinct case when grantee = 'anon' then privilege_type end), null) as anon_privileges,
-      array_remove(array_agg(distinct case when grantee = 'authenticated' then privilege_type end), null) as authenticated_privileges
+      c.relrowsecurity as row_security
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
-    left join information_schema.role_table_grants g
-      on g.table_schema = n.nspname and g.table_name = c.relname
     where n.nspname = 'public' and c.relkind = 'r'
-    group by c.relname, c.relrowsecurity
     order by c.relname
   `);
   const result = await db.execute<{
     table_name: string;
     row_security: boolean;
-    anon_privileges: string[] | null;
-    authenticated_privileges: string[] | null;
   }>(sql`
     select
       c.relname as table_name,
-      c.relrowsecurity as row_security,
-      array_remove(array_agg(distinct case when grantee = 'anon' then privilege_type end), null) as anon_privileges,
-      array_remove(array_agg(distinct case when grantee = 'authenticated' then privilege_type end), null) as authenticated_privileges
+      c.relrowsecurity as row_security
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
-    left join information_schema.role_table_grants g
-      on g.table_schema = n.nspname and g.table_name = c.relname
     where n.nspname = 'public' and c.relname in (${sql.join(expectedTables.map((table) => sql`${table}`), sql`, `)})
-    group by c.relname, c.relrowsecurity
     order by c.relname
   `);
 
   const rows = Array.from(result);
+  const policyResult = await db.execute<{
+    table_name: string;
+    policy_name: string;
+  }>(sql`
+    select
+      tablename as table_name,
+      policyname as policy_name
+    from pg_policies
+    where schemaname = 'public'
+    order by tablename, policyname
+  `);
   const triggerResult = await db.execute<{ trigger_name: string }>(sql`
     select tgname as trigger_name
     from pg_trigger t
@@ -135,13 +132,14 @@ async function main() {
     Array.from(schedulerIndexResult).map((row) => row.index_name),
   );
   const allTables = Array.from(allTableResult);
-  const failures = allTables.flatMap((row) => {
-    const browserGrants = [...(row.anon_privileges ?? []), ...(row.authenticated_privileges ?? [])];
-    return [
-      ...(!row.row_security ? [`${row.table_name}: RLS disabled`] : []),
-      ...(browserGrants.length > 0 ? [`${row.table_name}: browser grants ${browserGrants.join(",")}`] : []),
-    ];
-  });
+  const failures = allTables.flatMap((row) =>
+    row.row_security ? [] : [`${row.table_name}: RLS disabled`],
+  );
+  failures.push(
+    ...Array.from(policyResult).map(
+      (row) => `${row.table_name}: unexpected RLS policy ${row.policy_name}`,
+    ),
+  );
   failures.push(...expectedTables.flatMap((table) => {
     const row = rows.find((candidate) => candidate.table_name === table);
     if (!row) return [`${table}: missing`];
@@ -168,9 +166,11 @@ async function main() {
   ]) {
     if (!schedulerIndexNames.has(index)) failures.push(`${index}: missing`);
   }
-  if (failures.length > 0) throw new Error(`Server-only grant verification failed:\n${failures.join("\n")}`);
+  if (failures.length > 0) {
+    throw new Error(`Server-only RLS verification failed:\n${failures.join("\n")}`);
+  }
   console.log(
-    `Verified all ${allTables.length} public tables, ${rows.length} rollout tables, 2 append-only audit triggers, durable schedulers, and legal-corpus review integrity.`,
+    `Verified default-deny RLS on all ${allTables.length} public tables, ${rows.length} rollout tables, 2 append-only audit triggers, durable schedulers, and legal-corpus review integrity.`,
   );
 }
 

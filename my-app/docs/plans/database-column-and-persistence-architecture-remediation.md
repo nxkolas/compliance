@@ -941,7 +941,7 @@ Exit criteria:
 ## Disposable database rollout
 
 Follow
-[Development database reset, schema push, and reseed](../database/database-reset-and-reseed.md)
+[Development database reset and bootstrap](../database/development-database-reset-and-bootstrap.md)
 and the
 [2026-07-24 postmortem](../database/reset-and-reseed-postmortem-2026-07-24.md).
 The sequence below is a plan-level checklist; the runbook remains authoritative
@@ -1042,8 +1042,8 @@ Apply the exact runbook sequence, including:
 
 Set up and verify all private storage buckets.
 
-Do not run a second Drizzle push as a drift check. Supabase-only RLS, triggers,
-and HNSW indexes intentionally live outside the Drizzle model.
+RLS lives in the Drizzle model. Operator-owned triggers and HNSW indexes remain
+outside it and require their dedicated verifiers.
 
 ### 7. Reseed and govern the corpus
 
@@ -1156,7 +1156,7 @@ Update:
 - `docs/architecture/database-structure.md`;
 - `docs/architecture/end-to-end-compliance-workflow.md`;
 - `docs/architecture/organization-api-architecture.md`;
-- `docs/database/database-reset-and-reseed.md`;
+- `docs/database/development-database-reset-and-bootstrap.md`;
 - `docs/database/api-corpus-rollout-runbook.md`;
 - `docs/database/supabase-security-runbook.md`;
 - relevant product workflow documentation; and

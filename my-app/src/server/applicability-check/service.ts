@@ -1,19 +1,5 @@
 import { db } from "@/src/db";
-import {
-  assessmentAnswerOptions,
-  assessmentAnswers,
-  assessmentRevisions,
-  assessments,
-  complianceCheckReleases,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-  gapAnalysisReleases,
-  guestApplicabilityChecks,
-  organizations,
-  questionOptions,
-  questions,
-  ruleSets,
-} from "@/src/db/schema";
+import { assessmentAnswerOptions, assessmentAnswers, assessmentRevisions, assessments, complianceCheckReleases, generatedArtifactRevisions, generatedArtifacts, gapAnalysisReleases, guestApplicabilityChecks, questionOptions, questions, ruleSets } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
@@ -226,7 +212,7 @@ export async function getApplicabilityQuestionnaireForUser(
   );
   const organization = await db.query.organizations.findFirst({
     columns: { country: true },
-    where: eq(organizations.id, organizationId),
+    where: { RAW: (table, operators) => (eq(table.id, organizationId)) ?? operators.sql`true` },
   });
 
   return {
@@ -349,7 +335,7 @@ export async function getApplicabilityAnswersForUser(
   if (!definition) return null;
 
   const revision = await db.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-    where: eq(assessmentRevisions.id, assessment.currentRevisionId),
+    where: { RAW: (table, operators) => (eq(table.id, assessment.currentRevisionId!)) ?? operators.sql`true` },
   });
 
   if (!revision) {
@@ -547,10 +533,10 @@ export async function submitApplicabilityCheckForGuest(
 ): Promise<GuestApplicabilitySession & { result: ApplicabilityResultDto }> {
   if (!input.guestSession) throw new ApiError(400, "Guest session is required");
   const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
-    where: and(
-      eq(guestApplicabilityChecks.id, input.guestSession.id),
-      eq(guestApplicabilityChecks.tokenHash, hashGuestToken(input.guestSession.token)),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.id, input.guestSession!.id),
+      eq(table.tokenHash, hashGuestToken(input.guestSession!.token)),
+    )) ?? operators.sql`true` },
   });
   if (!guestCheck || guestCheck.status !== "started" || guestCheck.expiresAt <= new Date()) {
     throw new ApiError(409, "Guest session is invalid or expired");
@@ -765,12 +751,12 @@ async function findGuestApplicabilityCheck(
   }
 
   const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
-    where: guestCheckId
+    where: { RAW: (table, operators) => (guestCheckId
       ? and(
-          eq(guestApplicabilityChecks.id, guestCheckId),
-          eq(guestApplicabilityChecks.tokenHash, hashGuestToken(token)),
+          eq(table.id, guestCheckId),
+          eq(table.tokenHash, hashGuestToken(token)),
         )
-      : eq(guestApplicabilityChecks.tokenHash, hashGuestToken(token)),
+      : eq(table.tokenHash, hashGuestToken(token))) ?? operators.sql`true` },
   });
 
   if (!guestCheck) {
@@ -861,11 +847,11 @@ export function hashGuestToken(token: string): string {
 
 async function getCurrentAssessment(organizationId: string, moduleId: string) {
   return db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: and(
-      eq(assessments.organizationId, organizationId),
-      eq(assessments.moduleId, moduleId),
-      eq(assessments.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.organizationId, organizationId),
+      eq(table.moduleId, moduleId),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
   });
 }
 

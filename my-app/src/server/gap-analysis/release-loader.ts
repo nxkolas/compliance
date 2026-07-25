@@ -1,20 +1,5 @@
 import { db } from "@/src/db";
-import {
-  activeGapAnalysisReleases,
-  complianceFrameworkVersions,
-  complianceModules,
-  contentTranslations,
-  gapAnalysisReleaseApplicabilityRules,
-  gapAnalysisReleases,
-  gapRequirements,
-  gapRequirementSetMembers,
-  gapRequirementSetVersions,
-  gapRequirementVersions,
-  questionOptions,
-  questionnaireVersions,
-  questionnaires,
-  questions,
-} from "@/src/db/schema";
+import { gapRequirements, gapRequirementSetMembers, gapRequirementVersions } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { asc, eq, inArray } from "drizzle-orm";
 import { resolveGapContentTranslation } from "./localize-content";
@@ -100,7 +85,7 @@ export async function loadActiveGapAnalysisReleasePointer(
   releaseCode: string,
 ) {
   return db.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
-    where: eq(activeGapAnalysisReleases.releaseCode, releaseCode),
+    where: { RAW: (table, operators) => (eq(table.releaseCode, releaseCode)) ?? operators.sql`true` },
   });
 }
 
@@ -109,45 +94,45 @@ export async function loadGapAnalysisRelease(
   locale: Locale,
 ): Promise<LoadedGapRelease | null> {
   const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
-    where: eq(gapAnalysisReleases.id, releaseId),
+    where: { RAW: (table, operators) => (eq(table.id, releaseId)) ?? operators.sql`true` },
   });
   if (!release || release.status !== "published") return null;
   const gapModule = await db.query.complianceModules.findFirst({ columns: { id: true, frameworkVersionId: true, code: true, nameContentRevisionId: true, moduleType: true, position: true },
-    where: eq(complianceModules.id, release.moduleId),
+    where: { RAW: (table, operators) => (eq(table.id, release.moduleId)) ?? operators.sql`true` },
   });
   if (!gapModule) return null;
   const frameworkVersion = await db.query.complianceFrameworkVersions.findFirst({ columns: { id: true, frameworkId: true, versionLabel: true, nameContentRevisionId: true, descriptionContentRevisionId: true, status: true, effectiveFrom: true, effectiveTo: true, createdAt: true },
-    where: eq(complianceFrameworkVersions.id, gapModule.frameworkVersionId),
+    where: { RAW: (table, operators) => (eq(table.id, gapModule.frameworkVersionId)) ?? operators.sql`true` },
   });
   if (!frameworkVersion) return null;
   const questionnaireVersion = await db.query.questionnaireVersions.findFirst({ columns: { id: true, questionnaireId: true, versionLabel: true, titleContentRevisionId: true, status: true, createdAt: true, publishedAt: true },
-    where: eq(questionnaireVersions.id, release.questionnaireVersionId),
+    where: { RAW: (table, operators) => (eq(table.id, release.questionnaireVersionId)) ?? operators.sql`true` },
   });
   if (!questionnaireVersion) return null;
   const questionnaire = await db.query.questionnaires.findFirst({ columns: { id: true, moduleId: true, code: true, createdAt: true },
-    where: eq(questionnaires.id, questionnaireVersion.questionnaireId),
+    where: { RAW: (table, operators) => (eq(table.id, questionnaireVersion.questionnaireId)) ?? operators.sql`true` },
   });
   if (!questionnaire) return null;
   const requirementSetVersion =
     await db.query.gapRequirementSetVersions.findFirst({ columns: { id: true, requirementSetId: true, versionLabel: true, titleContentRevisionId: true, status: true, contentHash: true, createdAt: true, publishedAt: true },
-      where: eq(
-        gapRequirementSetVersions.id,
+      where: { RAW: (table, operators) => (eq(
+        table.id,
         release.requirementSetVersionId,
-      ),
+      )) ?? operators.sql`true` },
     });
   if (!requirementSetVersion) return null;
 
   const questionRows = await db.query.questions.findMany({ columns: { id: true, questionnaireVersionId: true, stableKey: true, position: true, questionContentRevisionId: true, helpContentRevisionId: true, answerType: true, required: true, config: true, createdAt: true },
-    where: eq(questions.questionnaireVersionId, questionnaireVersion.id),
-    orderBy: [asc(questions.position)],
+    where: { RAW: (table, operators) => (eq(table.questionnaireVersionId, questionnaireVersion.id)) ?? operators.sql`true` },
+    orderBy: { position: "asc" },
   });
   const optionRows = questionRows.length
     ? await db.query.questionOptions.findMany({ columns: { id: true, questionId: true, stableValue: true, labelContentRevisionId: true, factOptionId: true, position: true, metadata: true },
-        where: inArray(
-          questionOptions.questionId,
+        where: { RAW: (table, operators) => (inArray(
+          table.questionId,
           questionRows.map((question) => question.id),
-        ),
-        orderBy: [asc(questionOptions.position)],
+        )) ?? operators.sql`true` },
+        orderBy: { position: "asc" },
       })
     : [];
   const members = await db
@@ -199,7 +184,7 @@ export async function loadGapAnalysisRelease(
   ];
   const translations = contentRevisionIds.length
     ? await db.query.contentTranslations.findMany({ columns: { contentRevisionId: true, locale: true, value: true },
-        where: inArray(contentTranslations.contentRevisionId, contentRevisionIds),
+        where: { RAW: (table, operators) => (inArray(table.contentRevisionId, contentRevisionIds)) ?? operators.sql`true` },
       })
     : [];
   const translated = new Map<string, Map<string, string>>();
@@ -217,10 +202,10 @@ export async function loadGapAnalysisRelease(
     );
 
   const rules = await db.query.gapAnalysisReleaseApplicabilityRules.findMany({ columns: { id: true, gapAnalysisReleaseId: true, requirementVersionId: true, conditions: true, createdAt: true },
-    where: eq(
-      gapAnalysisReleaseApplicabilityRules.gapAnalysisReleaseId,
+    where: { RAW: (table, operators) => (eq(
+      table.gapAnalysisReleaseId,
       release.id,
-    ),
+    )) ?? operators.sql`true` },
   });
   const ruleByRequirement = new Map(
     rules.map((rule) => [rule.requirementVersionId, parseConditions(rule.conditions)]),

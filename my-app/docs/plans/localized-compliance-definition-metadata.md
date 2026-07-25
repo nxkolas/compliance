@@ -287,7 +287,7 @@ if neither exists; do not return a former raw title column.
    documents fixed names/titles.
 2. Update `docs/architecture/database-structure.md` to record where localized
    definition metadata is pinned.
-3. Follow `docs/database/database-reset-and-reseed.md` for target verification,
+3. Follow `docs/database/development-database-reset-and-bootstrap.md` for target verification,
    writer shutdown, guarded clearing, Supabase SQL passes, storage, corpus
    governance, and security verification.
 4. Preview the Drizzle changes with strict/verbose output, approve only the

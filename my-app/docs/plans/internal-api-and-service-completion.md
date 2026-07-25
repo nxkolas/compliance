@@ -618,7 +618,7 @@ unreviewable change.
 2. Add opaque cursor, If-Match/ETag, idempotency, and rate-limit helpers.
 3. Add common jobs, upload sessions, Platform Administrator registry, and
    platform audit primitives in coordination with the grounded-AI plan.
-4. Verify server-only RLS/grants and no client-bundle imports.
+4. Verify server-only RLS and no client-bundle imports.
 
 ### Phase 2: Organizations and team
 
@@ -724,7 +724,7 @@ Add targeted scripts for:
 
 - worker unit/integration tests;
 - route-contract inventory/validation;
-- database migration and server-only grant verification;
+- database migration and server-only RLS verification;
 - private upload/download smoke tests;
 - report rendering smoke test;
 - corpus publish/evaluate/activate smoke test.

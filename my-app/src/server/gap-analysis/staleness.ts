@@ -1,16 +1,5 @@
 import { db } from "@/src/db";
-import {
-  activeGapAnalysisReleases,
-  artifactRevisionArtifactSources,
-  artifactRevisionAssessmentSources,
-  artifactRevisionDocumentSources,
-  assessmentRevisions,
-  assessments,
-  documentVersions,
-  documents,
-  generatedArtifactRevisions,
-  generatedArtifacts,
-} from "@/src/db/schema";
+import { artifactRevisionArtifactSources, artifactRevisionAssessmentSources, artifactRevisionDocumentSources, assessmentRevisions, assessments, documentVersions, documents, generatedArtifactRevisions, generatedArtifacts } from "@/src/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ApiError } from "../api/errors";
@@ -52,7 +41,7 @@ export async function getGapRevisionStaleness(input: {
 }) {
   await assertCanAccessOrganization(input.userId, input.organizationId);
   const active = await db.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
-    where: eq(activeGapAnalysisReleases.releaseCode, "nis2-gap"),
+    where: { RAW: (table, operators) => (eq(table.releaseCode, "nis2-gap")) ?? operators.sql`true` },
   });
   const batch = await getGapRevisionStalenessBatchPreauthorized({
     organizationId: input.organizationId,

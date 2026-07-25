@@ -56,7 +56,7 @@ Operational sequence:
 ```powershell
 # Before and after db:push, run supabase/sql-editor/004_gap_evidence_infrastructure.sql.
 npm.cmd run db:push
-# Then run 001_server_only_definition_rls.sql and 002_server_only_application_data_rls.sql.
+# RLS is enabled by the Drizzle schema; no post-push RLS script is required.
 npm.cmd run db:publish:gap -- --release nis2-gap/demo-v1
 npm.cmd run db:activate:gap -- --release nis2-gap/demo-v1
 npm.cmd run db:smoke:gap

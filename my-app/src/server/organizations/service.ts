@@ -209,11 +209,11 @@ export async function getOrganizationForUser(
   organizationId: string,
 ): Promise<OrganizationDto | null> {
   const membership = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
-    where: and(
-      eq(organizationMemberships.userId, userId),
-      eq(organizationMemberships.organizationId, organizationId),
-      eq(organizationMemberships.status, "active"),
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.userId, userId),
+      eq(table.organizationId, organizationId),
+      eq(table.status, "active"),
+    )) ?? operators.sql`true` },
     with: {
       organization: true,
     },
@@ -394,7 +394,7 @@ async function mutateOrganizationMember(input: MembershipMutation) {
       throw new ApiError(404, "Organization not found", undefined, "ORGANIZATION_NOT_FOUND");
     }
     const current = await tx.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
-      where: and(eq(organizationMemberships.organizationId, input.organizationId), eq(organizationMemberships.userId, input.memberUserId)),
+      where: { RAW: (table, operators) => (and(eq(table.organizationId, input.organizationId), eq(table.userId, input.memberUserId))) ?? operators.sql`true` },
     });
     if (!current) throw new ApiError(404, "Organization member not found", undefined, "MEMBER_NOT_FOUND");
     if (current.status !== input.expectedStatus) {
@@ -546,7 +546,7 @@ export async function listOrganizationInvitationsPage(input: { userId: string; o
   await assertCanManageOrganization(input.userId, input.organizationId);
   const scope = `organization-invitations:${input.organizationId}`;
   const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.organizationInvitations.findMany({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: and(eq(organizationInvitations.organizationId, input.organizationId), cursor ? or(lt(organizationInvitations.createdAt, new Date(cursor[0])), and(eq(organizationInvitations.createdAt, new Date(cursor[0])), lt(organizationInvitations.id, cursor[1]))) : undefined), orderBy: [desc(organizationInvitations.createdAt), desc(organizationInvitations.id)], limit: input.limit + 1 });
+  const rows = await db.query.organizationInvitations.findMany({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (and(eq(table.organizationId, input.organizationId), cursor ? or(lt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), lt(table.id, cursor[1]))) : undefined)) ?? operators.sql`true` }, orderBy: { createdAt: "desc", id: "desc" }, limit: input.limit + 1 });
   const page = rows.slice(0, input.limit); const last = page.at(-1);
   return { invitations: page.map(toInvitationDto), nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
 }
@@ -565,15 +565,15 @@ export async function listMailboxInvitationsForUserPage(input: { user: User; lim
   const scope = `invitation-mailbox:${user.id}`;
   const cursor = input.cursor ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.query.organizationInvitations.findMany({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true },
-    where: and(
-      eq(organizationInvitations.email, normalizeEmail(user.email)),
-      eq(organizationInvitations.status, "pending"),
-      cursor ? or(lt(organizationInvitations.createdAt, new Date(cursor[0])), and(eq(organizationInvitations.createdAt, new Date(cursor[0])), lt(organizationInvitations.id, cursor[1]))) : undefined,
-    ),
+    where: { RAW: (table, operators) => (and(
+      eq(table.email, normalizeEmail(user.email!)),
+      eq(table.status, "pending"),
+      cursor ? or(lt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), lt(table.id, cursor[1]))) : undefined,
+    )) ?? operators.sql`true` },
     with: {
       organization: true,
     },
-    orderBy: [desc(organizationInvitations.createdAt), desc(organizationInvitations.id)],
+    orderBy: { createdAt: "desc", id: "desc" },
     limit: input.limit + 1,
   });
   const page = rows.slice(0, input.limit);
@@ -641,7 +641,7 @@ export async function acceptOrganizationInvitation(
   const token = normalizeRequiredString(input.token, "token");
   const tokenHash = hashInvitationToken(token);
   const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true },
-    where: eq(organizationInvitations.tokenHash, tokenHash),
+    where: { RAW: (table, operators) => (eq(table.tokenHash, tokenHash)) ?? operators.sql`true` },
   });
 
   if (!invitation) {
@@ -656,7 +656,7 @@ export async function acceptMailboxInvitation(
   invitationId: string,
 ): Promise<OrganizationInvitationDto> {
   const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true },
-    where: eq(organizationInvitations.id, invitationId),
+    where: { RAW: (table, operators) => (eq(table.id, invitationId)) ?? operators.sql`true` },
   });
 
   if (!invitation) {
@@ -675,9 +675,9 @@ export async function assertCanAccessOrganization(
 
 export async function getOrganizationInvitation(userId: string, organizationId: string, invitationId: string) {
   await requireOrganizationCapability(userId, organizationId, "members:read");
-  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: and(
-    eq(organizationInvitations.id, invitationId), eq(organizationInvitations.organizationId, organizationId),
-  ) });
+  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (and(
+    eq(table.id, invitationId), eq(table.organizationId, organizationId),
+  )) ?? operators.sql`true` } });
   if (!invitation) throw new ApiError(404, "Invitation not found", undefined, "INVITATION_NOT_FOUND");
   return toInvitationDto(invitation);
 }
@@ -694,9 +694,9 @@ export async function revokeOrganizationInvitation(input: { userId: string; orga
 
 export async function resendOrganizationInvitation(input: { userId: string; organizationId: string; invitationId: string }) {
   await requireOrganizationCapability(input.userId, input.organizationId, "members:invite");
-  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: and(
-    eq(organizationInvitations.id, input.invitationId), eq(organizationInvitations.organizationId, input.organizationId),
-  ) });
+  const invitation = await db.query.organizationInvitations.findFirst({ columns: { id: true, organizationId: true, email: true, role: true, invitedByUserId: true, acceptedByUserId: true, tokenHash: true, status: true, expiresAt: true, acceptedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (and(
+    eq(table.id, input.invitationId), eq(table.organizationId, input.organizationId),
+  )) ?? operators.sql`true` } });
   if (!invitation || invitation.status === "accepted") throw new ApiError(409, "Invitation cannot be resent", undefined, "INVITATION_NOT_RESENDABLE");
   return createOrganizationInvitation(input.userId, input.organizationId, {
     email: invitation.email, role: invitation.role === "owner" ? "admin" : invitation.role, expiresInDays: 14,
