@@ -236,5 +236,5 @@ Module-level performance gates are:
 npm.cmd run db:benchmark:compliance -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
 npx.cmd tsx scripts/benchmark-gap-workflow.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
 npx.cmd tsx scripts/benchmark-corpus-document-runtime.ts --organization-id <uuid> --user-id <uuid> --samples 3 --assert
-npm.cmd run db:benchmark:index-remediation
+npm.cmd run db:benchmark:indexes
 ```

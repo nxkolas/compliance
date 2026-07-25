@@ -2,8 +2,9 @@
 
 The API/corpus feature set is normally forward-only. Use the current
 [Drizzle schema-change workflow](drizzle-workflow.md) for application schema
-changes. The 2026-07-24 reset/reseed document is retained only as historical
-cutover evidence and must not be used for current operations.
+changes. Use the current
+[development reset and bootstrap runbook](development-database-reset-and-bootstrap.md)
+when a disposable database must be cleared or created from scratch.
 
 ## Required server configuration
 
@@ -32,7 +33,7 @@ API error details.
    [Drizzle preview/apply workflow](drizzle-workflow.md). Never use `--force`.
 3. Apply `scripts/sql/api-corpus-integrity-additions.sql`, then
    `scripts/sql/audit-events-append-only.sql`, followed by
-   `scripts/sql/database-remediation-integrity.sql`, as a privileged database
+   `scripts/sql/database-integrity-triggers.sql`, as a privileged database
    operator. These files own audited functions and triggers, not ordinary
    constraints or indexes.
 4. Configure `API_CURSOR_SECRET` with at least 32 random characters, or ensure
@@ -41,7 +42,7 @@ API error details.
    `npm.cmd run storage:setup:reports`; both buckets must remain private.
 6. Run `npm.cmd run db:verify:server-only` and require every public table, all
    expected rollout tables, and both append-only audit triggers to pass.
-   Run `npm.cmd run db:verify:remediation-integrity` to prove typed values,
+   Run `npm.cmd run db:verify:integrity` to prove typed values,
    composite ownership, metadata-only Gap results, and deferred normalized
    finding coverage.
    Run `npm.cmd run storage:verify` and require all three private buckets.
@@ -115,7 +116,7 @@ Their assertion modes are deployment gates, not diagnostic-only reports.
 npm.cmd run db:benchmark:compliance -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
 npm.cmd run db:benchmark:gap -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
 npm.cmd run db:benchmark:corpus-document -- --organization-id <uuid> --user-id <uuid> --samples 3 --assert
-npm.cmd run db:benchmark:index-remediation
+npm.cmd run db:benchmark:indexes
 ```
 
 ## Durable maintenance and source monitoring

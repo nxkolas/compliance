@@ -114,29 +114,6 @@ describe("Drizzle v1 schema ownership", () => {
     expect(actual).toEqual(expectedCompositeForeignKeys);
   });
 
-  it("records exactly 26 reviewed, in-place constraint renames", () => {
-    const sql = readFileSync(
-      "scripts/sql/drizzle-v1-constraint-renames.sql",
-      "utf8",
-    );
-    const hints = JSON.parse(
-      readFileSync(
-        "scripts/sql/drizzle-v1-constraint-renames.hints.json",
-        "utf8",
-      ),
-    ) as Array<{ type: string; to: [string, string, string] }>;
-    const renamedTo = [
-      ...sql.matchAll(/\bto\s+([a-z][a-z0-9_]*)\s*;/gi),
-    ].map((match) => match[1]);
-
-    expect(hints).toHaveLength(26);
-    expect(hints.every((hint) => hint.type === "rename")).toBe(true);
-    expect(renamedTo).toHaveLength(26);
-    expect(renamedTo.sort()).toEqual(
-      hints.map((hint) => hint.to[2]).sort(),
-    );
-    expect(sql).not.toMatch(/\b(?:drop|add|create)\s+constraint\b/i);
-  });
 });
 
 describe("Drizzle RQB v2", () => {

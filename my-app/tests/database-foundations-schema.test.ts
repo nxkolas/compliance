@@ -17,7 +17,7 @@ import {
 } from "@/src/db/schema";
 import { toLegalSourceVersionReadModel } from "@/src/server/corpus/read-models";
 
-describe("database remediation phase 1", () => {
+describe("database foundations", () => {
   it.each([
     [gapRequirementVersions, ["recommendation", "code"]],
     [assessmentRevisions, ["change_reason", "reverted_from_revision_id"]],

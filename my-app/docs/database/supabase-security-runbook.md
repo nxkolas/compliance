@@ -2,7 +2,7 @@
 
 This runbook applies the Supabase-specific part of the immutable NIS2 release
 cutover. Ordinary tables, constraints, indexes, and relations remain owned by
-Drizzle, except for the explicitly audited remediation integrity
+Drizzle, except for the explicitly audited integrity
 functions/triggers and the existing Supabase infrastructure SQL.
 
 Use the current [Drizzle schema-change workflow](drizzle-workflow.md) for
@@ -41,7 +41,7 @@ Run the schema and SQL Editor files in this order:
 3. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
 4. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
 5. Run the API/corpus integrity and append-only SQL files, then
-   `scripts/sql/database-remediation-integrity.sql`.
+   `scripts/sql/database-integrity-triggers.sql`.
 
 All SQL files above are idempotent. RLS is not installed or modified by an
 operator SQL file; Drizzle is its only source of truth.
@@ -108,11 +108,11 @@ Run the automated verifiers:
 
 ```powershell
 npm.cmd run db:verify:server-only
-npm.cmd run db:verify:remediation-integrity
+npm.cmd run db:verify:integrity
 npm.cmd run storage:verify
 ```
 
-The remediation verifier exercises both valid and deliberately invalid
+The integrity verifier exercises both valid and deliberately invalid
 transactions. It proves composite owner/identity foreign keys, typed-value
 checks, metadata-only Gap JSON, and the deferred trigger that requires exactly
 one normalized finding per applicable requirement.

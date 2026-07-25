@@ -612,7 +612,7 @@ npm.cmd run build
 ### Destructive development reset and reseed
 
 After every code-level gate is green, follow
-[`database-reset-and-reseed.md`](../database/database-reset-and-reseed.md)
+[`development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md)
 exactly.
 
 Operational requirements:
@@ -622,7 +622,7 @@ Operational requirements:
 - verify `DATABASE_URL` and `DRIZZLE_DATABASE_URL` resolve to the same logical
   database before any destructive action;
 - use guarded `db:clear` followed by the reviewed `db:push` workflow;
-- never use `db:reset`, `db:drop:legacy`, `--force`, or a post-security second
+- never use `db:reset`, `--force`, or a post-security second
   Drizzle push;
 - recreate security/integrity SQL and private storage exactly in runbook order;
 - bootstrap the platform administrator;

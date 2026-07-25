@@ -21,7 +21,7 @@ function names(table: Parameters<typeof getTableConfig>[0]) {
   ];
 }
 
-describe("typed Answer and Fact persistence", () => {
+describe("database typed Answer and Fact persistence", () => {
   it("binds selected answer options through their Question", () => {
     expect(
       getTableConfig(assessmentAnswerOptions).columns.map(
@@ -75,7 +75,7 @@ describe("typed Answer and Fact persistence", () => {
     const sql = readFileSync(
       resolve(
         process.cwd(),
-        "scripts/sql/database-remediation-integrity.sql",
+        "scripts/sql/database-integrity-triggers.sql",
       ),
       "utf8",
     );

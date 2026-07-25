@@ -26,7 +26,7 @@ function foreignKeyCount(table: Parameters<typeof getTableConfig>[0]) {
   return getTableConfig(table).foreignKeys.length;
 }
 
-describe("typed workflow lineage", () => {
+describe("database typed workflow lineage", () => {
   it.each([
     [artifactRevisionAssessmentSources, 2],
     [artifactRevisionArtifactSources, 2],

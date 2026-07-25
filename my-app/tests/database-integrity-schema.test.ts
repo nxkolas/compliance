@@ -37,7 +37,7 @@ function constraintNames(table: Parameters<typeof getTableConfig>[0]) {
   ];
 }
 
-describe("database remediation relational integrity", () => {
+describe("database relational integrity", () => {
   it.each([
     [
       generatedArtifactRevisions,

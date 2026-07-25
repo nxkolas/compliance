@@ -7,10 +7,9 @@ import postgres from "postgres";
 const approvedFiles = new Set([
   "scripts/sql/api-corpus-integrity-additions.sql",
   "scripts/sql/audit-events-append-only.sql",
-  "scripts/sql/database-remediation-integrity.sql",
+  "scripts/sql/database-integrity-triggers.sql",
   "scripts/sql/legal-corpus-indexes.sql",
   "scripts/sql/organization-management-user-directory.sql",
-  "scripts/sql/remediation-rehearsal-bootstrap.sql",
   "supabase/sql-editor/003_guest_retention_cleanup.sql",
   "supabase/sql-editor/004_gap_evidence_infrastructure.sql",
 ]);

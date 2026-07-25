@@ -240,7 +240,7 @@ A clear/reseed is not required for this additive change. Preferred rollout:
 If existing development-database drift makes the additive application unsafe
 or harder than a clean rebuild, the user has authorized a guarded development
 clear and reseed. In that case follow
-`docs/database/database-reset-and-reseed.md` exactly: verify the target is the
+`docs/database/development-database-reset-and-bootstrap.md` exactly: verify the target is the
 disposable development database, run all preflight checks, stop on the first
 failed gate, restore every reviewed security/integrity SQL layer, republish
 required releases, and run the complete smoke suite. Do not clear or reseed

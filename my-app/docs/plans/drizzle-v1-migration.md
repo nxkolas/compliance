@@ -291,8 +291,8 @@ The workflow must state that:
 - `--strict` no longer exists in v1 because confirmation is the default; and
 - `--force` is not part of the normal workflow.
 
-Remove `docs/database/database-reset-and-reseed.md` from the current-operations
-index and either delete it or clearly mark it as a historical cutover runbook.
+Replace the old reset/reseed cutover procedure in the current-operations index
+with a current development clear-and-bootstrap runbook.
 Update current operational references in:
 
 - `docs/README.md`;

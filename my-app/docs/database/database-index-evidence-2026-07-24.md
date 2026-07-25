@@ -1,8 +1,8 @@
-# Database remediation index evidence
+# Database index evidence
 
 Date: 2026-07-24  
 Target: approved disposable PostgreSQL 17.6 development database  
-Command: `npm.cmd run db:benchmark:index-remediation`
+Command: `npm.cmd run db:benchmark:indexes`
 
 ## Method
 
@@ -87,7 +87,7 @@ covered by a primary, unique, or measured workload index.
 The benchmark is deterministic in shape and can be rerun with:
 
 ```powershell
-npm.cmd run db:benchmark:index-remediation
+npm.cmd run db:benchmark:indexes
 ```
 
 After schema rollout, the Compliance, Gap, Corpus, and Document module

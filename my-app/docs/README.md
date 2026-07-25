@@ -18,6 +18,7 @@ Compliance Checker app.
 ## Database Operations
 
 - [Drizzle schema-change workflow](./database/drizzle-workflow.md)
+- [Development database reset and bootstrap](./database/development-database-reset-and-bootstrap.md)
 - [Supabase security and retention runbook](./database/supabase-security-runbook.md)
 - [API, corpus, and grounded-AI rollout](./database/api-corpus-rollout-runbook.md)
 

@@ -643,7 +643,7 @@ reviewed and all relevant tests are green.
 ## Disposable database rollout
 
 Follow
-[`docs/database/database-reset-and-reseed.md`](../database/database-reset-and-reseed.md)
+[`docs/database/development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md)
 as the authoritative runbook. Do not improvise a shorter sequence.
 
 The rollout must:

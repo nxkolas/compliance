@@ -207,7 +207,7 @@ destructive boundary.
 
 ## Related references
 
-- [Development database reset, schema push, and reseed](database-reset-and-reseed.md)
+- [Current development database reset and bootstrap](development-database-reset-and-bootstrap.md)
 - [API and legal-corpus rollout runbook](api-corpus-rollout-runbook.md)
 - [Supabase security runbook](supabase-security-runbook.md)
 - [AI-generated output-language pinning plan](../plans/ai-generated-output-language-pinning.md)

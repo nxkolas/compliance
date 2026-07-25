@@ -147,7 +147,7 @@ async function main() {
   }
 
   console.log(
-    `Verified ${expectedConstraints.length} remediation constraints, ` +
+    `Verified ${expectedConstraints.length} integrity constraints, ` +
       `${expectedTriggers.length} deferred triggers, four rejected invalid ` +
       "transactions, and one valid transaction.",
   );

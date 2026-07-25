@@ -1,3 +1,4 @@
+-- Permanent audited integrity functions and triggers outside Drizzle ownership.
 begin;
 
 create or replace function public.enforce_assessment_revision_questionnaire()

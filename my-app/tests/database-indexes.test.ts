@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = resolve(import.meta.dirname, "..");
 const schema = readFileSync(resolve(root, "src/db/schema.ts"), "utf8");
 const benchmark = readFileSync(
-  resolve(root, "scripts/benchmark-database-remediation-indexes.ts"),
+  resolve(root, "scripts/benchmark-database-indexes.ts"),
   "utf8",
 );
 
@@ -31,7 +31,7 @@ const removedCandidates = [
   "organization_memberships_org_idx",
 ];
 
-describe("database remediation indexes", () => {
+describe("database indexes", () => {
   it.each(removedCandidates)("does not retain redundant index %s", (name) => {
     expect(schema).not.toContain(`"${name}"`);
   });
