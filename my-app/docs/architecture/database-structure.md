@@ -59,10 +59,14 @@ workflow, not another interpretation of its rules.
 - `gap_requirements` provides stable identities used to reconcile findings and
   action-plan items over time.
 - `gap_requirement_versions` stores immutable structural requirement data,
-  legal metadata, criticality, and required revision pins for the localized
-  title and prompt-facing requirement text. Those pins resolve through
-  `content_revisions` and `content_translations`; recommendation and localized
-  legal-reference labels remain JSON on the requirement version.
+  criticality, and required revision pins for the localized title and
+  prompt-facing requirement text. Those pins resolve through
+  `content_revisions` and `content_translations`.
+- `gap_requirement_question_mappings` assigns each release question to one
+  requirement category. `gap_question_legal_provisions` preserves each
+  question's exact versioned legal provisions. Runtime requirement references
+  are the ordered, deduplicated relational union; no legal-reference JSON copy
+  remains.
 - Requirement-set versions pin both their localized title revision and exact
   requirement versions.
 - `gap_analysis_releases` pins the questionnaire, requirement set, prompt
@@ -81,6 +85,13 @@ applicability.
 `assessments` is the stable workflow record. `assessment_revisions` and their
 answer rows are immutable submitted sources. New answers create a new revision
 instead of mutating the previous one.
+
+`gap_questionnaire_drafts` and `gap_questionnaire_draft_answers` are the shared
+mutable projection used before submission. Every acknowledged autosave
+increments the draft version; stale writes fail their precondition. Submission
+copies one exact draft version into immutable assessment answers and writes one
+immutable `assessment_requirement_evaluations` row per guided-v4 category.
+Those deterministic statuses stay server-side until generation.
 
 Answers and organization facts use typed scalar columns plus relational option
 tables. Database checks enforce the representation allowed by each answer/fact

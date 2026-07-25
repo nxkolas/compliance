@@ -176,8 +176,8 @@ Publish the compliance release only after both required corpus releases are
 active:
 
 ```powershell
-npm.cmd run db:publish:compliance -- --release nis2/2026-v1
-npm.cmd run db:activate:compliance -- --release nis2/2026-v1
+npm.cmd run db:publish:compliance -- --release nis2/2026-v2
+npm.cmd run db:activate:compliance -- --release nis2/2026-v2
 ```
 
 Publish the compatible Gap release and identify its audit actor:
@@ -185,10 +185,10 @@ Publish the compatible Gap release and identify its audit actor:
 ```powershell
 $env:GAP_RELEASE_ACTOR_ID = $platformAdminUserId
 try {
-  npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
+  npm.cmd run db:publish:gap -- --release nis2-gap/guided-v4
   if ($LASTEXITCODE -ne 0) { throw 'Gap publication failed' }
 
-  npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
+  npm.cmd run db:activate:gap -- --release nis2-gap/guided-v4
   if ($LASTEXITCODE -ne 0) { throw 'Gap activation failed' }
 }
 finally {

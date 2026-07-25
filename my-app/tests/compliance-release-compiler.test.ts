@@ -4,6 +4,77 @@ import { compileRelease } from "@/src/server/compliance/publishing/compile-relea
 import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
 
 describe("immutable NIS2 release compiler", () => {
+  it("publishes all twelve stable questions with complete localized tooltips", () => {
+    expect(nis2ReleaseDefinition.questions).toHaveLength(12);
+    expect(
+      nis2ReleaseDefinition.questions.map((question) => question.stableKey),
+    ).toEqual([
+      "bc.eu_activity",
+      "bc.entity_types",
+      "bc.jurisdiction_country",
+      "bc.jurisdiction_basis",
+      "bc.member_state_designation",
+      "bc.employee_count",
+      "bc.annual_revenue",
+      "bc.balance_sheet_total",
+      "bc.sme_figures_verified",
+      "bc.sector_specific_regime",
+      "bc.critical_customers",
+      "bc.security_evidence_requested",
+    ]);
+
+    for (const question of nis2ReleaseDefinition.questions) {
+      expect(question.tooltipContentKey).toBe(
+        `nis2.question.${question.stableKey}.tooltip`,
+      );
+      const tooltip = nis2ReleaseDefinition.content.find(
+        (item) => item.stableKey === question.tooltipContentKey,
+      );
+      expect(tooltip?.translations.de.trim()).toBeTruthy();
+      expect(tooltip?.translations.en.trim()).toBeTruthy();
+    }
+  });
+
+  it("rejects a current NIS2 question without a tooltip", () => {
+    const release = structuredClone(nis2ReleaseDefinition);
+    delete release.questions[0].tooltipContentKey;
+
+    expect(() => compileRelease(release)).toThrow(
+      /Missing tooltip content key for question bc\.eu_activity/,
+    );
+  });
+
+  it("changes questionnaire and aggregate identities when tooltip copy changes", () => {
+    const original = compileRelease(nis2ReleaseDefinition);
+    const changed = structuredClone(nis2ReleaseDefinition);
+    const tooltipKey = changed.questions[0].tooltipContentKey;
+    const tooltip = changed.content.find(
+      (item) => item.stableKey === tooltipKey,
+    );
+    if (!tooltip) throw new Error("Tooltip fixture is missing");
+    tooltip.translations.en += " Updated.";
+
+    const compiled = compileRelease(changed);
+    expect(compiled.hashes.questionnaire).not.toBe(
+      original.hashes.questionnaire,
+    );
+    expect(compiled.hashes.aggregate).not.toBe(original.hashes.aggregate);
+  });
+
+  it("offers the no-related-enterprises value for question 9", () => {
+    const question = nis2ReleaseDefinition.questions.find(
+      (candidate) => candidate.stableKey === "bc.sme_figures_verified",
+    );
+
+    expect(question?.options).toContainEqual(
+      expect.objectContaining({
+        stableValue: "not_applicable_no_partner_or_linked_enterprises",
+        factOptionValue:
+          "not_applicable_no_partner_or_linked_enterprises",
+      }),
+    );
+  });
+
   it("compiles a separate German national catalog with explicit EU provenance", () => {
     const { artifact } = compileRelease(nis2ReleaseDefinition);
     if (artifact.kind !== "nis2_scope_v3") throw new Error("Expected v3 artifact");

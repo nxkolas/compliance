@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { assessmentRevisions, assessments, auditEvents, backgroundJobs, documentEmbeddingGenerations, documentExtractions, documentVersions, documents, gapReassessmentDraftDocuments, gapReassessmentDrafts, generatedArtifactRevisions, idempotencyRecordResults, idempotencyRecords } from "@/src/db/schema";
+import { assessmentRevisions, assessments, auditEvents, backgroundJobs, documentEmbeddingGenerations, documentExtractions, documentVersions, documents, gapQuestionnaireDrafts, gapReassessmentDraftDocuments, gapReassessmentDrafts, generatedArtifactRevisions, idempotencyRecordResults, idempotencyRecords } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -762,6 +762,23 @@ async function enqueueDraftGeneration(input: {
       )
       .returning();
     if (!locked) throw new ApiError(409, "Reassessment draft changed before generation");
+    await tx
+      .update(gapQuestionnaireDrafts)
+      .set({
+        status: "locked",
+        updatedBy: input.userId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(gapQuestionnaireDrafts.assessmentId, locked.assessmentId),
+          eq(gapQuestionnaireDrafts.status, "open"),
+          eq(
+            gapQuestionnaireDrafts.lastSubmittedAssessmentRevisionId,
+            locked.assessmentRevisionId,
+          ),
+        ),
+      );
     const [job] = await tx.insert(backgroundJobs).values({
       organizationId: input.organizationId,
       requestedByUserId: input.userId,

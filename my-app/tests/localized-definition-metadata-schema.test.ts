@@ -1,3 +1,4 @@
+import { getTableName } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,6 +9,7 @@ import {
   gapRequirementSetVersions,
   questionnaires,
   questionnaireVersions,
+  questions,
 } from "@/src/db/schema";
 
 describe("localized definition metadata schema", () => {
@@ -61,6 +63,25 @@ describe("localized definition metadata schema", () => {
       }
     },
   );
+
+  it("keeps the optional question tooltip in the immutable content model", () => {
+    const config = getTableConfig(questions);
+    const column = config.columns.find(
+      (candidate) => candidate.name === "tooltip_content_revision_id",
+    );
+    const foreignKey = config.foreignKeys.find(
+      (candidate) => candidate.getName() === "questions_tooltip_content_fk",
+    );
+
+    expect(column).toBeDefined();
+    expect(column?.notNull).toBe(false);
+    expect(foreignKey).toBeDefined();
+    expect(foreignKey?.reference().foreignColumns[0]?.name).toBe("id");
+    expect(
+      foreignKey ? getTableName(foreignKey.reference().foreignTable) : null,
+    ).toBe("content_revisions");
+    expect(foreignKey?.onDelete).toBe("restrict");
+  });
 });
 
 function columnNames(table: Parameters<typeof getTableConfig>[0]) {

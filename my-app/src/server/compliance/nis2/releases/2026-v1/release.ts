@@ -34,7 +34,7 @@ const facts: FactDefinitionSource[] = [
   fact("employee_count_bucket", "enum", "Mitarbeiterzahl", "Employee count", "Mitarbeiterzahl nach der KMU-Empfehlung.", "Employee count under the SME Recommendation."),
   fact("annual_revenue_bucket", "enum", "Jahresumsatz", "Annual turnover", "Jahresumsatz mit rechtlich exakten Schwellenwerten.", "Annual turnover using the exact legal thresholds."),
   fact("balance_sheet_total_bucket", "enum", "Jahresbilanzsumme", "Annual balance-sheet total", "Jahresbilanzsumme mit rechtlich exakten Schwellenwerten.", "Annual balance-sheet total using the exact legal thresholds."),
-  fact("sme_figures_verified", "enum", "KMU-Größenwerte geprüft", "SME figures verified", "Ob Partner- und verbundene Unternehmen berücksichtigt wurden.", "Whether partner and linked enterprises were handled correctly."),
+  fact("sme_figures_verified", "enum", "KMU-Größenwerte geprüft", "SME figures verified", "Ob die Größenwerte korrekt berechnet wurden oder keine Partner- oder verbundenen Unternehmen bestehen.", "Whether the size figures were calculated correctly or there are no partner or linked enterprises."),
   fact("sector_specific_regime", "enum", "Sektorspezifisches Regelwerk", "Sector-specific regime", "Zusätzliche oder vorrangige sektorspezifische Regelwerke.", "Additional or prevailing sector-specific regimes."),
   fact("serves_critical_customers", "enum", "Leistungen für regulierte Kunden", "Services for regulated customers", "Indikator für indirekte Lieferkettenbetroffenheit.", "Indicator of indirect supply-chain exposure."),
   fact("has_customer_security_evidence_requests", "enum", "Vertragliche Sicherheitsnachweise", "Contractual security evidence", "Ob Kunden Sicherheitsmaßnahmen oder Nachweise verlangen.", "Whether customers require security measures or evidence."),
@@ -235,6 +235,11 @@ const questions = nis2Questions.map((question) => ({
           question.helpTextEn,
         )
       : undefined,
+  tooltipContentKey: addContent(
+    `nis2.question.${question.stableKey}.tooltip`,
+    question.tooltipText,
+    question.tooltipTextEn,
+  ),
   answerType: question.answerType,
   required: question.required,
   factKey: question.factKey,

@@ -1,6 +1,6 @@
 # Produktstruktur: NIS2 Compliance Checker
 
-Status: aktueller Produkt- und Implementierungsstand vom 24.07.2026.
+Status: aktueller Produkt- und Implementierungsstand vom 25.07.2026.
 
 Dieses Dokument ordnet die sichtbaren Module fachlich ein. Der detaillierte
 Ablauf von Gap-Analyse, Dokumentnachweisen und Maßnahmenplan steht unter
@@ -20,6 +20,8 @@ in den NIS2-Anwendungsbereich fällt.
 
 - Fragebogen, Fakten, Rechtsquellen und Regeln stammen aus einer veröffentlichten,
   unveränderlichen Compliance-Release.
+- Fragetext, dauerhaft sichtbare Kurzbeschreibung und ergänzender Tooltip
+  werden lokalisiert aus genau dieser gepinnten Compliance-Release geladen.
 - Jede gestartete Prüfung bleibt an ihre Release gebunden.
 - Ergebnisse werden als unveränderliche Revisionen mit nachvollziehbarer Evidenz
   gespeichert.

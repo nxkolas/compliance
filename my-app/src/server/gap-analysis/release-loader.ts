@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { gapRequirements, gapRequirementSetMembers, gapRequirementVersions } from "@/src/db/schema";
+import { gapQuestionLegalProvisions, gapRequirements, gapRequirementSetMembers, gapRequirementVersions, legalInstruments, legalInstrumentVersions, legalProvisions } from "@/src/db/schema";
 import type { Locale } from "@/lib/i18n-config";
 import { asc, eq, inArray } from "drizzle-orm";
 import { resolveGapContentTranslation } from "./localize-content";
@@ -45,7 +45,11 @@ export type LoadedGapRelease = {
     criticality: "low" | "medium" | "high" | "critical";
     title: string;
     requirementText: string;
-    legalReferences: unknown;
+    legalReferences: Array<{
+      key: string;
+      label: string;
+      url: string | null;
+    }>;
     applicabilityOutcomeCodes: string[];
     questionStableKeys: string[];
   }>;
@@ -145,7 +149,6 @@ export async function loadGapAnalysisRelease(
       titleContentRevisionId: gapRequirementVersions.titleContentRevisionId,
       requirementTextContentRevisionId:
         gapRequirementVersions.requirementTextContentRevisionId,
-      legalReferences: gapRequirementVersions.legalReferences,
     })
     .from(gapRequirementSetMembers)
     .innerJoin(
@@ -166,6 +169,61 @@ export async function loadGapAnalysisRelease(
       ),
     )
     .orderBy(asc(gapRequirementSetMembers.position));
+  const requirementQuestionRows =
+    await db.query.gapRequirementQuestionMappings.findMany({
+      columns: {
+        gapAnalysisReleaseId: true,
+        requirementVersionId: true,
+        questionId: true,
+        position: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.gapAnalysisReleaseId, release.id) ?? operators.sql`true`,
+      },
+      orderBy: { position: "asc" },
+    });
+  const questionLegalRows = questionRows.length
+    ? await db
+        .select({
+          questionId: gapQuestionLegalProvisions.questionId,
+          position: gapQuestionLegalProvisions.position,
+          provisionCode: legalProvisions.provisionCode,
+          officialSourceUrl: legalProvisions.officialSourceUrl,
+          citationContentRevisionId:
+            legalProvisions.citationContentRevisionId,
+          instrumentCode: legalInstruments.code,
+        })
+        .from(gapQuestionLegalProvisions)
+        .innerJoin(
+          legalProvisions,
+          eq(
+            gapQuestionLegalProvisions.legalProvisionId,
+            legalProvisions.id,
+          ),
+        )
+        .innerJoin(
+          legalInstrumentVersions,
+          eq(
+            legalProvisions.legalInstrumentVersionId,
+            legalInstrumentVersions.id,
+          ),
+        )
+        .innerJoin(
+          legalInstruments,
+          eq(legalInstrumentVersions.legalInstrumentId, legalInstruments.id),
+        )
+        .where(
+          inArray(
+            gapQuestionLegalProvisions.questionId,
+            questionRows.map((question) => question.id),
+          ),
+        )
+        .orderBy(
+          asc(gapQuestionLegalProvisions.questionId),
+          asc(gapQuestionLegalProvisions.position),
+        )
+    : [];
   const contentRevisionIds = [
     frameworkVersion.nameContentRevisionId,
     frameworkVersion.descriptionContentRevisionId,
@@ -181,6 +239,11 @@ export async function loadGapAnalysisRelease(
       requirement.titleContentRevisionId,
       requirement.requirementTextContentRevisionId,
     ]),
+    ...questionLegalRows.flatMap((row) =>
+      row.citationContentRevisionId
+        ? [row.citationContentRevisionId]
+        : [],
+    ),
   ];
   const translations = contentRevisionIds.length
     ? await db.query.contentTranslations.findMany({ columns: { contentRevisionId: true, locale: true, value: true },
@@ -253,8 +316,28 @@ export async function loadGapAnalysisRelease(
     requirements: members.map((requirement) => {
       const conditions = ruleByRequirement.get(requirement.id) ?? {
         applicabilityOutcomeCodes: [],
-        questionStableKeys: [],
       };
+      const mappedQuestions = requirementQuestionRows
+        .filter((row) => row.requirementVersionId === requirement.id)
+        .sort((left, right) => left.position - right.position);
+      const questionStableKeys = mappedQuestions.map(
+        (mapping) =>
+          questionRows.find((question) => question.id === mapping.questionId)
+            ?.stableKey ?? "",
+      ).filter(Boolean);
+      const legalReferences = deduplicateLegalReferences(
+        mappedQuestions.flatMap((mapping) =>
+          questionLegalRows
+            .filter((row) => row.questionId === mapping.questionId)
+            .sort((left, right) => left.position - right.position),
+        ),
+      ).map((reference) => ({
+        key: `${reference.instrumentCode}.${reference.provisionCode}`,
+        label: reference.citationContentRevisionId
+          ? text(reference.citationContentRevisionId)
+          : `${reference.instrumentCode} ${reference.provisionCode}`,
+        url: reference.officialSourceUrl,
+      }));
       return {
         id: requirement.id,
         stableRequirementId: requirement.stableRequirementId,
@@ -263,7 +346,8 @@ export async function loadGapAnalysisRelease(
         criticality: requirement.criticality,
         title: text(requirement.titleContentRevisionId),
         requirementText: text(requirement.requirementTextContentRevisionId),
-        legalReferences: requirement.legalReferences,
+        legalReferences,
+        questionStableKeys,
         ...conditions,
       };
     }),
@@ -273,7 +357,6 @@ export async function loadGapAnalysisRelease(
 function parseConditions(value: unknown) {
   const candidate = value as {
     applicabilityOutcomeCodes?: unknown;
-    questionStableKeys?: unknown;
   };
   return {
     applicabilityOutcomeCodes: Array.isArray(candidate.applicabilityOutcomeCodes)
@@ -281,12 +364,19 @@ function parseConditions(value: unknown) {
           (item): item is string => typeof item === "string",
         )
       : [],
-    questionStableKeys: Array.isArray(candidate.questionStableKeys)
-      ? candidate.questionStableKeys.filter(
-          (item): item is string => typeof item === "string",
-        )
-      : [],
   };
+}
+
+function deduplicateLegalReferences<
+  T extends { instrumentCode: string; provisionCode: string },
+>(references: T[]) {
+  const seen = new Set<string>();
+  return references.filter((reference) => {
+    const key = `${reference.instrumentCode}.${reference.provisionCode}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export const directGapReleaseReader = createGapReleaseReader({

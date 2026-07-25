@@ -95,7 +95,7 @@ coordinates, and revision-result JSON remain server-side for generation,
 review, and audit behavior. They are not sent in the current workflow or the
 customer-accessible historical revision response.
 
-The `guided-v3` prompt asks the model to explain interpreted disagreements
+The `guided-v4` prompt asks the model to explain the server-owned deterministic status and interpreted disagreements
 between its status and questionnaire assertions in
 `questionnaireDisagreements`. The UI presents a neutral, non-blocking
 disagreement indicator without returning the raw diagnostic strings. Genuine
@@ -144,11 +144,11 @@ eligible current document versions.
 ## Release publication and activation
 
 The immutable single-lifecycle prompt is registered as
-`nis2-gap/guided-v3`. For a reviewed non-production environment:
+`nis2-gap/guided-v4`. For a reviewed non-production environment:
 
 ```text
-npm run db:publish:gap -- nis2-gap/guided-v3
-npm run db:activate:gap -- nis2-gap/guided-v3
+npm run db:publish:gap -- --release nis2-gap/guided-v4
+npm run db:activate:gap -- --release nis2-gap/guided-v4
 ```
 
 Production publication and activation use the reviewed deployment procedure.

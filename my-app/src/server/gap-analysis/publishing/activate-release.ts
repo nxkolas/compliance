@@ -1,6 +1,6 @@
 import { db } from "@/src/db";
-import { activeGapAnalysisReleases, gapAnalysisReleaseActivations } from "@/src/db/schema";
-import { and, eq } from "drizzle-orm";
+import { activeGapAnalysisReleases, gapAnalysisReleaseActivations, gapQuestionLegalProvisions } from "@/src/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 
 export type GapActivationSnapshot = {
   releasePublished: boolean;
@@ -10,6 +10,11 @@ export type GapActivationSnapshot = {
   applicabilityRuleCount: number;
   promptMetadataComplete: boolean;
   corpusPinsComplete?: boolean;
+  questionCount?: number;
+  requirementQuestionMappingCount?: number;
+  legalMappedQuestionCount?: number;
+  applicabilityOutcomesComplete?: boolean;
+  evaluatorSupported?: boolean;
 };
 
 export function assertGapActivationCompleteness(
@@ -34,6 +39,24 @@ export function assertGapActivationCompleteness(
   if (snapshot.corpusPinsComplete === false) {
     throw new Error("Gap release corpus pins are incomplete");
   }
+  if (
+    snapshot.questionCount !== undefined &&
+    snapshot.questionCount !== snapshot.requirementQuestionMappingCount
+  ) {
+    throw new Error("Gap release question mapping coverage is incomplete");
+  }
+  if (
+    snapshot.questionCount !== undefined &&
+    snapshot.questionCount !== snapshot.legalMappedQuestionCount
+  ) {
+    throw new Error("Gap release legal mapping coverage is incomplete");
+  }
+  if (snapshot.applicabilityOutcomesComplete === false) {
+    throw new Error("Gap release applicability outcomes are incomplete");
+  }
+  if (snapshot.evaluatorSupported === false) {
+    throw new Error("Gap release evaluator is unsupported");
+  }
 }
 
 export async function activateGapAnalysisRelease(
@@ -49,7 +72,7 @@ export async function activateGapAnalysisRelease(
       )) ?? operators.sql`true` },
     });
     if (!release) throw new Error(`Gap release ${releaseCode}/${versionLabel} is missing`);
-    const [questionnaire, requirementSet, members, rules, corpusPins] = await Promise.all([
+    const [questionnaire, requirementSet, members, rules, corpusPins, questionRows, requirementMappings] = await Promise.all([
       tx.query.questionnaireVersions.findFirst({ columns: { id: true, questionnaireId: true, versionLabel: true, titleContentRevisionId: true, status: true, createdAt: true, publishedAt: true },
         where: { RAW: (table, operators) => (eq(table.id, release.questionnaireVersionId)) ?? operators.sql`true` },
       }),
@@ -71,7 +94,53 @@ export async function activateGapAnalysisRelease(
       tx.query.gapAnalysisReleaseCorpusReleases.findMany({ columns: { gapAnalysisReleaseId: true, familyId: true, corpusReleaseId: true },
         where: { RAW: (table, operators) => (eq(table.gapAnalysisReleaseId, release.id)) ?? operators.sql`true` },
       }),
+      tx.query.questions.findMany({
+        columns: { id: true },
+        where: {
+          RAW: (table, operators) =>
+            eq(table.questionnaireVersionId, release.questionnaireVersionId) ??
+            operators.sql`true`,
+        },
+      }),
+      tx.query.gapRequirementQuestionMappings.findMany({
+        columns: {
+          gapAnalysisReleaseId: true,
+          requirementVersionId: true,
+          questionId: true,
+          position: true,
+        },
+        where: {
+          RAW: (table, operators) =>
+            eq(table.gapAnalysisReleaseId, release.id) ?? operators.sql`true`,
+        },
+      }),
     ]);
+    const legalMappedQuestions = questionRows.length
+      ? await tx
+          .selectDistinct({ questionId: gapQuestionLegalProvisions.questionId })
+          .from(gapQuestionLegalProvisions)
+          .where(
+            inArray(
+              gapQuestionLegalProvisions.questionId,
+              questionRows.map((question) => question.id),
+            ),
+          )
+      : [];
+    const rulesCoverBothOutcomes = rules.every((rule) => {
+      const value = rule.conditions as {
+        applicabilityOutcomeCodes?: unknown;
+      };
+      const outcomes = Array.isArray(value.applicabilityOutcomeCodes)
+        ? value.applicabilityOutcomeCodes
+        : [];
+      return (
+        outcomes.includes("essential_entity") &&
+        outcomes.includes("important_entity")
+      );
+    });
+    const isGuidedV4 =
+      release.releaseCode === "nis2-gap" &&
+      release.versionLabel === "guided-v4";
     assertGapActivationCompleteness({
       releasePublished:
         release.status === "published" && Boolean(release.publishedAt),
@@ -92,6 +161,17 @@ export async function activateGapAnalysisRelease(
           release.evaluatorVersion,
       ),
       corpusPinsComplete: Boolean(release.corpusReleaseSetHash && corpusPins.length > 0),
+      questionCount: questionRows.length,
+      requirementQuestionMappingCount: requirementMappings.length,
+      legalMappedQuestionCount: legalMappedQuestions.length,
+      applicabilityOutcomesComplete: rulesCoverBothOutcomes,
+      evaluatorSupported:
+        !isGuidedV4 ||
+        (release.evaluatorKind === "nis2_gap_category_v1" &&
+          release.evaluatorVersion === 1 &&
+          release.responseSchemaVersion === "5" &&
+          questionRows.length === 31 &&
+          members.length === 10),
     });
     const current = await tx.query.activeGapAnalysisReleases.findFirst({ columns: { releaseCode: true, gapAnalysisReleaseId: true, activatedBy: true, activatedAt: true },
       where: { RAW: (table, operators) => (eq(table.releaseCode, releaseCode)) ?? operators.sql`true` },

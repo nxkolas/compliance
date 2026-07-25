@@ -9,6 +9,11 @@ export type GapPromptRequirement = {
   criticality: string;
   legalReferences: unknown;
   citations: SuppliedCitation[];
+  determinedStatus?:
+    | "fulfilled"
+    | "partially_fulfilled"
+    | "not_fulfilled"
+    | "insufficient_evidence";
 };
 
 export function buildGapPrompt(requirements: GapPromptRequirement[]) {
@@ -26,6 +31,7 @@ export function buildGapPrompt(requirements: GapPromptRequirement[]) {
       requirementText: requirement.requirementText,
       criticality: requirement.criticality,
       legalReferences: requirement.legalReferences,
+      determinedStatus: requirement.determinedStatus,
       legalAuthority: requirement.citations
         .filter((citation) => citation.sourceType === "legal_source_chunk")
         .map(toPromptCitation),

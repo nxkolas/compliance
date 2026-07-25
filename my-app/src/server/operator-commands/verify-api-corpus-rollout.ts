@@ -48,8 +48,8 @@ async function main() {
     where: { RAW: (table, operators) => (eq(table.id, compliancePointer.checkReleaseId)) ?? operators.sql`true` },
   });
   assert(
-    complianceRelease?.status === "published" && complianceRelease.versionLabel === "2026-v1",
-    "The active NIS2 compliance release must be published 2026-v1",
+    complianceRelease?.status === "published" && complianceRelease.versionLabel === "2026-v2",
+    "The active NIS2 compliance release must be published 2026-v2",
   );
   const compliancePins = await db.query.complianceCheckReleaseCorpusReleases.findMany({ columns: { checkReleaseId: true, familyId: true, corpusReleaseId: true },
     where: { RAW: (table, operators) => (eq(table.checkReleaseId, complianceRelease.id)) ?? operators.sql`true` },
@@ -64,8 +64,8 @@ async function main() {
     where: { RAW: (table, operators) => (eq(table.id, gapPointer.gapAnalysisReleaseId)) ?? operators.sql`true` },
   });
   assert(
-    gapRelease?.status === "published" && gapRelease.versionLabel === "guided-v3",
-    "The active NIS2 Gap release must be published guided-v3",
+    gapRelease?.status === "published" && gapRelease.versionLabel === "guided-v4",
+    "The active NIS2 Gap release must be published guided-v4",
   );
   assert(
     gapRelease.compatibleCheckReleaseId === complianceRelease.id,

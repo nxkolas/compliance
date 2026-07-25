@@ -37,6 +37,7 @@ export {
   getGapQuestionnaireRevision,
   submitGapQuestionnaire,
 } from "./questionnaire-service";
+export { saveQuestionnaireDraftAnswer } from "./questionnaire-draft-service";
 export { getGapRevisionStaleness } from "./staleness";
 export { createDatabaseGapPageReader } from "./page-reader";
 export { readGeneratedGapInputs } from "./generated-inputs-reader";

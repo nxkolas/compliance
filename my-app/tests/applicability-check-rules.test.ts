@@ -263,6 +263,51 @@ describe("rigid NIS2 scope evaluator", () => {
 
     expect(result.outcome).toBe("clarification_required");
     expect(result.sizeClassification).toBe("unknown");
+    expect(result.unresolvedFactCodes).toContain("unresolved_size_aggregation");
+  });
+
+  it("accepts no related enterprises for German size classification", () => {
+    const result = evaluateRuleSet(nis2ScopeRuleSet, {
+      facts: facts({
+        employee_count_bucket: "50_249",
+        sme_figures_verified:
+          "not_applicable_no_partner_or_linked_enterprises",
+      }),
+    });
+
+    expect(result.outcome).toBe("important_entity");
+    expect(result.sizeClassification).toBe("medium");
+  });
+
+  it("accepts no related enterprises in the EU-core verification branch", () => {
+    const result = evaluateRuleSet(nis2ScopeRuleSet, {
+      facts: facts({
+        jurisdiction_country: "FR",
+        jurisdiction_basis: "establishment",
+        nis2_entity_types: ["electricity_supplier"],
+        employee_count_bucket: "50_249",
+        sme_figures_verified:
+          "not_applicable_no_partner_or_linked_enterprises",
+      }),
+    });
+
+    expect(result.sizeClassification).toBe("medium");
+    expect(result.unresolvedFactCodes).not.toContain(
+      "unresolved_size_aggregation",
+    );
+  });
+
+  it("keeps unsure SME aggregation unresolved", () => {
+    const result = evaluateRuleSet(nis2ScopeRuleSet, {
+      facts: facts({
+        employee_count_bucket: "250_plus",
+        sme_figures_verified: "unsure",
+      }),
+    });
+
+    expect(result.outcome).toBe("clarification_required");
+    expect(result.sizeClassification).toBe("unknown");
+    expect(result.unresolvedFactCodes).toContain("unresolved_size_aggregation");
   });
 
   it("keeps indirect exposure separate from the legal outcome", () => {

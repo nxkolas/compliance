@@ -31,6 +31,7 @@ import {
   type GapFindingSourceEvidence,
 } from "./finding-source-projection";
 import { loadFindingsForRevisionIds } from "./postgres-page-data";
+import { readQuestionnaireDraft } from "./questionnaire-draft-service";
 
 export async function getGapAnalysisWorkflow(
   input: GapPageReadInput,
@@ -39,6 +40,15 @@ export async function getGapAnalysisWorkflow(
     nextCachedGapReleaseReader,
 ) {
   const workflow = await reader.readGap(input);
+  const questionnaireDraft = workflow.assessment
+    ? await readQuestionnaireDraft(
+        workflow.assessment.id,
+        input.organizationId,
+      )
+    : null;
+  const currentAnswers: Record<string, string> =
+    questionnaireDraft?.answers ??
+    (workflow.answers as Record<string, string>);
   const metadata = (result: unknown | undefined) =>
     result === undefined ? null : readGapRevisionMetadata(result);
   const currentMetadata = metadata(workflow.revision?.result);
@@ -175,7 +185,7 @@ export async function getGapAnalysisWorkflow(
   const answerSummary = workflow.release
     ? workflow.release.questions.map((question) => {
         const option = question.options.find(
-          (candidate) => candidate.id === workflow.answers[question.id],
+          (candidate) => candidate.id === currentAnswers[question.id],
         );
         return {
           questionId: question.id,
@@ -212,6 +222,9 @@ export async function getGapAnalysisWorkflow(
           questions: workflow.release.questions,
           requirements: workflow.release.requirements.map((requirement) => ({
             id: requirement.id,
+            position: requirement.position,
+            title: requirement.title,
+            questionStableKeys: requirement.questionStableKeys,
           })),
         }
       : null,
@@ -221,7 +234,8 @@ export async function getGapAnalysisWorkflow(
           currentRevisionId: workflow.assessment.currentRevisionId,
         }
       : null,
-    answers: workflow.answers,
+    answers: currentAnswers,
+    questionnaireDraft,
     documentLibrary: projectDocumentLibrary(workflow.documentLibrary),
     run: workflow.run ? { errorCode: workflow.run.errorCode } : null,
     revision: projectRevisionIdentity(workflow.revision),

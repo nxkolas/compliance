@@ -11,7 +11,7 @@ describe("server-only RLS schema", () => {
       .filter((value): value is AnyPgTable => is(value, Table))
       .sort((left, right) => getTableName(left).localeCompare(getTableName(right)));
 
-    expect(tables).toHaveLength(123);
+    expect(tables).toHaveLength(128);
 
     for (const table of tables) {
       const config = getTableConfig(table);

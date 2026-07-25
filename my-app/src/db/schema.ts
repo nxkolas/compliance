@@ -217,6 +217,11 @@ export const gapReassessmentStatusEnum = pgEnum("gap_reassessment_status", [
   "cancelled",
 ]);
 
+export const gapQuestionnaireDraftStatusEnum = pgEnum(
+  "gap_questionnaire_draft_status",
+  ["open", "locked", "discarded"],
+);
+
 export const gapReassessmentSelectionOriginEnum = pgEnum(
   "gap_reassessment_selection_origin",
   ["approved_carryover", "version_replacement", "explicit_addition"],
@@ -973,6 +978,7 @@ export const questions = pgTable.withRLS(
     position: integer("position").notNull(),
     questionContentRevisionId: uuid("question_content_revision_id").notNull(),
     helpContentRevisionId: uuid("help_content_revision_id"),
+    tooltipContentRevisionId: uuid("tooltip_content_revision_id"),
     answerType: questionAnswerTypeEnum("answer_type").notNull(),
     required: boolean("required").default(false).notNull(),
     config: jsonb("config").default(sql`'{}'::jsonb`).notNull(),
@@ -988,11 +994,16 @@ export const questions = pgTable.withRLS(
     }).onDelete("restrict"),
     foreignKey({ name: "questions_question_content_fk", columns: [table.questionContentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
     foreignKey({ name: "questions_help_content_fk", columns: [table.helpContentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
+    foreignKey({ name: "questions_tooltip_content_fk", columns: [table.tooltipContentRevisionId], foreignColumns: [contentRevisions.id] }).onDelete("restrict"),
     uniqueIndex("questions_version_stable_key_unique").on(
       table.questionnaireVersionId,
       table.stableKey,
     ),
     unique("questions_id_stable_key_unique").on(table.id, table.stableKey),
+    unique("questions_id_version_unique").on(
+      table.id,
+      table.questionnaireVersionId,
+    ),
     index("questions_stable_key_idx").on(table.stableKey),
   ],
 );
@@ -1374,6 +1385,14 @@ export const assessments = pgTable.withRLS(
     index("assessments_gap_release_idx").on(table.gapAnalysisReleaseId),
     index("assessments_applicability_artifact_idx").on(
       table.applicabilityArtifactRevisionId,
+    ),
+    unique("assessments_id_organization_unique").on(
+      table.id,
+      table.organizationId,
+    ),
+    unique("assessments_id_gap_release_unique").on(
+      table.id,
+      table.gapAnalysisReleaseId,
     ),
   ],
 );
@@ -2011,7 +2030,6 @@ export const gapRequirementVersions = pgTable.withRLS(
     requirementTextContentRevisionId: uuid(
       "requirement_text_content_revision_id",
     ).notNull(),
-    legalReferences: jsonb("legal_references").notNull(),
     contentHash: text("content_hash").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -2172,6 +2190,10 @@ export const gapAnalysisReleases = pgTable.withRLS(
       table.id,
       table.moduleId,
       table.questionnaireId,
+    ),
+    unique("gap_analysis_releases_id_questionnaire_version_unique").on(
+      table.id,
+      table.questionnaireVersionId,
     ),
     uniqueIndex("gap_analysis_releases_hash_unique").on(table.aggregateHash),
     index("gap_analysis_releases_status_idx").on(table.status),
@@ -4142,6 +4164,221 @@ export const idempotencyRecordResults = pgTable.withRLS(
         ${table.reportId},
         ${table.documentVersionId}
       ) = 1`,
+    ),
+  ],
+);
+
+export const gapRequirementQuestionMappings = pgTable.withRLS(
+  "gap_requirement_question_mappings",
+  {
+    gapAnalysisReleaseId: uuid("gap_analysis_release_id").notNull(),
+    requirementVersionId: uuid("requirement_version_id").notNull(),
+    questionId: uuid("question_id").notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "gap_requirement_question_mappings_pk",
+      columns: [
+        table.gapAnalysisReleaseId,
+        table.requirementVersionId,
+        table.questionId,
+      ],
+    }),
+    foreignKey({
+      name: "gap_requirement_question_mappings_release_fk",
+      columns: [table.gapAnalysisReleaseId],
+      foreignColumns: [gapAnalysisReleases.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_requirement_question_mappings_requirement_fk",
+      columns: [table.requirementVersionId],
+      foreignColumns: [gapRequirementVersions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_requirement_question_mappings_question_fk",
+      columns: [table.questionId],
+      foreignColumns: [questions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_requirement_question_mappings_release_question_unique").on(
+      table.gapAnalysisReleaseId,
+      table.questionId,
+    ),
+    uniqueIndex(
+      "gap_requirement_question_mappings_requirement_position_unique",
+    ).on(
+      table.gapAnalysisReleaseId,
+      table.requirementVersionId,
+      table.position,
+    ),
+    check(
+      "gap_requirement_question_mappings_position_positive",
+      sql`${table.position} > 0`,
+    ),
+  ],
+);
+
+export const gapQuestionLegalProvisions = pgTable.withRLS(
+  "gap_question_legal_provisions",
+  {
+    questionId: uuid("question_id").notNull(),
+    legalProvisionId: uuid("legal_provision_id").notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "gap_question_legal_provisions_pk",
+      columns: [table.questionId, table.legalProvisionId],
+    }),
+    foreignKey({
+      name: "gap_question_legal_provisions_question_fk",
+      columns: [table.questionId],
+      foreignColumns: [questions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_question_legal_provisions_provision_fk",
+      columns: [table.legalProvisionId],
+      foreignColumns: [legalProvisions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_question_legal_provisions_position_unique").on(
+      table.questionId,
+      table.position,
+    ),
+    check(
+      "gap_question_legal_provisions_position_positive",
+      sql`${table.position} > 0`,
+    ),
+  ],
+);
+
+export const gapQuestionnaireDrafts = pgTable.withRLS(
+  "gap_questionnaire_drafts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    assessmentId: uuid("assessment_id").notNull(),
+    gapAnalysisReleaseId: uuid("gap_analysis_release_id").notNull(),
+    questionnaireVersionId: uuid("questionnaire_version_id").notNull(),
+    status: gapQuestionnaireDraftStatusEnum("status").default("open").notNull(),
+    version: integer("version").default(1).notNull(),
+    lastSubmittedAssessmentRevisionId: uuid(
+      "last_submitted_assessment_revision_id",
+    ),
+    createdBy: uuid("created_by").notNull(),
+    updatedBy: uuid("updated_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_questionnaire_drafts_organization_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organizations.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_questionnaire_drafts_assessment_org_fk",
+      columns: [table.assessmentId, table.organizationId],
+      foreignColumns: [assessments.id, assessments.organizationId],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_questionnaire_drafts_assessment_release_fk",
+      columns: [table.assessmentId, table.gapAnalysisReleaseId],
+      foreignColumns: [assessments.id, assessments.gapAnalysisReleaseId],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_questionnaire_drafts_release_questionnaire_fk",
+      columns: [table.gapAnalysisReleaseId, table.questionnaireVersionId],
+      foreignColumns: [
+        gapAnalysisReleases.id,
+        gapAnalysisReleases.questionnaireVersionId,
+      ],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_questionnaire_drafts_last_revision_fk",
+      columns: [table.lastSubmittedAssessmentRevisionId],
+      foreignColumns: [assessmentRevisions.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_questionnaire_drafts_open_assessment_unique")
+      .on(table.assessmentId)
+      .where(sql`${table.status} = 'open'`),
+    unique("gap_questionnaire_drafts_id_organization_unique").on(
+      table.id,
+      table.organizationId,
+    ),
+    check(
+      "gap_questionnaire_drafts_version_positive",
+      sql`${table.version} > 0`,
+    ),
+  ],
+);
+
+export const gapQuestionnaireDraftAnswers = pgTable.withRLS(
+  "gap_questionnaire_draft_answers",
+  {
+    draftId: uuid("draft_id").notNull(),
+    questionId: uuid("question_id").notNull(),
+    questionOptionId: uuid("question_option_id").notNull(),
+    updatedBy: uuid("updated_by").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "gap_questionnaire_draft_answers_pk",
+      columns: [table.draftId, table.questionId],
+    }),
+    foreignKey({
+      name: "gap_questionnaire_draft_answers_draft_fk",
+      columns: [table.draftId],
+      foreignColumns: [gapQuestionnaireDrafts.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_questionnaire_draft_answers_question_option_fk",
+      columns: [table.questionId, table.questionOptionId],
+      foreignColumns: [questionOptions.questionId, questionOptions.id],
+    }).onDelete("restrict"),
+    index("gap_questionnaire_draft_answers_option_idx").on(
+      table.questionOptionId,
+    ),
+  ],
+);
+
+export const assessmentRequirementEvaluations = pgTable.withRLS(
+  "assessment_requirement_evaluations",
+  {
+    assessmentRevisionId: uuid("assessment_revision_id").notNull(),
+    requirementVersionId: uuid("requirement_version_id").notNull(),
+    status: gapFindingStatusEnum("status").notNull(),
+    evaluatorKind: text("evaluator_kind").notNull(),
+    evaluatorVersion: integer("evaluator_version").notNull(),
+    inputHash: text("input_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "assessment_requirement_evaluations_pk",
+      columns: [table.assessmentRevisionId, table.requirementVersionId],
+    }),
+    foreignKey({
+      name: "assessment_requirement_evaluations_revision_fk",
+      columns: [table.assessmentRevisionId],
+      foreignColumns: [assessmentRevisions.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "assessment_requirement_evaluations_requirement_fk",
+      columns: [table.requirementVersionId],
+      foreignColumns: [gapRequirementVersions.id],
+    }).onDelete("restrict"),
+    check(
+      "assessment_requirement_evaluations_version_positive",
+      sql`${table.evaluatorVersion} > 0`,
     ),
   ],
 );

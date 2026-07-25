@@ -23,10 +23,12 @@ async function main() {
     const [counts] = await sql<{
       questions: number;
       options: number;
+      tooltips: number;
     }[]>`
       select
         (select count(*)::int from questions q where q.questionnaire_version_id = r.questionnaire_version_id) as questions,
-        (select count(*)::int from question_options qo join questions q on q.id = qo.question_id where q.questionnaire_version_id = r.questionnaire_version_id) as options
+        (select count(*)::int from question_options qo join questions q on q.id = qo.question_id where q.questionnaire_version_id = r.questionnaire_version_id) as options,
+        (select count(*)::int from questions q where q.questionnaire_version_id = r.questionnaire_version_id and q.tooltip_content_revision_id is not null) as tooltips
       from active_compliance_check_releases a
       join compliance_check_releases r on r.id = a.check_release_id
       where a.check_code = 'nis2_applicability'
@@ -86,6 +88,13 @@ async function main() {
         jurisdiction_basis: "de_main_eu_establishment",
         nis2_entity_types: ["de_bsig_domain_name_registry_service_provider"],
       },
+      {
+        ...baseFacts,
+        nis2_entity_types: ["de_bsig_electricity_supplier"],
+        employee_count_bucket: "50_249",
+        sme_figures_verified:
+          "not_applicable_no_partner_or_linked_enterprises",
+      },
     ];
     const outcomes = fixtures.map(
       (facts) => evaluateRuleSet(row.rules, { facts }).outcome,
@@ -95,6 +104,7 @@ async function main() {
       "important_entity",
       "not_directly_in_scope",
       "clarification_required",
+      "important_entity",
     ];
 
     if (JSON.stringify(outcomes) !== JSON.stringify(expected)) {
@@ -104,6 +114,7 @@ async function main() {
     }
 
     const submissionOutcomes: string[] = [];
+    const submissionSizes: string[] = [];
     const stableKeyByFactKey: Record<string, string> = {
       eu_activity: "bc.eu_activity",
       jurisdiction_country: "bc.jurisdiction_country",
@@ -149,11 +160,58 @@ async function main() {
         { runtimeReleaseReader: directRuntimeReleaseReader },
       );
       submissionOutcomes.push(submission.result.result.outcome);
+      submissionSizes.push(submission.result.result.sizeClassification);
     }
 
     if (JSON.stringify(submissionOutcomes) !== JSON.stringify(expected)) {
       throw new Error(
         `Unexpected persisted submission outcomes: ${JSON.stringify(submissionOutcomes)}`,
+      );
+    }
+    if (submissionSizes.at(-1) !== "medium") {
+      throw new Error(
+        `No-related-enterprises submission has unexpected size: ${submissionSizes.at(-1)}`,
+      );
+    }
+
+    const localizedQuestionnaires = await Promise.all(
+      (["de", "en"] as const).map(async (locale) => {
+        const questionnaire = await getApplicabilityQuestionnaireForGuest(
+          locale,
+          { runtimeReleaseReader: directRuntimeReleaseReader },
+        );
+        if (!questionnaire?.guestSession) {
+          throw new Error(`${locale} guest questionnaire is unavailable`);
+        }
+        smokeGuestIds.push(questionnaire.guestSession.id);
+        return questionnaire;
+      }),
+    );
+    const [germanQuestionnaire, englishQuestionnaire] = localizedQuestionnaires;
+    if (
+      germanQuestionnaire.questions.some((question) => !question.tooltipText) ||
+      englishQuestionnaire.questions.some((question) => !question.tooltipText)
+    ) {
+      throw new Error("A localized guest question is missing tooltip text");
+    }
+    if (
+      germanQuestionnaire.questions[0]?.tooltipText ===
+      englishQuestionnaire.questions[0]?.tooltipText
+    ) {
+      throw new Error("German and English tooltips were not localized");
+    }
+    const questionNine = germanQuestionnaire.questions.find(
+      (question) => question.stableKey === "bc.sme_figures_verified",
+    );
+    if (
+      !questionNine?.options.some(
+        (option) =>
+          option.stableValue ===
+          "not_applicable_no_partner_or_linked_enterprises",
+      )
+    ) {
+      throw new Error(
+        "Question 9 does not offer the no-related-enterprises option",
       );
     }
 
@@ -164,7 +222,8 @@ async function main() {
     if (
       parsedRuleSet.kind !== "nis2_scope_v3" ||
       parsedRuleSet.entityTypes?.length !== 70 ||
-      counts.questions !== 12
+      counts.questions !== 12 ||
+      counts.tooltips !== 12
     ) {
       throw new Error("Seeded NIS2 definition does not match expectations");
     }
@@ -172,10 +231,12 @@ async function main() {
     console.log(
       JSON.stringify({
         questions: counts.questions,
+        tooltips: counts.tooltips,
         options: counts.options,
         entityTypes: parsedRuleSet.entityTypes.length,
         outcomes,
         submissionOutcomes,
+        submissionSizes,
       }),
     );
   } finally {

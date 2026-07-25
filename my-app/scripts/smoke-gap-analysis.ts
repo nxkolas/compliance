@@ -10,11 +10,22 @@ async function main() {
       release_code: string;
       version_label: string;
       requirement_count: number;
+      question_count: number;
+      requirement_question_mapping_count: number;
+      legal_mapping_count: number;
       rule_count: number;
     }[]>`
       select r.release_code, r.version_label,
         (select count(*)::int from gap_requirement_set_members m
           where m.requirement_set_version_id = r.requirement_set_version_id) as requirement_count,
+        (select count(*)::int from questions q
+          where q.questionnaire_version_id = r.questionnaire_version_id) as question_count,
+        (select count(*)::int from gap_requirement_question_mappings m
+          where m.gap_analysis_release_id = r.id) as requirement_question_mapping_count,
+        (select count(*)::int
+          from gap_question_legal_provisions l
+          join questions q on q.id = l.question_id
+          where q.questionnaire_version_id = r.questionnaire_version_id) as legal_mapping_count,
         (select count(*)::int from gap_analysis_release_applicability_rules ar
           where ar.gap_analysis_release_id = r.id) as rule_count
       from active_gap_analysis_releases a
@@ -22,8 +33,15 @@ async function main() {
       where a.release_code = 'nis2-gap'
     `;
     if (!release) throw new Error("No active nis2-gap release");
-    if (release.requirement_count !== 4 || release.rule_count !== 4) {
-      throw new Error("The active demo release is incomplete");
+    if (
+      release.version_label !== "guided-v4" ||
+      release.requirement_count !== 10 ||
+      release.question_count !== 31 ||
+      release.requirement_question_mapping_count !== 31 ||
+      release.legal_mapping_count < 31 ||
+      release.rule_count !== 10
+    ) {
+      throw new Error("The active guided-v4 release is incomplete");
     }
     const [vector] = await sql<{ installed: boolean }[]>`
       select exists(select 1 from pg_extension where extname = 'vector') as installed
@@ -35,6 +53,11 @@ async function main() {
     if (!bucket || bucket.public) throw new Error("Private evidence bucket is unavailable");
     const protectedTables = [
       "gap_analysis_releases",
+      "gap_requirement_question_mappings",
+      "gap_question_legal_provisions",
+      "gap_questionnaire_drafts",
+      "gap_questionnaire_draft_answers",
+      "assessment_requirement_evaluations",
       "gap_requirements",
       "gap_requirement_versions",
       "documents",

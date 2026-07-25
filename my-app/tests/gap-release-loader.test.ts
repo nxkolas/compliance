@@ -18,6 +18,7 @@ const { mockedDb, findTranslations } = vi.hoisted(() => {
         questionOptions: { findMany: vi.fn() },
         contentTranslations: { findMany: findTranslations },
         gapAnalysisReleaseApplicabilityRules: { findMany: vi.fn() },
+        gapRequirementQuestionMappings: { findMany: vi.fn() },
       },
       select: vi.fn(),
     },
@@ -112,8 +113,15 @@ describe("Gap release loader", () => {
         requirementVersionId: "requirement-version",
         conditions: {
           applicabilityOutcomeCodes: ["essential_entity"],
-          questionStableKeys: ["question"],
         },
+      },
+    ]);
+    mockedDb.query.gapRequirementQuestionMappings.findMany.mockResolvedValue([
+      {
+        gapAnalysisReleaseId: "release",
+        requirementVersionId: "requirement-version",
+        questionId: "question-id",
+        position: 1,
       },
     ]);
     const members = [
@@ -125,19 +133,29 @@ describe("Gap release loader", () => {
         criticality: "high",
         titleContentRevisionId: "requirement-title",
         requirementTextContentRevisionId: "requirement-text",
-        legalReferences: [],
       },
     ];
-    const query = {
+    const memberQuery = {
       from: vi.fn(),
       innerJoin: vi.fn(),
       where: vi.fn(),
       orderBy: vi.fn(async () => members),
     };
-    query.from.mockReturnValue(query);
-    query.innerJoin.mockReturnValue(query);
-    query.where.mockReturnValue(query);
-    mockedDb.select.mockReturnValue(query);
+    memberQuery.from.mockReturnValue(memberQuery);
+    memberQuery.innerJoin.mockReturnValue(memberQuery);
+    memberQuery.where.mockReturnValue(memberQuery);
+    const legalQuery = {
+      from: vi.fn(),
+      innerJoin: vi.fn(),
+      where: vi.fn(),
+      orderBy: vi.fn(async () => []),
+    };
+    legalQuery.from.mockReturnValue(legalQuery);
+    legalQuery.innerJoin.mockReturnValue(legalQuery);
+    legalQuery.where.mockReturnValue(legalQuery);
+    mockedDb.select
+      .mockReturnValueOnce(memberQuery)
+      .mockReturnValueOnce(legalQuery);
   });
 
   it("loads all requirement wording in the existing bounded translation query", async () => {

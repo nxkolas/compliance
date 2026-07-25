@@ -28,6 +28,8 @@ export type Nis2SeedQuestion = {
   questionTextEn: string;
   helpText?: string;
   helpTextEn?: string;
+  tooltipText: string;
+  tooltipTextEn: string;
   answerType: "single_choice" | "multi_choice";
   required: boolean;
   options: Nis2SeedOption[];
@@ -272,6 +274,8 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     questionTextEn: "Does your organization provide relevant services or carry out relevant activities within the European Union?",
     helpText: "NIS2 setzt grundsätzlich eine Tätigkeit oder Dienstleistung innerhalb der EU voraus.",
     helpTextEn: "NIS2 generally requires an activity or service within the EU.",
+    tooltipText: "Gemeint ist, ob Ihre Organisation innerhalb der EU-Leistungen anbietet oder dort tätig ist. Dazu zählen beispielsweise Dienstleistungen, Standorte oder Niederlassungen in einem EU-Mitgliedstaat.",
+    tooltipTextEn: "This asks whether your organization offers services or operates within the EU. This includes, for example, services, sites or establishments in an EU Member State.",
     answerType: "single_choice",
     required: true,
     options: yesNoUnsureOptions,
@@ -283,8 +287,10 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     position: 2,
     questionText: "Welche der rechtlich definierten Einrichtungsarten treffen auf Ihre Organisation zu?",
     questionTextEn: "Which legally defined entity types apply to your organization?",
-    helpText: "Wählen Sie alle passenden Tätigkeiten. Die Sektorüberschriften dienen nur der Gruppierung; entscheidend ist die konkrete Einrichtungsart.",
-    helpTextEn: "Select every applicable activity. Sector headings only group the choices; the exact entity type determines scope.",
+    helpText: "Wählen Sie alle passenden Tätigkeiten. Die Sektor-Titel dienen nur der Gruppierung; entscheidend ist die konkrete Einrichtungsart.",
+    helpTextEn: "Select all applicable activities. Sector titles are only used for grouping; the specific entity type is decisive.",
+    tooltipText: "Mit „Einrichtungsart“ ist nicht die Rechtsform wie GmbH oder AG gemeint. Entscheidend ist, welche konkreten Leistungen Ihre Organisation anbietet, beispielsweise Stromversorgung, Cloud-Dienste oder Rechenzentrumsbetrieb. Mehrere Einrichtungsarten können gleichzeitig zutreffen.",
+    tooltipTextEn: "“Entity type” does not mean a legal form such as a GmbH or AG. What matters is which specific services your organization offers, such as electricity supply, cloud services or data-centre operation. More than one entity type may apply at the same time.",
     answerType: "multi_choice",
     required: true,
     options: entityTypeOptions,
@@ -300,8 +306,10 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     position: 3,
     questionText: "Welcher EU-Mitgliedstaat ist für diese Prüfung hauptsächlich zuständig?",
     questionTextEn: "Which EU Member State is primarily competent for this assessment?",
-    helpText: "Diese Version kann relevante EU-Tätigkeiten nur für die als unterstützt gekennzeichneten Länder national einstufen. Derzeit ist ein vollständiges nationales Profil für Deutschland hinterlegt.",
-    helpTextEn: "This release can nationally classify relevant EU activities only for countries marked as supported. A complete national profile is currently available for Germany.",
+    helpText: "Für Deutschland ist ein vollständiges nationales Profil hinterlegt. Andere Staaten werden zunächst nach dem EU-Kern geprüft.",
+    helpTextEn: "A complete national profile is available for Germany. Other countries are initially assessed against the EU core.",
+    tooltipText: "Wählen Sie den EU-Mitgliedstaat aus, der hauptsächlich für Ihre Organisation zuständig ist. Häufig ist das der Staat, in dem sich der Hauptsitz oder die wichtigste Niederlassung befindet. Für Deutschland berücksichtigt der Check zusätzlich die nationalen Regelungen.",
+    tooltipTextEn: "Select the EU Member State that is primarily competent for your organization. This is often the country in which the head office or most important establishment is located. For Germany, the check also takes the national rules into account.",
     answerType: "single_choice",
     required: true,
     options: countryOptions,
@@ -319,6 +327,8 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     questionTextEn: "What is the basis for that Member State's jurisdiction?",
     helpText: "Die Zuständigkeit richtet sich je nach Einrichtungsart nach Niederlassung, Dienstleistungsort, Hauptniederlassung oder EU-Vertreter.",
     helpTextEn: "Depending on the entity type, jurisdiction follows establishment, service location, main establishment or an EU representative.",
+    tooltipText: "Je nach Tätigkeit gelten unterschiedliche Regeln dafür, welcher Staat zuständig ist. Entscheidend kann beispielsweise der Sitz einer Niederlassung, der Ort der Dienstleistung, die Hauptniederlassung oder ein benannter Vertreter innerhalb der EU sein.",
+    tooltipTextEn: "Different rules determine which country is competent depending on the activity. The decisive factor may be, for example, the location of an establishment, the place where a service is provided, the main establishment or a designated representative within the EU.",
     answerType: "single_choice",
     required: true,
     options: [
@@ -343,6 +353,8 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     questionTextEn: "Has your organization received a special authority classification?",
     helpText: "Gemeint sind formale Einstufungen durch einen Mitgliedstaat oder eine Benennung nach der CER-Richtlinie, nicht die eigene Einschätzung der Ausfallfolgen.",
     helpTextEn: "This means a formal Member-State classification or CER designation, not your own assessment of outage impact.",
+    tooltipText: "Wählen Sie hier eine Einstufung aus, wenn eine Behörde oder ein EU-Mitgliedstaat Ihre Organisation ausdrücklich als besonders relevant eingestuft hat. Die eigene Einschätzung, dass ein Ausfall schwerwiegende Folgen hätte, reicht dafür nicht aus.",
+    tooltipTextEn: "Select a classification here if an authority or an EU Member State has expressly classified your organization as particularly relevant. Your own assessment that an outage would have serious consequences is not sufficient.",
     answerType: "single_choice",
     required: true,
     options: [
@@ -367,6 +379,8 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     questionTextEn: "How many employees does the relevant enterprise have?",
     helpText: "Verwenden Sie die nach der KMU-Empfehlung maßgebliche Jahresarbeitseinheitenzahl.",
     helpTextEn: "Use the annual-work-unit count relevant under the SME Recommendation.",
+    tooltipText: "Gemeint ist die für die Unternehmensgröße maßgebliche Zahl der Mitarbeitenden. Dabei können je nach Unternehmensstruktur auch verbundene Unternehmen oder Partnerunternehmen berücksichtigt werden. Wählen Sie „Unsicher“, wenn Ihnen die genaue Zahl nicht bekannt ist.",
+    tooltipTextEn: "This means the employee count relevant for determining company size. Depending on the company structure, linked enterprises or partner enterprises may also need to be taken into account. Select “Unsure” if you do not know the exact figure.",
     answerType: "single_choice",
     required: true,
     options: [
@@ -383,6 +397,10 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     position: 7,
     questionText: "Wie hoch ist der maßgebliche Jahresumsatz?",
     questionTextEn: "What is the relevant annual turnover?",
+    helpText: "Geben Sie den für die Größenbestimmung maßgeblichen Jahresumsatz an.",
+    helpTextEn: "Enter the annual turnover relevant for determining company size.",
+    tooltipText: "Gemeint ist der Jahresumsatz, der für die Bestimmung der Unternehmensgröße berücksichtigt wird. Bei verbundenen Unternehmen oder Partnerunternehmen müssen möglicherweise weitere Umsätze ganz oder teilweise einbezogen werden.",
+    tooltipTextEn: "This means the annual turnover taken into account when determining company size. For linked enterprises or partner enterprises, additional turnover may need to be included in full or in part.",
     answerType: "single_choice",
     required: true,
     options: [
@@ -399,6 +417,10 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     position: 8,
     questionText: "Wie hoch ist die maßgebliche Jahresbilanzsumme?",
     questionTextEn: "What is the relevant annual balance-sheet total?",
+    helpText: "Geben Sie die für die Größenbestimmung maßgebliche Jahresbilanzsumme an.",
+    helpTextEn: "Enter the annual balance-sheet total relevant for determining company size.",
+    tooltipText: "Die Jahresbilanzsumme finden Sie in der Bilanz des letzten abgeschlossenen Geschäftsjahres. Bei verbundenen Unternehmen oder Partnerunternehmen müssen möglicherweise weitere Werte ganz oder teilweise berücksichtigt werden.",
+    tooltipTextEn: "The annual balance-sheet total can be found in the balance sheet for the most recently completed financial year. For linked enterprises or partner enterprises, additional figures may need to be taken into account in full or in part.",
     answerType: "single_choice",
     required: true,
     options: [
@@ -413,13 +435,22 @@ export const nis2Questions: Nis2SeedQuestion[] = [
   {
     stableKey: "bc.sme_figures_verified",
     position: 9,
-    questionText: "Wurden diese Größenangaben nach der Empfehlung 2003/361/EG einschließlich erforderlicher Partner- und verbundener Unternehmen ermittelt?",
-    questionTextEn: "Were these size figures calculated under Recommendation 2003/361/EC, including required partner and linked enterprises?",
-    helpText: "Eine bloße Konzernzugehörigkeit entscheidet nicht über NIS2; maßgeblich sind die korrekt ermittelten Größenwerte.",
-    helpTextEn: "Group membership alone does not determine NIS2 scope; the correctly calculated size figures do.",
+    questionText: "Beziehen sich die angegebenen Unternehmensgrößen auch auf verbundene Unternehmen oder Partnerunternehmen?",
+    questionTextEn: "Do the stated company-size figures also include linked enterprises or partner enterprises?",
+    helpText: "Eine bloße Konzernzugehörigkeit entscheidet nicht über NIS2. Entscheidend ist, dass die Mitarbeiteranzahl und Finanzwerte korrekt ermittelt wurden.",
+    helpTextEn: "Mere membership of a corporate group does not determine NIS2 applicability. What matters is that the employee count and financial figures have been calculated correctly.",
+    tooltipText: "Gehört Ihre Organisation zu einer Unternehmensgruppe oder bestehen Beteiligungen an anderen Unternehmen, müssen deren Mitarbeiteranzahlen, Umsätze und Bilanzsummen möglicherweise ganz oder teilweise mitgerechnet werden. Entscheidend sind die korrekt ermittelten Gesamtwerte – nicht allein die Zugehörigkeit zu einem Konzern.",
+    tooltipTextEn: "If your organization belongs to a corporate group or has holdings in other companies, their employee counts, turnover and balance-sheet totals may need to be included in full or in part. What matters is that the total figures are calculated correctly, not merely that the organization belongs to a group.",
     answerType: "single_choice",
     required: true,
-    options: yesNoUnsureOptions,
+    options: [
+      ...yesNoUnsureOptions,
+      {
+        stableValue: "not_applicable_no_partner_or_linked_enterprises",
+        label: "Nicht zutreffend – keine Partner- oder verbundenen Unternehmen",
+        labelEn: "Not applicable – no partner or linked enterprises",
+      },
+    ],
     factKey: "sme_figures_verified",
     config: { section: "size", ui: { control: "buttons" }, visibleWhen: visibleForEuActivity },
   },
@@ -430,6 +461,8 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     questionTextEn: "Is your organization subject to a prevailing or sector-specific cybersecurity regime?",
     helpText: "Diese Regelwerke ändern nicht automatisch die NIS2-Einstufung, können aber einzelne Pflichten ersetzen oder verlagern.",
     helpTextEn: "These regimes do not automatically change the NIS2 classification, but may replace or redirect individual duties.",
+    tooltipText: "Für bestimmte Branchen gelten bereits besondere Vorschriften zur Cybersicherheit. Diese können einzelne NIS2-Anforderungen ersetzen oder anders regeln. Die Organisation ist dadurch aber nicht automatisch von NIS2 ausgenommen.",
+    tooltipTextEn: "Certain sectors are already subject to specific cybersecurity provisions. These may replace individual NIS2 requirements or regulate them differently. This does not, however, automatically exempt the organization from NIS2.",
     answerType: "single_choice",
     required: true,
     options: [
@@ -449,6 +482,8 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     questionTextEn: "Does your organization provide services to essential or important entities?",
     helpText: "Diese Antwort beeinflusst nur den separaten Hinweis zur indirekten Lieferkettenbetroffenheit.",
     helpTextEn: "This answer only affects the separate indirect supply-chain exposure notice.",
+    tooltipText: "Gemeint ist, ob Ihre Organisation Produkte oder Dienstleistungen für Unternehmen erbringt, die selbst unmittelbar unter NIS2 fallen. Dadurch können Anforderungen über Verträge oder die Lieferkette an Ihre Organisation weitergegeben werden. Die Antwort ändert jedoch nicht automatisch Ihre gesetzliche Einstufung.",
+    tooltipTextEn: "This asks whether your organization provides products or services to companies that are themselves directly within NIS2 scope. Requirements may therefore be passed on to your organization through contracts or the supply chain. The answer does not, however, automatically change your statutory classification.",
     answerType: "single_choice",
     required: true,
     options: yesNoUnsureOptions,
@@ -462,6 +497,8 @@ export const nis2Questions: Nis2SeedQuestion[] = [
     questionTextEn: "Do customers contractually require information-security measures or related evidence?",
     helpText: "Vertragliche Anforderungen können eine indirekte Betroffenheit begründen, ändern aber nicht die gesetzliche Einstufung.",
     helpTextEn: "Contractual requirements may create indirect exposure but do not change the statutory classification.",
+    tooltipText: "Gemeint ist, ob Kunden von Ihrer Organisation bestimmte Sicherheitsmaßnahmen oder Nachweise verlangen. Beispiele sind Sicherheitskonzepte, Notfallpläne, Zertifizierungen oder ausgefüllte Sicherheitsfragebögen. Solche Anforderungen können durch die Lieferkette entstehen, machen Ihre Organisation aber nicht automatisch unmittelbar NIS2-pflichtig.",
+    tooltipTextEn: "This asks whether customers require specific security measures or evidence from your organization. Examples include security concepts, emergency plans, certifications or completed security questionnaires. Such requirements may arise through the supply chain, but they do not automatically make your organization directly subject to NIS2.",
     answerType: "single_choice",
     required: true,
     options: yesNoUnsureOptions,

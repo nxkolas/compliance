@@ -334,12 +334,16 @@ stable `code` identity, while `gap_requirement_set_versions` requires a
 ## 6. Flexible question model
 
 Implementation status: `questions` and `question_options` are implemented in
-`src/db/schema.ts`. The current seed creates twelve required `single_choice`
-Betroffenheitscheck questions. Question text is stored in German by default,
-English translations live in `questions.config.translations.en`, and option
-translations live in `question_options.metadata.translations.en`. The
-questionnaire preview renders options as buttons by default and as a combobox
-when `config.ui.control` is `select` or the option list is long.
+`src/db/schema.ts`. The current release creates twelve required
+Betroffenheitscheck questions. Localized question text and short descriptions
+are pinned through `question_content_revision_id` and
+`help_content_revision_id`; the optional supplementary tooltip is pinned
+through `tooltip_content_revision_id`. Each reference targets an immutable
+`content_revisions` row with `ON DELETE RESTRICT`, and translations live in
+`content_translations`. `questions.config` contains only UI, validation, and
+visibility configuration. Option labels use the same content-revision model.
+The questionnaire preview renders options as buttons by default and as a
+combobox when `config.ui.control` is `select` or the option list is long.
 
 ```sql
 CREATE TABLE questions (
@@ -349,26 +353,16 @@ CREATE TABLE questions (
     stable_key text NOT NULL,
     position int NOT NULL,
 
-    question_text text NOT NULL,
-    help_text text,
+    question_content_revision_id uuid NOT NULL REFERENCES content_revisions(id) ON DELETE RESTRICT,
+    help_content_revision_id uuid REFERENCES content_revisions(id) ON DELETE RESTRICT,
+    tooltip_content_revision_id uuid REFERENCES content_revisions(id) ON DELETE RESTRICT,
 
-    answer_type text NOT NULL CHECK (
-        answer_type IN (
-            'single_choice',
-            'multi_choice',
-            'text',
-            'long_text',
-            'number',
-            'boolean',
-            'date',
-            'file',
-            'json'
-        )
-    ),
+    answer_type question_answer_type NOT NULL,
 
     required boolean NOT NULL DEFAULT false,
 
-    -- For conditional questions, validations, UI hints, etc.
+    -- Presentation controls, visibility conditions, and validation only.
+    -- Localized prose does not belong in this JSON.
     config jsonb NOT NULL DEFAULT '{}',
 
     created_at timestamptz NOT NULL DEFAULT now(),

@@ -1,0 +1,11 @@
+[
+  {
+    "type": "confirm_data_loss",
+    "kind": "column",
+    "entity": [
+      "public",
+      "gap_requirement_versions",
+      "legal_references"
+    ]
+  }
+]

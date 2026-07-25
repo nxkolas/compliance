@@ -38,6 +38,119 @@ export type GroundedGapModelResponse = {
   findings: Record<string, z.infer<typeof groundedGapModelFindingSchema>>;
 };
 
+const groundedGapModelFindingV5Schema = gapModelFindingSchema
+  .omit({
+    requirementCode: true,
+    status: true,
+    citations: true,
+  })
+  .extend({
+    legalCitation: z.string().trim().min(1),
+    citations: z.array(z.string().trim().min(1)),
+  })
+  .strict();
+
+export type GroundedGapModelResponseV5 = {
+  findings: Record<
+    string,
+    z.infer<typeof groundedGapModelFindingV5Schema>
+  >;
+};
+
+export type GapRequirementCitationPolicy = {
+  requirementCode: string;
+  permittedCitationIds: string[];
+  legalCitationIds: string[];
+};
+
+export function buildGapModelResponseSchemaV5(
+  citationPolicies: GapRequirementCitationPolicy[],
+) {
+  if (citationPolicies.length === 0) {
+    throw new Error("At least one requirement code is required");
+  }
+  const requirementCodes = citationPolicies.map(
+    (policy) => policy.requirementCode,
+  );
+  if (new Set(requirementCodes).size !== requirementCodes.length) {
+    throw new Error("Requirement citation policies must be unique");
+  }
+  return z.object({
+    findings: z
+      .object(
+        Object.fromEntries(
+          citationPolicies.map((policy) => {
+            const permittedCitationIds = [...new Set(
+              policy.permittedCitationIds,
+            )];
+            const permitted = new Set(permittedCitationIds);
+            const legalCitationIds = [...new Set(policy.legalCitationIds)];
+            if (
+              permittedCitationIds.length === 0 ||
+              legalCitationIds.length === 0 ||
+              legalCitationIds.some((citationId) => !permitted.has(citationId))
+            ) {
+              throw new Error(
+                `Requirement ${policy.requirementCode} needs permitted legal citations`,
+              );
+            }
+            return [
+              policy.requirementCode,
+              groundedGapModelFindingV5Schema
+                .omit({
+                  legalCitation: true,
+                  citations: true,
+                })
+                .extend({
+                  legalCitation: z.enum(
+                    legalCitationIds as [string, ...string[]],
+                  ),
+                  citations: z.array(
+                    z.enum(
+                      permittedCitationIds as [string, ...string[]],
+                    ),
+                  ),
+                })
+                .strict(),
+            ];
+          }),
+        ),
+      )
+      .strict(),
+  }) as z.ZodType<GroundedGapModelResponseV5>;
+}
+
+export function normalizeGroundedGapModelResponseV5(
+  value: GroundedGapModelResponseV5,
+) {
+  return {
+    findings: Object.entries(value.findings).map(
+      ([requirementCode, finding]) => {
+        const { legalCitation, citations, ...generated } = finding;
+        return {
+          requirementCode,
+          ...generated,
+          citations: [...new Set([legalCitation, ...citations])],
+        };
+      },
+    ),
+  };
+}
+
+export function extractGapGeneratedProseV5(
+  value: GroundedGapModelResponseV5,
+): string[] {
+  return normalizeGroundedGapModelResponseV5(value).findings.flatMap(
+    (finding) => [
+      finding.rationale,
+      finding.recommendation,
+      ...finding.assumptions,
+      ...finding.contradictions,
+      ...finding.questionnaireDisagreements,
+    ],
+  );
+}
+
 export function buildGapModelResponseSchema(requirementCodes: string[]) {
   if (requirementCodes.length === 0) throw new Error("At least one requirement code is required");
   const findings = Object.fromEntries(

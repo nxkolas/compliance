@@ -28,7 +28,13 @@ export type GapGenerationEnqueueResponse = z.infer<typeof gapGenerationEnqueueRe
 export const gapEntitySchema = z.object({ id: z.uuid() }).loose();
 export const gapQuestionnaireInputSchema = z.object({
   assessmentId: z.uuid(),
-  answers: z.array(z.object({ questionId: z.uuid(), optionId: z.uuid() })).min(1),
+  draftId: z.uuid(),
+  expectedVersion: z.number().int().positive(),
+});
+export const gapQuestionnaireDraftAnswerSchema = z.object({
+  draftId: z.uuid(),
+  optionId: z.uuid(),
+  expectedVersion: z.number().int().positive(),
 });
 export const gapCorrectionInputSchema = z.object({
   corrections: z.array(z.object({

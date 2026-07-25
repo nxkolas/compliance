@@ -26,7 +26,7 @@ export type GroundedClaim = {
 };
 
 export type GroundedOutputContract<T> = {
-  schema: z.ZodType<T>;
+  schema(context: GroundingContextItem[]): z.ZodType<T>;
   claims(output: T): GroundedClaim[];
   allowConflictingClaim?: (output: T, claim: GroundedClaim) => boolean;
 } & (
@@ -39,7 +39,11 @@ export type GroundedOutputContract<T> = {
     }
 );
 
-export type QueryUnit = { id: string; query: string };
+export type QueryUnit = {
+  id: string;
+  query: string;
+  retrievalQuery?: string;
+};
 
 export type GroundedProvider = {
   mode: string;

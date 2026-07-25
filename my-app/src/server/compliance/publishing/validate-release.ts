@@ -84,6 +84,11 @@ export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
     if (!factKeys.has(question.factKey)) errors.push(`Unknown fact ${question.factKey} for question ${question.stableKey}`);
     requireContent(contentByKey, question.questionContentKey, errors);
     if (question.helpContentKey) requireContent(contentByKey, question.helpContentKey, errors);
+    if (question.tooltipContentKey) {
+      requireContent(contentByKey, question.tooltipContentKey, errors);
+    } else {
+      errors.push(`Missing tooltip content key for question ${question.stableKey}`);
+    }
     const condition = getVisibilityCondition(question.config);
     if (condition && !seenQuestionKeys.has(condition.questionStableKey)) errors.push(`Question ${question.stableKey} references a non-prior visibility question ${condition.questionStableKey}`);
     seenQuestionKeys.add(question.stableKey);
