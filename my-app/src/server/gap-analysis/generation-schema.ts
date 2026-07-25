@@ -42,6 +42,11 @@ const groundedGapModelFindingV5Schema = gapModelFindingSchema
   .omit({
     requirementCode: true,
     status: true,
+    citations: true,
+  })
+  .extend({
+    legalCitation: z.string().trim().min(1),
+    citations: z.array(z.string().trim().min(1)),
   })
   .strict();
 
@@ -52,18 +57,63 @@ export type GroundedGapModelResponseV5 = {
   >;
 };
 
-export function buildGapModelResponseSchemaV5(requirementCodes: string[]) {
-  if (requirementCodes.length === 0) {
+export type GapRequirementCitationPolicy = {
+  requirementCode: string;
+  permittedCitationIds: string[];
+  legalCitationIds: string[];
+};
+
+export function buildGapModelResponseSchemaV5(
+  citationPolicies: GapRequirementCitationPolicy[],
+) {
+  if (citationPolicies.length === 0) {
     throw new Error("At least one requirement code is required");
+  }
+  const requirementCodes = citationPolicies.map(
+    (policy) => policy.requirementCode,
+  );
+  if (new Set(requirementCodes).size !== requirementCodes.length) {
+    throw new Error("Requirement citation policies must be unique");
   }
   return z.object({
     findings: z
       .object(
         Object.fromEntries(
-          requirementCodes.map((requirementCode) => [
-            requirementCode,
-            groundedGapModelFindingV5Schema,
-          ]),
+          citationPolicies.map((policy) => {
+            const permittedCitationIds = [...new Set(
+              policy.permittedCitationIds,
+            )];
+            const permitted = new Set(permittedCitationIds);
+            const legalCitationIds = [...new Set(policy.legalCitationIds)];
+            if (
+              permittedCitationIds.length === 0 ||
+              legalCitationIds.length === 0 ||
+              legalCitationIds.some((citationId) => !permitted.has(citationId))
+            ) {
+              throw new Error(
+                `Requirement ${policy.requirementCode} needs permitted legal citations`,
+              );
+            }
+            return [
+              policy.requirementCode,
+              groundedGapModelFindingV5Schema
+                .omit({
+                  legalCitation: true,
+                  citations: true,
+                })
+                .extend({
+                  legalCitation: z.enum(
+                    legalCitationIds as [string, ...string[]],
+                  ),
+                  citations: z.array(
+                    z.enum(
+                      permittedCitationIds as [string, ...string[]],
+                    ),
+                  ),
+                })
+                .strict(),
+            ];
+          }),
         ),
       )
       .strict(),
@@ -75,10 +125,14 @@ export function normalizeGroundedGapModelResponseV5(
 ) {
   return {
     findings: Object.entries(value.findings).map(
-      ([requirementCode, finding]) => ({
-        requirementCode,
-        ...finding,
-      }),
+      ([requirementCode, finding]) => {
+        const { legalCitation, citations, ...generated } = finding;
+        return {
+          requirementCode,
+          ...generated,
+          citations: [...new Set([legalCitation, ...citations])],
+        };
+      },
     ),
   };
 }

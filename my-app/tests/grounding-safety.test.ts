@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildGroundedPrompt } from "@/src/server/ai/grounding/context-builder";
 import { defaultOrganizationAiProviderPolicy, selectGroundedProvider } from "@/src/server/ai/grounding/provider-policy";
-import { validateGroundedClaims } from "@/src/server/ai/grounding/validation";
+import {
+  safeGroundingFailureMessage,
+  toGroundingFailureDiagnostic,
+  validateGroundedClaims,
+} from "@/src/server/ai/grounding/validation";
 import type { GroundedProvider, GroundingContextItem } from "@/src/server/ai/grounding/types";
 
 const provider = (mode: string): GroundedProvider => ({
@@ -72,6 +76,49 @@ describe("Grounding Gateway safety", () => {
       claims: [{ key: "binding", queryUnitId: "r1", kind: "legal", binding: true, citationIds: ["LEGAL:2"], text: "must" }],
     });
     expect(result[0].validation).toBe("unsupported");
+  });
+
+  it("projects rejected claims into safe failure diagnostics", () => {
+    const [claim] = validateGroundedClaims({
+      queryUnits: [{ id: "r1", query: "law" }],
+      context: [],
+      claims: [{
+        key: "gap:r1",
+        queryUnitId: "r1",
+        kind: "legal",
+        binding: true,
+        citationIds: [],
+        text: "sensitive generated rationale",
+      }],
+    });
+
+    const diagnostic = toGroundingFailureDiagnostic([claim]);
+
+    expect(diagnostic).toEqual({
+      claims: [{
+        key: "gap:r1",
+        reason: "Legal claim lacks legal authority",
+      }],
+    });
+    expect(JSON.stringify(diagnostic)).not.toContain(
+      "sensitive generated rationale",
+    );
+    const persisted = safeGroundingFailureMessage({
+      code: "GROUNDING_VALIDATION_FAILED",
+      details: {
+        ...diagnostic,
+        generatedProse: "sensitive generated rationale",
+        excerpt: "sensitive source excerpt",
+      },
+    });
+    expect(JSON.parse(persisted)).toEqual({
+      code: "GROUNDING_VALIDATION_FAILED",
+      claims: [{
+        key: "gap:r1",
+        reason: "Legal claim lacks legal authority",
+      }],
+    });
+    expect(persisted).not.toMatch(/sensitive generated|sensitive source/);
   });
 
   it("surfaces conflicting authorities instead of silently choosing one", () => {

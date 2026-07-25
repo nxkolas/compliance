@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type * as z from "zod";
 import type { AiProviderMode } from "@/lib/ai/types";
 import { db } from "@/src/db";
 import { aiProcessingRuns } from "@/src/db/schema";
@@ -12,7 +13,12 @@ import { selectGroundedProvider } from "./provider-policy";
 import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
 import { persistGroundingProvenance } from "./provenance";
 import type { GroundedOutputContract, GroundedProvider, GroundingContextItem, QueryUnit } from "./types";
-import { hasCompleteQueryUnitCoverage, validateGroundedClaims } from "./validation";
+import {
+  hasCompleteQueryUnitCoverage,
+  safeGroundingFailureMessage,
+  toGroundingFailureDiagnostic,
+  validateGroundedClaims,
+} from "./validation";
 import {
   localAggregateLanguageDetector,
   type LanguageDetector,
@@ -66,7 +72,6 @@ export async function runGroundedOperation<T>(input: {
     );
   }
   if (existing?.status === "processing" && existing.validatedOutput !== null) {
-    const output = input.outputContract.schema.parse(existing.validatedOutput);
     const rows = await db.query.aiProcessingRunContext.findMany({ columns: { id: true, runId: true, channel: true, citationId: true, queryUnitId: true, queryHash: true, retrievalRank: true, retrievalScore: true, legalChunkId: true, documentChunkId: true, assessmentAnswerId: true, excerptHash: true, excerptSnapshot: true, disclosedExternally: true, promptPosition: true, createdAt: true },
       where: { RAW: (table, operators) => (eq(table.runId, existing.id)) ?? operators.sql`true` },
       orderBy: { promptPosition: "asc" },
@@ -86,6 +91,9 @@ export async function runGroundedOperation<T>(input: {
         metadata: { queryHash: row.queryHash, recovered: true },
       };
     });
+    const output = input.outputContract
+      .schema(context)
+      .parse(existing.validatedOutput);
     return {
       runId: existing.id,
       output,
@@ -147,6 +155,7 @@ export async function runGroundedOperation<T>(input: {
     };
   });
   const context = [...retrievedContext, ...assertions];
+  const outputSchema = input.outputContract.schema(context);
   const prompt = buildGroundedPrompt(input.queryUnits, context);
   if (input.operation === "gap_analysis") {
     prompt.system += ` ${GAP_GROUNDING_INSTRUCTION} ${gapOutputLocaleInstruction(input.outputLocale)}`;
@@ -189,7 +198,7 @@ export async function runGroundedOperation<T>(input: {
         ? await executeLanguageValidatedProvider({
             provider,
             prompt,
-            schema: input.outputContract.schema,
+            schema: outputSchema,
             expectedLocale: input.outputLocale,
             generatedProse: input.outputContract.generatedProse,
             detector:
@@ -210,7 +219,7 @@ export async function runGroundedOperation<T>(input: {
         : await runLanguageNeutralProvider({
             provider,
             prompt,
-            schema: input.outputContract.schema,
+            schema: outputSchema,
             outputLocale: input.outputLocale,
           });
     const parsed = result.output;
@@ -236,7 +245,14 @@ export async function runGroundedOperation<T>(input: {
       claim.validation !== "supported"
       && !(claim.validation === "conflicting" && input.outputContract.allowConflictingClaim?.(parsed, claim)),
     );
-    if (invalid.length) throw new ApiError(422, "Grounded output contains unsupported claims", { claims: invalid.map((claim) => claim.key) }, "GROUNDING_VALIDATION_FAILED");
+    if (invalid.length) {
+      throw new ApiError(
+        422,
+        "Grounded output contains unsupported claims",
+        toGroundingFailureDiagnostic(invalid),
+        "GROUNDING_VALIDATION_FAILED",
+      );
+    }
     await persistGroundingProvenance({
       runId: run.id,
       context,
@@ -257,7 +273,7 @@ export async function runGroundedOperation<T>(input: {
     await db.update(aiProcessingRuns).set({
       status: "failed",
       errorCode: error instanceof ApiError ? error.code : "GROUNDING_FAILED",
-      errorMessage: "Grounded operation failed.",
+      errorMessage: safeGroundingFailureMessage(error),
       ...(error instanceof LanguagePolicyError
         ? {
             attemptCount: error.attemptCount,
@@ -291,7 +307,7 @@ function initialLanguageValidation(
 async function runLanguageNeutralProvider<T>(input: {
   provider: GroundedProvider;
   prompt: { system: string; prompt: string };
-  schema: GroundedOutputContract<T>["schema"];
+  schema: z.ZodType<T>;
   outputLocale: "de" | "en";
 }) {
   const result = await input.provider.run({

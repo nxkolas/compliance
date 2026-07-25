@@ -7,6 +7,66 @@ export type ClaimValidation = GroundedClaim & {
   claimTextHash: string;
 };
 
+const safeFailureReasons = new Set([
+  "Claim key or query unit is invalid",
+  "Claim cites context not supplied for its query unit",
+  "Legal claim lacks legal authority",
+  "Organization claim lacks organization evidence",
+  "Binding claim relies only on secondary or non-official material",
+  "Conflicting sources require review",
+  "Grounding validation failed",
+]);
+
+export type GroundingFailureDiagnostic = {
+  claims: Array<{
+    key: string;
+    reason: string;
+  }>;
+};
+
+export function toGroundingFailureDiagnostic(
+  claims: ClaimValidation[],
+): GroundingFailureDiagnostic {
+  return {
+    claims: claims.map((claim) => ({
+      key: safeClaimKey(claim.key),
+      reason: safeFailureReasons.has(claim.safeFailureReason ?? "")
+        ? claim.safeFailureReason!
+        : "Grounding validation failed",
+    })),
+  };
+}
+
+export function safeGroundingFailureMessage(error: unknown) {
+  const generic = "Grounded operation failed.";
+  if (!isRecord(error) || error.code !== "GROUNDING_VALIDATION_FAILED") {
+    return generic;
+  }
+  const details = error.details;
+  if (!isRecord(details) || !Array.isArray(details.claims)) return generic;
+  const claims = details.claims.flatMap((claim) => {
+    if (
+      !isRecord(claim) ||
+      typeof claim.key !== "string" ||
+      typeof claim.reason !== "string" ||
+      !safeFailureReasons.has(claim.reason)
+    ) {
+      return [];
+    }
+    return [{
+      key: safeClaimKey(claim.key),
+      reason: claim.reason,
+    }];
+  });
+  if (claims.length !== details.claims.length || claims.length === 0) {
+    return generic;
+  }
+  return JSON.stringify({
+    code: "GROUNDING_VALIDATION_FAILED",
+    claims,
+  });
+}
+
 export function validateGroundedClaims(input: {
   queryUnits: QueryUnit[];
   context: GroundingContextItem[];
@@ -44,6 +104,14 @@ export function validateGroundedClaims(input: {
       safeFailureReason: reason ?? (hasConflict ? "Conflicting sources require review" : undefined),
     };
   });
+}
+
+function safeClaimKey(value: string) {
+  return /^[A-Za-z0-9_.:/-]{1,200}$/.test(value) ? value : "unknown";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 export function hasCompleteQueryUnitCoverage(

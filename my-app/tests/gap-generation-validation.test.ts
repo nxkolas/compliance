@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import * as z from "zod";
 import {
   buildGapModelResponseSchema,
+  buildGapModelResponseSchemaV5,
   deriveFindingSeverity,
   extractGapGeneratedProse,
   normalizeGroundedGapModelResponse,
@@ -53,6 +55,74 @@ describe("gap generation validation", () => {
     const parsed = schema.parse({ findings: { R1: payload, R2: payload } });
     expect(normalizeGroundedGapModelResponse(parsed).findings.map((item) => item.requirementCode))
       .toEqual(["R1", "R2"]);
+  });
+
+  it("requires a requirement-owned legal citation in response schema v5", () => {
+    const schema = buildGapModelResponseSchemaV5([
+      {
+        requirementCode: "R1",
+        permittedCitationIds: ["LEGAL:R1:law", "Q:R1:answer"],
+        legalCitationIds: ["LEGAL:R1:law"],
+      },
+      {
+        requirementCode: "R2",
+        permittedCitationIds: ["LEGAL:R2:law"],
+        legalCitationIds: ["LEGAL:R2:law"],
+      },
+    ]);
+    const response = {
+      findings: {
+        R1: {
+          evidenceSufficiency: "sufficient",
+          rationale: "Begründung",
+          recommendation: "Empfehlung",
+          assumptions: [],
+          legalCitation: "LEGAL:R1:law",
+          citations: ["Q:R1:answer"],
+          contradictions: [],
+          questionnaireDisagreements: [],
+          requiresReview: false,
+        },
+        R2: {
+          evidenceSufficiency: "sufficient",
+          rationale: "Begründung",
+          recommendation: "Empfehlung",
+          assumptions: [],
+          legalCitation: "LEGAL:R2:law",
+          citations: [],
+          contradictions: [],
+          questionnaireDisagreements: [],
+          requiresReview: false,
+        },
+      },
+    };
+
+    expect(schema.safeParse(response).success).toBe(true);
+    expect(
+      schema.safeParse({
+        findings: {
+          ...response.findings,
+          R1: {
+            ...response.findings.R1,
+            legalCitation: "Q:R1:answer",
+          },
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({
+        findings: {
+          ...response.findings,
+          R1: {
+            ...response.findings.R1,
+            citations: ["LEGAL:R2:law"],
+          },
+        },
+      }).success,
+    ).toBe(false);
+    expect(JSON.stringify(z.toJSONSchema(schema))).not.toContain(
+      "prefixItems",
+    );
   });
 
   it("accepts exact coverage and supplied immutable citations", () => {

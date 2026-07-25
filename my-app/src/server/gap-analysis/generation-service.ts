@@ -337,9 +337,35 @@ async function generateGroundedGapResult(input: {
       ? GAP_PROMPT_V5_TEMPLATE
       : undefined,
     outputContract: {
-      schema: serverOwnedStatus
-        ? buildGapModelResponseSchemaV5(queryUnits.map((unit) => unit.id))
-        : buildGapModelResponseSchema(queryUnits.map((unit) => unit.id)),
+      schema(context) {
+        if (!serverOwnedStatus) {
+          return buildGapModelResponseSchema(
+            queryUnits.map((unit) => unit.id),
+          );
+        }
+        return buildGapModelResponseSchemaV5(
+          queryUnits.map((unit) => {
+            const supplied = context.filter(
+              (item) => item.queryUnitId === unit.id,
+            );
+            return {
+              requirementCode: unit.id,
+              permittedCitationIds: supplied.map(
+                (item) => item.citationId,
+              ),
+              legalCitationIds: supplied
+                .filter(
+                  (item) =>
+                    item.channel === "legal" &&
+                    (item.metadata.recovered === true ||
+                      (item.authorityTier !== "curated_secondary" &&
+                        item.translationStatus === "official")),
+                )
+                .map((item) => item.citationId),
+            };
+          }),
+        );
+      },
       languagePolicy: "localized",
       generatedProse: (output) =>
         serverOwnedStatus

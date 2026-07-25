@@ -69,13 +69,20 @@ describe("guided-v4 deterministic category evaluator", () => {
   });
 
   it("rejects a model-supplied status in response schema v5", () => {
-    const schema = buildGapModelResponseSchemaV5(["NIS2-GOV-01"]);
+    const schema = buildGapModelResponseSchemaV5([
+      {
+        requirementCode: "NIS2-GOV-01",
+        permittedCitationIds: ["L:1"],
+        legalCitationIds: ["L:1"],
+      },
+    ]);
     const finding = {
       evidenceSufficiency: "sufficient",
       rationale: "Rationale",
       recommendation: "Recommendation",
       assumptions: [],
-      citations: ["L:1"],
+      legalCitation: "L:1",
+      citations: [],
       contradictions: [],
       questionnaireDisagreements: [],
       requiresReview: false,
@@ -92,4 +99,3 @@ describe("guided-v4 deterministic category evaluator", () => {
     ).toBe(false);
   });
 });
-

@@ -26,7 +26,7 @@ export type GroundedClaim = {
 };
 
 export type GroundedOutputContract<T> = {
-  schema: z.ZodType<T>;
+  schema(context: GroundingContextItem[]): z.ZodType<T>;
   claims(output: T): GroundedClaim[];
   allowConflictingClaim?: (output: T, claim: GroundedClaim) => boolean;
 } & (
