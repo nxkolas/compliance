@@ -81,71 +81,154 @@ export function AppSidebarNav({
       ]
     : [];
 
-  const footerLinks = organizationId
-    ? [
-        {
-          href: `/tool/organizations/${organizationId}/settings`,
-          label: labels.settings,
-          icon: Settings,
-          match: "prefix" as const,
-        },
-        {
-          href: "/tool/help",
-          label: labels.startTutorial,
-          icon: BookOpen,
-          match: "prefix" as const,
-        },
-      ]
-    : [
-        {
-          href: "/tool/help",
-          label: labels.startTutorial,
-          icon: BookOpen,
-          match: "prefix" as const,
-        },
-      ];
+  const settingsLink = organizationId
+    ? {
+        href: `/tool/organizations/${organizationId}/settings`,
+        label: labels.settings,
+        icon: Settings,
+        match: "prefix" as const,
+      }
+    : null;
+
+  const tutorialLink = {
+    href: "/tool/help",
+    label: labels.startTutorial,
+    icon: BookOpen,
+    match: "prefix" as const,
+  };
 
   return (
-    <>
-      <SidebarHeader className="gap-8 px-[55px] pb-8 pt-10">
-        <div className="flex flex-col gap-3">
-          <Link
-            href="/tool/organizations"
-            className="flex items-start gap-3 overflow-hidden"
-          >
-            <span className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg bg-[#E8F1FF] p-2">
-              <Image
-                src="/images/X.svg"
-                alt=""
-                width={24}
-                height={24}
-                className="size-6 object-contain"
-                priority
-              />
-            </span>
-            <span className="flex flex-col gap-1">
-              <span className="whitespace-nowrap text-[32px] font-semibold leading-7 tracking-[-0.439px] text-white">
-                complyX
-              </span>
-              <span className="[font-family:Inter,sans-serif] text-xs font-normal leading-4 text-[#E8F1FF]">
-                {labels.productName}
-              </span>
-            </span>
-          </Link>
-          <p className="[font-family:Inter,sans-serif] text-sm font-normal leading-5 tracking-[-0.15px] text-[#E8F1FF]">
-            {labels.productTagline}
-          </p>
-        </div>
+    <div
+      className="
+        relative
+        h-svh
+        min-h-[800px]
+        w-full
+        overflow-hidden
+        bg-transparent
+        font-['Space_Grotesk']
+      "
+    >
+      {/* Logo und Beschreibung */}
+      <SidebarHeader
+        className="
+          absolute
+          left-[54px]
+          top-[52px]
+          w-72
+          bg-transparent
+          p-0
+        "
+      >
+        <Link
+          href="/tool/organizations"
+          className="
+            inline-flex
+            w-72
+            flex-col
+            items-start
+            justify-start
+            gap-4
+          "
+        >
+          {/* Logozeile */}
+          <div className="flex h-12 w-72 items-start">
+            {/* Roboter */}
+            <div className="relative h-12 w-20 shrink-0">
+  <Image
+    src="/images/robot.svg"
+    alt=""
+    aria-hidden="true"
+    width={80}
+    height={48}
+    className="h-12 w-20 object-contain"
+  />
+</div>
 
-        <div className="min-w-0">
-          {organizationSwitcher}
-        </div>
+{/* comply + Figma-Vector-X */}
+<div className="ml-4 flex h-12 items-center">
+  <span
+    className="
+      whitespace-nowrap
+      font-['Space_Grotesk']
+      text-3xl
+      font-normal
+      leading-7
+      text-white
+    "
+  >
+    comply
+  </span>
+
+  <Image
+    src="/images/comply-x.svg"
+    alt=""
+    aria-hidden="true"
+    width={20}
+    height={28}
+    className="
+      relative
+      -ml-[-2px]
+      -top-[3px]
+      h-7
+      w-5
+      shrink-0
+      object-contain
+    "
+  />
+</div>
+          </div>
+
+          {/* Beschreibung */}
+          <div
+            className="
+              w-72
+              font-['Space_Grotesk']
+              text-sm
+              font-normal
+              leading-5
+              text-indigo-50
+            "
+          >
+            setzt das Puzzle fort, für NIS2-Schutz
+            <br />
+            an jedem Ort.
+          </div>
+        </Link>
       </SidebarHeader>
 
-      <SidebarContent>
-        {mainLinks.length > 0 && (
-          <SidebarGroup className="px-[55px]">
-            <SidebarMenu className="gap-4">
+      {/* Organisationsauswahl */}
+      <div
+        className="
+          absolute
+          left-[54px]
+          top-[231px]
+          h-12
+          w-72
+          min-w-0
+          [&>*]:h-12
+          [&>*]:w-full
+        "
+      >
+        {organizationSwitcher}
+      </div>
+
+      {/* Hauptnavigation */}
+      {mainLinks.length > 0 && (
+        <SidebarContent
+          className="
+            absolute
+            left-[54px]
+            top-[331px]
+            w-72
+            flex-none
+            overflow-visible
+            bg-transparent
+            p-0
+          "
+        >
+          <SidebarGroup className="w-72 p-0">
+            <SidebarMenu className="w-72 gap-4">
               {mainLinks.map((link) => (
                 <SidebarLink
                   key={link.href}
@@ -155,26 +238,68 @@ export function AppSidebarNav({
               ))}
             </SidebarMenu>
           </SidebarGroup>
-        )}
-      </SidebarContent>
+        </SidebarContent>
+      )}
 
-      <SidebarFooter className="p-0 pb-8">
-        <SidebarGroup className="px-[55px]">
-          <SidebarMenu className="gap-4">
-            {footerLinks.map((link) => (
+      {/* Einstellungen, Tutorial und Profil */}
+      <SidebarFooter
+        className="
+          absolute
+          bottom-[54px]
+          left-[54px]
+          w-72
+          bg-transparent
+          p-0
+        "
+      >
+        <SidebarGroup className="w-72 p-0">
+          <SidebarMenu className="w-72 gap-4">
+            {settingsLink ? (
               <SidebarLink
-                key={link.href}
                 currentPath={pathname}
-                {...link}
+                {...settingsLink}
               />
-            ))}
-            <SidebarMenuItem>
-              <div className="min-w-0">{profileMenu}</div>
-            </SidebarMenuItem>
+            ) : (
+              <SidebarStaticItem
+                label={labels.settings}
+                icon={Settings}
+              />
+            )}
+
+            <SidebarLink
+              currentPath={pathname}
+              {...tutorialLink}
+            />
+
+            <SidebarMenuItem className="h-12 w-72">
+  <div
+    className="
+      h-12
+      w-72
+      min-w-0
+
+      [&>*]:h-12
+      [&>*]:w-full
+
+      [&_[data-sidebar=menu-button]]:h-12
+      [&_[data-sidebar=menu-button]]:w-72
+      [&_[data-sidebar=menu-button]]:justify-start
+      [&_[data-sidebar=menu-button]]:gap-[14px]
+      [&_[data-sidebar=menu-button]]:rounded-lg
+      [&_[data-sidebar=menu-button]]:px-[22px]
+      [&_[data-sidebar=menu-button]]:py-0
+
+      [&_[data-sidebar=menu-button]]:hover:bg-[#18275D]
+      [&_[data-sidebar=menu-button]]:hover:text-white
+    "
+  >
+    {profileMenu}
+  </div>
+</SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarFooter>
-    </>
+    </div>
   );
 }
 
@@ -196,20 +321,111 @@ function SidebarLink({
     (match === "prefix" && currentPath.startsWith(`${href}/`));
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className="h-12 w-72">
       <SidebarMenuButton
         asChild
         isActive={isActive}
-        className="h-auto gap-3 rounded-lg px-3 pt-[14.5px] pb-[13.5px] hover:bg-[#252A36] hover:text-[#FBFBFB] hover:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)] hover:[&_svg]:text-[#FBFBFB] data-[active=true]:bg-[#FBFBFB] data-[active=true]:text-[#002BFF] data-[active=true]:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)] data-[active=true]:[&_svg]:text-[#002BFF]"
+        className="
+          relative
+          h-12
+          w-72
+          rounded-lg
+          p-0
+          text-neutral-50
+
+          hover:bg-[#18275D]
+          hover:text-[#FBFBFB]
+          hover:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)]
+          hover:[&_svg]:text-[#FBFBFB]
+
+          data-[active=true]:bg-[#FBFBFB]
+          data-[active=true]:text-[#002BFF]
+          data-[active=true]:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)]
+          data-[active=true]:[&_svg]:text-[#002BFF]
+        "
       >
         <Link
           href={href}
           aria-current={isActive ? "page" : undefined}
+          className="relative block h-12 w-72"
         >
-          <Icon className="size-5 shrink-0 text-foreground/70" />
-          <span className="truncate">{label}</span>
+          <Icon
+            className="
+              absolute
+              left-[22px]
+              top-[14px]
+              size-5
+              shrink-0
+              text-neutral-50
+            "
+          />
+
+          <span
+            className="
+              absolute
+              left-[56px]
+              top-[14.5px]
+              max-w-[205px]
+              truncate
+              text-base
+              font-semibold
+              leading-5
+            "
+          >
+            {label}
+          </span>
         </Link>
       </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function SidebarStaticItem({
+  label,
+  icon: Icon,
+}: {
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}) {
+  return (
+    <SidebarMenuItem className="h-12 w-72">
+      <div
+        aria-disabled="true"
+        className="
+          relative
+          h-12
+          w-72
+          cursor-not-allowed
+          rounded-lg
+          text-neutral-50
+          opacity-70
+        "
+      >
+        <Icon
+          className="
+            absolute
+            left-[22px]
+            top-[15px]
+            size-5
+            text-neutral-50
+          "
+        />
+
+        <span
+          className="
+            absolute
+            left-[56px]
+            top-[14.5px]
+            max-w-[205px]
+            truncate
+            text-base
+            font-semibold
+            leading-5
+          "
+        >
+          {label}
+        </span>
+      </div>
     </SidebarMenuItem>
   );
 }
