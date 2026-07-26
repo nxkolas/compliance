@@ -43,7 +43,30 @@ export type QueryUnit = {
   id: string;
   query: string;
   retrievalQuery?: string;
+  organizationRetrievalQuery?: string;
+  preferredMappedLegalProvisionIds?: string[];
+  preferredMappedLegalProvisionKeys?: string[];
+  legalTierLimits?: Partial<
+    Record<
+      "primary_authority" | "official_guidance" | "curated_secondary",
+      number
+    >
+  >;
 };
+
+export function resolveGroundingRetrievalQuery(
+  unit: QueryUnit,
+  channel: "legal" | "organization_document",
+) {
+  if (channel === "organization_document") {
+    return (
+      unit.organizationRetrievalQuery?.trim() ||
+      unit.retrievalQuery?.trim() ||
+      unit.query
+    );
+  }
+  return unit.retrievalQuery?.trim() || unit.query;
+}
 
 export type GroundedProvider = {
   mode: string;

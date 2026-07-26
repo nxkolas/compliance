@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import type { getCurrentActionPlan } from "@/src/server/action-plans/service";
@@ -42,11 +43,12 @@ export function ActionPlanWorkflow({
   const [error, setError] = useState<string | null>(null);
 
   async function updateItem(
-    item: NonNullable<CurrentPlan>["items"][number],
+    item: NonNullable<CurrentPlan>["categories"][number]["actions"][number],
     changes: {
       status: typeof item.status;
       ownerUserId: string | null;
       dueDate: string | null;
+      executionNotes: string;
     },
   ) {
     setBusy(item.id);
@@ -105,23 +107,28 @@ export function ActionPlanWorkflow({
         </div>
       ) : null}
       <div className="grid gap-4">
-        {current.items.length === 0 ? (
+        {current.categories.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-sm text-muted-foreground">
               {labels.empty}
             </CardContent>
           </Card>
         ) : (
-          current.items.map((item) => (
-            <ActionItem
-              key={item.id}
-              item={item}
-              labels={labels}
-              canContribute={canContribute}
-              busy={busy === item.id}
-              members={members}
-              save={(changes) => updateItem(item, changes)}
-            />
+          current.categories.map((category) => (
+            <section key={category.requirementVersionId} className="grid gap-3">
+              <h2 className="text-lg font-semibold">{category.title}</h2>
+              {category.actions.map((item) => (
+                <ActionItem
+                  key={item.id}
+                  item={item}
+                  labels={labels}
+                  canContribute={canContribute}
+                  busy={busy === item.id}
+                  members={members}
+                  save={(changes) => updateItem(item, changes)}
+                />
+              ))}
+            </section>
           ))
         )}
       </div>
@@ -137,7 +144,7 @@ function ActionItem({
   save,
   members,
 }: {
-  item: NonNullable<CurrentPlan>["items"][number];
+  item: NonNullable<CurrentPlan>["categories"][number]["actions"][number];
   labels: Labels;
   canContribute: boolean;
   busy: boolean;
@@ -149,25 +156,46 @@ function ActionItem({
     status: typeof item.status;
     ownerUserId: string | null;
     dueDate: string | null;
+    executionNotes: string;
   }) => Promise<void>;
 }) {
   const [status, setStatus] = useState(item.status);
   const [ownerUserId, setOwnerUserId] = useState(item.ownerUserId ?? "");
   const [dueDate, setDueDate] = useState(item.dueDate ?? "");
+  const [executionNotes, setExecutionNotes] = useState(
+    item.executionNotes,
+  );
+  const suggestedEvidence = stringArray(item.suggestedEvidence);
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>{item.title}</CardTitle>
-            <CardDescription>{item.description}</CardDescription>
           </div>
           <span className="rounded-full border px-3 py-1 text-xs">
             {labels.priorities[item.priority]}
           </span>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-3 md:grid-cols-3">
+      <CardContent className="grid gap-5">
+        <section aria-labelledby={`${item.id}-result`}>
+          <h3
+            id={`${item.id}-result`}
+            className="text-sm font-semibold"
+          >
+            {labels.result}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {item.result}
+          </p>
+        </section>
+        <GuidanceList
+          id={`${item.id}-evidence`}
+          title={labels.recommendedEvidence}
+          items={suggestedEvidence}
+        />
+        <div className="grid gap-3 md:grid-cols-3">
         <label className="grid gap-1 text-sm">
           {labels.status}
           <select
@@ -212,15 +240,28 @@ function ActionItem({
             disabled={!canContribute}
           />
         </label>
+        </div>
+        <label className="grid gap-1 text-sm">
+          {labels.executionNotes}
+          <Textarea
+            value={executionNotes}
+            onChange={(event) =>
+              setExecutionNotes(event.target.value)
+            }
+            disabled={!canContribute}
+            maxLength={20_000}
+          />
+        </label>
         {canContribute ? (
           <Button
-            className="md:col-span-3 md:justify-self-start"
+            className="justify-self-start"
             disabled={busy}
             onClick={() =>
               save({
                 status,
                 ownerUserId: ownerUserId || null,
                 dueDate: dueDate || null,
+                executionNotes,
               })
             }
           >
@@ -231,4 +272,32 @@ function ActionItem({
       </CardContent>
     </Card>
   );
+}
+
+function GuidanceList({
+  id,
+  title,
+  items,
+}: {
+  id: string;
+  title: string;
+  items: string[];
+}) {
+  return (
+    <section aria-labelledby={id}>
+      <h3 id={id} className="text-sm font-semibold">
+        {title}
+      </h3>
+      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+        {items.map((item, index) => (
+          <li key={`${index}:${item}`}>{item}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
 }

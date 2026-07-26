@@ -3,9 +3,10 @@
 Status: Implemented and verified on 2026-07-23.
 
 > Persistence update (2026-07-24): typed lineage tables supersede references
-> below to `artifact_revision_sources`. The complete-workflow gate remains 17
-> SQL calls and a 500 ms warm-median ceiling; Corpus/Document reads now have a
-> separate module benchmark.
+> below to `artifact_revision_sources`. A 2026-07-26 workflow update added the
+> mutable questionnaire-draft projection to the complete customer payload.
+> The complete-workflow gate is therefore 18 SQL calls and a 500 ms
+> warm-median ceiling; Corpus/Document reads have a separate module benchmark.
 
 ## Complete-workflow regression correction
 
@@ -49,7 +50,7 @@ authorization, mutable-data freshness, UI behavior, and database schema remain
 unchanged.
 
 The benchmark assertion now enforces at least three warm samples, a median at
-or below 500 ms, at most 17 SQL calls and five dependency layers per warm
+or below 500 ms, at most 18 SQL calls and five dependency layers per warm
 sample, one authorization lookup, one active-pointer lookup, and zero warm
 immutable release assemblies.
 

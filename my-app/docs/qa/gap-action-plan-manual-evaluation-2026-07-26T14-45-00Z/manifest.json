@@ -1,0 +1,54 @@
+{
+  "runId": "2026-07-26T14-25-01Z",
+  "startedAt": "2026-07-26T13:22:46.917Z",
+  "completedAt": "2026-07-26T14:29:01.676Z",
+  "outputDirectory": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\docs\\qa\\gap-action-plan-manual-evaluation-2026-07-26T14-45-00Z",
+  "userId": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+  "cases": [
+    {
+      "number": 1,
+      "slug": "mature-baseline-en",
+      "organizationId": "817f28cc-b1df-4ca3-83a2-a076c60d1eab",
+      "generatedRevisionId": "dbd6e1e9-9167-4c70-ac89-ef784ba2edae",
+      "finalRevisionId": "dbd6e1e9-9167-4c70-ac89-ef784ba2edae",
+      "actionPlanId": "1860313c-3617-4580-9bcb-e41cf6520e87",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 2,
+      "slug": "absent-controls-en",
+      "organizationId": "93b151eb-8051-4351-a8e5-2a96c0cbe275",
+      "generatedRevisionId": "7e2d58eb-b5b6-4824-869f-00b7c8dd28ea",
+      "finalRevisionId": "7e2d58eb-b5b6-4824-869f-00b7c8dd28ea",
+      "actionPlanId": "5e1860a4-36b0-4b40-965f-8c11b78224ec",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 3,
+      "slug": "mixed-maturity-en",
+      "organizationId": "6ba05d1c-a99f-439f-94e6-ddd8079b451b",
+      "generatedRevisionId": "5a6075b7-2923-4574-85b4-4069a06381ff",
+      "finalRevisionId": "5a6075b7-2923-4574-85b4-4069a06381ff",
+      "actionPlanId": "d08b4235-0408-4b3b-b4e6-989d6ad7cc3b",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 4,
+      "slug": "uncertain-evidence-de",
+      "organizationId": "332bd110-0643-4513-9af2-585a956cdc7e",
+      "generatedRevisionId": "50e119ed-e0ce-4ac9-9e50-2601ded359b7",
+      "finalRevisionId": "50e119ed-e0ce-4ac9-9e50-2601ded359b7",
+      "actionPlanId": "e1c81241-f3f1-4380-b6a1-f38052f7be4b",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 5,
+      "slug": "contradictory-backup-evidence-en",
+      "organizationId": "dfcde544-76d8-4e47-9e17-99e80534fa8f",
+      "generatedRevisionId": "e9460dcd-6196-46aa-8f8b-885fe44073c1",
+      "finalRevisionId": "858f4055-49e4-46c5-8527-4f2a241a60a2",
+      "actionPlanId": "a6020dfa-8904-4487-a76d-0f9be695596a",
+      "automaticChecksPassed": true
+    }
+  ]
+}

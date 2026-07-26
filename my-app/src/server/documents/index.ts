@@ -3,6 +3,12 @@ export {
   createDocumentEmbeddingProvider,
 } from "./embeddings";
 export type { DocumentEmbeddingProvider } from "./embeddings";
+export {
+  CHUNKING_VERSION,
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+  EMBEDDING_PROVIDER,
+} from "./document-config";
 export { retrieveDocumentEvidence } from "./retrieval";
 export { assertSelectedDocumentVersionScope } from "./retrieval-policy";
 export { chunkExtractedPages } from "./chunker";
@@ -21,4 +27,6 @@ export {
   listOrganizationDocumentVersionsPage,
   restoreOrganizationDocument,
   updateOrganizationDocument,
+  uploadOrganizationDocument,
+  uploadOrganizationDocumentVersion,
 } from "./service";

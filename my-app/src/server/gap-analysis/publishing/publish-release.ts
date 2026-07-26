@@ -354,6 +354,12 @@ export async function publishGapAnalysisRelease(
         promptVersion: definition.prompt.version,
         promptTemplateHash: definition.prompt.templateHash,
         responseSchemaVersion: definition.prompt.responseSchemaVersion,
+        actionPlanPromptName: definition.actionPlanPrompt!.name,
+        actionPlanPromptVersion: definition.actionPlanPrompt!.version,
+        actionPlanPromptTemplateHash:
+          definition.actionPlanPrompt!.templateHash,
+        actionPlanResponseSchemaVersion:
+          definition.actionPlanPrompt!.responseSchemaVersion,
         evaluatorKind: definition.evaluator.kind,
         evaluatorVersion: definition.evaluator.version,
         defaultLocale: definition.defaultLocale,

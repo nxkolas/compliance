@@ -48,6 +48,47 @@ export async function persistGroundingProvenance(input: {
       queryHash: String(item.metadata.queryHash ?? "unknown"),
       retrievalRank: item.rank,
       retrievalScore: String(item.score),
+      retrievalPolicyVersion:
+        typeof item.metadata.retrievalPolicyVersion === "string"
+          ? item.metadata.retrievalPolicyVersion
+          : null,
+      lexicalScore:
+        typeof item.metadata.lexicalScore === "number"
+          ? String(item.metadata.lexicalScore)
+          : null,
+      semanticScore:
+        typeof item.metadata.semanticScore === "number"
+          ? String(item.metadata.semanticScore)
+          : null,
+      combinedScore:
+        typeof item.metadata.combinedScore === "number"
+          ? String(item.metadata.combinedScore)
+          : null,
+      selectionRole:
+        typeof item.metadata.selectionRole === "string"
+          ? item.metadata.selectionRole
+          : null,
+      preferredMappedProvision:
+        item.metadata.preferredMappedProvision === true,
+      mappedLegalProvisionId:
+        typeof item.metadata.legalProvisionId === "string"
+          ? item.metadata.legalProvisionId
+          : null,
+      retrievalDiagnostics: {
+        version: 1,
+        ...(typeof item.metadata.retrievalPolicyVersion === "string"
+          ? {
+              retrievalPolicyVersion:
+                item.metadata.retrievalPolicyVersion,
+            }
+          : {}),
+        ...(typeof item.metadata.mappedLegalProvisionKey === "string"
+          ? {
+              mappedLegalProvisionKey:
+                item.metadata.mappedLegalProvisionKey,
+            }
+          : {}),
+      },
       legalChunkId: item.channel === "legal" ? item.sourceId : undefined,
       documentChunkId: item.channel === "organization_document" ? item.sourceId : undefined,
       assessmentAnswerId: item.channel === "questionnaire_assertion" ? item.sourceId : undefined,

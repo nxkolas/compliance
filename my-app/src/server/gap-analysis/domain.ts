@@ -1,13 +1,15 @@
+export type {
+  AtomicGapKind,
+  GapStatementBasis,
+  ValidatedCategoryGapResult,
+} from "./generation-schema-v7";
 export {
-  GAP_ELIGIBLE_OUTCOMES,
-  assertGapApplicabilityEligible,
-  assertGapRequirementsAvailable,
+  GAP_GROUNDING_INSTRUCTION,
+  gapOutputLocaleInstruction,
+} from "./grounding-instruction";
+export {
   evaluateGapApplicabilityPrerequisite,
-  projectGapPrerequisiteView,
-  resolveGapGenerationPrerequisites,
 } from "./applicability-eligibility";
 export type {
   GapApplicabilityPrerequisite,
-  GapEligibleOutcome,
-  GapPrerequisiteView,
 } from "./applicability-eligibility";

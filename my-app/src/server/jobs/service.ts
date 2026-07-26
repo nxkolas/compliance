@@ -51,7 +51,22 @@ export async function getAuthorizedJob(userId: string, jobId: string) {
   } else {
     await requirePlatformCapability(userId, "corpus:read");
   }
-  return toJobDto(job);
+  const result =
+    job.state === "succeeded"
+      ? await db.query.backgroundJobResults.findFirst({
+          columns: { actionPlanId: true },
+          where: {
+            RAW: (table, operators) =>
+              eq(table.jobId, job.id) ?? operators.sql`true`,
+          },
+        })
+      : null;
+  return toJobDto(
+    job,
+    result?.actionPlanId
+      ? { actionPlanId: result.actionPlanId }
+      : null,
+  );
 }
 
 export async function leaseNextJob(input: {
@@ -283,6 +298,23 @@ export async function requestJobCancellation(userId: string, jobId: string) {
       metadata: { state: job.state },
     });
   }
+  if (job.kind === "action-plan-generation") {
+    await db
+      .update(aiProcessingRuns)
+      .set({ cancellationRequestedAt: now })
+      .where(eq(aiProcessingRuns.jobId, job.id));
+    if (job.organizationId) {
+      await db.insert(auditEvents).values({
+        organizationId: job.organizationId,
+        actorUserId: userId,
+        eventType:
+          "action_plan.generation_cancellation_requested",
+        entityType: "background_job",
+        entityId: job.id,
+        metadata: { state: job.state },
+      });
+    }
+  }
   if (job.kind === "report-render") {
     await db.update(reports).set({ state: "cancelled", completedAt: now, updatedAt: now })
       .where(eq(reports.jobId, job.id));
@@ -301,7 +333,10 @@ export async function finalizeJobCancellation(jobId: string, workerId: string) {
   return job;
 }
 
-export function toJobDto(job: typeof backgroundJobs.$inferSelect): JobDto {
+export function toJobDto(
+  job: typeof backgroundJobs.$inferSelect,
+  result: { actionPlanId: string } | null = null,
+): JobDto {
   return {
     id: job.id,
     kind: job.kind,
@@ -317,6 +352,7 @@ export function toJobDto(job: typeof backgroundJobs.$inferSelect): JobDto {
     finishedAt: job.finishedAt?.toISOString() ?? null,
     cancellable: job.cancellable && !["succeeded", "failed", "cancelled"].includes(job.state),
     resultLink: null,
+    result,
   };
 }
 
@@ -342,6 +378,8 @@ export function toJobResultValues(jobId: string, result: { type: string; id: str
       return { jobId, legalSourceMonitorId: result.id };
     case "legal_corpus_evaluation":
       return { jobId, legalCorpusEvaluationId: result.id };
+    case "action_plan":
+      return { jobId, actionPlanId: result.id };
     default:
       throw new ApiError(500, "Unsupported job result kind", undefined, "JOB_RESULT_KIND_INVALID");
   }

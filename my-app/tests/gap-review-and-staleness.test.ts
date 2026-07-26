@@ -11,15 +11,17 @@ describe("gap review and approval", () => {
     expect(() =>
       assertGapRevisionApprovable({
         expectedRequirementVersionIds: ["r1"],
-        findings: [{ id: "f1", requirementVersionId: "r1", status: "insufficient_evidence", requiresReview: false }],
+        findings: [actionableFinding("f1", "r1", "insufficient_evidence")],
         evidence: [],
+        gaps: [atomicGap("f1")],
       }),
     ).not.toThrow();
     expect(() =>
       assertGapRevisionApprovable({
         expectedRequirementVersionIds: ["r1"],
-        findings: [{ id: "f1", requirementVersionId: "r1", status: "not_fulfilled", requiresReview: true }],
+        findings: [{ ...actionableFinding("f1", "r1", "not_fulfilled"), requiresReview: true }],
         evidence: [],
+        gaps: [atomicGap("f1")],
       }),
     ).toThrow(/review blockers/i);
   });
@@ -28,19 +30,48 @@ describe("gap review and approval", () => {
     expect(() =>
       assertGapRevisionApprovable({
         expectedRequirementVersionIds: ["r1", "r2"],
-        findings: [{ id: "f1", requirementVersionId: "r1", status: "not_fulfilled", requiresReview: false }],
+        findings: [actionableFinding("f1", "r1", "not_fulfilled")],
         evidence: [],
+        gaps: [atomicGap("f1")],
       }),
     ).toThrow(/coverage/i);
     expect(() =>
       assertGapRevisionApprovable({
         expectedRequirementVersionIds: ["r1"],
-        findings: [{ id: "f1", requirementVersionId: "r1", status: "fulfilled", requiresReview: false }],
+        findings: [{ id: "f1", requirementVersionId: "r1", status: "fulfilled", requiresReview: false, statementBasis: { version: 1, triggeringQuestions: [] } }],
         evidence: [{ findingId: "f1", citationId: "Q:a1", sourceType: "assessment_answer" }],
+        gaps: [],
       }),
     ).not.toThrow();
   });
 });
+
+function actionableFinding(
+  id: string,
+  requirementVersionId: string,
+  status: "not_fulfilled" | "insufficient_evidence",
+) {
+  return {
+    id,
+    requirementVersionId,
+    status,
+    requiresReview: false,
+    statementBasis: {
+      version: 1,
+      triggeringQuestions: [
+        { stableKey: "question", sourceAssessmentAnswerId: "answer" },
+      ],
+    },
+  };
+}
+
+function atomicGap(findingId: string) {
+  return {
+    findingId,
+    questionStableKey: "question",
+    sourceAssessmentAnswerId: "answer",
+  };
+}
 
 describe("gap staleness", () => {
   it("distinguishes changed sources, newer releases, and archives", () => {

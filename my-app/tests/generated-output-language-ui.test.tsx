@@ -38,10 +38,14 @@ describe("generated output language indicators", () => {
                 id: "finding-1",
                 status: "not_fulfilled",
                 severity: "high",
-                rationale: "Die Kontrolle ist nicht umgesetzt.",
-                recommendation: "Führen Sie die Kontrolle ein.",
-                assumptions: [],
                 requiresReview: false,
+                reviewNotice: null,
+                gaps: [
+                  {
+                    id: "gap-1",
+                    statement: "Die Kontrolle ist nicht umgesetzt.",
+                  },
+                ],
               },
               requirement: {
                 code: "R1",
@@ -72,7 +76,6 @@ describe("generated output language indicators", () => {
     expect(html).toContain("German");
     expect(html).toContain("English requirement");
     expect(html).toContain("Die Kontrolle ist nicht umgesetzt.");
-    expect(html).toContain("Führen Sie die Kontrolle ein.");
     expect(html).toContain("Sources");
     expect(html).toContain("No sources linked");
     expect(html).not.toContain("Show evidence and details");
@@ -97,10 +100,14 @@ describe("generated output language indicators", () => {
                 id: "finding-1",
                 status: "not_fulfilled",
                 severity: "high",
-                rationale: "The control has not been implemented.",
-                recommendation: "Implement the control.",
-                assumptions: [],
                 requiresReview: false,
+                reviewNotice: null,
+                gaps: [
+                  {
+                    id: "gap-1",
+                    statement: "The control has not been implemented.",
+                  },
+                ],
               },
               requirement: {
                 code: "R1",
@@ -131,7 +138,6 @@ describe("generated output language indicators", () => {
     expect(html).toContain("Englisch");
     expect(html).toContain("Deutsche Anforderung");
     expect(html).toContain("The control has not been implemented.");
-    expect(html).toContain("Implement the control.");
     expect(html).toContain("Quellen");
     expect(html).toContain("Keine Quellen verknüpft");
     expect(html).not.toContain("Nachweise und Details anzeigen");
@@ -202,7 +208,7 @@ describe("generated output language indicators", () => {
             id: "plan-1",
             outputLocale: "de",
           },
-          items: [],
+          categories: [],
           sourceStaleness: { stale: false },
         } as never}
       />,

@@ -6,7 +6,11 @@ import {
   toGroundingFailureDiagnostic,
   validateGroundedClaims,
 } from "@/src/server/ai/grounding/validation";
-import type { GroundedProvider, GroundingContextItem } from "@/src/server/ai/grounding/types";
+import {
+  resolveGroundingRetrievalQuery,
+  type GroundedProvider,
+  type GroundingContextItem,
+} from "@/src/server/ai/grounding/types";
 
 const provider = (mode: string): GroundedProvider => ({
   mode,
@@ -16,6 +20,27 @@ const provider = (mode: string): GroundedProvider => ({
 });
 
 describe("Grounding Gateway safety", () => {
+  it("uses channel-specific retrieval queries", () => {
+    const unit = {
+      id: "r1",
+      query: '{"requirement":{"title":"model input"}}',
+      retrievalQuery: "legal terms de_bsig.section_30_1",
+      organizationRetrievalQuery: "plain organization-control terms",
+    };
+    expect(
+      resolveGroundingRetrievalQuery(unit, "legal"),
+    ).toBe("legal terms de_bsig.section_30_1");
+    expect(
+      resolveGroundingRetrievalQuery(unit, "organization_document"),
+    ).toBe("plain organization-control terms");
+    expect(
+      resolveGroundingRetrievalQuery({
+        id: "r1",
+        query: "model input fallback",
+      }, "organization_document"),
+    ).toBe("model input fallback");
+  });
+
   it("keeps retrieval-only legal identifiers out of the model prompt", () => {
     const prompt = buildGroundedPrompt(
       [{

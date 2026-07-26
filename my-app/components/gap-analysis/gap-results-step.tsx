@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { gapAnalysisClient } from "@/src/client/gap-analysis";
 import { actionPlansClient } from "@/src/client/action-plans";
+import { jobsClient } from "@/src/client/jobs";
 import { ApiClientError } from "@/src/client/api-client";
 import { formatDateTime } from "@/lib/i18n/format";
 import {
@@ -68,9 +69,7 @@ export function GapResultsStep({
   const counts = countGapStatuses(displayed);
   const gaps = sortGapFindings(displayed).filter(
     (row) =>
-      filter === "all"
-        ? row.finding.status !== "fulfilled"
-        : row.finding.status === filter,
+      filter === "all" || row.finding.status === filter,
   );
 
   async function finalizeAnalysis() {
@@ -78,11 +77,26 @@ export function GapResultsStep({
     setBusy("finalize");
     onError(null);
     try {
-      await actionPlansClient.generate(organizationId, {
+      const started = await actionPlansClient.generate(organizationId, {
         gapRevisionId: workflow.revision.id,
       });
-      setAnnouncement(labels.actionPlanGenerated);
+      setAnnouncement(labels.actionPlanGenerating);
       setShowFinalization(false);
+      let job = started.data.job;
+      while (
+        job.state === "queued" ||
+        job.state === "running" ||
+        job.state === "cancellation_requested"
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        job = (await jobsClient.get(job.id)).data.job;
+      }
+      if (job.state !== "succeeded" || !job.result?.actionPlanId) {
+        throw new Error(
+          job.safeError?.message ?? labels.actionPlanGenerationFailed,
+        );
+      }
+      setAnnouncement(labels.actionPlanGenerated);
       router.push(`/tool/organizations/${organizationId}/action-plan`);
     } catch (error) {
       onError(localizeGapError(error, labels));
@@ -195,7 +209,7 @@ export function GapResultsStep({
             }
             busy={busy}
             setBusy={setBusy}
-            onSaved={(status) => {
+            onSaved={(status, message) => {
               setOverrides((current) => ({
                 ...current,
                 [row.finding.id]: status,
@@ -203,7 +217,7 @@ export function GapResultsStep({
               setManualOverrides((current) => [
                 ...new Set([...current, row.finding.id]),
               ]);
-              setAnnouncement(labels.assessmentSaved);
+              setAnnouncement(message ?? labels.assessmentSaved);
               onError(null);
               router.refresh();
             }}
@@ -303,20 +317,50 @@ function FindingCard({
   canManage: boolean;
   busy: string | null;
   setBusy: (value: string | null) => void;
-  onSaved: (status: GapStatus) => void;
+  onSaved: (status: GapStatus, message?: string) => void;
   onError: (message: string | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [status, setStatus] = useState<GapStatus>(row.finding.status);
   const [reason, setReason] = useState("");
   const [resolutionReason, setResolutionReason] = useState("");
+  const [regenerationReason, setRegenerationReason] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   useEffect(() => {
     setStatus(row.finding.status);
     setReason("");
     setResolutionReason("");
+    setRegenerationReason("");
     setFieldError(null);
   }, [row.finding.id, row.finding.status]);
+
+  async function regenerate() {
+    if (!regenerationReason.trim()) {
+      setFieldError(labels.errors.GAP_CORRECTION_REASON_REQUIRED);
+      return;
+    }
+    setBusy(`regenerate-${row.finding.id}`);
+    setFieldError(null);
+    onError(null);
+    try {
+      await gapAnalysisClient.regenerateGuidance(
+        organizationId,
+        revisionId,
+        {
+          findingId: row.finding.id,
+          reason: regenerationReason,
+          retryNonce: crypto.randomUUID(),
+        },
+      );
+      setRegenerating(false);
+      onSaved(row.finding.status, labels.guidanceRegenerated);
+    } catch (error) {
+      onError(localizeGapError(error, labels));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function save() {
     if (!reason.trim()) {
@@ -385,42 +429,54 @@ function FindingCard({
             ) : null}
           </div>
         </div>
-        {canManage && !editing ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={Boolean(busy)}
-            onClick={() => setEditing(true)}
-          >
-            <Pencil /> {labels.changeAssessment}
-          </Button>
+        {canManage && !editing && !regenerating ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={Boolean(busy)}
+              onClick={() => setEditing(true)}
+            >
+              <Pencil /> {labels.changeAssessment}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={Boolean(busy)}
+              onClick={() => setRegenerating(true)}
+            >
+              {labels.regenerateGuidance}
+            </Button>
+          </div>
         ) : null}
       </div>
-      {row.finding.requiresReview ? (
-        <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
-          <AlertTriangle className="h-4 w-4" /> {labels.reviewRequired}
-        </p>
-      ) : null}
-      {row.hasQuestionnaireDisagreement ? (
+      {row.finding.requiresReview && row.finding.reviewNotice ? (
         <div className="mt-3 rounded-md border border-primary/35 bg-primary/10 p-3 text-sm text-foreground">
-          <p className="font-medium">{labels.questionnaireDisagreement}</p>
-          <p className="mt-1">
-            {row.finding.rationale}
+          <p className="flex items-center gap-2 font-medium text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            {labels.reviewRequired}
           </p>
+          <p className="mt-1">{row.finding.reviewNotice}</p>
         </div>
       ) : null}
-      <dl className="mt-4 grid gap-3 text-sm">
-        <Summary
-          label={labels.rationale}
-          value={row.finding.rationale}
-        />
-        <Summary
-          label={labels.recommendation}
-          value={row.finding.recommendation}
-        />
-      </dl>
+      <div className="mt-4 text-sm">
+        {(row.finding.gaps ?? []).length ? (
+          <ul className="list-disc space-y-1 pl-5">
+            {(row.finding.gaps ?? []).map((gap) => (
+              <li key={gap.id}>{gap.statement}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground">
+            {labels.noGapsIdentified}
+          </p>
+        )}
+      </div>
       {editing ? (
         <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4">
+          <p className="text-sm text-muted-foreground">
+            {labels.correctionRegenerates}
+          </p>
           <label className="grid gap-1 text-sm font-medium">
             {labels.statusSummary}
             <select
@@ -477,6 +533,40 @@ function FindingCard({
             </Button>
           </div>
         </div>
+      ) : regenerating ? (
+        <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4">
+          <label className="grid gap-1 text-sm font-medium">
+            {labels.regenerationReason}
+            <Textarea
+              value={regenerationReason}
+              aria-invalid={Boolean(fieldError)}
+              onChange={(event) =>
+                setRegenerationReason(event.target.value)
+              }
+            />
+          </label>
+          {fieldError ? (
+            <p className="text-sm text-destructive">{fieldError}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={Boolean(busy)}
+              onClick={() => void regenerate()}
+            >
+              {busy === `regenerate-${row.finding.id}` ? (
+                <Loader2 className="animate-spin" />
+              ) : null}
+              {labels.regenerateGuidance}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={Boolean(busy)}
+              onClick={() => setRegenerating(false)}
+            >
+              {labels.cancelEdit}
+            </Button>
+          </div>
+        </div>
       ) : !canManage ? (
         <p className="mt-4 text-xs text-muted-foreground">{labels.readOnly}</p>
       ) : null}
@@ -514,15 +604,6 @@ function FilterButton({
 function Badge({ children }: { children: ReactNode }) {
   return (
     <span className="rounded-full border px-2.5 py-1 text-xs">{children}</span>
-  );
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="font-medium">{label}</dt>
-      <dd className="text-muted-foreground">{value || "—"}</dd>
-    </div>
   );
 }
 

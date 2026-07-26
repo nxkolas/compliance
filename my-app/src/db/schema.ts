@@ -180,6 +180,8 @@ export const processingStatusEnum = pgEnum("processing_status", [
 
 export const aiOperationKindEnum = pgEnum("ai_operation_kind", [
   "gap_analysis",
+  "gap_guidance_regeneration",
+  "action_plan_generation",
   "live_gap_evaluation",
 ]);
 
@@ -194,6 +196,12 @@ export const evidenceSufficiencyEnum = pgEnum("evidence_sufficiency", [
   "sufficient",
   "partial",
   "none",
+]);
+
+export const gapItemKindEnum = pgEnum("gap_item_kind", [
+  "missing",
+  "partial",
+  "uncertain",
 ]);
 
 export const gapFindingEvidenceSourceTypeEnum = pgEnum(
@@ -2138,6 +2146,14 @@ export const gapAnalysisReleases = pgTable.withRLS(
     promptVersion: text("prompt_version").notNull(),
     promptTemplateHash: text("prompt_template_hash").notNull(),
     responseSchemaVersion: text("response_schema_version").notNull(),
+    actionPlanPromptName: text("action_plan_prompt_name").notNull(),
+    actionPlanPromptVersion: text("action_plan_prompt_version").notNull(),
+    actionPlanPromptTemplateHash: text(
+      "action_plan_prompt_template_hash",
+    ).notNull(),
+    actionPlanResponseSchemaVersion: text(
+      "action_plan_response_schema_version",
+    ).notNull(),
     evaluatorKind: text("evaluator_kind").notNull(),
     evaluatorVersion: integer("evaluator_version").notNull(),
     defaultLocale: text("default_locale").default("de").notNull(),
@@ -2848,8 +2864,10 @@ export const gapFindings = pgTable.withRLS(
       "evidence_sufficiency",
     ).notNull(),
     severity: actionPlanPriorityEnum("severity").notNull(),
-    rationale: text("rationale").notNull(),
-    recommendation: text("recommendation").notNull(),
+    statementBasis: jsonb("statement_basis").notNull(),
+    statementBasisHash: text("statement_basis_hash").notNull(),
+    reviewNotice: text("review_notice"),
+    generationRunId: uuid("generation_run_id").notNull(),
     assumptions: jsonb("assumptions").default(sql`'[]'::jsonb`).notNull(),
     requiresReview: boolean("requires_review").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -2867,6 +2885,11 @@ export const gapFindings = pgTable.withRLS(
       columns: [table.requirementVersionId],
       foreignColumns: [gapRequirementVersions.id],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_findings_generation_run_fk",
+      columns: [table.generationRunId],
+      foreignColumns: [aiProcessingRuns.id],
+    }).onDelete("restrict"),
     uniqueIndex("gap_findings_revision_requirement_unique").on(
       table.artifactRevisionId,
       table.requirementVersionId,
@@ -2876,6 +2899,72 @@ export const gapFindings = pgTable.withRLS(
       table.id,
     ),
     index("gap_findings_status_idx").on(table.status),
+    index("gap_findings_generation_run_idx").on(table.generationRunId),
+    check(
+      "gap_findings_review_notice_check",
+      sql`(
+        (${table.requiresReview} and length(btrim(${table.reviewNotice})) > 0)
+        or (not ${table.requiresReview} and ${table.reviewNotice} is null)
+      )`,
+    ),
+    check(
+      "gap_findings_statement_basis_check",
+      sql`
+        jsonb_typeof(${table.statementBasis}) = 'object'
+        and ${table.statementBasis}->>'version' = '1'
+        and jsonb_typeof(${table.statementBasis}->'triggeringQuestions') = 'array'
+        and jsonb_typeof(${table.statementBasis}->'satisfiedQuestionStableKeys') = 'array'
+        and length(btrim(${table.statementBasisHash})) > 0
+      `,
+    ),
+  ],
+);
+
+export const gapItems = pgTable.withRLS(
+  "gap_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    findingId: uuid("finding_id").notNull(),
+    sourceAssessmentAnswerId: uuid("source_assessment_answer_id").notNull(),
+    questionStableKey: text("question_stable_key").notNull(),
+    kind: gapItemKindEnum("kind").notNull(),
+    statement: text("statement").notNull(),
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_items_finding_fk",
+      columns: [table.findingId],
+      foreignColumns: [gapFindings.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "gap_items_answer_fk",
+      columns: [table.sourceAssessmentAnswerId],
+      foreignColumns: [assessmentAnswers.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_items_finding_position_unique").on(
+      table.findingId,
+      table.position,
+    ),
+    unique("gap_items_finding_identity_unique").on(
+      table.findingId,
+      table.id,
+    ),
+    index("gap_items_answer_idx").on(table.sourceAssessmentAnswerId),
+    check(
+      "gap_items_statement_check",
+      sql`
+        length(btrim(${table.statement})) > 0
+        and position(E'\n' in ${table.statement}) = 0
+        and ${table.position} > 0
+      `,
+    ),
   ],
 );
 
@@ -2953,6 +3042,32 @@ export const gapFindingEvidence = pgTable.withRLS(
   ],
 );
 
+export const gapItemEvidence = pgTable.withRLS(
+  "gap_item_evidence",
+  {
+    gapItemId: uuid("gap_item_id").notNull(),
+    gapFindingEvidenceId: uuid("gap_finding_evidence_id").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.gapItemId, table.gapFindingEvidenceId],
+    }),
+    foreignKey({
+      name: "gap_item_evidence_gap_fk",
+      columns: [table.gapItemId],
+      foreignColumns: [gapItems.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "gap_item_evidence_finding_evidence_fk",
+      columns: [table.gapFindingEvidenceId],
+      foreignColumns: [gapFindingEvidence.id],
+    }).onDelete("cascade"),
+    index("gap_item_evidence_source_idx").on(
+      table.gapFindingEvidenceId,
+    ),
+  ],
+);
+
 export const gapFindingReviewResolutions = pgTable.withRLS(
   "gap_finding_review_resolutions",
   {
@@ -2987,6 +3102,8 @@ export const actionPlans = pgTable.withRLS(
       "source_gap_artifact_revision_id",
     ).notNull(),
     outputLocale: text("output_locale").notNull(),
+    generationRunId: uuid("generation_run_id"),
+    generationJobId: uuid("generation_job_id").notNull(),
     status: actionPlanStatusEnum("status").default("active").notNull(),
     revisionNumber: integer("revision_number").notNull(),
     activatedBy: uuid("activated_by"),
@@ -3012,6 +3129,19 @@ export const actionPlans = pgTable.withRLS(
       columns: [table.sourceGapArtifactRevisionId],
       foreignColumns: [generatedArtifactRevisions.id],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "action_plans_generation_run_fk",
+      columns: [table.generationRunId],
+      foreignColumns: [aiProcessingRuns.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "action_plans_generation_job_fk",
+      columns: [table.generationJobId],
+      foreignColumns: [backgroundJobs.id],
+    }).onDelete("restrict"),
+    uniqueIndex("action_plans_generation_job_unique").on(
+      table.generationJobId,
+    ),
     uniqueIndex("action_plans_active_organization_unique")
       .on(table.organizationId)
       .where(sql`${table.status} = 'active'`),
@@ -3051,7 +3181,10 @@ export const actionPlanItems = pgTable.withRLS(
     actionPlanId: uuid("action_plan_id").notNull(),
     sourceFindingId: uuid("source_finding_id").notNull(),
     title: text("title").notNull(),
-    description: text("description").notNull(),
+    result: text("result").notNull(),
+    suggestedEvidence: jsonb("suggested_evidence").notNull(),
+    position: integer("position").notNull(),
+    executionNotes: text("execution_notes").default("").notNull(),
     priority: actionPlanPriorityEnum("priority").notNull(),
     status: actionPlanItemStatusEnum("status").default("open").notNull(),
     ownerUserId: uuid("owner_user_id"),
@@ -3075,11 +3208,59 @@ export const actionPlanItems = pgTable.withRLS(
       columns: [table.sourceFindingId],
       foreignColumns: [gapFindings.id],
     }).onDelete("restrict"),
-    uniqueIndex("action_plan_items_finding_unique").on(
+    uniqueIndex("action_plan_items_plan_finding_position_unique").on(
       table.actionPlanId,
       table.sourceFindingId,
+      table.position,
+    ),
+    unique("action_plan_items_finding_identity_unique").on(
+      table.id,
+      table.sourceFindingId,
+    ),
+    index("action_plan_items_plan_order_idx").on(
+      table.actionPlanId,
+      table.sourceFindingId,
+      table.position,
     ),
     index("action_plan_items_status_idx").on(table.status),
+    check(
+      "action_plan_items_generated_content_check",
+      sql`
+        length(btrim(${table.title})) > 0
+        and length(btrim(${table.result})) > 0
+        and jsonb_typeof(${table.suggestedEvidence}) = 'array'
+        and jsonb_array_length(${table.suggestedEvidence}) > 0
+        and ${table.position} > 0
+      `,
+    ),
+  ],
+);
+
+export const actionPlanItemGaps = pgTable.withRLS(
+  "action_plan_item_gaps",
+  {
+    actionPlanItemId: uuid("action_plan_item_id").notNull(),
+    gapItemId: uuid("gap_item_id").notNull(),
+    sourceFindingId: uuid("source_finding_id").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.actionPlanItemId, table.gapItemId],
+    }),
+    foreignKey({
+      name: "action_plan_item_gaps_action_category_fk",
+      columns: [table.actionPlanItemId, table.sourceFindingId],
+      foreignColumns: [
+        actionPlanItems.id,
+        actionPlanItems.sourceFindingId,
+      ],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "action_plan_item_gaps_gap_category_fk",
+      columns: [table.gapItemId, table.sourceFindingId],
+      foreignColumns: [gapItems.id, gapItems.findingId],
+    }).onDelete("restrict"),
+    index("action_plan_item_gaps_gap_idx").on(table.gapItemId),
   ],
 );
 
@@ -3270,6 +3451,11 @@ export const backgroundJobs = pgTable.withRLS(
     uniqueIndex("background_jobs_legal_monitor_active_unique")
       .on(sql`(${table.payload} ->> 'monitorId')`)
       .where(sql`${table.kind} = 'legal-source-monitor' and ${table.state} in ('queued', 'running', 'cancellation_requested')`),
+    uniqueIndex("background_jobs_action_plan_generation_active_unique")
+      .on(table.organizationId)
+      .where(
+        sql`${table.kind} = 'action-plan-generation' and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
+      ),
     check("background_jobs_progress_check", sql`${table.progress} between 0 and 100`),
     check("background_jobs_attempts_check", sql`${table.attemptCount} >= 0 and ${table.maxAttempts} > 0`),
     check(
@@ -3626,6 +3812,42 @@ export const legalSourceChunks = pgTable.withRLS(
   ],
 );
 
+export const legalSourceChunkProvisions = pgTable.withRLS(
+  "legal_source_chunk_provisions",
+  {
+    chunkId: uuid("chunk_id").notNull(),
+    legalProvisionId: uuid("legal_provision_id").notNull(),
+    bindingMethod: text("binding_method").notNull(),
+    boundBy: uuid("bound_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.chunkId, table.legalProvisionId],
+    }),
+    foreignKey({
+      name: "legal_chunk_provisions_chunk_fk",
+      columns: [table.chunkId],
+      foreignColumns: [legalSourceChunks.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "legal_chunk_provisions_provision_fk",
+      columns: [table.legalProvisionId],
+      foreignColumns: [legalProvisions.id],
+    }).onDelete("restrict"),
+    index("legal_chunk_provisions_provision_idx").on(
+      table.legalProvisionId,
+      table.chunkId,
+    ),
+    check(
+      "legal_chunk_provisions_method_check",
+      sql`${table.bindingMethod} = 'reviewed_exact_anchor_v1'`,
+    ),
+  ],
+);
+
 export const legalSourceChunkEmbeddings = pgTable.withRLS(
   "legal_source_chunk_embeddings",
   {
@@ -3965,6 +4187,18 @@ export const aiProcessingRunContext = pgTable.withRLS(
     queryHash: text("query_hash").notNull(),
     retrievalRank: integer("retrieval_rank").notNull(),
     retrievalScore: numeric("retrieval_score").notNull(),
+    retrievalPolicyVersion: text("retrieval_policy_version"),
+    lexicalScore: numeric("lexical_score"),
+    semanticScore: numeric("semantic_score"),
+    combinedScore: numeric("combined_score"),
+    selectionRole: text("selection_role"),
+    preferredMappedProvision: boolean("preferred_mapped_provision")
+      .default(false)
+      .notNull(),
+    mappedLegalProvisionId: uuid("mapped_legal_provision_id"),
+    retrievalDiagnostics: jsonb("retrieval_diagnostics")
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
     legalChunkId: uuid("legal_chunk_id"),
     documentChunkId: uuid("document_chunk_id"),
     assessmentAnswerId: uuid("assessment_answer_id"),
@@ -3979,6 +4213,11 @@ export const aiProcessingRunContext = pgTable.withRLS(
     foreignKey({ name: "ai_run_context_legal_chunk_fk", columns: [table.legalChunkId], foreignColumns: [legalSourceChunks.id] }).onDelete("restrict"),
     foreignKey({ name: "ai_run_context_document_chunk_fk", columns: [table.documentChunkId], foreignColumns: [documentChunks.id] }).onDelete("restrict"),
     foreignKey({ name: "ai_run_context_answer_fk", columns: [table.assessmentAnswerId], foreignColumns: [assessmentAnswers.id] }).onDelete("restrict"),
+    foreignKey({
+      name: "ai_run_context_mapped_provision_fk",
+      columns: [table.mappedLegalProvisionId],
+      foreignColumns: [legalProvisions.id],
+    }).onDelete("restrict"),
     uniqueIndex("ai_run_context_citation_unique").on(table.runId, table.citationId),
     uniqueIndex("ai_run_context_position_unique").on(table.runId, table.promptPosition),
     index("ai_run_context_legal_chunk_idx")
@@ -3992,6 +4231,14 @@ export const aiProcessingRunContext = pgTable.withRLS(
       .where(sql`${table.assessmentAnswerId} is not null`),
     check("ai_run_context_source_check", sql`num_nonnulls(${table.legalChunkId}, ${table.documentChunkId}, ${table.assessmentAnswerId}) = 1`),
     check("ai_run_context_channel_check", sql`(${table.channel} = 'legal' and ${table.legalChunkId} is not null) or (${table.channel} = 'organization_document' and ${table.documentChunkId} is not null) or (${table.channel} = 'questionnaire_assertion' and ${table.assessmentAnswerId} is not null)`),
+    check(
+      "ai_run_context_selection_role_check",
+      sql`${table.selectionRole} is null or ${table.selectionRole} in ('mapped_primary', 'secondary_context', 'admitted_organization_evidence', 'questionnaire_assertion')`,
+    ),
+    check(
+      "ai_run_context_retrieval_diagnostics_check",
+      sql`jsonb_typeof(${table.retrievalDiagnostics}) = 'object'`,
+    ),
   ],
 );
 
@@ -4037,6 +4284,7 @@ export const backgroundJobResults = pgTable.withRLS(
     legalProcessingGenerationId: uuid("legal_processing_generation_id"),
     legalSourceMonitorId: uuid("legal_source_monitor_id"),
     legalCorpusEvaluationId: uuid("legal_corpus_evaluation_id"),
+    actionPlanId: uuid("action_plan_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -4047,12 +4295,14 @@ export const backgroundJobResults = pgTable.withRLS(
     foreignKey({ name: "background_job_results_processing_fk", columns: [table.legalProcessingGenerationId], foreignColumns: [legalSourceProcessingGenerations.id] }).onDelete("restrict"),
     foreignKey({ name: "background_job_results_monitor_fk", columns: [table.legalSourceMonitorId], foreignColumns: [legalSourceMonitors.id] }).onDelete("restrict"),
     foreignKey({ name: "background_job_results_evaluation_fk", columns: [table.legalCorpusEvaluationId], foreignColumns: [legalCorpusEvaluations.id] }).onDelete("restrict"),
+    foreignKey({ name: "background_job_results_action_plan_fk", columns: [table.actionPlanId], foreignColumns: [actionPlans.id] }).onDelete("restrict"),
     index("background_job_results_artifact_idx").on(table.generatedArtifactRevisionId),
     index("background_job_results_report_idx").on(table.reportId),
     index("background_job_results_rendition_idx").on(table.legalSourceRenditionId),
     index("background_job_results_processing_idx").on(table.legalProcessingGenerationId),
     index("background_job_results_monitor_idx").on(table.legalSourceMonitorId),
     index("background_job_results_evaluation_idx").on(table.legalCorpusEvaluationId),
+    index("background_job_results_action_plan_idx").on(table.actionPlanId),
     check(
       "background_job_results_exactly_one_check",
       sql`num_nonnulls(
@@ -4061,7 +4311,8 @@ export const backgroundJobResults = pgTable.withRLS(
         ${table.legalSourceRenditionId},
         ${table.legalProcessingGenerationId},
         ${table.legalSourceMonitorId},
-        ${table.legalCorpusEvaluationId}
+        ${table.legalCorpusEvaluationId},
+        ${table.actionPlanId}
       ) = 1`,
     ),
   ],

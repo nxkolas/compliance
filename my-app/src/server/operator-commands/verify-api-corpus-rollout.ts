@@ -60,12 +60,17 @@ async function main() {
     where: { RAW: (table, operators) => (eq(table.releaseCode, "nis2-gap")) ?? operators.sql`true` },
   });
   assert(gapPointer, "The NIS2 Gap release must be active");
-  const gapRelease = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
+  const gapRelease = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, actionPlanPromptName: true, actionPlanPromptVersion: true, actionPlanPromptTemplateHash: true, actionPlanResponseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: { RAW: (table, operators) => (eq(table.id, gapPointer.gapAnalysisReleaseId)) ?? operators.sql`true` },
   });
   assert(
-    gapRelease?.status === "published" && gapRelease.versionLabel === "guided-v4",
-    "The active NIS2 Gap release must be published guided-v4",
+    gapRelease?.status === "published" &&
+      gapRelease.versionLabel === "guided-v6" &&
+      gapRelease.promptVersion === "7" &&
+      gapRelease.responseSchemaVersion === "7" &&
+      gapRelease.actionPlanPromptVersion === "1" &&
+      gapRelease.actionPlanResponseSchemaVersion === "1",
+    "The active NIS2 Gap release must be published guided-v6 contracts 7/1",
   );
   assert(
     gapRelease.compatibleCheckReleaseId === complianceRelease.id,
