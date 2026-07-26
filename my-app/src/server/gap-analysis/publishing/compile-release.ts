@@ -1,8 +1,6 @@
 import { contentHash } from "@/src/server/compliance/domain";
-import { GAP_PROMPT_TEMPLATE_HASH } from "../prompt-contract";
-import { GAP_PROMPT_V2_TEMPLATE_HASH } from "../prompt-contract-v2";
-import { GAP_PROMPT_V5_TEMPLATE_HASH } from "../prompt-contract-v5";
-import { GAP_PROMPT_V6_TEMPLATE_HASH } from "../prompt-contract-v6";
+import { ACTION_PLAN_PROMPT_TEMPLATE_HASH } from "@/src/server/action-plans/domain";
+import { GAP_PROMPT_V7_TEMPLATE_HASH } from "../prompt-contract-v7";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -14,17 +12,16 @@ export function compileGapAnalysisRelease(
   requireNonEmpty(release.compatibleCheck.checkCode, "compatible check code", errors);
   unique(release.requiredCorpusFamilies, "required corpus family", errors);
   if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
-  if (
-    ![
-      GAP_PROMPT_V2_TEMPLATE_HASH,
-      GAP_PROMPT_TEMPLATE_HASH,
-      GAP_PROMPT_V5_TEMPLATE_HASH,
-      GAP_PROMPT_V6_TEMPLATE_HASH,
-    ].includes(
-      release.prompt.templateHash,
-    )
-  ) {
+  if (release.prompt.templateHash !== GAP_PROMPT_V7_TEMPLATE_HASH) {
     errors.push("Prompt template hash does not match the code-defined prompt");
+  }
+  if (
+    !release.actionPlanPrompt ||
+    release.actionPlanPrompt.templateHash !== ACTION_PLAN_PROMPT_TEMPLATE_HASH
+  ) {
+    errors.push(
+      "Action Plan prompt template hash does not match the code-defined prompt",
+    );
   }
   requireLocalizedText(release.title, "module title", errors);
   requireLocalizedText(
@@ -210,38 +207,27 @@ const priorityRank = {
 
 export type SupportedGuidedReleaseContract = {
   releaseCode: "nis2-gap";
-  versionLabel: "guided-v4" | "guided-v5";
+  versionLabel: "guided-v6";
   questionCount: 31;
   requirementCount: 10;
   optionValues: readonly string[];
   evaluatorKind: "nis2_gap_category_v1";
   evaluatorVersion: 1;
-  promptVersion: "5" | "6";
-  responseSchemaVersion: "5" | "6";
+  promptVersion: "7";
+  responseSchemaVersion: "7";
 };
 
 const supportedGuidedReleaseContracts = {
-  "nis2-gap/guided-v4": {
+  "nis2-gap/guided-v6": {
     releaseCode: "nis2-gap",
-    versionLabel: "guided-v4",
+    versionLabel: "guided-v6",
     questionCount: 31,
     requirementCount: 10,
     optionValues: guidedOptionValues,
     evaluatorKind: "nis2_gap_category_v1",
     evaluatorVersion: 1,
-    promptVersion: "5",
-    responseSchemaVersion: "5",
-  },
-  "nis2-gap/guided-v5": {
-    releaseCode: "nis2-gap",
-    versionLabel: "guided-v5",
-    questionCount: 31,
-    requirementCount: 10,
-    optionValues: guidedOptionValues,
-    evaluatorKind: "nis2_gap_category_v1",
-    evaluatorVersion: 1,
-    promptVersion: "6",
-    responseSchemaVersion: "6",
+    promptVersion: "7",
+    responseSchemaVersion: "7",
   },
 } as const satisfies Record<string, SupportedGuidedReleaseContract>;
 
@@ -279,6 +265,13 @@ function validateSupportedGuidedRelease(
     release.evaluator.version !== contract.evaluatorVersion
   ) {
     errors.push(`${label} prompt or evaluator contract is invalid`);
+  }
+  if (
+    !release.actionPlanPrompt ||
+    release.actionPlanPrompt.version !== "1" ||
+    release.actionPlanPrompt.responseSchemaVersion !== "1"
+  ) {
+    errors.push(`${label} Action Plan prompt contract is invalid`);
   }
   unique(
     questions.map((question) => String(question.sourceNumber)),

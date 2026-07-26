@@ -57,14 +57,12 @@ describe("reassessment schema", () => {
     const findings = getTableConfig(gapFindings);
     expect(
       findings.columns
-        .find((column) => column.name === "rationale")
+        .find((column) => column.name === "review_notice")
         ?.getSQLType(),
     ).toBe("text");
-    expect(
-      findings.columns
-        .find((column) => column.name === "recommendation")
-        ?.getSQLType(),
-    ).toBe("text");
+    expect(findings.columns.map((column) => column.name)).not.toEqual(
+      expect.arrayContaining(["rationale", "recommendation", "objective"]),
+    );
   });
 
   it("defines the approved page-reader composite indexes in column order", () => {

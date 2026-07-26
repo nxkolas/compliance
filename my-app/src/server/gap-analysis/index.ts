@@ -12,7 +12,6 @@ export type {
   GapEligibleOutcome,
   GapPrerequisiteView,
 } from "./applicability-eligibility";
-export { finalizeGapAnalysisAndGenerateActionPlan } from "./finalization-service";
 export {
   createGapReleaseReader,
   directGapReleaseReader,
@@ -22,11 +21,10 @@ export {
 } from "./release-loader";
 export type { LoadedGapRelease } from "./release-loader";
 export type {
-  GapAcceptanceCriterion,
-  GapDeliverable,
-  GapSuggestedEvidence,
-  ValidatedGapGuidance,
-} from "./generation-schema-v6";
+  AtomicGapKind,
+  GapStatementBasis,
+  ValidatedCategoryGapResult,
+} from "./generation-schema-v7";
 export type {
   DeterministicGapStatus,
   GapAnswerValue,
@@ -51,6 +49,7 @@ export {
 } from "./questionnaire-service";
 export { saveQuestionnaireDraftAnswer } from "./questionnaire-draft-service";
 export { getGapRevisionStaleness } from "./staleness";
+export { readGapRevisionMetadata } from "./gap-revision-metadata";
 export { createDatabaseGapPageReader } from "./page-reader";
 export { readGeneratedGapInputs } from "./generated-inputs-reader";
 export { loadGapHistoryPreauthorized } from "./history-reader";

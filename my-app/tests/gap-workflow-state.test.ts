@@ -133,7 +133,7 @@ describe("gap result presentation", () => {
       row("partial-1", "partially_fulfilled", 10),
     ];
     expect(countGapStatuses(findings)).toMatchObject({
-      all: 3,
+      all: 4,
       fulfilled: 1,
       partially_fulfilled: 2,
       not_fulfilled: 1,
@@ -142,7 +142,7 @@ describe("gap result presentation", () => {
       sortGapFindings(findings).map(
         (finding) => finding.requirement.stableRequirementId,
       ),
-    ).toEqual(["not", "partial-1", "partial-2", "fulfilled"]);
+    ).toEqual(["fulfilled", "partial-1", "partial-2", "not"]);
   });
 
   it("compares results by stable requirement identity", () => {

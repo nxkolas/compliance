@@ -21,6 +21,12 @@ export type LoadedGapRelease = {
     templateHash: string;
     responseSchemaVersion: string;
   };
+  actionPlanPrompt: {
+    name: string;
+    version: string;
+    templateHash: string;
+    responseSchemaVersion: string;
+  };
   evaluator: { kind: string; version: number };
   questions: Array<{
     id: string;
@@ -103,7 +109,7 @@ export async function loadGapAnalysisRelease(
   releaseId: string,
   locale: Locale,
 ): Promise<LoadedGapRelease | null> {
-  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
+  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, actionPlanPromptName: true, actionPlanPromptVersion: true, actionPlanPromptTemplateHash: true, actionPlanResponseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: { RAW: (table, operators) => (eq(table.id, releaseId)) ?? operators.sql`true` },
   });
   if (!release || release.status !== "published") return null;
@@ -299,6 +305,12 @@ export async function loadGapAnalysisRelease(
       version: release.promptVersion,
       templateHash: release.promptTemplateHash,
       responseSchemaVersion: release.responseSchemaVersion,
+    },
+    actionPlanPrompt: {
+      name: release.actionPlanPromptName,
+      version: release.actionPlanPromptVersion,
+      templateHash: release.actionPlanPromptTemplateHash,
+      responseSchemaVersion: release.actionPlanResponseSchemaVersion,
     },
     evaluator: { kind: release.evaluatorKind, version: release.evaluatorVersion },
     questions: questionRows.map((question) => ({

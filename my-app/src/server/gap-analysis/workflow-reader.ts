@@ -456,19 +456,11 @@ function projectCustomerFinding<
         | "partially_fulfilled"
         | "not_fulfilled"
         | "insufficient_evidence";
-      rationale: string;
-      recommendation: string;
-      evidenceSufficiency: "sufficient" | "partial" | "none";
-      guidanceMode:
-        | "maintain_and_document"
-        | "control_remediation"
-        | "evidence_verification";
-      objective: string | null;
-      deliverables: unknown;
-      acceptanceCriteria: unknown;
-      suggestedEvidence: unknown;
+      severity: "low" | "medium" | "high" | "critical";
       requiresReview: boolean;
+      reviewNotice: string | null;
     };
+    gaps: Array<{ id: string; statement: string; position: number }>;
     requirement: { title: unknown; position: number };
     hasOrganizationDocument: boolean;
     manuallyChanged: boolean;
@@ -480,19 +472,12 @@ function projectCustomerFinding<
     finding: {
       id: row.finding.id,
       status: row.finding.status,
-      rationale: row.finding.rationale,
-      recommendation: row.finding.recommendation,
-      evidenceSufficiency: row.finding.evidenceSufficiency,
-      guidanceMode: row.finding.guidanceMode,
-      objective: row.finding.objective,
-      deliverables: projectGuidanceTexts(row.finding.deliverables),
-      acceptanceCriteria: projectGuidanceTexts(
-        row.finding.acceptanceCriteria,
-      ),
-      suggestedEvidence: projectGuidanceTexts(
-        row.finding.suggestedEvidence,
-      ),
+      severity: row.finding.severity,
       requiresReview: row.finding.requiresReview,
+      reviewNotice: row.finding.reviewNotice,
+      gaps: (row.gaps ?? [])
+        .sort((left, right) => left.position - right.position)
+        .map((gap) => ({ id: gap.id, statement: gap.statement })),
     },
     requirement: {
       title: row.requirement.title,
@@ -503,17 +488,6 @@ function projectCustomerFinding<
     hasQuestionnaireDisagreement: row.questionnaireDisagreements.length > 0,
     sources: row.sources,
   };
-}
-
-function projectGuidanceTexts(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) =>
-    typeof item === "object" &&
-    item !== null &&
-    typeof (item as { text?: unknown }).text === "string"
-      ? [(item as { text: string }).text]
-      : [],
-  );
 }
 
 function projectRevisionIdentity<

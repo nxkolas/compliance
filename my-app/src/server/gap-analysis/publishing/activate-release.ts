@@ -66,7 +66,7 @@ export async function activateGapAnalysisRelease(
   activatedBy: string,
 ) {
   return db.transaction(async (tx) => {
-    const release = await tx.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
+    const release = await tx.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, actionPlanPromptName: true, actionPlanPromptVersion: true, actionPlanPromptTemplateHash: true, actionPlanResponseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
       where: { RAW: (table, operators) => (and(
         eq(table.releaseCode, releaseCode),
         eq(table.versionLabel, versionLabel),
@@ -159,6 +159,10 @@ export async function activateGapAnalysisRelease(
           release.promptVersion &&
           release.promptTemplateHash &&
           release.responseSchemaVersion &&
+          release.actionPlanPromptName &&
+          release.actionPlanPromptVersion &&
+          release.actionPlanPromptTemplateHash &&
+          release.actionPlanResponseSchemaVersion &&
           release.evaluatorKind &&
           release.evaluatorVersion,
       ),
@@ -175,6 +179,8 @@ export async function activateGapAnalysisRelease(
           release.promptVersion === guidedContract.promptVersion &&
           release.responseSchemaVersion ===
             guidedContract.responseSchemaVersion &&
+          release.actionPlanPromptVersion === "1" &&
+          release.actionPlanResponseSchemaVersion === "1" &&
           questionRows.length === guidedContract.questionCount &&
           members.length === guidedContract.requirementCount),
     });

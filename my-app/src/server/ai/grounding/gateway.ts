@@ -12,7 +12,13 @@ import { resolveGroundingPolicy } from "./policy";
 import { selectGroundedProvider } from "./provider-policy";
 import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
 import { persistGroundingProvenance } from "./provenance";
-import type { GroundedOutputContract, GroundedProvider, GroundingContextItem, QueryUnit } from "./types";
+import {
+  resolveGroundingRetrievalQuery,
+  type GroundedOutputContract,
+  type GroundedProvider,
+  type GroundingContextItem,
+  type QueryUnit,
+} from "./types";
 import {
   hasCompleteQueryUnitCoverage,
   safeGroundingFailureMessage,
@@ -36,7 +42,10 @@ import {
 
 export async function runGroundedOperation<T>(input: {
   operation: "gap_analysis";
-  runOperationKind?: "gap_analysis" | "gap_guidance_regeneration";
+  runOperationKind?:
+    | "gap_analysis"
+    | "gap_guidance_regeneration"
+    | "action_plan_generation";
   actor: { userId: string };
   organizationId: string;
   outputLocale: "de" | "en";
@@ -144,6 +153,11 @@ export async function runGroundedOperation<T>(input: {
     preferredMode: process.env.AI_DEFAULT_PROVIDER,
   });
   const retrievedContext = (await Promise.all(input.queryUnits.map(async (unit) => {
+    const legalRetrievalQuery = resolveGroundingRetrievalQuery(unit, "legal");
+    const organizationRetrievalQuery = resolveGroundingRetrievalQuery(
+      unit,
+      "organization_document",
+    );
     const legal = await retrievePinnedLegalContext({
       workflowKind: policy.workflowKind,
       workflowReleaseId: input.workflowReleaseId,
@@ -153,7 +167,7 @@ export async function runGroundedOperation<T>(input: {
       asOfDate: input.asOfDate,
       language: "de",
       queryUnitId: unit.id,
-      query: unit.retrievalQuery ?? unit.query,
+      query: legalRetrievalQuery,
       preferredMappedLegalProvisionIds:
         unit.preferredMappedLegalProvisionIds,
       preferredMappedLegalProvisionKeys:
@@ -166,7 +180,7 @@ export async function runGroundedOperation<T>(input: {
           organizationId: input.organizationId,
           documentVersionIds: input.organizationEvidenceVersionIds,
           queryUnitId: unit.id,
-          query: unit.query,
+          query: organizationRetrievalQuery,
         })
       : [];
     return [...legal, ...organization];

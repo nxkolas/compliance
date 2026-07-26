@@ -9,7 +9,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check:i18n": "tsx scripts/check-i18n.ts",
-    "eval:gap-guided-v5-qa-evidence": "tsx evals/gap-guided-v5-qa-evidence.ts",
+    "eval:gap-action-plan-manual": "tsx scripts/manual-gap-action-plan-evaluation.ts",
     "eval:gap-post-finalization-lifecycle": "tsx evals/gap-post-finalization-lifecycle-evaluation.ts",
     "verify": "npm run lint && npm run typecheck && npm test && npm run check:i18n",
     "db:push": "drizzle-kit push",

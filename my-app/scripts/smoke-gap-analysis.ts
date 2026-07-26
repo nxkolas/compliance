@@ -34,14 +34,14 @@ async function main() {
     `;
     if (!release) throw new Error("No active nis2-gap release");
     if (
-      release.version_label !== "guided-v5" ||
+      release.version_label !== "guided-v6" ||
       release.requirement_count !== 10 ||
       release.question_count !== 31 ||
       release.requirement_question_mapping_count !== 31 ||
       release.legal_mapping_count < 31 ||
       release.rule_count !== 10
     ) {
-      throw new Error("The active guided-v5 release is incomplete");
+      throw new Error("The active guided-v6 release is incomplete");
     }
     const [vector] = await sql<{ installed: boolean }[]>`
       select exists(select 1 from pg_extension where extname = 'vector') as installed

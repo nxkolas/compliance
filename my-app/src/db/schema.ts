@@ -181,6 +181,7 @@ export const processingStatusEnum = pgEnum("processing_status", [
 export const aiOperationKindEnum = pgEnum("ai_operation_kind", [
   "gap_analysis",
   "gap_guidance_regeneration",
+  "action_plan_generation",
   "live_gap_evaluation",
 ]);
 
@@ -197,16 +198,11 @@ export const evidenceSufficiencyEnum = pgEnum("evidence_sufficiency", [
   "none",
 ]);
 
-export const gapGuidanceModeEnum = pgEnum("gap_guidance_mode", [
-  "maintain_and_document",
-  "control_remediation",
-  "evidence_verification",
+export const gapItemKindEnum = pgEnum("gap_item_kind", [
+  "missing",
+  "partial",
+  "uncertain",
 ]);
-
-export const actionPlanMeasureTypeEnum = pgEnum(
-  "action_plan_measure_type",
-  ["control_remediation", "evidence_verification"],
-);
 
 export const gapFindingEvidenceSourceTypeEnum = pgEnum(
   "gap_finding_evidence_source_type",
@@ -2150,6 +2146,14 @@ export const gapAnalysisReleases = pgTable.withRLS(
     promptVersion: text("prompt_version").notNull(),
     promptTemplateHash: text("prompt_template_hash").notNull(),
     responseSchemaVersion: text("response_schema_version").notNull(),
+    actionPlanPromptName: text("action_plan_prompt_name").notNull(),
+    actionPlanPromptVersion: text("action_plan_prompt_version").notNull(),
+    actionPlanPromptTemplateHash: text(
+      "action_plan_prompt_template_hash",
+    ).notNull(),
+    actionPlanResponseSchemaVersion: text(
+      "action_plan_response_schema_version",
+    ).notNull(),
     evaluatorKind: text("evaluator_kind").notNull(),
     evaluatorVersion: integer("evaluator_version").notNull(),
     defaultLocale: text("default_locale").default("de").notNull(),
@@ -2859,21 +2863,11 @@ export const gapFindings = pgTable.withRLS(
     evidenceSufficiency: evidenceSufficiencyEnum(
       "evidence_sufficiency",
     ).notNull(),
-    guidanceMode: gapGuidanceModeEnum("guidance_mode").notNull(),
-    guidanceBasis: jsonb("guidance_basis").notNull(),
-    guidanceBasisHash: text("guidance_basis_hash").notNull(),
     severity: actionPlanPriorityEnum("severity").notNull(),
-    rationale: text("rationale").notNull(),
-    recommendation: text("recommendation").notNull(),
-    objective: text("objective"),
-    deliverables: jsonb("deliverables").default(sql`'[]'::jsonb`).notNull(),
-    acceptanceCriteria: jsonb("acceptance_criteria")
-      .default(sql`'[]'::jsonb`)
-      .notNull(),
-    suggestedEvidence: jsonb("suggested_evidence")
-      .default(sql`'[]'::jsonb`)
-      .notNull(),
-    guidanceRunId: uuid("guidance_run_id").notNull(),
+    statementBasis: jsonb("statement_basis").notNull(),
+    statementBasisHash: text("statement_basis_hash").notNull(),
+    reviewNotice: text("review_notice"),
+    generationRunId: uuid("generation_run_id").notNull(),
     assumptions: jsonb("assumptions").default(sql`'[]'::jsonb`).notNull(),
     requiresReview: boolean("requires_review").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -2892,8 +2886,8 @@ export const gapFindings = pgTable.withRLS(
       foreignColumns: [gapRequirementVersions.id],
     }).onDelete("restrict"),
     foreignKey({
-      name: "gap_findings_guidance_run_fk",
-      columns: [table.guidanceRunId],
+      name: "gap_findings_generation_run_fk",
+      columns: [table.generationRunId],
       foreignColumns: [aiProcessingRuns.id],
     }).onDelete("restrict"),
     uniqueIndex("gap_findings_revision_requirement_unique").on(
@@ -2905,55 +2899,70 @@ export const gapFindings = pgTable.withRLS(
       table.id,
     ),
     index("gap_findings_status_idx").on(table.status),
-    index("gap_findings_guidance_run_idx").on(table.guidanceRunId),
+    index("gap_findings_generation_run_idx").on(table.generationRunId),
     check(
-      "gap_findings_guidance_consistency_check",
+      "gap_findings_review_notice_check",
       sql`(
-        (
-          ${table.status} = 'fulfilled'
-          and ${table.guidanceMode} = 'maintain_and_document'
-          and ${table.objective} is null
-          and jsonb_typeof(${table.deliverables}) = 'array'
-          and jsonb_array_length(${table.deliverables}) = 0
-          and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
-          and jsonb_array_length(${table.acceptanceCriteria}) = 0
-          and jsonb_typeof(${table.suggestedEvidence}) = 'array'
-          and jsonb_array_length(${table.suggestedEvidence}) = 0
-        )
-        or
-        (
-          ${table.status} in ('partially_fulfilled', 'not_fulfilled')
-          and ${table.guidanceMode} = 'control_remediation'
-          and length(btrim(${table.objective})) > 0
-          and jsonb_typeof(${table.deliverables}) = 'array'
-          and jsonb_array_length(${table.deliverables}) > 0
-          and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
-          and jsonb_array_length(${table.acceptanceCriteria}) > 0
-          and jsonb_typeof(${table.suggestedEvidence}) = 'array'
-          and jsonb_array_length(${table.suggestedEvidence}) > 0
-        )
-        or
-        (
-          ${table.status} = 'insufficient_evidence'
-          and ${table.guidanceMode} = 'evidence_verification'
-          and length(btrim(${table.objective})) > 0
-          and jsonb_typeof(${table.deliverables}) = 'array'
-          and jsonb_array_length(${table.deliverables}) > 0
-          and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
-          and jsonb_array_length(${table.acceptanceCriteria}) > 0
-          and jsonb_typeof(${table.suggestedEvidence}) = 'array'
-          and jsonb_array_length(${table.suggestedEvidence}) > 0
-        )
+        (${table.requiresReview} and length(btrim(${table.reviewNotice})) > 0)
+        or (not ${table.requiresReview} and ${table.reviewNotice} is null)
       )`,
     ),
     check(
-      "gap_findings_guidance_basis_check",
+      "gap_findings_statement_basis_check",
       sql`
-        jsonb_typeof(${table.guidanceBasis}) = 'object'
-        and ${table.guidanceBasis}->>'version' = '1'
-        and jsonb_typeof(${table.guidanceBasis}->'triggeringQuestions') = 'array'
-        and jsonb_typeof(${table.guidanceBasis}->'satisfiedQuestionStableKeys') = 'array'
-        and length(btrim(${table.guidanceBasisHash})) > 0
+        jsonb_typeof(${table.statementBasis}) = 'object'
+        and ${table.statementBasis}->>'version' = '1'
+        and jsonb_typeof(${table.statementBasis}->'triggeringQuestions') = 'array'
+        and jsonb_typeof(${table.statementBasis}->'satisfiedQuestionStableKeys') = 'array'
+        and length(btrim(${table.statementBasisHash})) > 0
+      `,
+    ),
+  ],
+);
+
+export const gapItems = pgTable.withRLS(
+  "gap_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    findingId: uuid("finding_id").notNull(),
+    sourceAssessmentAnswerId: uuid("source_assessment_answer_id").notNull(),
+    questionStableKey: text("question_stable_key").notNull(),
+    kind: gapItemKindEnum("kind").notNull(),
+    statement: text("statement").notNull(),
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "gap_items_finding_fk",
+      columns: [table.findingId],
+      foreignColumns: [gapFindings.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "gap_items_answer_fk",
+      columns: [table.sourceAssessmentAnswerId],
+      foreignColumns: [assessmentAnswers.id],
+    }).onDelete("restrict"),
+    uniqueIndex("gap_items_finding_position_unique").on(
+      table.findingId,
+      table.position,
+    ),
+    unique("gap_items_finding_identity_unique").on(
+      table.findingId,
+      table.id,
+    ),
+    index("gap_items_answer_idx").on(table.sourceAssessmentAnswerId),
+    check(
+      "gap_items_statement_check",
+      sql`
+        length(btrim(${table.statement})) > 0
+        and position(E'\n' in ${table.statement}) = 0
+        and ${table.position} > 0
       `,
     ),
   ],
@@ -3033,6 +3042,32 @@ export const gapFindingEvidence = pgTable.withRLS(
   ],
 );
 
+export const gapItemEvidence = pgTable.withRLS(
+  "gap_item_evidence",
+  {
+    gapItemId: uuid("gap_item_id").notNull(),
+    gapFindingEvidenceId: uuid("gap_finding_evidence_id").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.gapItemId, table.gapFindingEvidenceId],
+    }),
+    foreignKey({
+      name: "gap_item_evidence_gap_fk",
+      columns: [table.gapItemId],
+      foreignColumns: [gapItems.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "gap_item_evidence_finding_evidence_fk",
+      columns: [table.gapFindingEvidenceId],
+      foreignColumns: [gapFindingEvidence.id],
+    }).onDelete("cascade"),
+    index("gap_item_evidence_source_idx").on(
+      table.gapFindingEvidenceId,
+    ),
+  ],
+);
+
 export const gapFindingReviewResolutions = pgTable.withRLS(
   "gap_finding_review_resolutions",
   {
@@ -3067,6 +3102,8 @@ export const actionPlans = pgTable.withRLS(
       "source_gap_artifact_revision_id",
     ).notNull(),
     outputLocale: text("output_locale").notNull(),
+    generationRunId: uuid("generation_run_id"),
+    generationJobId: uuid("generation_job_id").notNull(),
     status: actionPlanStatusEnum("status").default("active").notNull(),
     revisionNumber: integer("revision_number").notNull(),
     activatedBy: uuid("activated_by"),
@@ -3092,6 +3129,19 @@ export const actionPlans = pgTable.withRLS(
       columns: [table.sourceGapArtifactRevisionId],
       foreignColumns: [generatedArtifactRevisions.id],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "action_plans_generation_run_fk",
+      columns: [table.generationRunId],
+      foreignColumns: [aiProcessingRuns.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "action_plans_generation_job_fk",
+      columns: [table.generationJobId],
+      foreignColumns: [backgroundJobs.id],
+    }).onDelete("restrict"),
+    uniqueIndex("action_plans_generation_job_unique").on(
+      table.generationJobId,
+    ),
     uniqueIndex("action_plans_active_organization_unique")
       .on(table.organizationId)
       .where(sql`${table.status} = 'active'`),
@@ -3131,12 +3181,9 @@ export const actionPlanItems = pgTable.withRLS(
     actionPlanId: uuid("action_plan_id").notNull(),
     sourceFindingId: uuid("source_finding_id").notNull(),
     title: text("title").notNull(),
-    measureType: actionPlanMeasureTypeEnum("measure_type").notNull(),
-    sourceRecommendation: text("source_recommendation").notNull(),
-    objective: text("objective").notNull(),
-    deliverables: jsonb("deliverables").notNull(),
-    acceptanceCriteria: jsonb("acceptance_criteria").notNull(),
+    result: text("result").notNull(),
     suggestedEvidence: jsonb("suggested_evidence").notNull(),
+    position: integer("position").notNull(),
     executionNotes: text("execution_notes").default("").notNull(),
     priority: actionPlanPriorityEnum("priority").notNull(),
     status: actionPlanItemStatusEnum("status").default("open").notNull(),
@@ -3161,24 +3208,59 @@ export const actionPlanItems = pgTable.withRLS(
       columns: [table.sourceFindingId],
       foreignColumns: [gapFindings.id],
     }).onDelete("restrict"),
-    uniqueIndex("action_plan_items_finding_unique").on(
+    uniqueIndex("action_plan_items_plan_finding_position_unique").on(
       table.actionPlanId,
       table.sourceFindingId,
+      table.position,
+    ),
+    unique("action_plan_items_finding_identity_unique").on(
+      table.id,
+      table.sourceFindingId,
+    ),
+    index("action_plan_items_plan_order_idx").on(
+      table.actionPlanId,
+      table.sourceFindingId,
+      table.position,
     ),
     index("action_plan_items_status_idx").on(table.status),
     check(
-      "action_plan_items_generated_guidance_check",
+      "action_plan_items_generated_content_check",
       sql`
-        length(btrim(${table.sourceRecommendation})) > 0
-        and length(btrim(${table.objective})) > 0
-        and jsonb_typeof(${table.deliverables}) = 'array'
-        and jsonb_array_length(${table.deliverables}) > 0
-        and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
-        and jsonb_array_length(${table.acceptanceCriteria}) > 0
+        length(btrim(${table.title})) > 0
+        and length(btrim(${table.result})) > 0
         and jsonb_typeof(${table.suggestedEvidence}) = 'array'
         and jsonb_array_length(${table.suggestedEvidence}) > 0
+        and ${table.position} > 0
       `,
     ),
+  ],
+);
+
+export const actionPlanItemGaps = pgTable.withRLS(
+  "action_plan_item_gaps",
+  {
+    actionPlanItemId: uuid("action_plan_item_id").notNull(),
+    gapItemId: uuid("gap_item_id").notNull(),
+    sourceFindingId: uuid("source_finding_id").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.actionPlanItemId, table.gapItemId],
+    }),
+    foreignKey({
+      name: "action_plan_item_gaps_action_category_fk",
+      columns: [table.actionPlanItemId, table.sourceFindingId],
+      foreignColumns: [
+        actionPlanItems.id,
+        actionPlanItems.sourceFindingId,
+      ],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "action_plan_item_gaps_gap_category_fk",
+      columns: [table.gapItemId, table.sourceFindingId],
+      foreignColumns: [gapItems.id, gapItems.findingId],
+    }).onDelete("restrict"),
+    index("action_plan_item_gaps_gap_idx").on(table.gapItemId),
   ],
 );
 
@@ -3369,6 +3451,11 @@ export const backgroundJobs = pgTable.withRLS(
     uniqueIndex("background_jobs_legal_monitor_active_unique")
       .on(sql`(${table.payload} ->> 'monitorId')`)
       .where(sql`${table.kind} = 'legal-source-monitor' and ${table.state} in ('queued', 'running', 'cancellation_requested')`),
+    uniqueIndex("background_jobs_action_plan_generation_active_unique")
+      .on(table.organizationId)
+      .where(
+        sql`${table.kind} = 'action-plan-generation' and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
+      ),
     check("background_jobs_progress_check", sql`${table.progress} between 0 and 100`),
     check("background_jobs_attempts_check", sql`${table.attemptCount} >= 0 and ${table.maxAttempts} > 0`),
     check(
@@ -4197,6 +4284,7 @@ export const backgroundJobResults = pgTable.withRLS(
     legalProcessingGenerationId: uuid("legal_processing_generation_id"),
     legalSourceMonitorId: uuid("legal_source_monitor_id"),
     legalCorpusEvaluationId: uuid("legal_corpus_evaluation_id"),
+    actionPlanId: uuid("action_plan_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -4207,12 +4295,14 @@ export const backgroundJobResults = pgTable.withRLS(
     foreignKey({ name: "background_job_results_processing_fk", columns: [table.legalProcessingGenerationId], foreignColumns: [legalSourceProcessingGenerations.id] }).onDelete("restrict"),
     foreignKey({ name: "background_job_results_monitor_fk", columns: [table.legalSourceMonitorId], foreignColumns: [legalSourceMonitors.id] }).onDelete("restrict"),
     foreignKey({ name: "background_job_results_evaluation_fk", columns: [table.legalCorpusEvaluationId], foreignColumns: [legalCorpusEvaluations.id] }).onDelete("restrict"),
+    foreignKey({ name: "background_job_results_action_plan_fk", columns: [table.actionPlanId], foreignColumns: [actionPlans.id] }).onDelete("restrict"),
     index("background_job_results_artifact_idx").on(table.generatedArtifactRevisionId),
     index("background_job_results_report_idx").on(table.reportId),
     index("background_job_results_rendition_idx").on(table.legalSourceRenditionId),
     index("background_job_results_processing_idx").on(table.legalProcessingGenerationId),
     index("background_job_results_monitor_idx").on(table.legalSourceMonitorId),
     index("background_job_results_evaluation_idx").on(table.legalCorpusEvaluationId),
+    index("background_job_results_action_plan_idx").on(table.actionPlanId),
     check(
       "background_job_results_exactly_one_check",
       sql`num_nonnulls(
@@ -4221,7 +4311,8 @@ export const backgroundJobResults = pgTable.withRLS(
         ${table.legalSourceRenditionId},
         ${table.legalProcessingGenerationId},
         ${table.legalSourceMonitorId},
-        ${table.legalCorpusEvaluationId}
+        ${table.legalCorpusEvaluationId},
+        ${table.actionPlanId}
       ) = 1`,
     ),
   ],

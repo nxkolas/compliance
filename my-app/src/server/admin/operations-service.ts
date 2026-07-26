@@ -23,7 +23,7 @@ export async function listPlatformJobs(input: { userId: string; limit: number; c
   });
   const page = rows.slice(0, input.limit);
   const last = page.at(-1);
-  return { jobs: page.map(toJobDto), nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
+  return { jobs: page.map((job) => toJobDto(job)), nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined };
 }
 
 export async function listPlatformAuditEvents(input: { userId: string; limit: number; cursor?: string; eventType?: string; entityType?: string; entityId?: string; actorUserId?: string; dateFrom?: Date; dateTo?: Date }) {

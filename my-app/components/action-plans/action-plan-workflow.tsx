@@ -43,7 +43,7 @@ export function ActionPlanWorkflow({
   const [error, setError] = useState<string | null>(null);
 
   async function updateItem(
-    item: NonNullable<CurrentPlan>["items"][number],
+    item: NonNullable<CurrentPlan>["categories"][number]["actions"][number],
     changes: {
       status: typeof item.status;
       ownerUserId: string | null;
@@ -107,23 +107,28 @@ export function ActionPlanWorkflow({
         </div>
       ) : null}
       <div className="grid gap-4">
-        {current.items.length === 0 ? (
+        {current.categories.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-sm text-muted-foreground">
               {labels.empty}
             </CardContent>
           </Card>
         ) : (
-          current.items.map((item) => (
-            <ActionItem
-              key={item.id}
-              item={item}
-              labels={labels}
-              canContribute={canContribute}
-              busy={busy === item.id}
-              members={members}
-              save={(changes) => updateItem(item, changes)}
-            />
+          current.categories.map((category) => (
+            <section key={category.requirementVersionId} className="grid gap-3">
+              <h2 className="text-lg font-semibold">{category.title}</h2>
+              {category.actions.map((item) => (
+                <ActionItem
+                  key={item.id}
+                  item={item}
+                  labels={labels}
+                  canContribute={canContribute}
+                  busy={busy === item.id}
+                  members={members}
+                  save={(changes) => updateItem(item, changes)}
+                />
+              ))}
+            </section>
           ))
         )}
       </div>
@@ -139,7 +144,7 @@ function ActionItem({
   save,
   members,
 }: {
-  item: NonNullable<CurrentPlan>["items"][number];
+  item: NonNullable<CurrentPlan>["categories"][number]["actions"][number];
   labels: Labels;
   canContribute: boolean;
   busy: boolean;
@@ -160,18 +165,13 @@ function ActionItem({
   const [executionNotes, setExecutionNotes] = useState(
     item.executionNotes,
   );
-  const deliverables = guidanceTexts(item.deliverables);
-  const acceptanceCriteria = guidanceTexts(item.acceptanceCriteria);
-  const suggestedEvidence = guidanceTexts(item.suggestedEvidence);
+  const suggestedEvidence = stringArray(item.suggestedEvidence);
   return (
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>{item.title}</CardTitle>
-            <CardDescription>
-              {labels.measureTypes[item.measureType]}
-            </CardDescription>
           </div>
           <span className="rounded-full border px-3 py-1 text-xs">
             {labels.priorities[item.priority]}
@@ -179,35 +179,20 @@ function ActionItem({
         </div>
       </CardHeader>
       <CardContent className="grid gap-5">
-        <section aria-labelledby={`${item.id}-source`}>
+        <section aria-labelledby={`${item.id}-result`}>
           <h3
-            id={`${item.id}-source`}
+            id={`${item.id}-result`}
             className="text-sm font-semibold"
           >
-            {labels.sourceRecommendation}
+            {labels.result}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {item.sourceRecommendation}
+            {item.result}
           </p>
         </section>
         <GuidanceList
-          id={`${item.id}-objective`}
-          title={labels.objective}
-          items={[item.objective]}
-        />
-        <GuidanceList
-          id={`${item.id}-deliverables`}
-          title={labels.deliverables}
-          items={deliverables}
-        />
-        <GuidanceList
-          id={`${item.id}-criteria`}
-          title={labels.acceptanceCriteria}
-          items={acceptanceCriteria}
-        />
-        <GuidanceList
           id={`${item.id}-evidence`}
-          title={labels.suggestedEvidence}
+          title={labels.recommendedEvidence}
           items={suggestedEvidence}
         />
         <div className="grid gap-3 md:grid-cols-3">
@@ -312,13 +297,7 @@ function GuidanceList({
   );
 }
 
-function guidanceTexts(value: unknown): string[] {
+function stringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((item) =>
-    typeof item === "object" &&
-    item !== null &&
-    typeof (item as { text?: unknown }).text === "string"
-      ? [(item as { text: string }).text]
-      : [],
-  );
+  return value.filter((item): item is string => typeof item === "string");
 }

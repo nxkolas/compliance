@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import type { GroundedClaim, GroundingContextItem, QueryUnit } from "./types";
 
 export type ClaimValidation = GroundedClaim & {
-  validation: "supported" | "unsupported" | "conflicting" | "insufficient_information";
+  validation:
+    "supported" | "unsupported" | "conflicting" | "insufficient_information";
   safeFailureReason?: string;
   claimTextHash: string;
 };
@@ -53,10 +54,12 @@ export function safeGroundingFailureMessage(error: unknown) {
     ) {
       return [];
     }
-    return [{
-      key: safeClaimKey(claim.key),
-      reason: claim.reason,
-    }];
+    return [
+      {
+        key: safeClaimKey(claim.key),
+        reason: claim.reason,
+      },
+    ];
   });
   if (claims.length !== details.claims.length || claims.length === 0) {
     return generic;
@@ -79,7 +82,9 @@ export function validateGroundedClaims(input: {
     const group = item.metadata.conflictGroup;
     const side = item.metadata.conflictSide;
     if (typeof group !== "string" || typeof side !== "string") continue;
-    const groups = conflictSidesByQuery.get(item.queryUnitId) ?? new Map<string, Set<string>>();
+    const groups =
+      conflictSidesByQuery.get(item.queryUnitId) ??
+      new Map<string, Set<string>>();
     const sides = groups.get(group) ?? new Set<string>();
     sides.add(side);
     groups.set(group, sides);
@@ -89,19 +94,49 @@ export function validateGroundedClaims(input: {
   return input.claims.map((claim): ClaimValidation => {
     let reason: string | undefined;
     const cited = claim.citationIds.map((id) => context.get(id));
-    if (seenKeys.has(claim.key) || !queryIds.has(claim.queryUnitId)) reason = "Claim key or query unit is invalid";
-    else if (cited.some((item) => !item || item.queryUnitId !== claim.queryUnitId)) reason = "Claim cites context not supplied for its query unit";
-    else if (claim.kind === "legal" && cited.every((item) => item?.channel !== "legal")) reason = "Legal claim lacks legal authority";
-    else if (claim.kind === "organization" && cited.every((item) => item?.channel === "legal")) reason = "Organization claim lacks organization evidence";
-    else if (claim.binding && cited.filter((item) => item?.channel === "legal").every((item) => item?.authorityTier === "curated_secondary" || item?.translationStatus !== "official")) reason = "Binding claim relies only on secondary or non-official material";
-    const hasConflict = [...(conflictSidesByQuery.get(claim.queryUnitId)?.values() ?? [])]
-      .some((sides) => sides.size > 1);
+    if (seenKeys.has(claim.key) || !queryIds.has(claim.queryUnitId))
+      reason = "Claim key or query unit is invalid";
+    else if (
+      cited.some((item) => !item || item.queryUnitId !== claim.queryUnitId)
+    )
+      reason = "Claim cites context not supplied for its query unit";
+    else if (
+      claim.kind === "legal" &&
+      cited.every((item) => item?.channel !== "legal")
+    )
+      reason = "Legal claim lacks legal authority";
+    else if (
+      claim.kind === "organization" &&
+      cited.every((item) => item?.channel === "legal")
+    )
+      reason = "Organization claim lacks organization evidence";
+    else if (
+      claim.binding &&
+      cited
+        .filter((item) => item?.channel === "legal")
+        .every(
+          (item) =>
+            item?.authorityTier === "curated_secondary" ||
+            item?.translationStatus !== "official",
+        )
+    )
+      reason =
+        "Binding claim relies only on secondary or non-official material";
+    const hasConflict = [
+      ...(conflictSidesByQuery.get(claim.queryUnitId)?.values() ?? []),
+    ].some((sides) => sides.size > 1);
     seenKeys.add(claim.key);
     return {
       ...claim,
       claimTextHash: createHash("sha256").update(claim.text).digest("hex"),
-      validation: reason ? "unsupported" : hasConflict ? "conflicting" : "supported",
-      safeFailureReason: reason ?? (hasConflict ? "Conflicting sources require review" : undefined),
+      validation: reason
+        ? "unsupported"
+        : hasConflict
+          ? "conflicting"
+          : "supported",
+      safeFailureReason:
+        reason ??
+        (hasConflict ? "Conflicting sources require review" : undefined),
     };
   });
 }
@@ -119,7 +154,10 @@ export function hasCompleteQueryUnitCoverage(
   claims: Pick<GroundedClaim, "queryUnitId">[],
 ) {
   const counts = new Map<string, number>();
-  for (const claim of claims) counts.set(claim.queryUnitId, (counts.get(claim.queryUnitId) ?? 0) + 1);
-  return queryUnits.every((unit) => counts.get(unit.id) === 1)
-    && [...counts.keys()].every((id) => queryUnits.some((unit) => unit.id === id));
+  for (const claim of claims)
+    counts.set(claim.queryUnitId, (counts.get(claim.queryUnitId) ?? 0) + 1);
+  return (
+    queryUnits.every((unit) => (counts.get(unit.id) ?? 0) >= 1) &&
+    [...counts.keys()].every((id) => queryUnits.some((unit) => unit.id === id))
+  );
 }

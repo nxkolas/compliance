@@ -73,13 +73,13 @@ An immutable organization-specific Gap Analysis result for one pinned set of que
 _Avoid_: Gap report, reassessment result, mutable analysis
 
 **Gap Finding**:
-The assessment of one applicable requirement within one Gap Analysis Revision.
+The deterministic category assessment of one applicable requirement within one Gap Analysis Revision.
 _Avoid_: Issue, recommendation, requirement
 
-**Finding Recommendation**:
-Generated or human-corrected remediation guidance belonging to a Gap Finding.
-_Avoid_: Requirement recommendation, catalogue recommendation
+**Atomic Gap**:
+One immutable, short missing, partial, or uncertain fact derived from exactly one triggering questionnaire answer and owned by a Gap Finding.
+_Avoid_: Recommendation, action, evidence request
 
 **Action Plan**:
-An organization's fixed set of measures derived when its Gap Analysis is finalized.
+An organization's category-grouped set of independently AI-generated actions linked to the finalized Atomic Gaps.
 _Avoid_: Gap Analysis, remediation report, plan revision

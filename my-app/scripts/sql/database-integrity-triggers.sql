@@ -747,6 +747,16 @@ begin
     raise exception using errcode = '23514',
       message = 'Job Report result has the wrong tenant or kind';
   end if;
+  if result_row.action_plan_id is not null and not exists (
+    select 1 from public.action_plans plan
+    where plan.id = result_row.action_plan_id
+      and plan.organization_id = job_row.organization_id
+      and plan.generation_job_id = job_row.id
+      and job_row.kind = 'action-plan-generation'
+  ) then
+    raise exception using errcode = '23514',
+      message = 'Job Action Plan result has the wrong tenant, job, or kind';
+  end if;
   if (
     result_row.legal_source_rendition_id is not null
     or result_row.legal_processing_generation_id is not null
@@ -758,6 +768,22 @@ begin
   end if;
 end;
 $$;
+
+alter table public.background_job_results
+  drop constraint if exists background_job_results_exactly_one_check;
+alter table public.background_job_results
+  add constraint background_job_results_exactly_one_check
+  check (
+    num_nonnulls(
+      generated_artifact_revision_id,
+      report_id,
+      legal_source_rendition_id,
+      legal_processing_generation_id,
+      legal_source_monitor_id,
+      legal_corpus_evaluation_id,
+      action_plan_id
+    ) = 1
+  );
 
 create or replace function public.enforce_background_job_result()
 returns trigger
@@ -1240,7 +1266,16 @@ create trigger assessment_requirement_evaluations_immutable_trigger
 before update or delete on public.assessment_requirement_evaluations
 for each row execute function public.prevent_assessment_requirement_evaluation_mutation();
 
-create or replace function public.validate_guided_v4_assessment_evaluations(
+drop trigger if exists assessment_revisions_guided_v4_evaluations_trigger
+  on public.assessment_revisions;
+drop trigger if exists assessment_revisions_guided_v6_evaluations_trigger
+  on public.assessment_revisions;
+drop trigger if exists assessment_requirement_evaluations_coverage_trigger
+  on public.assessment_requirement_evaluations;
+drop function if exists public.enforce_guided_v4_assessment_evaluations();
+drop function if exists public.validate_guided_v4_assessment_evaluations(uuid);
+
+create or replace function public.validate_guided_v6_assessment_evaluations(
   target_revision_id uuid
 )
 returns void
@@ -1261,7 +1296,7 @@ begin
   where revision.id = target_revision_id
     and revision.status in ('submitted', 'superseded')
     and release.release_code = 'nis2-gap'
-    and release.version_label in ('guided-v4', 'guided-v5');
+    and release.version_label = 'guided-v6';
   if not found then return; end if;
 
   select count(*)::integer into expected_count
@@ -1281,7 +1316,7 @@ begin
 end;
 $$;
 
-create or replace function public.enforce_guided_v4_assessment_evaluations()
+create or replace function public.enforce_guided_v6_assessment_evaluations()
 returns trigger
 language plpgsql
 set search_path = public, pg_temp
@@ -1294,23 +1329,19 @@ begin
       then (to_jsonb(new) ->> 'id')::uuid
     else (to_jsonb(new) ->> 'assessment_revision_id')::uuid
   end;
-  perform public.validate_guided_v4_assessment_evaluations(target_revision_id);
+  perform public.validate_guided_v6_assessment_evaluations(target_revision_id);
   return new;
 end;
 $$;
 
-drop trigger if exists assessment_revisions_guided_v4_evaluations_trigger
-  on public.assessment_revisions;
-create constraint trigger assessment_revisions_guided_v4_evaluations_trigger
+create constraint trigger assessment_revisions_guided_v6_evaluations_trigger
 after insert or update of status on public.assessment_revisions
 deferrable initially deferred
-for each row execute function public.enforce_guided_v4_assessment_evaluations();
+for each row execute function public.enforce_guided_v6_assessment_evaluations();
 
-drop trigger if exists assessment_requirement_evaluations_coverage_trigger
-  on public.assessment_requirement_evaluations;
 create constraint trigger assessment_requirement_evaluations_coverage_trigger
 after insert on public.assessment_requirement_evaluations
 deferrable initially deferred
-for each row execute function public.enforce_guided_v4_assessment_evaluations();
+for each row execute function public.enforce_guided_v6_assessment_evaluations();
 
 commit;

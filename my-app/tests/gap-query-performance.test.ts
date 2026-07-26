@@ -29,6 +29,12 @@ function release(id: string, locale: "de" | "en"): LoadedGapRelease {
       templateHash: "hash",
       responseSchemaVersion: "1",
     },
+    actionPlanPrompt: {
+      name: "action-plan",
+      version: "1",
+      templateHash: "action-hash",
+      responseSchemaVersion: "1",
+    },
     evaluator: { kind: "deterministic", version: 1 },
     questions: [],
     requirements: [],

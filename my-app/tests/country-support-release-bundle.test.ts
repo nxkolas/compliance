@@ -4,14 +4,14 @@ import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
 import { groundingPolicyDefinitions } from "@/src/server/ai/grounding/policy-definition";
 import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
 import { nis2ReleaseDefinition } from "@/src/server/compliance/nis2/releases/2026-v1/release";
-import { singleLifecycleGapRelease } from "@/src/server/gap-analysis/releases/guided-v3/release";
+import { guidedV6GapRelease } from "@/src/server/gap-analysis/releases/guided-v6/release";
 
 describe("current Germany country-support bundle", () => {
   it("ships one complete supported country with matching Gap and grounding inputs", () => {
     const { artifact } = compileRelease(nis2ReleaseDefinition);
     const germanProfile = artifact.countryProfiles.DE;
     const coveredOutcomes = new Set(
-      singleLifecycleGapRelease.requirementSet.requirements.flatMap(
+      guidedV6GapRelease.requirementSet.requirements.flatMap(
         (requirement) => requirement.applicableOutcomeCodes,
       ),
     );
@@ -30,7 +30,7 @@ describe("current Germany country-support bundle", () => {
     expect(nis2ReleaseDefinition.requiredCorpusFamilies).toEqual(
       expect.arrayContaining(["nis2-eu-primary", "nis2-de-primary"]),
     );
-    expect(singleLifecycleGapRelease.requiredCorpusFamilies).toEqual(
+    expect(guidedV6GapRelease.requiredCorpusFamilies).toEqual(
       expect.arrayContaining(["nis2-eu-primary", "nis2-de-primary"]),
     );
     expect(

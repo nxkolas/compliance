@@ -168,10 +168,12 @@ async function main() {
   ]);
   assert(german && english, "The active Gap release did not load bilingually");
   assert(
-    german.versionLabel === "guided-v5" &&
-      german.prompt.version === "6" &&
-      german.prompt.responseSchemaVersion === "6",
-    "The active Gap release is not guided-v5 contract 6",
+    german.versionLabel === "guided-v6" &&
+      german.prompt.version === "7" &&
+      german.prompt.responseSchemaVersion === "7" &&
+      german.actionPlanPrompt.version === "1" &&
+      german.actionPlanPrompt.responseSchemaVersion === "1",
+    "The active Gap release is not guided-v6 contracts 7/1",
   );
   const germanById = new Map(
     german.requirements.map((requirement) => [requirement.id, requirement]),
@@ -210,7 +212,7 @@ async function main() {
       join gap_analysis_releases release
         on release.id = active.gap_analysis_release_id
       where active.release_code = 'nis2-gap'
-        and release.version_label = 'guided-v5'
+        and release.version_label = 'guided-v6'
     ),
     mapped as (
       select question.stable_key as question_stable_key,
@@ -285,6 +287,8 @@ async function verifyPublishedMappedAuthority(releaseReference: string) {
       id: string;
       prompt_version: string;
       response_schema_version: string;
+      action_plan_prompt_version: string;
+      action_plan_response_schema_version: string;
       status: string;
       question_count: number;
       requirement_count: number;
@@ -293,6 +297,8 @@ async function verifyPublishedMappedAuthority(releaseReference: string) {
     select release.id,
       release.prompt_version,
       release.response_schema_version,
+      release.action_plan_prompt_version,
+      release.action_plan_response_schema_version,
       release.status,
       (
         select count(*)::int
@@ -314,11 +320,13 @@ async function verifyPublishedMappedAuthority(releaseReference: string) {
   assert(release, `Published Gap release ${releaseReference} is missing`);
   assert(
     release.status === "published" &&
-      release.prompt_version === "6" &&
-      release.response_schema_version === "6" &&
+      release.prompt_version === "7" &&
+      release.response_schema_version === "7" &&
+      release.action_plan_prompt_version === "1" &&
+      release.action_plan_response_schema_version === "1" &&
       release.question_count === 31 &&
       release.requirement_count === 10,
-    `Published Gap release ${releaseReference} does not match guided-v5 contract 6`,
+    `Published Gap release ${releaseReference} does not match guided-v6 contract 7`,
   );
   const missing = await sql<
     { question_stable_key: string; provision_key: string }[]

@@ -186,13 +186,13 @@ Publish the compatible Gap release and identify its audit actor:
 ```powershell
 $env:GAP_RELEASE_ACTOR_ID = $platformAdminUserId
 try {
-  npm.cmd run db:publish:gap -- --release nis2-gap/guided-v5
+  npm.cmd run db:publish:gap -- --release nis2-gap/guided-v6
   if ($LASTEXITCODE -ne 0) { throw 'Gap publication failed' }
 
-  npm.cmd run db:verify:gap-requirements -- --release nis2-gap/guided-v5
+  npm.cmd run db:verify:gap-requirements -- --release nis2-gap/guided-v6
   if ($LASTEXITCODE -ne 0) { throw 'Gap mapped-authority verification failed' }
 
-  npm.cmd run db:activate:gap -- --release nis2-gap/guided-v5
+  npm.cmd run db:activate:gap -- --release nis2-gap/guided-v6
   if ($LASTEXITCODE -ne 0) { throw 'Gap activation failed' }
 }
 finally {

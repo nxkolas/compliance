@@ -1,11 +1,6 @@
 import "dotenv/config";
 
-import {
-  access,
-  mkdir,
-  readFile,
-  writeFile,
-} from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -13,10 +8,13 @@ import { and, eq, inArray } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
 import {
   actionPlanItems,
+  actionPlanItemGaps,
   aiProcessingRunClaims,
   aiProcessingRunContext,
+  backgroundJobResults,
   gapFindingEvidence,
   gapFindings,
+  gapItems,
   gapRequirements,
   gapRequirementVersions,
 } from "@/src/db/schema";
@@ -26,17 +24,16 @@ import {
   type ApplicabilityAnswerValue,
 } from "@/src/server/applicability-check";
 import {
-  claimIdempotency,
-  fingerprintRequest,
-} from "@/src/server/api/idempotency";
+  enqueueActionPlanGeneration,
+  getCurrentActionPlan,
+} from "@/src/server/action-plans";
 import { directRuntimeReleaseReader } from "@/src/server/compliance";
 import { uploadOrganizationDocument } from "@/src/server/documents";
 import {
   correctGapRevision,
   createOrOpenGapAssessment,
-  finalizeGapAnalysisAndGenerateActionPlan,
   generateGapReassessment,
-  getActiveGapAnalysisRelease,
+  loadGapAnalysisRelease,
   prepareGapReassessment,
   regenerateGapFindingGuidance,
   retryGapReassessment,
@@ -44,7 +41,6 @@ import {
   submitGapQuestionnaire,
 } from "@/src/server/gap-analysis";
 import type { GapAnswerValue } from "@/src/server/gap-analysis";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import {
   getOrganizationAiProviderPolicy,
   updateOrganizationAiProviderPolicy,
@@ -96,11 +92,41 @@ const USER_ID =
   "b8a2c5f7-7f69-4893-af62-de06c8438432";
 const RUN_ID =
   readArgument("--run-id") ||
-  new Date().toISOString().replaceAll(":", "-").replace(/\.\d{3}Z$/, "Z");
+  new Date()
+    .toISOString()
+    .replaceAll(":", "-")
+    .replace(/\.\d{3}Z$/, "Z");
 const OUTPUT_DIR = resolve(
   readArgument("--output-dir") ||
     `docs/qa/gap-action-plan-manual-evaluation-${RUN_ID}`,
 );
+const QA_GAP_RELEASE = {
+  releaseCode: "nis2-gap",
+  versionLabel: "guided-v6",
+} as const;
+
+async function loadQaGapRelease(locale: Locale) {
+  const row = await db.query.gapAnalysisReleases.findFirst({
+    columns: { id: true, status: true },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.releaseCode, QA_GAP_RELEASE.releaseCode),
+          eq(table.versionLabel, QA_GAP_RELEASE.versionLabel),
+        ) ?? operators.sql`true`,
+    },
+  });
+  if (!row || row.status !== "published") {
+    throw new Error(
+      `${QA_GAP_RELEASE.releaseCode}/${QA_GAP_RELEASE.versionLabel} is not published`,
+    );
+  }
+  const release = await loadGapAnalysisRelease(row.id, locale);
+  if (!release) {
+    throw new Error("Published guided-v6 Gap release is unavailable");
+  }
+  return release;
+}
 
 const applicabilityFacts: Record<string, ApplicabilityAnswerValue> = {
   "bc.eu_activity": "yes",
@@ -250,17 +276,19 @@ async function main() {
   );
   if (resumeCaseFiveOrganizationId) {
     const previous = await Promise.all(
-      cases.slice(0, 4).map(async (testCase) =>
-        JSON.parse(
-          await readFile(
-            resolve(
-              OUTPUT_DIR,
-              `case-${testCase.number}-${testCase.slug}.json`,
+      cases
+        .slice(0, 4)
+        .map(async (testCase) =>
+          JSON.parse(
+            await readFile(
+              resolve(
+                OUTPUT_DIR,
+                `case-${testCase.number}-${testCase.slug}.json`,
+              ),
+              "utf8",
             ),
-            "utf8",
           ),
         ),
-      ),
     );
     const result = await resumeCaseFive(resumeCaseFiveOrganizationId);
     await writeJson(
@@ -274,9 +302,7 @@ async function main() {
   const requestedCaseNumber = readArgument("--case-number");
   if (requestedCaseNumber) {
     const caseNumber = Number(requestedCaseNumber);
-    const testCase = cases.find(
-      (candidate) => candidate.number === caseNumber,
-    );
+    const testCase = cases.find((candidate) => candidate.number === caseNumber);
     if (!testCase || !Number.isInteger(caseNumber)) {
       throw new Error(
         "--case-number must identify one of the five evaluation cases",
@@ -284,17 +310,11 @@ async function main() {
     }
     const result = await executeCase(testCase);
     await writeJson(
-      resolve(
-        OUTPUT_DIR,
-        `case-${testCase.number}-${testCase.slug}.json`,
-      ),
+      resolve(OUTPUT_DIR, `case-${testCase.number}-${testCase.slug}.json`),
       result,
     );
     const casePaths = cases.map((candidate) =>
-      resolve(
-        OUTPUT_DIR,
-        `case-${candidate.number}-${candidate.slug}.json`,
-      ),
+      resolve(OUTPUT_DIR, `case-${candidate.number}-${candidate.slug}.json`),
     );
     const allCaseFilesExist = (
       await Promise.all(casePaths.map(fileExists))
@@ -323,10 +343,7 @@ async function main() {
     const result = await executeCase(testCase);
     results.push(result);
     await writeJson(
-      resolve(
-        OUTPUT_DIR,
-        `case-${testCase.number}-${testCase.slug}.json`,
-      ),
+      resolve(OUTPUT_DIR, `case-${testCase.number}-${testCase.slug}.json`),
       result,
     );
   }
@@ -366,6 +383,45 @@ async function writeManifest(results: unknown[], runStartedAt: string) {
     }),
   };
   await writeJson(resolve(OUTPUT_DIR, "manifest.json"), manifest);
+  const reviewLines = [
+    "# Atomic Gap and Action Plan manual review",
+    "",
+    `Run: \`${RUN_ID}\``,
+    "",
+    "Inspect the provider-produced prose in every case JSON file. Automated schema checks are necessary but do not constitute content approval.",
+    "",
+    "For each English and German case, record concrete excerpts and mark every item only after inspection:",
+    "",
+    "- [ ] Atomic gaps are short, standalone, and non-overlapping.",
+    "- [ ] Missing, partial, and uncertain wording is truthful.",
+    "- [ ] Partial answers contain no invented sub-control deficiency.",
+    "- [ ] Gap prose contains no recommendation or remediation instruction.",
+    "- [ ] Review notices describe contradictions without action advice.",
+    "- [ ] Actions combine or split gaps sensibly within one category.",
+    "- [ ] Uncertain work verifies first and makes remediation conditional.",
+    "- [ ] Results are clear and recommended evidence names are concrete.",
+    "- [ ] Removed objective/deliverable/acceptance-criteria prose is absent.",
+    "- [ ] Both locales are readable and match the pinned result language.",
+    "",
+    "## Cases",
+    "",
+    ...manifest.cases.flatMap((item) => [
+      `### ${item.number}. ${item.slug}`,
+      "",
+      `Automated checks: ${item.automaticChecksPassed ? "PASS" : "FAIL"}`,
+      "",
+      "- Human judgment: PENDING",
+      "- Gap excerpt:",
+      "- Action excerpt:",
+      "- Notes:",
+      "",
+    ]),
+  ];
+  await writeFile(
+    resolve(OUTPUT_DIR, "manual-review-checklist.md"),
+    `${reviewLines.join("\n")}\n`,
+    "utf8",
+  );
 }
 
 async function executeCase(testCase: EvaluationCase) {
@@ -407,26 +463,21 @@ async function executeCase(testCase: EvaluationCase) {
     );
   }
 
+  const release = await loadQaGapRelease(testCase.locale);
   const assessment = await createOrOpenGapAssessment(
     USER_ID,
     organization.id,
-  );
-  const release = await getActiveGapAnalysisRelease(
     "nis2-gap",
-    testCase.locale,
+    { publishedReleaseIdForQa: release.id },
   );
-  if (!release) throw new Error("Active Gap release is unavailable");
-  const questionnaireDraft =
-    await db.query.gapQuestionnaireDrafts.findFirst({
-      columns: { id: true, version: true },
-      where: {
-        RAW: (table, operators) =>
-          and(
-            eq(table.assessmentId, assessment.id),
-            eq(table.status, "open"),
-          ) ?? operators.sql`true`,
-      },
-    });
+  const questionnaireDraft = await db.query.gapQuestionnaireDrafts.findFirst({
+    columns: { id: true, version: true },
+    where: {
+      RAW: (table, operators) =>
+        and(eq(table.assessmentId, assessment.id), eq(table.status, "open")) ??
+        operators.sql`true`,
+    },
+  });
   if (!questionnaireDraft) {
     throw new Error("Gap questionnaire draft is unavailable");
   }
@@ -441,15 +492,12 @@ async function executeCase(testCase: EvaluationCase) {
     .filter((candidate) => candidate.required)
     .entries()) {
     const answer =
-      testCase.answerOverrides?.[question.stableKey] ??
-      testCase.defaultAnswer;
+      testCase.answerOverrides?.[question.stableKey] ?? testCase.defaultAnswer;
     const option = question.options.find(
       (candidate) => candidate.stableValue === answer,
     );
     if (!option) {
-      throw new Error(
-        `Missing option ${answer} for ${question.stableKey}`,
-      );
+      throw new Error(`Missing option ${answer} for ${question.stableKey}`);
     }
     const saved = await saveQuestionnaireDraftAnswer({
       userId: USER_ID,
@@ -474,9 +522,9 @@ async function executeCase(testCase: EvaluationCase) {
     expectedVersion: draftVersion,
   });
 
-  let uploadedDocument:
-    | Awaited<ReturnType<typeof uploadOrganizationDocument>>
-    | null = null;
+  let uploadedDocument: Awaited<
+    ReturnType<typeof uploadOrganizationDocument>
+  > | null = null;
   if (testCase.document) {
     uploadedDocument = await uploadOrganizationDocument({
       userId: USER_ID,
@@ -535,15 +583,14 @@ async function executeCase(testCase: EvaluationCase) {
     release,
   );
   const generatedFindingByCode = new Map(
-    generated.findings.map((finding) => [
-      finding.requirementCode,
-      finding,
-    ]),
+    generated.findings.map((finding) => [finding.requirementCode, finding]),
   );
 
-  let expectedFinalizationBlock:
-    | { attempted: boolean; blocked: boolean; error: unknown }
-    | null = null;
+  let expectedFinalizationBlock: {
+    attempted: boolean;
+    blocked: boolean;
+    error: unknown;
+  } | null = null;
   if (testCase.contradictionRequirementCode) {
     const contradictionFinding = generatedFindingByCode.get(
       testCase.contradictionRequirementCode,
@@ -583,59 +630,59 @@ async function executeCase(testCase: EvaluationCase) {
   }
 
   let finalRevisionId = completedDraft.outputGapRevisionId;
-  let correction:
-    | {
-        sourceRevisionId: string;
-        correctedRevisionId: string;
-        requirementCode: string;
-        status: FindingStatus;
-        evidenceSufficiency: "sufficient" | "partial" | "none";
-        reason: string;
-        resolutionReason: string;
-        guidanceOnlyRevisionId: string;
-      }
-    | null = null;
+  let correction: {
+    sourceRevisionId: string;
+    correctedRevisionId: string;
+    requirementCode: string;
+    status: FindingStatus;
+    evidenceSufficiency: "sufficient" | "partial" | "none";
+    reason: string;
+    resolutionReason: string;
+    guidanceOnlyRevisionId: string;
+  } | null = null;
   if (testCase.manualCorrection) {
+    const manualCorrection = testCase.manualCorrection;
+    const generatedRevisionId = completedDraft.outputGapRevisionId;
     const sourceFinding = generatedFindingByCode.get(
-      testCase.manualCorrection.requirementCode,
+      manualCorrection.requirementCode,
     );
     if (!sourceFinding) {
       throw new Error(
-        `Missing correction finding ${testCase.manualCorrection.requirementCode}`,
+        `Missing correction finding ${manualCorrection.requirementCode}`,
       );
     }
     await waitForProviderWindow();
-    const correctedRevision = await correctGapRevision({
-      userId: USER_ID,
-      organizationId: organization.id,
-      sourceRevisionId: completedDraft.outputGapRevisionId,
-      corrections: [
-        {
-          findingId: sourceFinding.id,
-          status: testCase.manualCorrection.status,
-          evidenceSufficiency:
-            testCase.manualCorrection.evidenceSufficiency,
-          requiresReview: false,
-          reason: testCase.manualCorrection.reason,
-          ...(sourceFinding.requiresReview
-            ? {
-                resolutionReason:
-                  testCase.manualCorrection.resolutionReason,
-              }
-            : {}),
-        },
-      ],
-    });
+    const correctedRevision = await retryProviderStep(() =>
+      correctGapRevision({
+        userId: USER_ID,
+        organizationId: organization.id,
+        sourceRevisionId: generatedRevisionId,
+        retryNonce: randomUUID(),
+        corrections: [
+          {
+            findingId: sourceFinding.id,
+            status: manualCorrection.status,
+            evidenceSufficiency: manualCorrection.evidenceSufficiency,
+            requiresReview: false,
+            reason: manualCorrection.reason,
+            ...(sourceFinding.requiresReview
+              ? {
+                  resolutionReason: manualCorrection.resolutionReason,
+                }
+              : {}),
+          },
+        ],
+      }),
+    );
     finalRevisionId = correctedRevision.id;
     correction = {
-      sourceRevisionId: completedDraft.outputGapRevisionId,
+      sourceRevisionId: generatedRevisionId,
       correctedRevisionId: correctedRevision.id,
-      requirementCode: testCase.manualCorrection.requirementCode,
-      status: testCase.manualCorrection.status,
-      evidenceSufficiency:
-        testCase.manualCorrection.evidenceSufficiency,
-      reason: testCase.manualCorrection.reason,
-      resolutionReason: testCase.manualCorrection.resolutionReason,
+      requirementCode: manualCorrection.requirementCode,
+      status: manualCorrection.status,
+      evidenceSufficiency: manualCorrection.evidenceSufficiency,
+      reason: manualCorrection.reason,
+      resolutionReason: manualCorrection.resolutionReason,
       guidanceOnlyRevisionId: correctedRevision.id,
     };
     const correctedSnapshot = await captureRevision(
@@ -644,15 +691,14 @@ async function executeCase(testCase: EvaluationCase) {
     );
     const correctedFinding = correctedSnapshot.findings.find(
       (finding) =>
-        finding.requirementCode ===
-        testCase.manualCorrection?.requirementCode,
+        finding.requirementCode === testCase.manualCorrection?.requirementCode,
     );
     if (!correctedFinding) {
       throw new Error("Corrected finding is unavailable for regeneration");
     }
     await waitForProviderWindow();
-    const guidanceOnlyRevision =
-      await regenerateGapFindingGuidance({
+    const guidanceOnlyRevision = await retryProviderStep(() =>
+      regenerateGapFindingGuidance({
         userId: USER_ID,
         organizationId: organization.id,
         sourceRevisionId: correctedRevision.id,
@@ -660,25 +706,21 @@ async function executeCase(testCase: EvaluationCase) {
         reason:
           "Manual QA guidance-only regeneration after accepting the restore-test correction.",
         retryNonce: randomUUID(),
-      });
+      }),
+    );
     finalRevisionId = guidanceOnlyRevision.id;
     correction.guidanceOnlyRevisionId = guidanceOnlyRevision.id;
   }
-  const preFinalSnapshot = await captureRevision(
-    finalRevisionId,
-    release,
-  );
+  const preFinalSnapshot = await captureRevision(finalRevisionId, release);
   const blockers = preFinalSnapshot.findings.filter(
-      (finding) => finding.requiresReview,
+    (finding) => finding.requiresReview,
   );
   if (blockers.length) {
     finalRevisionId = await clearReviewBlockers({
       organizationId: organization.id,
       sourceRevisionId: finalRevisionId,
       release,
-      requirementCodes: blockers.map(
-        (finding) => finding.requirementCode,
-      ),
+      requirementCodes: blockers.map((finding) => finding.requirementCode),
       reason: () =>
         "Manual QA reviewer cleared an unexpected model review blocker to test action-plan materialization.",
       resolutionReason: () =>
@@ -697,12 +739,14 @@ async function executeCase(testCase: EvaluationCase) {
     completedDraft.aiProcessingRunId,
     completedDraft.outputGapRevisionId,
   );
+  const actionAiRun = await captureAiRun(plan.plan.generationRunId, null);
   const automaticChecks = buildAutomaticChecks({
     testCase,
     generated,
     finalRevision,
     plan,
     aiRun,
+    actionAiRun,
     expectedFinalizationBlock,
   });
 
@@ -715,8 +759,7 @@ async function executeCase(testCase: EvaluationCase) {
       expectedGenerated: testCase.expectedGenerated,
       expectedGeneratedActionItemCount:
         testCase.expectedGeneratedActionItemCount,
-      expectedFinalActionItemCount:
-        testCase.expectedFinalActionItemCount,
+      expectedFinalActionItemCount: testCase.expectedFinalActionItemCount,
     },
     organization: {
       id: organization.id,
@@ -748,6 +791,7 @@ async function executeCase(testCase: EvaluationCase) {
     generatedRevision: generated,
     finalRevision,
     aiRun,
+    actionAiRun,
     actionPlan: plan,
     automaticChecks,
   };
@@ -780,23 +824,15 @@ async function resumeCaseFive(organizationId: string) {
   const current = await db.query.generatedArtifactRevisions.findFirst({
     where: {
       RAW: (table, operators) =>
-        eq(table.id, artifact.currentRevisionId!) ??
-        operators.sql`true`,
+        eq(table.id, artifact.currentRevisionId!) ?? operators.sql`true`,
     },
   });
   if (!current?.parentRevisionId) {
     throw new Error("Case 5 corrected revision is unavailable");
   }
-  const release = await getActiveGapAnalysisRelease(
-    "nis2-gap",
-    testCase.locale,
-  );
-  if (!release) throw new Error("Active Gap release is unavailable");
+  const release = await loadQaGapRelease(testCase.locale);
   const generated = await captureRevision(current.parentRevisionId, release);
-  const beforeAdditionalResolution = await captureRevision(
-    current.id,
-    release,
-  );
+  const beforeAdditionalResolution = await captureRevision(current.id, release);
   const blockers = beforeAdditionalResolution.findings.filter(
     (finding) => finding.requiresReview,
   );
@@ -812,11 +848,7 @@ async function resumeCaseFive(organizationId: string) {
     error: unknown;
   };
   try {
-    await finalize(
-      organizationId,
-      current.id,
-      "resume-pre-resolution",
-    );
+    await finalize(organizationId, current.id, "resume-pre-resolution");
     expectedFinalizationBlock = {
       attempted: true,
       blocked: false,
@@ -834,31 +866,25 @@ async function resumeCaseFive(organizationId: string) {
     organizationId,
     sourceRevisionId: current.id,
     release,
-    requirementCodes: blockers.map(
-      (finding) => finding.requirementCode,
-    ),
+    requirementCodes: blockers.map((finding) => finding.requirementCode),
     reason: () =>
       "Manual QA reviewer resolved an additional document-related review blocker before finalization.",
     resolutionReason: (requirementCode) =>
-        requirementCode === "NIS2-ASSURE-08"
-          ? "The missing restore test is already addressed by the corrected NIS2-BC-05 action. The broader effectiveness-review assertion remains accepted for this synthetic fixture."
-          : "The broader questionnaire assertion remains accepted; the specific backup contradiction is handled by NIS2-BC-05.",
+      requirementCode === "NIS2-ASSURE-08"
+        ? "The missing restore test is already addressed by the corrected NIS2-BC-05 action. The broader effectiveness-review assertion remains accepted for this synthetic fixture."
+        : "The broader questionnaire assertion remains accepted; the specific backup contradiction is handled by NIS2-BC-05.",
   });
   const finalized = await finalize(
     organizationId,
     fullyResolvedRevisionId,
     "resume-final",
   );
-  const finalRevision = await captureRevision(
-    fullyResolvedRevisionId,
-    release,
-  );
+  const finalRevision = await captureRevision(fullyResolvedRevisionId, release);
   const plan = await captureActionPlan(finalized.plan.id);
   const draft = await db.query.gapReassessmentDrafts.findFirst({
     where: {
       RAW: (table, operators) =>
-        eq(table.organizationId, organizationId) ??
-        operators.sql`true`,
+        eq(table.organizationId, organizationId) ?? operators.sql`true`,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -867,19 +893,18 @@ async function resumeCaseFive(organizationId: string) {
     draft.aiProcessingRunId,
     current.parentRevisionId,
   );
+  const actionAiRun = await captureAiRun(plan.plan.generationRunId, null);
   const document = await db.query.documents.findFirst({
     where: {
       RAW: (table, operators) =>
-        eq(table.organizationId, organizationId) ??
-        operators.sql`true`,
+        eq(table.organizationId, organizationId) ?? operators.sql`true`,
     },
   });
   const documentVersion = document?.currentVersionId
     ? await db.query.documentVersions.findFirst({
         where: {
           RAW: (table, operators) =>
-            eq(table.id, document.currentVersionId!) ??
-            operators.sql`true`,
+            eq(table.id, document.currentVersionId!) ?? operators.sql`true`,
         },
       })
     : null;
@@ -891,8 +916,7 @@ async function resumeCaseFive(organizationId: string) {
     },
     where: {
       RAW: (table, operators) =>
-        eq(table.organizationId, organizationId) ??
-        operators.sql`true`,
+        eq(table.organizationId, organizationId) ?? operators.sql`true`,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -902,6 +926,7 @@ async function resumeCaseFive(organizationId: string) {
     finalRevision,
     plan,
     aiRun,
+    actionAiRun,
     expectedFinalizationBlock,
   });
 
@@ -914,8 +939,7 @@ async function resumeCaseFive(organizationId: string) {
       expectedGenerated: testCase.expectedGenerated,
       expectedGeneratedActionItemCount:
         testCase.expectedGeneratedActionItemCount,
-      expectedFinalActionItemCount:
-        testCase.expectedFinalActionItemCount,
+      expectedFinalActionItemCount: testCase.expectedFinalActionItemCount,
     },
     organization: {
       id: organization.id,
@@ -928,8 +952,7 @@ async function resumeCaseFive(organizationId: string) {
       applicabilityRevisionId:
         assessment?.applicabilityArtifactRevisionId ?? null,
       gapAssessmentId: assessment?.id ?? null,
-      gapQuestionnaireRevisionId:
-        assessment?.currentRevisionId ?? null,
+      gapQuestionnaireRevisionId: assessment?.currentRevisionId ?? null,
       answers: release.questions.map((question, index) => ({
         questionNumber: index + 1,
         stableKey: question.stableKey,
@@ -965,14 +988,22 @@ async function resumeCaseFive(organizationId: string) {
     intermediateCorrectedRevision: beforeAdditionalResolution,
     finalRevision,
     aiRun,
+    actionAiRun,
     actionPlan: plan,
     automaticChecks,
   };
 }
 
 async function workGenerationJob(jobId: string, draftId: string) {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    if (await runOneJob(`manual-gap-eval-${RUN_ID}-${randomUUID()}`)) {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    await runOneJob(`manual-gap-eval-${RUN_ID}-${randomUUID()}`);
+    const current = await db.query.gapReassessmentDrafts.findFirst({
+      columns: { status: true },
+      where: {
+        RAW: (table, operators) => eq(table.id, draftId) ?? operators.sql`true`,
+      },
+    });
+    if (current?.status === "generated" || current?.status === "failed") {
       break;
     }
     await delay(500);
@@ -984,8 +1015,7 @@ async function workGenerationJob(jobId: string, draftId: string) {
       outputGapRevisionId: true,
     },
     where: {
-      RAW: (table, operators) =>
-        eq(table.id, draftId) ?? operators.sql`true`,
+      RAW: (table, operators) => eq(table.id, draftId) ?? operators.sql`true`,
     },
   });
   if (draft?.status === "failed") {
@@ -997,7 +1027,15 @@ async function workGenerationJob(jobId: string, draftId: string) {
       idempotencyKey: `manual-gap-eval-retry-${RUN_ID}-${randomUUID()}`,
     });
     for (let attempt = 0; attempt < 30; attempt += 1) {
-      if (await runOneJob(`manual-gap-eval-retry-${RUN_ID}-${randomUUID()}`)) {
+      await runOneJob(`manual-gap-eval-retry-${RUN_ID}-${randomUUID()}`);
+      const current = await db.query.gapReassessmentDrafts.findFirst({
+        columns: { status: true },
+        where: {
+          RAW: (table, operators) =>
+            eq(table.id, draftId) ?? operators.sql`true`,
+        },
+      });
+      if (current?.status === "generated" || current?.status === "failed") {
         break;
       }
       await delay(500);
@@ -1009,8 +1047,7 @@ async function workGenerationJob(jobId: string, draftId: string) {
         outputGapRevisionId: true,
       },
       where: {
-        RAW: (table, operators) =>
-          eq(table.id, draftId) ?? operators.sql`true`,
+        RAW: (table, operators) => eq(table.id, draftId) ?? operators.sql`true`,
       },
     });
     if (retried.job.id === jobId) {
@@ -1031,8 +1068,7 @@ async function organizationIdForDraft(draftId: string) {
   const draft = await db.query.gapReassessmentDrafts.findFirst({
     columns: { organizationId: true },
     where: {
-      RAW: (table, operators) =>
-        eq(table.id, draftId) ?? operators.sql`true`,
+      RAW: (table, operators) => eq(table.id, draftId) ?? operators.sql`true`,
     },
   });
   if (!draft) throw new Error(`Draft ${draftId} not found`);
@@ -1044,50 +1080,40 @@ async function finalize(
   revisionId: string,
   suffix: string,
 ) {
-  const request = { gapRevisionId: revisionId };
-  const command = await claimIdempotency(databaseIdempotencyRepository, {
-    actorKey: USER_ID,
-    organizationId,
-    scope: organizationId,
-    operation: "action-plan.generate",
-    key: `manual-gap-eval-${RUN_ID}-${suffix}-${randomUUID()}`,
-    requestFingerprint: fingerprintRequest(request),
-  });
-  if (command.kind !== "started") {
-    throw new Error("Action-plan finalization unexpectedly replayed");
-  }
-  return finalizeGapAnalysisAndGenerateActionPlan({
+  await enqueueActionPlanGeneration({
     userId: USER_ID,
     organizationId,
-    gapRevisionId: revisionId,
-    command: command.record,
+    sourceGapRevisionId: revisionId,
+    publishedReleaseQa: true,
   });
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    if (
+      await runOneJob(`manual-action-eval-${RUN_ID}-${suffix}-${randomUUID()}`)
+    ) {
+      const generated = await getCurrentActionPlan(USER_ID, organizationId);
+      if (generated) return generated;
+    }
+    await delay(500);
+  }
+  throw new Error("Action Plan generation job did not complete");
 }
 
 async function clearReviewBlockers(input: {
   organizationId: string;
   sourceRevisionId: string;
-  release: NonNullable<
-    Awaited<ReturnType<typeof getActiveGapAnalysisRelease>>
-  >;
+  release: NonNullable<Awaited<ReturnType<typeof loadGapAnalysisRelease>>>;
   requirementCodes: string[];
   reason: (requirementCode: string) => string;
   resolutionReason: (requirementCode: string) => string;
 }) {
   let currentRevisionId = input.sourceRevisionId;
   for (const requirementCode of input.requirementCodes) {
-    const current = await captureRevision(
-      currentRevisionId,
-      input.release,
-    );
+    const current = await captureRevision(currentRevisionId, input.release);
     const finding = current.findings.find(
-      (candidate) =>
-        candidate.requirementCode === requirementCode,
+      (candidate) => candidate.requirementCode === requirementCode,
     );
     if (!finding) {
-      throw new Error(
-        `Cannot resolve missing finding ${requirementCode}`,
-      );
+      throw new Error(`Cannot resolve missing finding ${requirementCode}`);
     }
     const revision = await correctGapRevision({
       userId: USER_ID,
@@ -1109,9 +1135,7 @@ async function clearReviewBlockers(input: {
 
 async function captureRevision(
   revisionId: string,
-  release: NonNullable<
-    Awaited<ReturnType<typeof getActiveGapAnalysisRelease>>
-  >,
+  release: NonNullable<Awaited<ReturnType<typeof loadGapAnalysisRelease>>>,
 ) {
   const revision = await db.query.generatedArtifactRevisions.findFirst({
     where: {
@@ -1128,10 +1152,7 @@ async function captureRevision(
     .from(gapFindings)
     .innerJoin(
       gapRequirementVersions,
-      eq(
-        gapRequirementVersions.id,
-        gapFindings.requirementVersionId,
-      ),
+      eq(gapRequirementVersions.id, gapFindings.requirementVersionId),
     )
     .innerJoin(
       gapRequirements,
@@ -1149,11 +1170,20 @@ async function captureRevision(
           ),
         )
     : [];
+  const atomicGaps = rows.length
+    ? await db
+        .select()
+        .from(gapItems)
+        .where(
+          inArray(
+            gapItems.findingId,
+            rows.map((row) => row.finding.id),
+          ),
+        )
+        .orderBy(gapItems.findingId, gapItems.position)
+    : [];
   const requirementByCode = new Map(
-    release.requirements.map((requirement) => [
-      requirement.code,
-      requirement,
-    ]),
+    release.requirements.map((requirement) => [requirement.code, requirement]),
   );
   const findings = rows
     .map((row) => {
@@ -1165,9 +1195,7 @@ async function captureRevision(
         requirementText: requirement?.requirementText ?? null,
         criticality: requirement?.criticality ?? null,
         evidence: evidenceRows
-          .filter(
-            (evidence) => evidence.findingId === row.finding.id,
-          )
+          .filter((evidence) => evidence.findingId === row.finding.id)
           .map((evidence) => ({
             id: evidence.id,
             citationId: evidence.citationId,
@@ -1179,23 +1207,29 @@ async function captureRevision(
             pageNumber: evidence.pageNumber,
             sectionLabel: evidence.sectionLabel,
           })),
+        gaps: atomicGaps
+          .filter((gap) => gap.findingId === row.finding.id)
+          .map((gap) => ({
+            id: gap.id,
+            questionStableKey: gap.questionStableKey,
+            sourceAssessmentAnswerId: gap.sourceAssessmentAnswerId,
+            kind: gap.kind,
+            statement: gap.statement,
+            position: gap.position,
+          })),
       };
     })
     .sort(
       (left, right) =>
-        allCodes.indexOf(
-          left.requirementCode as (typeof allCodes)[number],
-        ) -
-        allCodes.indexOf(
-          right.requirementCode as (typeof allCodes)[number],
-        ),
+        allCodes.indexOf(left.requirementCode as (typeof allCodes)[number]) -
+        allCodes.indexOf(right.requirementCode as (typeof allCodes)[number]),
     );
   return { revision, findings };
 }
 
 async function captureAiRun(
   runId: string | null,
-  generatedRevisionId: string,
+  generatedRevisionId: string | null,
 ) {
   const run =
     (runId
@@ -1206,13 +1240,15 @@ async function captureAiRun(
           },
         })
       : null) ??
-    (await db.query.aiProcessingRuns.findFirst({
-      where: {
-        RAW: (table, operators) =>
-          eq(table.outputArtifactRevisionId, generatedRevisionId) ??
-          operators.sql`true`,
-      },
-    }));
+    (generatedRevisionId
+      ? await db.query.aiProcessingRuns.findFirst({
+          where: {
+            RAW: (table, operators) =>
+              eq(table.outputArtifactRevisionId, generatedRevisionId) ??
+              operators.sql`true`,
+          },
+        })
+      : null);
   if (!run) return null;
   const [context, claims] = await Promise.all([
     db
@@ -1231,11 +1267,23 @@ async function captureAiRun(
 async function captureActionPlan(planId: string) {
   const plan = await db.query.actionPlans.findFirst({
     where: {
-      RAW: (table, operators) =>
-        eq(table.id, planId) ?? operators.sql`true`,
+      RAW: (table, operators) => eq(table.id, planId) ?? operators.sql`true`,
     },
   });
   if (!plan) throw new Error(`Action plan ${planId} not found`);
+  const [job, jobResult] = await Promise.all([
+    db.query.backgroundJobs.findFirst({
+      where: {
+        RAW: (table, operators) =>
+          eq(table.id, plan.generationJobId) ?? operators.sql`true`,
+      },
+    }),
+    db
+      .select()
+      .from(backgroundJobResults)
+      .where(eq(backgroundJobResults.jobId, plan.generationJobId))
+      .then((rows) => rows[0] ?? null),
+  ]);
   const items = await db
     .select({
       item: actionPlanItems,
@@ -1243,30 +1291,39 @@ async function captureActionPlan(planId: string) {
       requirementCode: gapRequirements.code,
     })
     .from(actionPlanItems)
-    .innerJoin(
-      gapFindings,
-      eq(gapFindings.id, actionPlanItems.sourceFindingId),
-    )
+    .innerJoin(gapFindings, eq(gapFindings.id, actionPlanItems.sourceFindingId))
     .innerJoin(
       gapRequirementVersions,
-      eq(
-        gapRequirementVersions.id,
-        gapFindings.requirementVersionId,
-      ),
+      eq(gapRequirementVersions.id, gapFindings.requirementVersionId),
     )
     .innerJoin(
       gapRequirements,
       eq(gapRequirements.id, gapRequirementVersions.requirementId),
     )
     .where(eq(actionPlanItems.actionPlanId, planId));
+  const links = items.length
+    ? await db
+        .select()
+        .from(actionPlanItemGaps)
+        .where(
+          inArray(
+            actionPlanItemGaps.actionPlanItemId,
+            items.map((row) => row.item.id),
+          ),
+        )
+    : [];
   return {
     plan,
+    job,
+    jobResult,
     items: items.map((row) => ({
       ...row.item,
       requirementCode: row.requirementCode,
       sourceFindingStatus: row.sourceFinding.status,
       sourceFindingSeverity: row.sourceFinding.severity,
-      sourceFindingRecommendation: row.sourceFinding.recommendation,
+      linkedGapIds: links
+        .filter((link) => link.actionPlanItemId === row.item.id)
+        .map((link) => link.gapItemId),
     })),
   };
 }
@@ -1277,6 +1334,7 @@ function buildAutomaticChecks(input: {
   finalRevision: Awaited<ReturnType<typeof captureRevision>>;
   plan: Awaited<ReturnType<typeof captureActionPlan>>;
   aiRun: Awaited<ReturnType<typeof captureAiRun>>;
+  actionAiRun: Awaited<ReturnType<typeof captureAiRun>>;
   expectedFinalizationBlock: {
     attempted: boolean;
     blocked: boolean;
@@ -1289,6 +1347,7 @@ function buildAutomaticChecks(input: {
     expected: unknown;
     actual: unknown;
   }> = [];
+
   for (const [code, expected] of Object.entries(
     input.testCase.expectedGenerated,
   )) {
@@ -1296,320 +1355,180 @@ function buildAutomaticChecks(input: {
       (finding) => finding.requirementCode === code,
     );
     checks.push({
-      name: `${code} generated status`,
+      name: `${code} deterministic status`,
       passed: actual?.status === expected.status,
       expected: expected.status,
       actual: actual?.status ?? null,
     });
     checks.push({
-      name: `${code} generated severity`,
+      name: `${code} deterministic severity`,
       passed: actual?.severity === expected.severity,
       expected: expected.severity,
       actual: actual?.severity ?? null,
     });
     checks.push({
-      name: `${code} legal citation`,
+      name: `${code} mapped legal source`,
       passed:
         actual?.evidence.some(
-          (evidence) =>
-            evidence.sourceType === "legal_source_chunk",
+          (evidence) => evidence.sourceType === "legal_source_chunk",
         ) ?? false,
       expected: "at least one legal_source_chunk",
-      actual:
-        actual?.evidence.map((evidence) => evidence.sourceType) ?? [],
+      actual: actual?.evidence.map((evidence) => evidence.sourceType) ?? [],
     });
-    const expectedMode =
-      expected.status === "fulfilled"
-        ? "maintain_and_document"
-        : expected.status === "insufficient_evidence"
-          ? "evidence_verification"
-          : "control_remediation";
     checks.push({
-      name: `${code} guidance mode`,
-      passed: actual?.guidanceMode === expectedMode,
-      expected: expectedMode,
-      actual: actual?.guidanceMode ?? null,
-    });
-    if (expected.status === "fulfilled") {
-      const expectedFraming =
-        input.testCase.locale === "de"
-          ? "Die Fragebogenantworten weisen diese Anforderung als umgesetzt aus."
-          : "The questionnaire responses report this requirement as implemented.";
-      checks.push({
-        name: `${code} fulfilled maintenance framing`,
-        passed:
-          actual?.recommendation.startsWith(expectedFraming) === true &&
-          actual.objective === null,
-        expected:
-          "explicit questionnaire self-report framing, independent-verification context, and no action objective",
-        actual: {
-          recommendation: actual?.recommendation ?? null,
-          objective: actual?.objective ?? null,
-        },
-      });
-    }
-    const basis = actual?.guidanceBasis as
-      | {
-          triggeringQuestions?: Array<{
-            stableKey?: string;
-            workKind?: "remediate" | "verify";
-          }>;
-        }
-      | null
-      | undefined;
-    const triggers = basis?.triggeringQuestions ?? [];
-    const deliverables = structuredArray(actual?.deliverables);
-    const criteria = structuredArray(actual?.acceptanceCriteria);
-    const suggestedEvidence = structuredArray(actual?.suggestedEvidence);
-    const hasExpectedShape =
-      expected.status === "fulfilled"
-        ? actual?.objective === null &&
-          deliverables.length === 0 &&
-          criteria.length === 0 &&
-          suggestedEvidence.length === 0 &&
-          triggers.length === 0
-        : Boolean(actual?.objective?.trim()) &&
-          triggers.length > 0 &&
-          triggers.every(
-            (trigger) =>
-              deliverables.some(
-                (entry) =>
-                  entry.questionStableKey === trigger.stableKey &&
-                  entry.workKind === trigger.workKind,
-              ) &&
-              suggestedEvidence.some(
-                (entry) =>
-                  entry.questionStableKey === trigger.stableKey,
-              ) &&
-              (trigger.workKind === "remediate"
-                ? criteria.some(
-                    (entry) =>
-                      entry.questionStableKey === trigger.stableKey &&
-                      entry.workKind === "remediate",
-                  )
-                : criteria.some(
-                    (entry) =>
-                      entry.questionStableKey === trigger.stableKey &&
-                      entry.completionPath ===
-                        "confirmed_implemented",
-                  ) &&
-                  criteria.some(
-                    (entry) =>
-                      entry.questionStableKey === trigger.stableKey &&
-                      entry.completionPath ===
-                        "confirmed_deficient",
-                  )),
-          );
-    checks.push({
-      name: `${code} structured guidance coverage`,
-      passed: hasExpectedShape,
+      name: `${code} atomic Gap contract`,
+      passed:
+        expected.status === "fulfilled"
+          ? actual?.gaps.length === 0
+          : Boolean(actual?.gaps.length) &&
+            actual!.gaps.every(
+              (gap) =>
+                gap.statement.trim().length > 0 &&
+                !/[\r\n]/.test(gap.statement) &&
+                gap.statement.trim().split(/\s+/).length <= 20,
+            ),
       expected:
         expected.status === "fulfilled"
-          ? "no action guidance"
-          : "complete work for every exact trigger",
-      actual: {
-        objective: actual?.objective ?? null,
-        triggers,
-        deliverableCount: deliverables.length,
-        criterionCount: criteria.length,
-        suggestedEvidenceCount: suggestedEvidence.length,
-      },
-    });
-    const legalCitationIds =
-      actual?.evidence
-        .filter(
-          (evidence) =>
-            evidence.sourceType === "legal_source_chunk",
-        )
-        .map((evidence) => evidence.citationId) ?? [];
-    checks.push({
-      name: `${code} mapped primary legal authority`,
-      passed: legalCitationIds.some((citationId) =>
-        input.aiRun?.context.some(
-          (item) =>
-            item.citationId === citationId &&
-            item.selectionRole === "mapped_primary" &&
-            item.preferredMappedProvision === true,
-        ),
-      ),
-      expected: "cited mapped_primary provenance",
-      actual: input.aiRun?.context
-        .filter((item) => legalCitationIds.includes(item.citationId))
-        .map((item) => ({
-          citationId: item.citationId,
-          selectionRole: item.selectionRole,
-          preferredMappedProvision: item.preferredMappedProvision,
-        })),
+          ? "no atomic gaps"
+          : "one or more one-line atomic gaps of at most 20 words",
+      actual: actual?.gaps ?? [],
     });
   }
+
   checks.push({
-    name: "Prompt and response contract",
+    name: "Gap prompt and response contract",
     passed:
-      input.aiRun?.run.promptVersion === "6" &&
-      input.aiRun.run.responseSchemaVersion === "6",
-    expected: { promptVersion: "6", responseSchemaVersion: "6" },
+      input.aiRun?.run.promptVersion === "7" &&
+      input.aiRun.run.responseSchemaVersion === "7",
+    expected: { promptVersion: "7", responseSchemaVersion: "7" },
     actual: input.aiRun
       ? {
           promptVersion: input.aiRun.run.promptVersion,
-          responseSchemaVersion:
-            input.aiRun.run.responseSchemaVersion,
+          responseSchemaVersion: input.aiRun.run.responseSchemaVersion,
         }
       : null,
   });
   checks.push({
-    name: "Generated finding coverage",
+    name: "Independent Action Plan prompt and response contract",
+    passed:
+      input.plan.items.length === 0
+        ? input.actionAiRun === null
+        : input.actionAiRun?.run.operationKind === "action_plan_generation" &&
+          input.actionAiRun.run.promptVersion === "1" &&
+          input.actionAiRun.run.responseSchemaVersion === "1",
+    expected:
+      input.plan.items.length === 0
+        ? "deterministic empty plan without an AI run"
+        : {
+            operationKind: "action_plan_generation",
+            promptVersion: "1",
+            responseSchemaVersion: "1",
+          },
+    actual: input.actionAiRun?.run ?? null,
+  });
+  checks.push({
+    name: "Generated category coverage",
     passed: input.generated.findings.length === 10,
     expected: 10,
     actual: input.generated.findings.length,
   });
+
+  const finalGaps = input.finalRevision.findings.flatMap((finding) =>
+    finding.gaps.map((gap) => ({ ...gap, findingId: finding.id })),
+  );
+  const linkedGapIds = new Set(
+    input.plan.items.flatMap((item) => item.linkedGapIds),
+  );
   checks.push({
-    name: "Final action-item count",
+    name: "Action coverage",
     passed:
-      input.plan.items.length ===
-      input.testCase.expectedFinalActionItemCount,
-    expected: input.testCase.expectedFinalActionItemCount,
-    actual: input.plan.items.length,
+      finalGaps.every((gap) => linkedGapIds.has(gap.id)) &&
+      input.plan.items.every((item) => item.linkedGapIds.length > 0),
+    expected: "every gap covered and every action linked",
+    actual: {
+      gapCount: finalGaps.length,
+      linkedGapCount: linkedGapIds.size,
+      actionCount: input.plan.items.length,
+    },
   });
+
   for (const item of input.plan.items) {
     const source = input.finalRevision.findings.find(
       (finding) => finding.id === item.sourceFindingId,
     );
+    const suggestedEvidence = Array.isArray(item.suggestedEvidence)
+      ? item.suggestedEvidence
+      : [];
     checks.push({
-      name: `${item.requirementCode} action source snapshot`,
+      name: `${item.requirementCode} simplified action`,
       passed:
-        item.sourceRecommendation === source?.recommendation &&
-        item.sourceFindingRecommendation === source?.recommendation &&
-        item.objective === source?.objective &&
-        sameJson(item.deliverables, source?.deliverables) &&
-        sameJson(
-          item.acceptanceCriteria,
-          source?.acceptanceCriteria,
+        item.title.trim().length > 0 &&
+        item.result.trim().length > 0 &&
+        suggestedEvidence.length > 0 &&
+        item.linkedGapIds.every((gapId) =>
+          source?.gaps.some((gap) => gap.id === gapId),
         ) &&
-        sameJson(item.suggestedEvidence, source?.suggestedEvidence),
-      expected: {
-        sourceRecommendation: source?.recommendation ?? null,
-        objective: source?.objective ?? null,
-        deliverables: source?.deliverables ?? null,
-        acceptanceCriteria: source?.acceptanceCriteria ?? null,
-        suggestedEvidence: source?.suggestedEvidence ?? null,
-      },
+        !("objective" in item) &&
+        !("deliverables" in item) &&
+        !("acceptanceCriteria" in item) &&
+        !("sourceRecommendation" in item),
+      expected: "title, result, evidence, and same-category gap links only",
       actual: {
-        sourceRecommendation: item.sourceRecommendation,
-        objective: item.objective,
-        deliverables: item.deliverables,
-        acceptanceCriteria: item.acceptanceCriteria,
-        suggestedEvidence: item.suggestedEvidence,
+        title: item.title,
+        result: item.result,
+        suggestedEvidence,
+        linkedGapIds: item.linkedGapIds,
       },
     });
     checks.push({
-      name: `${item.requirementCode} action priority`,
+      name: `${item.requirementCode} server-owned priority`,
       passed: item.priority === source?.severity,
       expected: source?.severity ?? null,
       actual: item.priority,
     });
   }
+
   if (input.testCase.contradictionRequirementCode) {
-    const finding = input.generated.findings.find(
-      (candidate) =>
-        candidate.requirementCode ===
-        input.testCase.contradictionRequirementCode,
-    );
-    checks.push({
-      name: "Contradictory document cited on backup finding",
-      passed:
-        finding?.evidence.some(
-          (evidence) => evidence.sourceType === "document_chunk",
-        ) ?? false,
-      expected: true,
-      actual:
-        finding?.evidence.map((evidence) => evidence.sourceType) ?? [],
-    });
-    checks.push({
-      name: "Contradiction requires human review",
-      passed: finding?.requiresReview === true,
-      expected: true,
-      actual: finding?.requiresReview ?? null,
-    });
-    checks.push({
-      name: "Unresolved contradiction blocks finalization",
-      passed: input.expectedFinalizationBlock?.blocked === true,
-      expected: true,
-      actual: input.expectedFinalizationBlock,
-    });
-    const unrelated = input.generated.findings.filter(
-      (candidate) =>
-        candidate.requirementCode !==
-        input.testCase.contradictionRequirementCode,
-    );
-    checks.push({
-      name: "Backup evidence excluded from unrelated findings",
-      passed: unrelated.every(
-        (candidate) =>
-          candidate.evidenceSufficiency === "none" &&
-          candidate.evidence.every(
-            (evidence) =>
-              evidence.sourceType !== "document_chunk",
-          ),
-      ),
-      expected:
-        "no document citations and evidenceSufficiency=none",
-      actual: unrelated.map((candidate) => ({
-        requirementCode: candidate.requirementCode,
-        evidenceSufficiency: candidate.evidenceSufficiency,
-        documentCitationCount: candidate.evidence.filter(
-          (evidence) =>
-            evidence.sourceType === "document_chunk",
-        ).length,
-      })),
-    });
     const generatedTarget = input.generated.findings.find(
-      (candidate) =>
-        candidate.requirementCode ===
-        input.testCase.contradictionRequirementCode,
+      (finding) =>
+        finding.requirementCode === input.testCase.contradictionRequirementCode,
     );
     const finalTarget = input.finalRevision.findings.find(
-      (candidate) =>
-        candidate.requirementCode ===
-        input.testCase.contradictionRequirementCode,
+      (finding) =>
+        finding.requirementCode === input.testCase.contradictionRequirementCode,
     );
     checks.push({
-      name: "Correction has distinct guidance-run lineage",
+      name: "Contradiction requires review and blocks generation",
       passed:
-        Boolean(generatedTarget?.guidanceRunId) &&
-        Boolean(finalTarget?.guidanceRunId) &&
-        generatedTarget?.guidanceRunId !==
-          finalTarget?.guidanceRunId,
-      expected: "different non-null guidance run IDs",
+        generatedTarget?.requiresReview === true &&
+        Boolean(generatedTarget.reviewNotice?.trim()) &&
+        input.expectedFinalizationBlock?.blocked === true,
+      expected: true,
       actual: {
-        generated: generatedTarget?.guidanceRunId ?? null,
-        final: finalTarget?.guidanceRunId ?? null,
+        requiresReview: generatedTarget?.requiresReview ?? null,
+        reviewNotice: generatedTarget?.reviewNotice ?? null,
+        finalization: input.expectedFinalizationBlock,
+      },
+    });
+    checks.push({
+      name: "Correction has distinct atomic generation lineage",
+      passed:
+        Boolean(generatedTarget?.generationRunId) &&
+        Boolean(finalTarget?.generationRunId) &&
+        generatedTarget?.generationRunId !== finalTarget?.generationRunId,
+      expected: "different non-null generation run IDs",
+      actual: {
+        generated: generatedTarget?.generationRunId ?? null,
+        final: finalTarget?.generationRunId ?? null,
       },
     });
   }
+
   return checks;
 }
 
-function structuredArray(value: unknown) {
-  return Array.isArray(value)
-    ? (value as Array<{
-        questionStableKey?: string;
-        workKind?: "remediate" | "verify";
-        completionPath?:
-          | "confirmed_implemented"
-          | "confirmed_deficient";
-      }>)
-    : [];
-}
-
-function sameJson(left: unknown, right: unknown) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
 async function enableOpenAi(organizationId: string) {
-  const policy = await getOrganizationAiProviderPolicy(
-    USER_ID,
-    organizationId,
-  );
+  const policy = await getOrganizationAiProviderPolicy(USER_ID, organizationId);
   if (
     policy.externalDisclosureAllowed &&
     Array.isArray(policy.allowedProviderModes) &&
@@ -1666,11 +1585,7 @@ function serializeError(error: unknown) {
 }
 
 async function writeJson(path: string, value: unknown) {
-  await writeFile(
-    path,
-    `${JSON.stringify(value, jsonReplacer, 2)}\n`,
-    "utf8",
-  );
+  await writeFile(path, `${JSON.stringify(value, jsonReplacer, 2)}\n`, "utf8");
 }
 
 function jsonReplacer(_key: string, value: unknown) {
@@ -1685,12 +1600,45 @@ function readArgument(name: string) {
 }
 
 async function waitForProviderWindow() {
-  const delayMs = Number(
-    process.env.MANUAL_GAP_EVAL_REGEN_DELAY_MS ?? 65_000,
-  );
+  const delayMs = Number(process.env.MANUAL_GAP_EVAL_REGEN_DELAY_MS ?? 65_000);
   if (Number.isFinite(delayMs) && delayMs > 0) {
     await delay(delayMs);
   }
+}
+
+async function retryProviderStep<T>(operation: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === 3 || !isRetryableProviderError(error)) {
+        throw error;
+      }
+      await waitForProviderWindow();
+    }
+  }
+  throw new Error("Provider retry loop exhausted");
+}
+
+function isRetryableProviderError(error: unknown) {
+  let current = error;
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (!current || typeof current !== "object") return false;
+    const value = current as {
+      name?: unknown;
+      statusCode?: unknown;
+      cause?: unknown;
+    };
+    if (
+      (typeof value.name === "string" && value.name.startsWith("AI_")) ||
+      value.statusCode === 429 ||
+      (typeof value.statusCode === "number" && value.statusCode >= 500)
+    ) {
+      return true;
+    }
+    current = value.cause;
+  }
+  return false;
 }
 
 async function fileExists(path: string) {
@@ -1703,11 +1651,7 @@ async function fileExists(path: string) {
 }
 
 function requireEnvironment() {
-  for (const name of [
-    "DATABASE_URL",
-    "OPENAI_API_KEY",
-    "OPENAI_MODEL",
-  ]) {
+  for (const name of ["DATABASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL"]) {
     if (!process.env[name]?.trim()) {
       throw new Error(`${name} is required`);
     }
@@ -1715,7 +1659,8 @@ function requireEnvironment() {
 }
 
 main()
-  .catch(() => {
+  .catch((error) => {
+    console.error(error);
     process.exitCode = 1;
   })
   .finally(() => closeDbConnection());
