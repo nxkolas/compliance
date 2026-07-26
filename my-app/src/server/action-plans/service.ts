@@ -7,6 +7,11 @@ import {
   assertCanAccessOrganization,
   assertCanContributeToOrganization,
 } from "../organizations/service";
+import type {
+  GapAcceptanceCriterion,
+  GapDeliverable,
+  GapSuggestedEvidence,
+} from "../gap-analysis";
 
 type PlanSourceFinding = {
   id: string;
@@ -18,18 +23,65 @@ type PlanSourceFinding = {
   severity: "low" | "medium" | "high" | "critical";
   requirementTitle: string;
   recommendation: string;
+  guidanceMode:
+    | "maintain_and_document"
+    | "control_remediation"
+    | "evidence_verification";
+  objective: string | null;
+  deliverables: GapDeliverable[];
+  acceptanceCriteria: GapAcceptanceCriterion[];
+  suggestedEvidence: GapSuggestedEvidence[];
 };
 
 export function buildActionPlanItems(findings: PlanSourceFinding[]) {
   return findings
     .filter((finding) => finding.status !== "fulfilled")
-    .map((finding) => ({
-      sourceFindingId: finding.id,
-      title: finding.requirementTitle,
-      description: finding.recommendation,
-      priority: finding.severity,
-      status: "open" as const,
-    }));
+    .map((finding) => {
+      const expectedMeasureType:
+        | "control_remediation"
+        | "evidence_verification" =
+        finding.status === "insufficient_evidence"
+          ? "evidence_verification"
+          : "control_remediation";
+      if (
+        finding.guidanceMode !== expectedMeasureType ||
+        !finding.recommendation.trim() ||
+        !finding.objective?.trim() ||
+        !isNonEmptyGuidanceArray(finding.deliverables) ||
+        !isNonEmptyGuidanceArray(finding.acceptanceCriteria) ||
+        !isNonEmptyGuidanceArray(finding.suggestedEvidence)
+      ) {
+        throw new Error(
+          `Finding ${finding.id} lacks validated actionable guidance`,
+        );
+      }
+      return {
+        sourceFindingId: finding.id,
+        title: finding.requirementTitle,
+        measureType: expectedMeasureType,
+        sourceRecommendation: finding.recommendation,
+        objective: finding.objective,
+        deliverables: finding.deliverables,
+        acceptanceCriteria: finding.acceptanceCriteria,
+        suggestedEvidence: finding.suggestedEvidence,
+        executionNotes: "",
+        priority: finding.severity,
+        status: "open" as const,
+      };
+    });
+}
+
+function isNonEmptyGuidanceArray(
+  value: Array<{ text: string }>,
+): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every(
+      (item) =>
+        typeof item.text === "string" && item.text.trim().length > 0,
+    )
+  );
 }
 
 export async function getCurrentActionPlan(
@@ -45,7 +97,7 @@ export async function getCurrentActionPlan(
     orderBy: { createdAt: "desc" },
   });
   if (!plan) return null;
-  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, description: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
+  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, measureType: true, sourceRecommendation: true, objective: true, deliverables: true, acceptanceCriteria: true, suggestedEvidence: true, executionNotes: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
     where: { RAW: (table, operators) => (eq(table.actionPlanId, plan.id)) ?? operators.sql`true` },
     orderBy: { priority: "desc", createdAt: "asc" },
   });
@@ -77,7 +129,7 @@ export async function getActionPlanDetail(
       "ACTION_PLAN_NOT_FOUND",
     );
   }
-  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, description: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
+  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, measureType: true, sourceRecommendation: true, objective: true, deliverables: true, acceptanceCriteria: true, suggestedEvidence: true, executionNotes: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
     where: { RAW: (table, operators) => (eq(table.actionPlanId, plan.id)) ?? operators.sql`true` },
     orderBy: { priority: "desc", createdAt: "asc" },
   });
@@ -91,6 +143,7 @@ export async function updateActionPlanItem(input: {
   status?: "open" | "in_progress" | "done" | "cancelled";
   ownerUserId?: string | null;
   dueDate?: string | null;
+  executionNotes?: string;
   expectedVersion: number;
 }) {
   await assertCanContributeToOrganization(
@@ -134,6 +187,12 @@ export async function updateActionPlanItem(input: {
   if (input.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) {
     throw new ApiError(400, "dueDate must use YYYY-MM-DD");
   }
+  if (
+    input.executionNotes !== undefined &&
+    input.executionNotes.length > 20_000
+  ) {
+    throw new ApiError(400, "executionNotes is too long");
+  }
   const updatedAt = new Date();
   const changes = {
     ...(input.status !== undefined ? { status: input.status } : {}),
@@ -141,6 +200,9 @@ export async function updateActionPlanItem(input: {
       ? { ownerUserId: input.ownerUserId }
       : {}),
     ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
+    ...(input.executionNotes !== undefined
+      ? { executionNotes: input.executionNotes }
+      : {}),
     updatedAt,
   };
   return db.transaction(async (tx) => {

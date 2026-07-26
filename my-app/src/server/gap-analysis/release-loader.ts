@@ -30,6 +30,12 @@ export type LoadedGapRelease = {
     helpText: string | null;
     answerType: string;
     required: boolean;
+    legalProvisions: Array<{
+      id: string;
+      key: string;
+      provisionCode: string;
+      position: number;
+    }>;
     options: Array<{
       id: string;
       stableValue: string;
@@ -188,6 +194,7 @@ export async function loadGapAnalysisRelease(
         .select({
           questionId: gapQuestionLegalProvisions.questionId,
           position: gapQuestionLegalProvisions.position,
+          legalProvisionId: legalProvisions.id,
           provisionCode: legalProvisions.provisionCode,
           officialSourceUrl: legalProvisions.officialSourceUrl,
           citationContentRevisionId:
@@ -304,6 +311,15 @@ export async function loadGapAnalysisRelease(
         : null,
       answerType: question.answerType,
       required: question.required,
+      legalProvisions: questionLegalRows
+        .filter((row) => row.questionId === question.id)
+        .sort((left, right) => left.position - right.position)
+        .map((row) => ({
+          id: row.legalProvisionId,
+          key: `${row.instrumentCode}.${row.provisionCode}`,
+          provisionCode: row.provisionCode,
+          position: row.position,
+        })),
       options: optionRows
         .filter((option) => option.questionId === question.id)
         .map((option) => ({

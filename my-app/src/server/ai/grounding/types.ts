@@ -43,6 +43,14 @@ export type QueryUnit = {
   id: string;
   query: string;
   retrievalQuery?: string;
+  preferredMappedLegalProvisionIds?: string[];
+  preferredMappedLegalProvisionKeys?: string[];
+  legalTierLimits?: Partial<
+    Record<
+      "primary_authority" | "official_guidance" | "curated_secondary",
+      number
+    >
+  >;
 };
 
 export type GroundedProvider = {

@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import { retrieveDocumentEvidence } from "@/src/server/documents";
+import {
+  CHUNKING_VERSION,
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+  EMBEDDING_PROVIDER,
+} from "@/src/server/documents/domain";
 import type { GroundingContextItem } from "./types";
+import { admitOrganizationEvidence } from "./organization-evidence-policy";
 
 export async function retrieveOrganizationContext(input: {
   userId: string;
@@ -15,9 +22,28 @@ export async function retrieveOrganizationContext(input: {
     organizationId: input.organizationId,
     selectedDocumentVersionIds: input.documentVersionIds,
     query: input.query,
-    limit: input.limit,
+    limit: Math.max(input.limit ?? 0, 12),
   });
-  return evidence.map((row, index) => ({
+  const decision = admitOrganizationEvidence({
+    operation: "gap_analysis",
+    provider: EMBEDDING_PROVIDER,
+    model: EMBEDDING_MODEL,
+    dimensions: EMBEDDING_DIMENSIONS,
+    chunkingVersion: CHUNKING_VERSION,
+    candidates: evidence.map((row) => ({
+      chunkId: row.chunkId,
+      documentId: row.documentId,
+      documentVersionId: row.documentVersionId,
+      documentTitle: row.documentTitle,
+      content: row.content,
+      pageNumber: row.pageNumber,
+      sectionLabel: row.sectionLabel,
+      lexicalScore: row.fullTextRank,
+      semanticScore: row.cosineSimilarity,
+      combinedScore: row.combinedScore,
+    })),
+  });
+  return decision.admitted.map((row, index) => ({
     channel: "organization_document",
     citationId: `DOC:${input.queryUnitId}:${row.chunkId}`,
     queryUnitId: input.queryUnitId,
@@ -33,6 +59,11 @@ export async function retrieveOrganizationContext(input: {
       pageNumber: row.pageNumber,
       sectionPath: row.sectionLabel,
       queryHash: createHash("sha256").update(input.query).digest("hex"),
+      retrievalPolicyVersion: decision.policyVersion,
+      lexicalScore: row.lexicalScore,
+      semanticScore: row.semanticScore,
+      combinedScore: row.combinedScore,
+      selectionRole: "admitted_organization_evidence",
     },
   }));
 }

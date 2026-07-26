@@ -64,8 +64,11 @@ async function main() {
     where: { RAW: (table, operators) => (eq(table.id, gapPointer.gapAnalysisReleaseId)) ?? operators.sql`true` },
   });
   assert(
-    gapRelease?.status === "published" && gapRelease.versionLabel === "guided-v4",
-    "The active NIS2 Gap release must be published guided-v4",
+    gapRelease?.status === "published" &&
+      gapRelease.versionLabel === "guided-v5" &&
+      gapRelease.promptVersion === "6" &&
+      gapRelease.responseSchemaVersion === "6",
+    "The active NIS2 Gap release must be published guided-v5 contract 6",
   );
   assert(
     gapRelease.compatibleCheckReleaseId === complianceRelease.id,

@@ -5,7 +5,8 @@ export const actionPlanItemUpdateSchema = z.object({
   status: z.enum(["open", "in_progress", "done", "cancelled"]).optional(),
   ownerUserId: z.uuid().nullable().optional(),
   dueDate: z.string().date().nullable().optional(),
-}).refine((value) => Object.values(value).some((item) => item !== undefined), "At least one action-item field is required");
+  executionNotes: z.string().max(20_000).optional(),
+}).strict().refine((value) => Object.values(value).some((item) => item !== undefined), "At least one action-item field is required");
 
 export const actionPlanEntitySchema = z.object({ id: z.uuid(), version: z.number().int().positive() }).loose();
 export const actionPlanItemSchema = z.object({ id: z.uuid(), version: z.number().int().positive() }).loose();

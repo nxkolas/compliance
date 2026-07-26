@@ -198,7 +198,7 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
           requirement.applicabilityOutcomeCodes.includes(outcome),
         )
         .map((requirement) => requirement.id);
-      const findings = await tx.query.gapFindings.findMany({ columns: { id: true, artifactRevisionId: true, requirementVersionId: true, status: true, evidenceSufficiency: true, severity: true, rationale: true, recommendation: true, assumptions: true, requiresReview: true, createdAt: true },
+      const findings = await tx.query.gapFindings.findMany({ columns: { id: true, artifactRevisionId: true, requirementVersionId: true, status: true, evidenceSufficiency: true, guidanceMode: true, guidanceBasis: true, guidanceBasisHash: true, severity: true, rationale: true, recommendation: true, objective: true, deliverables: true, acceptanceCriteria: true, suggestedEvidence: true, guidanceRunId: true, assumptions: true, requiresReview: true, createdAt: true },
         where: { RAW: (table, operators) => (eq(table.artifactRevisionId, revision.id)) ?? operators.sql`true` },
       });
       const evidence = findings.length
@@ -235,6 +235,23 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
             severity: finding.severity,
             requirementTitle: requirement.title,
             recommendation: finding.recommendation,
+            guidanceMode: finding.guidanceMode,
+            objective: finding.objective,
+            deliverables: requireGuidanceEntries(
+              finding.deliverables,
+              finding.id,
+              "deliverables",
+            ),
+            acceptanceCriteria: requireGuidanceEntries(
+              finding.acceptanceCriteria,
+              finding.id,
+              "acceptance criteria",
+            ),
+            suggestedEvidence: requireGuidanceEntries(
+              finding.suggestedEvidence,
+              finding.id,
+              "suggested evidence",
+            ),
           };
         }),
       );
@@ -387,4 +404,33 @@ export async function finalizeGapAnalysisAndGenerateActionPlan(input: {
       "GAP_FINALIZATION_FAILED",
     );
   }
+}
+
+function requireGuidanceEntries(
+  value: unknown,
+  findingId: string,
+  field: string,
+) {
+  if (
+    !Array.isArray(value) ||
+    value.some(
+      (item) =>
+        typeof item !== "object" ||
+        item === null ||
+        typeof (item as { text?: unknown }).text !== "string",
+    )
+  ) {
+    throw new ApiError(
+      409,
+      `Finding ${findingId} has invalid ${field}`,
+      undefined,
+      "GAP_GUIDANCE_INVALID",
+    );
+  }
+  return value as Array<{
+    questionStableKey: string;
+    workKind: "remediate" | "verify";
+    text: string;
+    completionPath?: "confirmed_implemented" | "confirmed_deficient";
+  }>;
 }

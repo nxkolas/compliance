@@ -50,6 +50,14 @@ import { assertGapInputsMutable } from "./lifecycle-guards";
 import { buildGeneratedGapRevisionMetadata } from "./gap-revision-metadata";
 import { resolveGapGenerationPrerequisites } from "./applicability-eligibility";
 import { GAP_PROMPT_V5_TEMPLATE } from "./prompt-contract-v5";
+import { deriveGapGuidancePolicy } from "./guidance-policy";
+import { generateGapGuidanceBatch } from "./guidance-generation";
+import type {
+  GapAcceptanceCriterion,
+  GapDeliverable,
+  GapSuggestedEvidence,
+  ValidatedGapGuidance,
+} from "./generation-schema-v6";
 
 export async function generateGapAnalysis(input: {
   userId: string;
@@ -113,7 +121,9 @@ export async function generateGapAnalysis(input: {
       artifact: applicability,
       requirements: release.requirements,
     });
-  const serverOwnedStatus = release.prompt.responseSchemaVersion === "5";
+  const serverOwnedStatus = ["5", "6"].includes(
+    release.prompt.responseSchemaVersion,
+  );
   const evaluationRows = serverOwnedStatus
     ? await db.query.assessmentRequirementEvaluations.findMany({
         columns: {
@@ -298,8 +308,12 @@ async function generateGroundedGapResult(input: {
       evaluation,
     ]),
   );
-  const serverOwnedStatus =
-    input.release.prompt.responseSchemaVersion === "5";
+  const serverOwnedStatus = ["5", "6"].includes(
+    input.release.prompt.responseSchemaVersion,
+  );
+  if (input.release.prompt.responseSchemaVersion === "6") {
+    return generateGroundedGapGuidanceV6(input, evaluationByRequirementId);
+  }
   const queryUnits = input.applicableRequirements.map((requirement) => ({
     id: requirement.code,
     query: `${requirement.title}\n${requirement.requirementText}\n${
@@ -555,6 +569,236 @@ async function generateGroundedGapResult(input: {
   }
 }
 
+type PersistableGapFinding = GapModelFinding & {
+  guidanceMode?: ValidatedGapGuidance["guidanceMode"];
+  guidanceBasis?: ValidatedGapGuidance["guidanceBasis"];
+  guidanceBasisHash?: string;
+  objective?: string | null;
+  deliverables?: GapDeliverable[];
+  acceptanceCriteria?: GapAcceptanceCriterion[];
+  suggestedEvidence?: GapSuggestedEvidence[];
+  guidanceRunId?: string;
+  legalCitation?: string;
+};
+
+async function generateGroundedGapGuidanceV6(
+  input: Parameters<typeof generateGroundedGapResult>[0],
+  evaluationByRequirementId: Map<
+    string,
+    Parameters<typeof generateGroundedGapResult>[0]["evaluationRows"][number]
+  >,
+) {
+  const requirementPolicies = input.applicableRequirements.map(
+    (requirement) => {
+      const questions = requirement.questionStableKeys.map((stableKey) => {
+        const question = input.release.questions.find(
+          (candidate) => candidate.stableKey === stableKey,
+        );
+        const answer = input.answerRows.find(
+          (candidate) => candidate.questionStableKey === stableKey,
+        );
+        const selectedOptions = answer
+          ? input.answerOptionRows.filter(
+              (row) => row.answerId === answer.id,
+            )
+          : [];
+        const stableValue = selectedOptions[0]?.option.stableValue;
+        if (
+          !question ||
+          !answer ||
+          selectedOptions.length !== 1 ||
+          !isGapAnswerValue(stableValue)
+        ) {
+          throw new ApiError(
+            409,
+            "Pinned questionnaire answers are incomplete",
+            undefined,
+            "GAP_INPUT_SNAPSHOT_INVALID",
+          );
+        }
+        return {
+          stableKey,
+          text: question.questionText,
+          stableValue,
+          legalProvisions: question.legalProvisions,
+        };
+      });
+      return {
+        requirement,
+        policy: deriveGapGuidancePolicy({
+          determinedStatus: requireValue(
+            evaluationByRequirementId,
+            requirement.id,
+          ).status,
+          questions,
+        }),
+      };
+    },
+  );
+  const questionnaireAssertions = input.applicableRequirements.flatMap(
+    (requirement) =>
+      questionnaireCitations(
+        requirement.questionStableKeys,
+        input.answerRows,
+        input.answerOptionRows,
+        input.release.questions,
+      ).map((citation) => ({
+        answerId: citation.sourceId,
+        queryUnitId: requirement.code,
+        excerpt: citation.excerpt,
+      })),
+  );
+  const generated = await generateGapGuidanceBatch({
+    actor: { userId: input.input.userId },
+    organizationId: input.input.organizationId,
+    assessmentRevisionId: input.assessmentRevisionId,
+    release: input.release,
+    requirements: requirementPolicies,
+    selectedDocumentVersionIds: input.selectedVersionIds,
+    outputLocale: input.input.locale,
+    idempotencyKey: input.idempotencyKey,
+    questionnaireAssertions,
+    asOfDate: input.input.asOfDate,
+    jobId: input.input.jobId,
+  });
+  const citations: SuppliedCitation[] = generated.context.map((item) => ({
+    id: item.citationId,
+    sourceType:
+      item.channel === "legal"
+        ? "legal_source_chunk"
+        : item.channel === "organization_document"
+          ? "document_chunk"
+          : "assessment_answer",
+    sourceId: item.sourceId,
+    excerpt: item.excerpt,
+    pageNumber:
+      typeof item.metadata.pageNumber === "number"
+        ? item.metadata.pageNumber
+        : null,
+    sectionLabel:
+      typeof item.metadata.sectionPath === "string"
+        ? item.metadata.sectionPath
+        : null,
+  }));
+  const requirementByCode = new Map(
+    input.applicableRequirements.map((requirement) => [
+      requirement.code,
+      requirement,
+    ]),
+  );
+  const findings: PersistableGapFinding[] = generated.guidance.map(
+    (guidance) => {
+      const requirement = requireValue(
+        requirementByCode,
+        guidance.requirementCode,
+      );
+      return {
+        ...guidance,
+        status: requireValue(
+          evaluationByRequirementId,
+          requirement.id,
+        ).status,
+        guidanceRunId: generated.runId,
+      };
+    },
+  );
+  await Promise.all([
+    db
+      .insert(aiProcessingRunAssessmentInputs)
+      .values({
+        runId: generated.runId,
+        assessmentRevisionId: input.assessmentRevisionId,
+        sourceHash: contentHash(input.answerRows),
+      })
+      .onConflictDoNothing(),
+    db
+      .insert(aiProcessingRunArtifactInputs)
+      .values({
+        runId: generated.runId,
+        artifactRevisionId: input.applicability.id,
+        sourceHash:
+          input.applicability.inputHash ??
+          contentHash(input.applicability.result),
+      })
+      .onConflictDoNothing(),
+    input.documentRows.length
+      ? db
+          .insert(aiProcessingRunDocumentInputs)
+          .values(
+            input.documentRows.map((document) => ({
+              runId: generated.runId,
+              documentVersionId: document.id,
+              sourceHash: document.contentHash,
+            })),
+          )
+          .onConflictDoNothing()
+      : Promise.resolve(),
+  ]);
+  const run = await db.query.aiProcessingRuns.findFirst({
+    columns: {
+      id: true,
+      model: true,
+      renderedInputHash: true,
+      inputTokens: true,
+      outputTokens: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        eq(table.id, generated.runId) ?? operators.sql`true`,
+    },
+  });
+  if (!run) throw new Error("Grounded AI run was not persisted");
+  const promptRequirements = input.applicableRequirements.map(
+    (requirement) => ({
+      code: requirement.code,
+      title: requirement.title,
+      requirementText: requirement.requirementText,
+      criticality: requirement.criticality,
+      legalReferences: requirement.legalReferences,
+      citations: citations.filter((citation) =>
+        generated.context.some(
+          (item) =>
+            item.queryUnitId === requirement.code &&
+            item.citationId === citation.id,
+        ),
+      ),
+      determinedStatus: requireValue(
+        evaluationByRequirementId,
+        requirement.id,
+      ).status,
+    }),
+  );
+  const persisted = await persistGeneratedGapResult({
+    runId: generated.runId,
+    userId: input.input.userId,
+    organizationId: input.input.organizationId,
+    assessmentRevisionId: input.assessmentRevisionId,
+    applicabilityArtifactRevisionId: input.applicability.id,
+    release: input.release,
+    selectedVersionIds: input.selectedVersionIds,
+    promptRequirements,
+    findings,
+    outputLocale: input.input.locale,
+    model: { model: run.model ?? "grounded-provider" },
+    sourceInputHash: input.sourceInputHash,
+    renderedInputHash: run.renderedInputHash,
+    inputTokens: run.inputTokens ?? 0,
+    outputTokens: run.outputTokens ?? 0,
+    jobId: input.input.jobId,
+    deterministicStatuses: new Map(
+      input.evaluationRows.map((evaluation) => [
+        evaluation.requirementVersionId,
+        evaluation.status,
+      ]),
+    ),
+  });
+  return {
+    run: persisted.run,
+    artifactRevision: persisted.revision,
+    reused: false,
+  };
+}
+
 async function persistGeneratedGapResult(input: {
   runId: string;
   userId: string;
@@ -564,7 +808,7 @@ async function persistGeneratedGapResult(input: {
   release: NonNullable<Awaited<ReturnType<typeof loadGapAnalysisRelease>>>;
   selectedVersionIds: string[];
   promptRequirements: GapPromptRequirement[];
-  findings: GapModelFinding[];
+  findings: PersistableGapFinding[];
   outputLocale: Locale;
   model: { model: string };
   sourceInputHash: string;
@@ -742,6 +986,10 @@ async function persistGeneratedGapResult(input: {
     }
     for (const finding of input.findings) {
       const requirement = requireValue(requirementByCode, finding.requirementCode);
+      const structured = requireStructuredGuidance(
+        finding,
+        input.runId,
+      );
       const [storedFinding] = await tx
         .insert(gapFindings)
         .values({
@@ -749,9 +997,17 @@ async function persistGeneratedGapResult(input: {
           requirementVersionId: requirement.id,
           status: finding.status,
           evidenceSufficiency: finding.evidenceSufficiency,
+          guidanceMode: structured.guidanceMode,
+          guidanceBasis: structured.guidanceBasis,
+          guidanceBasisHash: structured.guidanceBasisHash,
           severity: deriveFindingSeverity(requirement.criticality, finding.status),
           rationale: finding.rationale,
           recommendation: finding.recommendation,
+          objective: structured.objective,
+          deliverables: structured.deliverables,
+          acceptanceCriteria: structured.acceptanceCriteria,
+          suggestedEvidence: structured.suggestedEvidence,
+          guidanceRunId: structured.guidanceRunId,
           assumptions: finding.assumptions,
           requiresReview: finding.requiresReview,
         })
@@ -899,4 +1155,55 @@ function requireValue<K, V>(values: Map<K, V>, key: K) {
   const value = values.get(key);
   if (!value) throw new Error(`Required value ${String(key)} is missing`);
   return value;
+}
+
+function requireStructuredGuidance(
+  finding: PersistableGapFinding,
+  expectedRunId: string,
+) {
+  if (
+    !finding.guidanceMode ||
+    !finding.guidanceBasis ||
+    !finding.guidanceBasisHash ||
+    !finding.guidanceRunId ||
+    finding.guidanceRunId !== expectedRunId ||
+    finding.objective === undefined ||
+    !finding.deliverables ||
+    !finding.acceptanceCriteria ||
+    !finding.suggestedEvidence
+  ) {
+    throw new ApiError(
+      409,
+      "The Gap release does not provide structured guidance",
+      undefined,
+      "GAP_GUIDANCE_CONTRACT_UNSUPPORTED",
+    );
+  }
+  return {
+    guidanceMode: finding.guidanceMode,
+    guidanceBasis: finding.guidanceBasis,
+    guidanceBasisHash: finding.guidanceBasisHash,
+    objective: finding.objective,
+    deliverables: finding.deliverables,
+    acceptanceCriteria: finding.acceptanceCriteria,
+    suggestedEvidence: finding.suggestedEvidence,
+    guidanceRunId: finding.guidanceRunId,
+  };
+}
+
+function isGapAnswerValue(
+  value: string | undefined,
+): value is
+  | "fully_implemented"
+  | "partially_implemented"
+  | "not_implemented"
+  | "unsure"
+  | "not_applicable" {
+  return (
+    value === "fully_implemented" ||
+    value === "partially_implemented" ||
+    value === "not_implemented" ||
+    value === "unsure" ||
+    value === "not_applicable"
+  );
 }

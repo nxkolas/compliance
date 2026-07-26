@@ -180,6 +180,7 @@ export const processingStatusEnum = pgEnum("processing_status", [
 
 export const aiOperationKindEnum = pgEnum("ai_operation_kind", [
   "gap_analysis",
+  "gap_guidance_regeneration",
   "live_gap_evaluation",
 ]);
 
@@ -195,6 +196,17 @@ export const evidenceSufficiencyEnum = pgEnum("evidence_sufficiency", [
   "partial",
   "none",
 ]);
+
+export const gapGuidanceModeEnum = pgEnum("gap_guidance_mode", [
+  "maintain_and_document",
+  "control_remediation",
+  "evidence_verification",
+]);
+
+export const actionPlanMeasureTypeEnum = pgEnum(
+  "action_plan_measure_type",
+  ["control_remediation", "evidence_verification"],
+);
 
 export const gapFindingEvidenceSourceTypeEnum = pgEnum(
   "gap_finding_evidence_source_type",
@@ -2847,9 +2859,21 @@ export const gapFindings = pgTable.withRLS(
     evidenceSufficiency: evidenceSufficiencyEnum(
       "evidence_sufficiency",
     ).notNull(),
+    guidanceMode: gapGuidanceModeEnum("guidance_mode").notNull(),
+    guidanceBasis: jsonb("guidance_basis").notNull(),
+    guidanceBasisHash: text("guidance_basis_hash").notNull(),
     severity: actionPlanPriorityEnum("severity").notNull(),
     rationale: text("rationale").notNull(),
     recommendation: text("recommendation").notNull(),
+    objective: text("objective"),
+    deliverables: jsonb("deliverables").default(sql`'[]'::jsonb`).notNull(),
+    acceptanceCriteria: jsonb("acceptance_criteria")
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    suggestedEvidence: jsonb("suggested_evidence")
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
+    guidanceRunId: uuid("guidance_run_id").notNull(),
     assumptions: jsonb("assumptions").default(sql`'[]'::jsonb`).notNull(),
     requiresReview: boolean("requires_review").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -2867,6 +2891,11 @@ export const gapFindings = pgTable.withRLS(
       columns: [table.requirementVersionId],
       foreignColumns: [gapRequirementVersions.id],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_findings_guidance_run_fk",
+      columns: [table.guidanceRunId],
+      foreignColumns: [aiProcessingRuns.id],
+    }).onDelete("restrict"),
     uniqueIndex("gap_findings_revision_requirement_unique").on(
       table.artifactRevisionId,
       table.requirementVersionId,
@@ -2876,6 +2905,57 @@ export const gapFindings = pgTable.withRLS(
       table.id,
     ),
     index("gap_findings_status_idx").on(table.status),
+    index("gap_findings_guidance_run_idx").on(table.guidanceRunId),
+    check(
+      "gap_findings_guidance_consistency_check",
+      sql`(
+        (
+          ${table.status} = 'fulfilled'
+          and ${table.guidanceMode} = 'maintain_and_document'
+          and ${table.objective} is null
+          and jsonb_typeof(${table.deliverables}) = 'array'
+          and jsonb_array_length(${table.deliverables}) = 0
+          and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
+          and jsonb_array_length(${table.acceptanceCriteria}) = 0
+          and jsonb_typeof(${table.suggestedEvidence}) = 'array'
+          and jsonb_array_length(${table.suggestedEvidence}) = 0
+        )
+        or
+        (
+          ${table.status} in ('partially_fulfilled', 'not_fulfilled')
+          and ${table.guidanceMode} = 'control_remediation'
+          and length(btrim(${table.objective})) > 0
+          and jsonb_typeof(${table.deliverables}) = 'array'
+          and jsonb_array_length(${table.deliverables}) > 0
+          and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
+          and jsonb_array_length(${table.acceptanceCriteria}) > 0
+          and jsonb_typeof(${table.suggestedEvidence}) = 'array'
+          and jsonb_array_length(${table.suggestedEvidence}) > 0
+        )
+        or
+        (
+          ${table.status} = 'insufficient_evidence'
+          and ${table.guidanceMode} = 'evidence_verification'
+          and length(btrim(${table.objective})) > 0
+          and jsonb_typeof(${table.deliverables}) = 'array'
+          and jsonb_array_length(${table.deliverables}) > 0
+          and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
+          and jsonb_array_length(${table.acceptanceCriteria}) > 0
+          and jsonb_typeof(${table.suggestedEvidence}) = 'array'
+          and jsonb_array_length(${table.suggestedEvidence}) > 0
+        )
+      )`,
+    ),
+    check(
+      "gap_findings_guidance_basis_check",
+      sql`
+        jsonb_typeof(${table.guidanceBasis}) = 'object'
+        and ${table.guidanceBasis}->>'version' = '1'
+        and jsonb_typeof(${table.guidanceBasis}->'triggeringQuestions') = 'array'
+        and jsonb_typeof(${table.guidanceBasis}->'satisfiedQuestionStableKeys') = 'array'
+        and length(btrim(${table.guidanceBasisHash})) > 0
+      `,
+    ),
   ],
 );
 
@@ -3051,7 +3131,13 @@ export const actionPlanItems = pgTable.withRLS(
     actionPlanId: uuid("action_plan_id").notNull(),
     sourceFindingId: uuid("source_finding_id").notNull(),
     title: text("title").notNull(),
-    description: text("description").notNull(),
+    measureType: actionPlanMeasureTypeEnum("measure_type").notNull(),
+    sourceRecommendation: text("source_recommendation").notNull(),
+    objective: text("objective").notNull(),
+    deliverables: jsonb("deliverables").notNull(),
+    acceptanceCriteria: jsonb("acceptance_criteria").notNull(),
+    suggestedEvidence: jsonb("suggested_evidence").notNull(),
+    executionNotes: text("execution_notes").default("").notNull(),
     priority: actionPlanPriorityEnum("priority").notNull(),
     status: actionPlanItemStatusEnum("status").default("open").notNull(),
     ownerUserId: uuid("owner_user_id"),
@@ -3080,6 +3166,19 @@ export const actionPlanItems = pgTable.withRLS(
       table.sourceFindingId,
     ),
     index("action_plan_items_status_idx").on(table.status),
+    check(
+      "action_plan_items_generated_guidance_check",
+      sql`
+        length(btrim(${table.sourceRecommendation})) > 0
+        and length(btrim(${table.objective})) > 0
+        and jsonb_typeof(${table.deliverables}) = 'array'
+        and jsonb_array_length(${table.deliverables}) > 0
+        and jsonb_typeof(${table.acceptanceCriteria}) = 'array'
+        and jsonb_array_length(${table.acceptanceCriteria}) > 0
+        and jsonb_typeof(${table.suggestedEvidence}) = 'array'
+        and jsonb_array_length(${table.suggestedEvidence}) > 0
+      `,
+    ),
   ],
 );
 
@@ -3626,6 +3725,42 @@ export const legalSourceChunks = pgTable.withRLS(
   ],
 );
 
+export const legalSourceChunkProvisions = pgTable.withRLS(
+  "legal_source_chunk_provisions",
+  {
+    chunkId: uuid("chunk_id").notNull(),
+    legalProvisionId: uuid("legal_provision_id").notNull(),
+    bindingMethod: text("binding_method").notNull(),
+    boundBy: uuid("bound_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.chunkId, table.legalProvisionId],
+    }),
+    foreignKey({
+      name: "legal_chunk_provisions_chunk_fk",
+      columns: [table.chunkId],
+      foreignColumns: [legalSourceChunks.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "legal_chunk_provisions_provision_fk",
+      columns: [table.legalProvisionId],
+      foreignColumns: [legalProvisions.id],
+    }).onDelete("restrict"),
+    index("legal_chunk_provisions_provision_idx").on(
+      table.legalProvisionId,
+      table.chunkId,
+    ),
+    check(
+      "legal_chunk_provisions_method_check",
+      sql`${table.bindingMethod} = 'reviewed_exact_anchor_v1'`,
+    ),
+  ],
+);
+
 export const legalSourceChunkEmbeddings = pgTable.withRLS(
   "legal_source_chunk_embeddings",
   {
@@ -3965,6 +4100,18 @@ export const aiProcessingRunContext = pgTable.withRLS(
     queryHash: text("query_hash").notNull(),
     retrievalRank: integer("retrieval_rank").notNull(),
     retrievalScore: numeric("retrieval_score").notNull(),
+    retrievalPolicyVersion: text("retrieval_policy_version"),
+    lexicalScore: numeric("lexical_score"),
+    semanticScore: numeric("semantic_score"),
+    combinedScore: numeric("combined_score"),
+    selectionRole: text("selection_role"),
+    preferredMappedProvision: boolean("preferred_mapped_provision")
+      .default(false)
+      .notNull(),
+    mappedLegalProvisionId: uuid("mapped_legal_provision_id"),
+    retrievalDiagnostics: jsonb("retrieval_diagnostics")
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
     legalChunkId: uuid("legal_chunk_id"),
     documentChunkId: uuid("document_chunk_id"),
     assessmentAnswerId: uuid("assessment_answer_id"),
@@ -3979,6 +4126,11 @@ export const aiProcessingRunContext = pgTable.withRLS(
     foreignKey({ name: "ai_run_context_legal_chunk_fk", columns: [table.legalChunkId], foreignColumns: [legalSourceChunks.id] }).onDelete("restrict"),
     foreignKey({ name: "ai_run_context_document_chunk_fk", columns: [table.documentChunkId], foreignColumns: [documentChunks.id] }).onDelete("restrict"),
     foreignKey({ name: "ai_run_context_answer_fk", columns: [table.assessmentAnswerId], foreignColumns: [assessmentAnswers.id] }).onDelete("restrict"),
+    foreignKey({
+      name: "ai_run_context_mapped_provision_fk",
+      columns: [table.mappedLegalProvisionId],
+      foreignColumns: [legalProvisions.id],
+    }).onDelete("restrict"),
     uniqueIndex("ai_run_context_citation_unique").on(table.runId, table.citationId),
     uniqueIndex("ai_run_context_position_unique").on(table.runId, table.promptPosition),
     index("ai_run_context_legal_chunk_idx")
@@ -3992,6 +4144,14 @@ export const aiProcessingRunContext = pgTable.withRLS(
       .where(sql`${table.assessmentAnswerId} is not null`),
     check("ai_run_context_source_check", sql`num_nonnulls(${table.legalChunkId}, ${table.documentChunkId}, ${table.assessmentAnswerId}) = 1`),
     check("ai_run_context_channel_check", sql`(${table.channel} = 'legal' and ${table.legalChunkId} is not null) or (${table.channel} = 'organization_document' and ${table.documentChunkId} is not null) or (${table.channel} = 'questionnaire_assertion' and ${table.assessmentAnswerId} is not null)`),
+    check(
+      "ai_run_context_selection_role_check",
+      sql`${table.selectionRole} is null or ${table.selectionRole} in ('mapped_primary', 'secondary_context', 'admitted_organization_evidence', 'questionnaire_assertion')`,
+    ),
+    check(
+      "ai_run_context_retrieval_diagnostics_check",
+      sql`jsonb_typeof(${table.retrievalDiagnostics}) = 'object'`,
+    ),
   ],
 );
 

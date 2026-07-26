@@ -195,7 +195,7 @@ export function GapResultsStep({
             }
             busy={busy}
             setBusy={setBusy}
-            onSaved={(status) => {
+            onSaved={(status, message) => {
               setOverrides((current) => ({
                 ...current,
                 [row.finding.id]: status,
@@ -203,7 +203,7 @@ export function GapResultsStep({
               setManualOverrides((current) => [
                 ...new Set([...current, row.finding.id]),
               ]);
-              setAnnouncement(labels.assessmentSaved);
+              setAnnouncement(message ?? labels.assessmentSaved);
               onError(null);
               router.refresh();
             }}
@@ -303,20 +303,50 @@ function FindingCard({
   canManage: boolean;
   busy: string | null;
   setBusy: (value: string | null) => void;
-  onSaved: (status: GapStatus) => void;
+  onSaved: (status: GapStatus, message?: string) => void;
   onError: (message: string | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [status, setStatus] = useState<GapStatus>(row.finding.status);
   const [reason, setReason] = useState("");
   const [resolutionReason, setResolutionReason] = useState("");
+  const [regenerationReason, setRegenerationReason] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   useEffect(() => {
     setStatus(row.finding.status);
     setReason("");
     setResolutionReason("");
+    setRegenerationReason("");
     setFieldError(null);
   }, [row.finding.id, row.finding.status]);
+
+  async function regenerate() {
+    if (!regenerationReason.trim()) {
+      setFieldError(labels.errors.GAP_CORRECTION_REASON_REQUIRED);
+      return;
+    }
+    setBusy(`regenerate-${row.finding.id}`);
+    setFieldError(null);
+    onError(null);
+    try {
+      await gapAnalysisClient.regenerateGuidance(
+        organizationId,
+        revisionId,
+        {
+          findingId: row.finding.id,
+          reason: regenerationReason,
+          retryNonce: crypto.randomUUID(),
+        },
+      );
+      setRegenerating(false);
+      onSaved(row.finding.status, labels.guidanceRegenerated);
+    } catch (error) {
+      onError(localizeGapError(error, labels));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function save() {
     if (!reason.trim()) {
@@ -385,15 +415,25 @@ function FindingCard({
             ) : null}
           </div>
         </div>
-        {canManage && !editing ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={Boolean(busy)}
-            onClick={() => setEditing(true)}
-          >
-            <Pencil /> {labels.changeAssessment}
-          </Button>
+        {canManage && !editing && !regenerating ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={Boolean(busy)}
+              onClick={() => setEditing(true)}
+            >
+              <Pencil /> {labels.changeAssessment}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={Boolean(busy)}
+              onClick={() => setRegenerating(true)}
+            >
+              {labels.regenerateGuidance}
+            </Button>
+          </div>
         ) : null}
       </div>
       {row.finding.requiresReview ? (
@@ -419,8 +459,31 @@ function FindingCard({
           value={row.finding.recommendation}
         />
       </dl>
+      {row.finding.objective ? (
+        <div className="mt-4 grid gap-4 text-sm">
+          <GuidanceList
+            title={labels.objective}
+            items={[row.finding.objective]}
+          />
+          <GuidanceList
+            title={labels.deliverables}
+            items={row.finding.deliverables}
+          />
+          <GuidanceList
+            title={labels.acceptanceCriteria}
+            items={row.finding.acceptanceCriteria}
+          />
+          <GuidanceList
+            title={labels.suggestedEvidence}
+            items={row.finding.suggestedEvidence}
+          />
+        </div>
+      ) : null}
       {editing ? (
         <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4">
+          <p className="text-sm text-muted-foreground">
+            {labels.correctionRegenerates}
+          </p>
           <label className="grid gap-1 text-sm font-medium">
             {labels.statusSummary}
             <select
@@ -477,11 +540,64 @@ function FindingCard({
             </Button>
           </div>
         </div>
+      ) : regenerating ? (
+        <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4">
+          <label className="grid gap-1 text-sm font-medium">
+            {labels.regenerationReason}
+            <Textarea
+              value={regenerationReason}
+              aria-invalid={Boolean(fieldError)}
+              onChange={(event) =>
+                setRegenerationReason(event.target.value)
+              }
+            />
+          </label>
+          {fieldError ? (
+            <p className="text-sm text-destructive">{fieldError}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={Boolean(busy)}
+              onClick={() => void regenerate()}
+            >
+              {busy === `regenerate-${row.finding.id}` ? (
+                <Loader2 className="animate-spin" />
+              ) : null}
+              {labels.regenerateGuidance}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={Boolean(busy)}
+              onClick={() => setRegenerating(false)}
+            >
+              {labels.cancelEdit}
+            </Button>
+          </div>
+        </div>
       ) : !canManage ? (
         <p className="mt-4 text-xs text-muted-foreground">{labels.readOnly}</p>
       ) : null}
       <GapFindingSources sources={row.sources} labels={labels} />
     </article>
+  );
+}
+
+function GuidanceList({
+  title,
+  items,
+}: {
+  title: string;
+  items: string[];
+}) {
+  return (
+    <section>
+      <h4 className="font-medium">{title}</h4>
+      <ul className="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
+        {items.map((item, index) => (
+          <li key={`${index}:${item}`}>{item}</li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

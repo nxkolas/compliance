@@ -1,7 +1,8 @@
 # Current Gap-Analysis Workflow
 
-Status: single organization lifecycle, compact finding sources, and positive
-applicability eligibility guard implemented on 2026-07-25.
+Status: guided-v5 constrained guidance, single organization lifecycle,
+compact finding sources, and positive applicability eligibility guard
+implemented on 2026-07-26.
 
 Each organization can generate one AI Gap Analysis and one action plan:
 
@@ -10,7 +11,7 @@ answer questions
   -> select optional documents
   -> review exact inputs
   -> generate Gap Analysis
-  -> manually correct findings
+  -> correct facts or regenerate one finding's guidance
   -> generate action plan
   -> Gap Analysis permanently locked
 ```
@@ -64,10 +65,12 @@ of the current Gap revision. Later questionnaire changes, document versions,
 or document archival do not rewrite the displayed snapshot. An empty document
 selection has an explicit empty state.
 
-Owners and administrators may manually correct findings while no action plan
-exists. Members and auditors retain their read-only permissions. A correction
-creates a complete immutable child revision and copies its pinned input and
-evidence sources.
+Owners and administrators may correct structured finding facts or request
+guidance regeneration while no action plan exists. They cannot edit generated
+prose. A material correction first runs the constrained single-finding
+generation against the original pinned inputs. Only validated guidance and
+the complete immutable child revision are then saved atomically. Unchanged
+findings preserve their original guidance-run lineage.
 
 Findings and citations are authoritative normalized rows. The generated
 revision's JSON contains only locale, diagnostics, and correction metadata; it
@@ -95,12 +98,14 @@ coordinates, and revision-result JSON remain server-side for generation,
 review, and audit behavior. They are not sent in the current workflow or the
 customer-accessible historical revision response.
 
-The `guided-v4` prompt asks the model to explain the server-owned deterministic status and interpreted disagreements
-between its status and questionnaire assertions in
-`questionnaireDisagreements`. The UI presents a neutral, non-blocking
-disagreement indicator without returning the raw diagnostic strings. Genuine
-contradictions still use `contradictions` and `requiresReview` server-side. A
-manual correction suppresses stale AI disagreement metadata for that finding.
+The `guided-v5` contract supplies status, guidance mode, triggering questions,
+work kinds, and mapped legal provisions as server-owned facts. Organization
+evidence passes a versioned relevance floor before prompt construction; no
+candidate above the floor means no organization-document grounding and
+`evidenceSufficiency=none`. Primary legal citations come from mapped operative
+authority. The customer projection exposes structured guidance text but not
+stable question keys, work kinds, retrieval scores, excerpts, or model
+diagnostics.
 
 ## Atomic action-plan boundary
 
@@ -130,10 +135,12 @@ correction, and standalone approval requests.
 
 ## Action plan and Documents hub
 
-The action plan contains one fixed generated measure set. Status, assignee,
-deadline, and supported execution notes remain editable with optimistic
-concurrency and audit history. There is no reconciliation, refresh, or
-replacement-plan route.
+The action plan contains exactly one fixed, structured item per non-fulfilled
+finding. Each item snapshots the source recommendation, measure type,
+objective, deliverables, acceptance criteria, and suggested evidence. Those
+generated fields are immutable. Status, assignee, deadline, and separate
+execution notes remain editable with optimistic concurrency and audit
+history. Plan creation is deterministic and makes no AI call.
 
 The Documents page is a generic hub for upload, search, processing/indexing
 status, versions, and archive visibility. It does not load Gap workflow state
@@ -143,16 +150,16 @@ eligible current document versions.
 
 ## Release publication and activation
 
-The immutable single-lifecycle prompt is registered as
-`nis2-gap/guided-v4`. For a reviewed non-production environment:
+The immutable constrained-guidance contract is registered as
+`nis2-gap/guided-v5`. For a reviewed non-production environment:
 
 ```text
-npm run db:publish:gap -- --release nis2-gap/guided-v4
-npm run db:activate:gap -- --release nis2-gap/guided-v4
+npm run db:publish:gap -- --release nis2-gap/guided-v5
+npm run db:activate:gap -- --release nis2-gap/guided-v5
 ```
 
 Production publication and activation use the reviewed deployment procedure.
-The earlier `guided-v2` contract remains immutable for historical results.
+Earlier guided contracts remain immutable for historical results.
 
 ## Verification
 

@@ -17,6 +17,7 @@ export function createAiSdkGroundedProvider(mode: AiProviderMode): GroundedProvi
         system: input.system,
         prompt: input.prompt,
         maxRetries: 0,
+        maxOutputTokens: groundedMaxOutputTokens(),
         abortSignal: AbortSignal.timeout(providerTimeoutMs()),
       });
       return {
@@ -29,6 +30,15 @@ export function createAiSdkGroundedProvider(mode: AiProviderMode): GroundedProvi
       };
     },
   };
+}
+
+function groundedMaxOutputTokens() {
+  const raw =
+    process.env.AI_GROUNDED_MAX_OUTPUT_TOKENS?.trim() || "9000";
+  const configured = Number(raw);
+  return Number.isFinite(configured)
+    ? Math.max(512, Math.min(12_000, configured))
+    : 9_000;
 }
 
 function providerTimeoutMs() {

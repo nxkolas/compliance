@@ -21,8 +21,20 @@ export {
   loadGapAnalysisRelease,
 } from "./release-loader";
 export type { LoadedGapRelease } from "./release-loader";
+export type {
+  GapAcceptanceCriterion,
+  GapDeliverable,
+  GapSuggestedEvidence,
+  ValidatedGapGuidance,
+} from "./generation-schema-v6";
+export type {
+  DeterministicGapStatus,
+  GapAnswerValue,
+} from "./deterministic-evaluator";
 export {
   correctGapRevision,
+  regenerateAndCorrectGapFinding,
+  regenerateGapFindingGuidance,
   assertGapRevisionApprovable,
 } from "./review-service";
 export {

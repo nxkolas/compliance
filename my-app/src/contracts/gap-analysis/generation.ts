@@ -41,14 +41,16 @@ export const gapCorrectionInputSchema = z.object({
     findingId: z.uuid(),
     status: z.enum(["fulfilled", "partially_fulfilled", "not_fulfilled", "insufficient_evidence"]).optional(),
     evidenceSufficiency: z.enum(["sufficient", "partial", "none"]).optional(),
-    rationale: z.string().trim().min(1).optional(),
-    recommendation: z.string().trim().min(1).optional(),
-    assumptions: z.array(z.string().trim().min(1)).optional(),
     requiresReview: z.boolean().optional(),
     reason: z.string().trim().min(1),
     resolutionReason: z.string().trim().min(1).optional(),
-  })).min(1),
+  }).strict()).length(1),
 });
+export const gapGuidanceRegenerationInputSchema = z.object({
+  findingId: z.uuid(),
+  reason: z.string().trim().min(1),
+  retryNonce: z.string().trim().min(1).max(100).optional(),
+}).strict();
 export const gapReassessmentQuerySchema = z.object({ assessmentId: z.uuid() });
 export const gapReassessmentPrepareSchema = z.object({
   assessmentId: z.uuid(),

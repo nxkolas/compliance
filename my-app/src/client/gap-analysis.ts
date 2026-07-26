@@ -1,6 +1,7 @@
 import * as z from "zod";
 import {
   gapCorrectionInputSchema,
+  gapGuidanceRegenerationInputSchema,
   gapEntitySchema,
   gapGenerationEnqueueResponseSchema,
   gapQuestionnaireInputSchema,
@@ -89,6 +90,24 @@ export const gapAnalysisClient = {
     return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/correct`, {
       method: "POST", input: gapCorrectionInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ revision: gapEntitySchema }), signal,
     });
+  },
+
+  regenerateGuidance(
+    organizationId: string,
+    revisionId: string,
+    input: z.infer<typeof gapGuidanceRegenerationInputSchema>,
+    signal?: AbortSignal,
+  ) {
+    return request(
+      `${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/regenerate-guidance`,
+      {
+        method: "POST",
+        input: gapGuidanceRegenerationInputSchema.parse(input),
+        idempotencyKey: crypto.randomUUID(),
+        outputSchema: z.object({ revision: gapEntitySchema }),
+        signal,
+      },
+    );
   },
 
   generate(organizationId: string, input: z.infer<typeof generationInputSchema>, idempotencyKey: string, signal?: AbortSignal) {

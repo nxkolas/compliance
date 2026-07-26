@@ -1261,7 +1261,7 @@ begin
   where revision.id = target_revision_id
     and revision.status in ('submitted', 'superseded')
     and release.release_code = 'nis2-gap'
-    and release.version_label = 'guided-v4';
+    and release.version_label in ('guided-v4', 'guided-v5');
   if not found then return; end if;
 
   select count(*)::integer into expected_count
@@ -1276,7 +1276,7 @@ begin
 
   if expected_count <> 10 or actual_count <> expected_count then
     raise exception using errcode = '23514',
-      message = 'guided-v4 assessment requires exactly ten pinned evaluations';
+      message = 'guided assessment requires exactly ten pinned evaluations';
   end if;
 end;
 $$;

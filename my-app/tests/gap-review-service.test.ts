@@ -98,14 +98,13 @@ describe("gap correction transitions", () => {
     ).toMatchObject({ status, severity });
   });
 
-  it("allows an unchanged status with an edited explanation", () => {
+  it("allows guidance-only regeneration without client-authored prose", () => {
     expect(
       resolveGapFindingCorrection({
         source,
         correction: {
           findingId: source.id,
-          reason: "Clarified wording",
-          rationale: "Neu",
+          reason: "Regenerate the constrained guidance",
         },
         criticality: "high",
       }).status,
