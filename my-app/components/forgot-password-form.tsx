@@ -3,17 +3,10 @@
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
+import { Mail } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -50,59 +43,109 @@ export function ForgotPasswordForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      {success ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">{labels.checkEmailTitle}</CardTitle>
-            <CardDescription>{labels.resetInstructionsSent}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
+    <div
+      className="fixed inset-0 flex min-h-svh w-full items-center justify-center overflow-hidden bg-[#02040E] px-4 py-8 font-['Space_Grotesk'] sm:px-6 lg:px-10"
+      {...props}
+    >
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <Image
+          src="/images/Startseite.svg"
+          alt={labels.backgroundAlt}
+          fill
+          className="object-cover"
+          priority
+        />
+      </div>
+
+      <div
+        className={cn(
+          "relative z-10 flex w-full max-w-[476px] flex-col items-start gap-4 overflow-hidden px-4",
+          className,
+        )}
+      >
+        <div className="inline-flex h-16 w-56 items-center justify-start overflow-hidden bg-white/0 py-10">
+          <Image
+            src="/images/Logo-weiß.svg"
+            alt={labels.logoAlt}
+            width={227}
+            height={74}
+            priority
+            className="h-20 w-56 object-contain"
+          />
+        </div>
+
+        <div className="inline-flex self-stretch flex-col items-start justify-start gap-6 overflow-hidden bg-white/0 pb-4">
+          <h1 className="h-5 self-stretch text-4xl font-medium leading-none text-white">
+            {success ? labels.checkEmailTitle : "Passwort vergessen?"}
+          </h1>
+          <p className="self-stretch text-base font-normal leading-normal text-white">
+            {success
+              ? labels.resetInstructionsSent
+              : <>Wir senden Ihnen einen Link zum Zur&uuml;cksetzen.</>}
+          </p>
+        </div>
+
+        <div className="flex self-stretch flex-col items-start gap-6 overflow-hidden rounded-2xl bg-neutral-50 p-8 shadow-[0px_8px_32px_-4px_rgba(0,0,0,0.10)]">
+          {success ? (
+            <p className="text-base font-normal leading-6 text-gray-600">
               {labels.resetEmailSent}
             </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">{labels.resetPasswordTitle}</CardTitle>
-            <CardDescription>
-              {labels.resetPasswordDescription}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleForgotPassword}>
-              <div className="flex flex-col gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">{labels.email}</Label>
-                  <Input
+          ) : (
+            <form
+              onSubmit={handleForgotPassword}
+              className="flex w-full flex-col gap-6"
+            >
+              <div className="flex self-stretch flex-col items-start gap-2 overflow-hidden bg-white/0">
+                <label
+                  htmlFor="email"
+                  className="text-base font-medium text-black"
+                >
+                  E-Mail-Adresse
+                </label>
+                <div className="inline-flex h-12 self-stretch items-center justify-start gap-4 overflow-hidden rounded-lg bg-white px-4 py-3 outline outline-[1.5px] -outline-offset-[1.5px] outline-gray-200">
+                  <Mail className="pointer-events-none size-5 shrink-0 text-blue-700" />
+                  <input
                     id="email"
                     type="email"
                     placeholder={labels.emailPlaceholder}
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    className="h-full min-w-0 flex-1 bg-transparent text-base font-normal text-black outline-none placeholder:text-gray-600"
                   />
                 </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? labels.sending : labels.sendResetEmail}
-                </Button>
               </div>
-              <div className="mt-4 text-center text-sm">
-                {labels.alreadyHaveAnAccount}{" "}
-                <Link
-                  href="/auth/login"
-                  className="underline underline-offset-4"
-                >
-                  {labels.login}
-                </Link>
-              </div>
+
+              {error && (
+                <p role="alert" className="text-sm font-medium text-red-600">
+                  {error}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                className="h-12 w-full rounded-lg bg-blue-700 text-base font-medium text-white shadow-none transition-colors hover:bg-blue-800"
+                disabled={isLoading}
+              >
+                {isLoading ? labels.sending : "Reset-Link senden"}
+              </Button>
             </form>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </div>
+
+        <div className="inline-flex items-center justify-center gap-1 overflow-hidden bg-white/0 text-base text-white">
+          <span className="font-normal leading-5">&larr; </span>
+          <span className="font-medium leading-5">Zur&uuml;ck zur </span>
+          <div className="relative h-5 w-24">
+            <Link
+              href="/auth/login"
+              className="absolute left-0 top-0 font-bold leading-5 hover:underline"
+            >
+              Anmeldung
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
