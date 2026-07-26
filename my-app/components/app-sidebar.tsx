@@ -28,9 +28,21 @@ export function AppSidebar({
 }: AppSidebarProps) {
   return (
     <Sidebar
-      collapsible="none"
-      className="sticky top-0 h-svh max-h-svh w-[401px] shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
-    >
+  collapsible="none"
+  className="
+    sticky
+    top-0
+    h-svh
+    max-h-svh
+    w-96
+    shrink-0
+    overflow-hidden
+    border-r
+    border-white/10
+    bg-[rgba(255,255,255,0.10)]
+    [&_[data-sidebar=sidebar]]:!bg-transparent
+  "
+>
       <Suspense fallback={<AppSidebarContentSkeleton />}>
         <AppSidebarNav
           organizationId={organizationId}
