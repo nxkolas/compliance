@@ -32,10 +32,10 @@ export default async function NewApplicabilityCheckPage({
   }
 
   return (
-    <section className="flex w-full flex-col gap-8">
+    <section className="flex w-full flex-col gap-12">
       <PageHeader
         title={dictionary.modules.applicabilityCheck.title}
-        subtitle={dictionary.modules.applicabilityCheck.description}
+        subtitle={dictionary.modules.applicabilityCheck.questionnaireDescription}
       />
 
       {questionnaire ? (
@@ -44,6 +44,7 @@ export default async function NewApplicabilityCheckPage({
           successUrl={`/tool/organizations/${organizationId}/applicability-check/result`}
           questionnaire={questionnaire}
           labels={dictionary.modules.applicabilityCheck.form}
+          presentation="authenticated-stepper"
         />
       ) : (
         <div className="rounded-lg border bg-card p-6 text-muted-foreground shadow-sm">
