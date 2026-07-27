@@ -110,8 +110,8 @@ export function AppSidebarNav({
   };
 
   return (
-    <div className="h-svh w-full overflow-y-auto bg-transparent font-['Space_Grotesk']">
-      <div className="flex min-h-full w-full flex-col bg-transparent px-[54px] py-[52px] [@media(max-height:950px)]:py-6">
+    <div className="h-svh w-full overflow-hidden bg-transparent font-['Space_Grotesk']">
+      <div className="flex h-full min-h-0 w-full flex-col bg-transparent px-[54px] py-[52px] [@media(max-height:950px)]:py-5">
         {/* Logo */}
         <SidebarHeader className="w-72 shrink-0 bg-transparent p-0">
           <Link
@@ -160,7 +160,7 @@ export function AppSidebarNav({
             w-72
             min-w-0
             shrink-0
-            [@media(max-height:950px)]:mt-6
+            [@media(max-height:950px)]:mt-5
 
             [&>*]:h-12
             [&>*]:w-full
@@ -192,16 +192,19 @@ export function AppSidebarNav({
           <SidebarContent
             className="
               mt-[52px]
+              min-h-0
               w-72
-              flex-none
-              overflow-visible
+              flex-1
+              overflow-x-hidden
+              overflow-y-auto
+              overscroll-contain
               bg-transparent
               p-0
-              [@media(max-height:950px)]:mt-6
+              [@media(max-height:950px)]:mt-5
             "
           >
             <SidebarGroup className="w-72 p-0">
-              <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-1">
+              <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2">
                 {mainLinks.map((link) => (
                   <SidebarLink
                     key={link.href}
@@ -225,7 +228,7 @@ export function AppSidebarNav({
           "
         >
           <SidebarGroup className="w-72 p-0">
-            <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-1">
+            <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2">
               {settingsLink ? (
                 <SidebarLink
                   currentPath={pathname}
