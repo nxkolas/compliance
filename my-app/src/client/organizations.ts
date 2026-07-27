@@ -9,6 +9,7 @@ import {
   organizationInputSchema,
   organizationListItemSchema,
   organizationListQuerySchema,
+  organizationMemberSchema,
   organizationSchema,
   organizationSettingsSchema,
   organizationSettingsUpdateSchema,
@@ -30,6 +31,25 @@ export const organizationsClient = {
     if (query.cursor) params.set("cursor", query.cursor);
     return request(`${base()}?${params}`, {
       outputSchema: z.object({ organizations: z.array(organizationListItemSchema) }),
+      signal,
+    });
+  },
+  listMembers(organizationId: string, signal?: AbortSignal) {
+    return request(`${base(organizationId)}/members?limit=100`, {
+      outputSchema: z.object({
+        members: z.array(organizationMemberSchema),
+        controls: z.object({
+          actorUserId: z.uuid(),
+          canManage: z.boolean(),
+          canManageOwners: z.boolean(),
+        }),
+      }),
+      signal,
+    });
+  },
+  listInvitations(organizationId: string, signal?: AbortSignal) {
+    return request(`${base(organizationId)}/invitations?limit=100`, {
+      outputSchema: z.object({ invitations: z.array(invitationSchema) }),
       signal,
     });
   },
