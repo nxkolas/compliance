@@ -221,3 +221,9 @@
   outline: 2px solid #002aff;
   outline-offset: 2px;
 }
+
+body:has([data-organization-edit-dialog]) [data-slot="dialog-overlay"] {
+  border: 1px solid #000000;
+  background-color: rgb(0 0 0 / 75%);
+  backdrop-filter: blur(3px);
+}

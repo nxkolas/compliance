@@ -4,16 +4,19 @@ import {
   OrganizationSwitcher,
   OrganizationSwitcherFallback,
 } from "@/components/organization-switcher";
-import { ProfileMenu, ProfileMenuFallback } from "@/components/profile-menu";
+import {
+  ProfileMenu,
+  ProfileMenuFallback,
+} from "@/components/profile-menu";
 import { Sidebar } from "@/components/ui/sidebar";
 import {
   getDictionary,
   getLocale,
   type Dictionary,
 } from "@/lib/i18n";
-import { hasEnvVars } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/supabase/require-auth";
+import { createClient } from "@/lib/supabase/server";
+import { hasEnvVars } from "@/lib/utils";
 import { listOrganizationsForUser } from "@/src/server/organizations/service";
 import { Suspense } from "react";
 
@@ -28,21 +31,21 @@ export function AppSidebar({
 }: AppSidebarProps) {
   return (
     <Sidebar
-  collapsible="none"
-  className="
-    sticky
-    top-0
-    h-svh
-    max-h-svh
-    w-96
-    shrink-0
-    overflow-hidden
-    border-r
-    border-white/10
-    bg-[rgba(255,255,255,0.10)]
-    [&_[data-sidebar=sidebar]]:!bg-transparent
-  "
->
+      collapsible="none"
+      className="
+        sticky
+        top-0
+        h-svh
+        max-h-svh
+        w-96
+        shrink-0
+        overflow-hidden
+        border-r
+        border-white/10
+        bg-[rgba(255,255,255,0.10)]
+        [&_[data-sidebar=sidebar]]:!bg-transparent
+      "
+    >
       <Suspense fallback={<AppSidebarContentSkeleton />}>
         <AppSidebarNav
           organizationId={organizationId}
@@ -57,9 +60,15 @@ export function AppSidebar({
             >
               <OrganizationSwitcherLoader
                 organizationId={organizationId}
-                placeholder={dictionary.organizations.switcherPlaceholder}
-                createLabel={dictionary.organizations.switcherCreate}
-                manageLabel={dictionary.organizations.switcherManage}
+                placeholder={
+                  dictionary.organizations.switcherPlaceholder
+                }
+                createLabel={
+                  dictionary.organizations.switcherCreate
+                }
+                manageLabel={
+                  dictionary.organizations.switcherManage
+                }
               />
             </Suspense>
           }
@@ -99,7 +108,9 @@ async function OrganizationSwitcherLoader({
   manageLabel: string;
 }) {
   const user = await requireAuth();
-  const organizations = await listOrganizationsForUser(user.id);
+  const organizations = await listOrganizationsForUser(
+    user.id,
+  );
 
   return (
     <OrganizationSwitcher
@@ -119,14 +130,51 @@ async function ProfileMenuLoader() {
   const locale = await getLocale();
   const labels = await getDictionary();
   const supabase = await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const email = user?.email;
+
+  const email =
+    typeof user?.email === "string"
+      ? user.email
+      : null;
+
+  const metadata =
+    user?.user_metadata &&
+    typeof user.user_metadata === "object"
+      ? (user.user_metadata as Record<string, unknown>)
+      : undefined;
+
+  const firstName =
+    readMetadataString(metadata, "first_name") ??
+    readMetadataString(metadata, "firstName") ??
+    readMetadataString(metadata, "given_name");
+
+  const lastName =
+    readMetadataString(metadata, "last_name") ??
+    readMetadataString(metadata, "lastName") ??
+    readMetadataString(metadata, "family_name");
+
+  const fullName =
+    readMetadataString(metadata, "full_name") ??
+    readMetadataString(metadata, "fullName") ??
+    readMetadataString(metadata, "name");
+
+  const combinedName = [firstName, lastName]
+    .filter(
+      (value): value is string =>
+        typeof value === "string" && value.length > 0,
+    )
+    .join(" ");
+
+  const displayName =
+    combinedName || fullName || null;
 
   return (
     <ProfileMenu
-      email={typeof email === "string" ? email : null}
+      email={email}
+      displayName={displayName}
       locale={locale}
       variant="sidebar"
       labels={{
@@ -137,4 +185,15 @@ async function ProfileMenuLoader() {
       }}
     />
   );
+}
+
+function readMetadataString(
+  metadata: Record<string, unknown> | undefined,
+  key: string,
+) {
+  const value = metadata?.[key];
+
+  return typeof value === "string" && value.trim()
+    ? value.trim()
+    : null;
 }

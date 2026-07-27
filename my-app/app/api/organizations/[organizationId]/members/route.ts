@@ -7,5 +7,8 @@ export const GET = apiRoute(async ({ request, routeContext }: { request: Request
   const user = await requireApiUser(); const { organizationId } = await routeContext.params;
   const query = parseInput(paginationQuerySchema, Object.fromEntries(new URL(request.url).searchParams));
   const result = await listOrganizationMembersPage({ userId: user.id, organizationId, ...query });
-  return { data: { members: result.members }, meta: { nextCursor: result.nextCursor } };
+  return {
+    data: { members: result.members, controls: result.controls },
+    meta: { nextCursor: result.nextCursor },
+  };
 });

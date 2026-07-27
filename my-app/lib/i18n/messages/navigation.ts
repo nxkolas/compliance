@@ -13,7 +13,7 @@ export const navigationMessages = defineFeatureMessages({
           experimental: "Experimentell",
           dashboard: "Dashboard",
           documentReview: "Dokumentenprüfung",
-          documents: "Dokumente",
+          documents: "Dokumentenbibliothek",
           gapAnalysis: "Gap-Analyse",
           general: "Allgemein",
           helpGlossary: "Hilfe & Glossar",

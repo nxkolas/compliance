@@ -59,6 +59,12 @@ export function OrganizationCreateForm({
     message: null,
     tone: "default",
   });
+  const fieldClassName =
+    "h-12 w-full rounded-lg border-[1.5px] border-[#3D4049] !bg-white/[0.06] px-5 font-['Space_Grotesk'] text-base font-normal leading-5 text-white shadow-sm placeholder:text-zinc-500 focus-visible:border-blue-700 focus-visible:ring-blue-700/40";
+  const labelClassName =
+    "flex h-5 w-56 items-start font-['Space_Grotesk'] text-base font-semibold leading-5 text-white";
+  const descriptionClassName =
+    "flex h-9 w-96 items-start font-['Space_Grotesk'] text-xs font-normal leading-5 text-gray-400";
 
   async function handleCreateOrganization(
     event: FormEvent<HTMLFormElement>,
@@ -113,7 +119,7 @@ export function OrganizationCreateForm({
   }
 
   return (
-    <div className="w-[1205px] min-w-[1205px] max-w-none shrink-0">
+    <div className="w-[1225px] min-w-[1225px] max-w-none shrink-0">
       {notice.message && (
         <div
           role="alert"
@@ -134,31 +140,33 @@ export function OrganizationCreateForm({
       <form
         onSubmit={handleCreateOrganization}
         className="
-          relative
           box-border
-          h-[522px]
-          w-[1205px]
-min-w-[1205px]
-max-w-none
-          overflow-hidden
+          w-[1225px]
+          min-w-[1225px]
+          max-w-none
+          p-8
           rounded-xl
           border-[1.5px]
-          border-zinc-700
-          bg-gray-900
+          border-[#3D4049]
+          bg-[#1B1E27]
           font-['Space_Grotesk']
           shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)]
+          inline-flex
+          flex-col
+          items-start
+          gap-6
         "
       >
         {/* Organisationsname */}
-        <div className="absolute left-8 right-8 top-8 flex flex-col gap-2">
+        <div className="flex w-full max-w-[1159px] flex-col items-start gap-0">
           <label
             htmlFor="organization-name"
-            className="h-5 text-base font-semibold leading-5 text-white"
+            className={labelClassName}
           >
             {labels.organizationName}
           </label>
 
-          <p className="h-5 text-xs font-normal leading-5 text-gray-400">
+          <p className={descriptionClassName}>
             Interner Anzeigename für deinen Workspace.
           </p>
 
@@ -174,40 +182,20 @@ max-w-none
               }))
             }
             required
-            className="
-              h-12
-              w-full
-              rounded-lg
-              border-0
-              bg-white/5
-              px-5
-              font-['Space_Grotesk']
-              text-base
-              font-normal
-              leading-6
-              text-white
-              shadow-none
-              outline
-              outline-[1.5px]
-              outline-offset-[-1.5px]
-              outline-zinc-700
-              placeholder:text-gray-500
-              focus-visible:ring-0
-              focus-visible:ring-offset-0
-            "
+            className={fieldClassName}
           />
         </div>
 
         {/* Rechtlicher Name */}
-        <div className="absolute left-8 right-8 top-[174px] flex flex-col gap-2">
+        <div className="flex w-full max-w-[1159px] flex-col items-start gap-0">
           <label
             htmlFor="legal-name"
-            className="h-5 text-base font-semibold leading-5 text-white"
+            className={labelClassName}
           >
             {labels.legalName}
           </label>
 
-          <p className="h-5 text-xs font-normal leading-5 text-gray-400">
+          <p className={descriptionClassName}>
             Offizieller Firmenname laut Handelsregister.
           </p>
 
@@ -222,51 +210,29 @@ max-w-none
                 legalName: event.target.value,
               }))
             }
-            className="
-              h-12
-              w-full
-              rounded-lg
-              border-0
-              bg-white/5
-              px-5
-              font-['Space_Grotesk']
-              text-base
-              font-normal
-              leading-6
-              text-white
-              shadow-none
-              outline
-              outline-[1.5px]
-              outline-offset-[-1.5px]
-              outline-zinc-700
-              placeholder:text-gray-500
-              focus-visible:ring-0
-              focus-visible:ring-offset-0
-            "
+            className={fieldClassName}
           />
         </div>
 
         {/* Land */}
         <div
           className="
-            absolute
-            left-8
-            right-8
-            top-[313px]
             flex
+            w-full
             max-w-[506px]
             flex-col
-            gap-2
+            items-start
+            gap-0
           "
         >
           <label
             htmlFor="country"
-            className="h-5 text-base font-semibold leading-5 text-white"
+            className={labelClassName}
           >
             {labels.country}
           </label>
 
-          <p className="h-5 text-xs font-normal leading-5 text-gray-400">
+          <p className={descriptionClassName}>
             Land, in dem die Organisation registriert ist.
           </p>
 
@@ -281,8 +247,9 @@ max-w-none
               [&_[data-slot=select-trigger]]:items-center
               [&_[data-slot=select-trigger]]:justify-between
               [&_[data-slot=select-trigger]]:rounded-lg
-              [&_[data-slot=select-trigger]]:border-0
-              [&_[data-slot=select-trigger]]:bg-gray-800
+              [&_[data-slot=select-trigger]]:border-[1.5px]
+              [&_[data-slot=select-trigger]]:border-[#3D4049]
+              [&_[data-slot=select-trigger]]:!bg-white/[0.06]
               [&_[data-slot=select-trigger]]:px-5
               [&_[data-slot=select-trigger]]:py-0
               [&_[data-slot=select-trigger]]:font-['Space_Grotesk']
@@ -290,14 +257,9 @@ max-w-none
               [&_[data-slot=select-trigger]]:font-normal
               [&_[data-slot=select-trigger]]:leading-6
               [&_[data-slot=select-trigger]]:text-white
-              [&_[data-slot=select-trigger]]:shadow-none
-              [&_[data-slot=select-trigger]]:outline
-              [&_[data-slot=select-trigger]]:outline-[1.5px]
-              [&_[data-slot=select-trigger]]:outline-offset-[-1.5px]
-              [&_[data-slot=select-trigger]]:outline-zinc-700
-              [&_[data-slot=select-trigger]]:focus:ring-0
-              [&_[data-slot=select-trigger]]:focus-visible:ring-0
-              [&_[data-slot=select-trigger]]:focus-visible:ring-offset-0
+              [&_[data-slot=select-trigger]]:shadow-sm
+              [&_[data-slot=select-trigger]]:focus-visible:border-blue-700
+              [&_[data-slot=select-trigger]]:focus-visible:ring-blue-700/40
               [&_[data-slot=select-trigger]_svg]:size-5
               [&_[data-slot=select-trigger]_svg]:text-slate-400
             "
@@ -321,9 +283,6 @@ max-w-none
           type="submit"
           disabled={isCreatingOrganization}
           className="
-            absolute
-            bottom-8
-            right-8
             inline-flex
             h-12
             w-72
@@ -331,14 +290,15 @@ max-w-none
             justify-center
             gap-2
             overflow-hidden
+            self-end
             rounded-lg
-            bg-blue-700
+            bg-[#002BFF]
             px-6
             font-['Space_Grotesk']
             text-base
             font-medium
             text-white
-            hover:bg-blue-600
+            hover:bg-[#002BFF]/90
             focus-visible:ring-2
             focus-visible:ring-blue-400
             focus-visible:ring-offset-2
