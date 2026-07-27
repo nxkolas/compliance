@@ -6,6 +6,7 @@ import { backgroundJobs, legalSourceProcessingGenerations, legalSourceRenditions
 import { LEGAL_CORPUS_BUCKET, LEGAL_SOURCE_MIME_TYPES, MAX_LEGAL_SOURCE_BYTES } from "../config";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { fetchControlledUrl } from "../controlled-url";
+import { createDocumentEmbeddingProvider } from "@/src/server/documents";
 
 const payloadSchema = z.object({
   sourceId: z.uuid(),
@@ -98,13 +99,20 @@ export async function handleLegalSourceImport(job: typeof backgroundJobs.$inferS
       requestedByUserId: job.requestedByUserId,
       cancellable: true,
     }).returning();
+    const embeddingProvider = createDocumentEmbeddingProvider();
     const [generation] = await tx.insert(legalSourceProcessingGenerations).values({
       renditionId: rendition.id,
       jobId: processJob.id,
       generationNumber: 1,
       parserConfig: { version: "legal-v1" },
       chunkerConfig: { version: "paragraph-v1" },
-      embeddingConfig: { provider: "openai", model: "text-embedding-3-small", dimensions: 1536 },
+      embeddingConfig: {
+        provider: embeddingProvider.provider,
+        model: embeddingProvider.model,
+        modelRevision: embeddingProvider.modelRevision,
+        dimensions: embeddingProvider.dimensions,
+        retrievalInstructionId: embeddingProvider.retrievalInstructionId,
+      },
     }).returning();
     await tx.update(backgroundJobs).set({ payload: { renditionId: rendition.id, generationId: generation.id } }).where(eq(backgroundJobs.id, processJob.id));
     await tx.insert(platformAuditEvents).values({

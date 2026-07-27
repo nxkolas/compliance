@@ -1,7 +1,9 @@
 # Complete Docker Deployment
 
-Status: proposed implementation plan; architecture decisions confirmed on
-2026-07-27. This document does not record an executed deployment.
+Status: implementation in progress; architecture decisions confirmed on
+2026-07-27. The isolated local stack is implemented, but its complete
+acceptance suite has not yet produced a successful evidence report. Production
+deployment and qualification are outside the current local validation scope.
 
 ## Outcome
 
@@ -829,7 +831,10 @@ No step in this section may target an existing project or volume.
 ### 1. Preflight
 
 - Confirm Docker Desktop uses Linux containers and Compose is available.
-- Confirm at least 24 GB memory and adequate free disk are assigned/available.
+- Confirm at least 24 GB memory for standard mode, or at least 15 GB for the
+  constrained local mode, and adequate free disk. Constrained mode phases
+  Docling separately from local AI and must not alter the configured Docker or
+  WSL memory ceiling.
 - Verify ports are free.
 - Verify the project name is exactly `compliancetool-test`.
 - Render configuration and reject unresolved variables.
@@ -1198,4 +1203,4 @@ The Docker implementation is complete only when:
 - [Ollama Qwen3 Embedding models](https://ollama.com/library/qwen3-embedding/tags)
 - [Qwen3.5-27B-FP8](https://huggingface.co/Qwen/Qwen3.5-27B-FP8)
 - [Qwen3-Embedding-4B](https://huggingface.co/Qwen/Qwen3-Embedding-4B)
-- [vLLM structured outputs](https://docs.vllm.ai/en/v0.21.0/features/structured_outputs/)
+- [vLLM structured outputs](https://docs.vllm.ai/en/v0.23.0/features/structured_outputs/)

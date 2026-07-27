@@ -11,6 +11,11 @@ export type ContentChunker = {
 export type ContentEmbedder = {
   provider: string;
   model: string;
+  modelRevision: string;
   dimensions: number;
-  embed(values: string[]): Promise<number[][]>;
+  retrievalInstructionId: string;
+  embed(
+    values: string[],
+    purpose?: "document" | "query",
+  ): Promise<number[][]>;
 };

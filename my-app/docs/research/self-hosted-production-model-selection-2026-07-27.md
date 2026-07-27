@@ -114,7 +114,7 @@ mutable Hub model name in production. Pin `vllm/vllm-openai:v0.23.0` by image
 digest after the exact image/GPU/driver combination passes staging. vLLM
 supports OpenAI-compatible JSON Schema structured output, including separation
 of reasoning from the schema-constrained final response
-([vLLM structured outputs](https://docs.vllm.ai/en/v0.21.0/features/structured_outputs/)).
+([vLLM structured outputs](https://docs.vllm.ai/en/v0.23.0/features/structured_outputs/)).
 The Qwen model card documents vLLM's `qwen3` reasoning parser,
 `qwen3_coder` tool parser, and `--language-model-only` mode.
 

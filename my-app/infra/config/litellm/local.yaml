@@ -1,0 +1,20 @@
+model_list:
+  - model_name: compliance-chat
+    litellm_params:
+      model: ollama_chat/qwen3.5:9b-q4_K_M
+      api_base: http://ollama:11434
+      timeout: 120
+  - model_name: compliance-embedding
+    litellm_params:
+      model: ollama/qwen3-embedding:4b-q4_K_M
+      api_base: http://ollama:11434
+      timeout: 120
+
+litellm_settings:
+  drop_params: true
+  request_timeout: 120
+  set_verbose: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  disable_spend_logs: true

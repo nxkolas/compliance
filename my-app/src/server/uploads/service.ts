@@ -4,7 +4,11 @@ import { db } from "@/src/db";
 import { uploadSessionResults, uploadSessions } from "@/src/db/schema";
 import type { UploadSessionDto } from "@/src/contracts/common/uploads";
 import { ApiError } from "../api/errors";
-import { validateUploadInput, type UploadPolicy } from "./policy";
+import {
+  canonicalizeUploadMimeType,
+  validateUploadInput,
+  type UploadPolicy,
+} from "./policy";
 import { assertUploadSessionQuota } from "./quota";
 
 export type { UploadPolicy } from "./policy";
@@ -103,9 +107,10 @@ export async function verifyUploadedObject(input: {
   }
 
   const object = await input.verifyObject({ bucket: session.bucket, objectPath: session.objectPath });
+  const objectMimeType = canonicalizeUploadMimeType(object.mimeType);
   if (
     object.size !== session.expectedSize ||
-    object.mimeType !== session.expectedMimeType ||
+    objectMimeType !== canonicalizeUploadMimeType(session.expectedMimeType) ||
     (session.expectedSha256 && object.sha256.toLowerCase() !== session.expectedSha256)
   ) {
     await db.update(uploadSessions).set({ state: "failed", safeErrorCode: "UPLOAD_OBJECT_MISMATCH", updatedAt: now }).where(eq(uploadSessions.id, session.id));
@@ -116,7 +121,7 @@ export async function verifyUploadedObject(input: {
     .update(uploadSessions)
     .set({
       state: "verified",
-      actualMimeType: object.mimeType,
+      actualMimeType: objectMimeType,
       actualSize: object.size,
       actualSha256: object.sha256.toLowerCase(),
       updatedAt: now,

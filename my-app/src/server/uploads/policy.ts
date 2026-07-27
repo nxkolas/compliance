@@ -7,6 +7,10 @@ export type UploadPolicy = {
   expiresInSeconds: number;
 };
 
+export function canonicalizeUploadMimeType(value: string) {
+  return value.split(";", 1)[0]!.trim().toLowerCase();
+}
+
 export function validateUploadInput(
   fileName: string,
   mimeType: string,

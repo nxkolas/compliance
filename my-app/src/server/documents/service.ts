@@ -141,7 +141,9 @@ export async function uploadOrganizationDocument(
         extractionId,
         provider: embeddingProvider.provider,
         model: embeddingProvider.model,
+        modelRevision: embeddingProvider.modelRevision,
         dimensions: embeddingProvider.dimensions,
+        retrievalInstructionId: embeddingProvider.retrievalInstructionId,
         chunkingVersion: CHUNKING_VERSION,
         status: "pending",
       });
@@ -260,7 +262,9 @@ export async function uploadOrganizationDocumentVersion(
         extractionId,
         provider: embeddingProvider.provider,
         model: embeddingProvider.model,
+        modelRevision: embeddingProvider.modelRevision,
         dimensions: embeddingProvider.dimensions,
+        retrievalInstructionId: embeddingProvider.retrievalInstructionId,
         chunkingVersion: CHUNKING_VERSION,
         status: "pending",
       });
@@ -811,7 +815,9 @@ export async function completeDocumentUpload(input: {
     });
     await tx.insert(documentEmbeddingGenerations).values({
       id: embeddingGenerationId, extractionId, provider: embeddingProvider.provider, model: embeddingProvider.model,
-      dimensions: embeddingProvider.dimensions, chunkingVersion: CHUNKING_VERSION, status: "pending",
+      modelRevision: embeddingProvider.modelRevision, dimensions: embeddingProvider.dimensions,
+      retrievalInstructionId: embeddingProvider.retrievalInstructionId,
+      chunkingVersion: CHUNKING_VERSION, status: "pending",
     });
     await tx.update(uploadSessions).set({ state: "completed", completedAt: new Date(), updatedAt: new Date() }).where(eq(uploadSessions.id, locked.id));
     await tx.insert(uploadSessionResults).values({ sessionId: locked.id, documentVersionId });

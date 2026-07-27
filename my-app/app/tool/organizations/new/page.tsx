@@ -58,13 +58,11 @@ export default async function NewOrganizationPage({
           {/* Überschrift */}
           <header className="h-[112px] w-[1205px] min-w-[1205px]">
             <h1 className="font-['Space_Grotesk'] text-4xl font-bold leading-9 tracking-tight text-white">
-              Neue Organisationen
+              {dictionary.organizations.newPageTitle}
             </h1>
 
             <p className="mt-3 font-['Space_Grotesk'] text-lg font-normal leading-7 text-blue-200">
-              Legen Sie einen Arbeitsbereich für Ihr Unternehmen an. Diese
-              Angaben werden später für den Betroffenheitscheck und die
-              weiteren Analysen verwendet.
+              {dictionary.organizations.newPageDescription}
             </p>
           </header>
 

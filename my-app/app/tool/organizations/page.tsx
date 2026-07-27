@@ -29,10 +29,10 @@ export default async function OrganizationsPage({
         <header className="max-w-[1140px]">
           <div className="grid gap-4">
             <h1 className="text-4xl font-bold leading-9 tracking-normal text-white">
-              Organisationen verwalten
+              {dictionary.organizations.managementTitle}
             </h1>
             <p className="max-w-[893px] text-lg font-bold leading-7 text-blue-200">
-              Wechseln Sie den aktiven Arbeitsbereich oder passen Sie Stammdaten und Mitgliedschaften an.
+              {dictionary.organizations.managementDescription}
             </p>
           </div>
         </header>

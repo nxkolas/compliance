@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { validateUploadInput, type UploadPolicy } from "@/src/server/uploads/policy";
+import {
+  canonicalizeUploadMimeType,
+  validateUploadInput,
+  type UploadPolicy,
+} from "@/src/server/uploads/policy";
 import { assertUploadSessionQuota } from "@/src/server/uploads/quota";
 import { assertReportConcurrency } from "@/src/server/reports/quota";
 
@@ -19,6 +23,15 @@ describe("upload-session policy", () => {
     expect(() => validateUploadInput("evidence.txt", "text/plain", 10, undefined, policy)).toThrowError(expect.objectContaining({ code: "UNSUPPORTED_UPLOAD_TYPE" }));
     expect(() => validateUploadInput("evidence.pdf", "application/pdf", 1025, undefined, policy)).toThrowError(expect.objectContaining({ code: "UPLOAD_SIZE_NOT_ALLOWED" }));
     expect(() => validateUploadInput("evidence.pdf", "application/pdf", 10, "not-a-hash", policy)).toThrowError(expect.objectContaining({ code: "INVALID_CONTENT_HASH" }));
+  });
+
+  it("canonicalizes standards-valid content type parameters returned by Storage", () => {
+    expect(canonicalizeUploadMimeType("text/plain;charset=utf-8")).toBe(
+      "text/plain",
+    );
+    expect(canonicalizeUploadMimeType(" Application/PDF ")).toBe(
+      "application/pdf",
+    );
   });
 
   it("enforces pending upload and report concurrency quotas", () => {

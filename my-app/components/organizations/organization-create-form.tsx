@@ -167,7 +167,7 @@ export function OrganizationCreateForm({
           </label>
 
           <p className={descriptionClassName}>
-            Interner Anzeigename für deinen Workspace.
+            {labels.organizationNameHelp}
           </p>
 
           <Input
@@ -196,7 +196,7 @@ export function OrganizationCreateForm({
           </label>
 
           <p className={descriptionClassName}>
-            Offizieller Firmenname laut Handelsregister.
+            {labels.legalNameHelp}
           </p>
 
           <Input
@@ -233,7 +233,7 @@ export function OrganizationCreateForm({
           </label>
 
           <p className={descriptionClassName}>
-            Land, in dem die Organisation registriert ist.
+            {labels.countryHelp}
           </p>
 
           <div

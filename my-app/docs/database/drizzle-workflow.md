@@ -59,3 +59,14 @@ The second preview must report no schema drift.
 
 Ordinary schema changes do not require `db:clear`, reset, reseed, a pre-push
 constraint pass, an identity-FK pass, or a post-push RLS pass.
+# Migration policy
+
+Production and staging schema changes are applied only by the locked
+`npm run db:migrate` command from committed SQL. The runner verifies the target
+database name and application environment, holds a PostgreSQL advisory lock,
+and refuses modified migration or operator SQL that was already recorded.
+
+`npm run db:push` is a disposable local-development convenience only. It must
+never appear in a staging or production procedure, container command, or
+deployment workflow. Production rollback is a forward fix or a verified
+restore; it is not an automatic schema downgrade.

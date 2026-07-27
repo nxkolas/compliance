@@ -2,6 +2,7 @@ import { generateObject } from "ai";
 import type * as z from "zod";
 import { getChatModelId, getComplianceChatModelById } from "@/lib/ai/models";
 import type { AiProviderMode } from "@/lib/ai/types";
+import { getGenerationOptions } from "@/lib/ai/generation-options";
 import type { GroundedProvider } from "../types";
 
 export function createAiSdkGroundedProvider(
@@ -22,6 +23,7 @@ export function createAiSdkGroundedProvider(
           maxRetries: 0,
           maxOutputTokens: groundedMaxOutputTokens(),
           abortSignal: AbortSignal.timeout(providerTimeoutMs()),
+          ...getGenerationOptions(mode, { thinking: false }),
         });
         return {
           output: result.object,

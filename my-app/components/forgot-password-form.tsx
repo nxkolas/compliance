@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
-import { Mail } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -76,12 +76,12 @@ export function ForgotPasswordForm({
 
         <div className="inline-flex self-stretch flex-col items-start justify-start gap-6 overflow-hidden bg-white/0 pb-4">
           <h1 className="h-5 self-stretch text-4xl font-medium leading-none text-white">
-            {success ? labels.checkEmailTitle : "Passwort vergessen?"}
+            {success ? labels.checkEmailTitle : labels.forgotPassword}
           </h1>
           <p className="self-stretch text-base font-normal leading-normal text-white">
             {success
               ? labels.resetInstructionsSent
-              : <>Wir senden Ihnen einen Link zum Zur&uuml;cksetzen.</>}
+              : labels.forgotPasswordDescription}
           </p>
         </div>
 
@@ -100,7 +100,7 @@ export function ForgotPasswordForm({
                   htmlFor="email"
                   className="text-base font-medium text-black"
                 >
-                  E-Mail-Adresse
+                  {labels.email}
                 </label>
                 <div className="inline-flex h-12 self-stretch items-center justify-start gap-4 overflow-hidden rounded-lg bg-white px-4 py-3 outline outline-[1.5px] -outline-offset-[1.5px] outline-gray-200">
                   <Mail className="pointer-events-none size-5 shrink-0 text-blue-700" />
@@ -127,21 +127,21 @@ export function ForgotPasswordForm({
                 className="h-12 w-full rounded-lg bg-blue-700 text-base font-medium text-white shadow-none transition-colors hover:bg-blue-800"
                 disabled={isLoading}
               >
-                {isLoading ? labels.sending : "Reset-Link senden"}
+                {isLoading ? labels.sending : labels.sendResetEmail}
               </Button>
             </form>
           )}
         </div>
 
         <div className="inline-flex items-center justify-center gap-1 overflow-hidden bg-white/0 text-base text-white">
-          <span className="font-normal leading-5">&larr; </span>
-          <span className="font-medium leading-5">Zur&uuml;ck zur </span>
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          <span className="font-medium leading-5">{labels.backToLogin} </span>
           <div className="relative h-5 w-24">
             <Link
               href="/auth/login"
               className="absolute left-0 top-0 font-bold leading-5 hover:underline"
             >
-              Anmeldung
+              {labels.login}
             </Link>
           </div>
         </div>
