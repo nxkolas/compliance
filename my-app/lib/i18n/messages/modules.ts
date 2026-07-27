@@ -55,6 +55,8 @@ export const modulesMessages = defineFeatureMessages({
             title: "Betroffenheitscheck",
             description:
               "Prüfen Sie, ob Ihr Unternehmen unter die NIS2-Richtlinie fällt.",
+            questionnaireDescription:
+              "Beantworten Sie die folgenden Fragen, um die mögliche NIS2-Betroffenheit Ihres Unternehmens zu prüfen.",
             recalculationLocked:
               "Der Betroffenheitscheck ist gesperrt, weil dieser Ergebnisstand als Eingabe für die Gap-Analyse verwendet wird.",
             metrics: [
@@ -156,6 +158,12 @@ export const modulesMessages = defineFeatureMessages({
               noResults: "Keine Treffer",
               required: "Pflichtfrage",
               moreInformation: "Weitere Informationen",
+              previous: "ZURÜCK",
+              next: "WEITER",
+              current: "Aktuell",
+              complete: "Fertig",
+              open: "Offen",
+              questionsAnswered: "Fragen beantwortet",
               submit: "Betroffenheitscheck berechnen",
               submitting: "Wird berechnet...",
               submitError:
@@ -653,6 +661,8 @@ export const modulesMessages = defineFeatureMessages({
             title: "Applicability check",
             description:
               "Check whether your organization falls under the NIS2 Directive.",
+            questionnaireDescription:
+              "Answer the following questions to assess your organization's potential NIS2 applicability.",
             recalculationLocked:
               "The applicability check is locked because this result is being used as an input to the Gap Analysis.",
             metrics: [
@@ -754,6 +764,12 @@ export const modulesMessages = defineFeatureMessages({
               noResults: "No results",
               required: "Required question",
               moreInformation: "More information",
+              previous: "BACK",
+              next: "NEXT",
+              current: "Current",
+              complete: "Done",
+              open: "Open",
+              questionsAnswered: "questions answered",
               submit: "Calculate applicability check",
               submitting: "Calculating...",
               submitError: "The applicability check could not be calculated.",
