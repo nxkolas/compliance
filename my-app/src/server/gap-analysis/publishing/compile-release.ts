@@ -1,7 +1,6 @@
 import { contentHash } from "@/src/server/compliance/domain";
-import { GAP_PROMPT_TEMPLATE_HASH } from "../prompt-contract";
-import { GAP_PROMPT_V2_TEMPLATE_HASH } from "../prompt-contract-v2";
-import { GAP_PROMPT_V5_TEMPLATE_HASH } from "../prompt-contract-v5";
+import { ACTION_PLAN_PROMPT_TEMPLATE_HASH } from "@/src/server/action-plans/domain";
+import { GAP_PROMPT_V7_TEMPLATE_HASH } from "../prompt-contract-v7";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -13,16 +12,16 @@ export function compileGapAnalysisRelease(
   requireNonEmpty(release.compatibleCheck.checkCode, "compatible check code", errors);
   unique(release.requiredCorpusFamilies, "required corpus family", errors);
   if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
-  if (
-    ![
-      GAP_PROMPT_V2_TEMPLATE_HASH,
-      GAP_PROMPT_TEMPLATE_HASH,
-      GAP_PROMPT_V5_TEMPLATE_HASH,
-    ].includes(
-      release.prompt.templateHash,
-    )
-  ) {
+  if (release.prompt.templateHash !== GAP_PROMPT_V7_TEMPLATE_HASH) {
     errors.push("Prompt template hash does not match the code-defined prompt");
+  }
+  if (
+    !release.actionPlanPrompt ||
+    release.actionPlanPrompt.templateHash !== ACTION_PLAN_PROMPT_TEMPLATE_HASH
+  ) {
+    errors.push(
+      "Action Plan prompt template hash does not match the code-defined prompt",
+    );
   }
   requireLocalizedText(release.title, "module title", errors);
   requireLocalizedText(
@@ -139,11 +138,17 @@ export function compileGapAnalysisRelease(
     }
   }
 
-  if (
-    release.releaseCode === "nis2-gap" &&
-    release.versionLabel === "guided-v4"
-  ) {
-    validateGuidedV4(release, mappingCount, errors);
+  const guidedContract = getSupportedGuidedReleaseContract(
+    release.releaseCode,
+    release.versionLabel,
+  );
+  if (guidedContract) {
+    validateSupportedGuidedRelease(
+      release,
+      mappingCount,
+      guidedContract,
+      errors,
+    );
   }
 
   if (errors.length > 0) {
@@ -185,7 +190,7 @@ export function compileGapAnalysisRelease(
   };
 }
 
-const guidedV4OptionValues = [
+const guidedOptionValues = [
   "fully_implemented",
   "partially_implemented",
   "not_implemented",
@@ -200,18 +205,77 @@ const priorityRank = {
   critical: 3,
 } as const;
 
-function validateGuidedV4(
+export type SupportedGuidedReleaseContract = {
+  releaseCode: "nis2-gap";
+  versionLabel: "guided-v6";
+  questionCount: 31;
+  requirementCount: 10;
+  optionValues: readonly string[];
+  evaluatorKind: "nis2_gap_category_v1";
+  evaluatorVersion: 1;
+  promptVersion: "7";
+  responseSchemaVersion: "7";
+};
+
+const supportedGuidedReleaseContracts = {
+  "nis2-gap/guided-v6": {
+    releaseCode: "nis2-gap",
+    versionLabel: "guided-v6",
+    questionCount: 31,
+    requirementCount: 10,
+    optionValues: guidedOptionValues,
+    evaluatorKind: "nis2_gap_category_v1",
+    evaluatorVersion: 1,
+    promptVersion: "7",
+    responseSchemaVersion: "7",
+  },
+} as const satisfies Record<string, SupportedGuidedReleaseContract>;
+
+export function getSupportedGuidedReleaseContract(
+  releaseCode: string,
+  versionLabel: string,
+): SupportedGuidedReleaseContract | null {
+  return (
+    supportedGuidedReleaseContracts[
+      `${releaseCode}/${versionLabel}` as keyof typeof supportedGuidedReleaseContracts
+    ] ?? null
+  );
+}
+
+function validateSupportedGuidedRelease(
   release: GapAnalysisReleaseDefinition,
   mappingCount: Map<string, number>,
+  contract: SupportedGuidedReleaseContract,
   errors: string[],
 ) {
   const questions = release.questionnaire.questions;
   const requirements = release.requirementSet.requirements;
-  if (questions.length !== 31) errors.push("guided-v4 must have exactly 31 questions");
-  if (requirements.length !== 10) errors.push("guided-v4 must have exactly 10 requirements");
+  const label = contract.versionLabel;
+  if (questions.length !== contract.questionCount) {
+    errors.push(`${label} must have exactly ${contract.questionCount} questions`);
+  }
+  if (requirements.length !== contract.requirementCount) {
+    errors.push(`${label} must have exactly ${contract.requirementCount} requirements`);
+  }
+  if (
+    release.prompt.version !== contract.promptVersion ||
+    release.prompt.responseSchemaVersion !==
+      contract.responseSchemaVersion ||
+    release.evaluator.kind !== contract.evaluatorKind ||
+    release.evaluator.version !== contract.evaluatorVersion
+  ) {
+    errors.push(`${label} prompt or evaluator contract is invalid`);
+  }
+  if (
+    !release.actionPlanPrompt ||
+    release.actionPlanPrompt.version !== "1" ||
+    release.actionPlanPrompt.responseSchemaVersion !== "1"
+  ) {
+    errors.push(`${label} Action Plan prompt contract is invalid`);
+  }
   unique(
     questions.map((question) => String(question.sourceNumber)),
-    "guided-v4 source number",
+    `${label} source number`,
     errors,
   );
   const sourceNumbers = questions
@@ -220,15 +284,15 @@ function validateGuidedV4(
   if (
     sourceNumbers.some((number, index) => number !== index + 1)
   ) {
-    errors.push("guided-v4 source numbers must cover 1 through 31 exactly");
+    errors.push(`${label} source numbers must cover 1 through 31 exactly`);
   }
   for (const question of questions) {
     if (
       question.options.map((option) => option.stableValue).join("|") !==
-      guidedV4OptionValues.join("|")
+      contract.optionValues.join("|")
     ) {
       errors.push(
-        `Question ${question.stableKey} does not use the guided-v4 option contract`,
+        `Question ${question.stableKey} does not use the ${label} option contract`,
       );
     }
     if (!question.legalProvisionKeys?.length) {

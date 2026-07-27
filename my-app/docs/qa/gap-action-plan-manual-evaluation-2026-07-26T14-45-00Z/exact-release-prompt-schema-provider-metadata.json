@@ -1,0 +1,473 @@
+{
+  "capturedAt": "2026-07-26T14:29:40.677Z",
+  "evidenceDirectory": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\docs\\qa\\gap-action-plan-manual-evaluation-2026-07-26T14-45-00Z",
+  "activePointers": {
+    "complianceCheck": {
+      "checkCode": "nis2_applicability",
+      "checkReleaseId": "d1a4be1c-0e70-4b4e-904c-ac85b877a6ee",
+      "activatedBy": "nikok",
+      "activatedAt": "2026-07-26T12:56:47.711Z"
+    },
+    "gapAnalysis": {
+      "releaseCode": "nis2-gap",
+      "gapAnalysisReleaseId": "b1bde7b3-4e04-4c75-98a7-22ffbb94c2c8",
+      "activatedBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "activatedAt": "2026-07-26T13:08:37.595Z"
+    }
+  },
+  "complianceCheckRelease": {
+    "id": "d1a4be1c-0e70-4b4e-904c-ac85b877a6ee",
+    "checkCode": "nis2_applicability",
+    "versionLabel": "2026-v2",
+    "moduleId": "cd38036a-a407-441f-b17a-253286f6e790",
+    "questionnaireId": "26ac20c8-7f23-46c7-91d8-fa2c933423ed",
+    "questionnaireVersionId": "dd03a848-a91a-40da-995c-fd64c22f3840",
+    "scopeModelVersionId": "8772149d-4579-4b63-8b7c-d3b96817d766",
+    "scopeThresholdSetId": "014beceb-80c4-47a6-8cb1-e6f29e327814",
+    "ruleSetId": "fe973f0e-6d0c-486a-9d9f-b5201242bd41",
+    "evaluatorKind": "nis2_scope_v3",
+    "evaluatorVersion": 3,
+    "defaultLocale": "de",
+    "effectiveFrom": "2026-03-17",
+    "effectiveTo": null,
+    "status": "published",
+    "aggregateHash": "37cd13efec6750344cda8c3c593301eb042ca9daa771bbe9a5737af24a7efb39",
+    "corpusReleaseSetHash": "3efe71fb9c47b5c47bd23916ff0c42b204972896e4f437f724633cd810074814",
+    "publishedAt": "2026-07-26T12:56:32.049Z",
+    "createdAt": "2026-07-26T12:51:00.256Z"
+  },
+  "gapAnalysisRelease": {
+    "id": "b1bde7b3-4e04-4c75-98a7-22ffbb94c2c8",
+    "releaseCode": "nis2-gap",
+    "versionLabel": "guided-v5",
+    "moduleId": "74899754-ee04-486b-b6aa-71056e5c20d8",
+    "questionnaireId": "7f5c02c6-91dd-45c4-8b71-2fd3d7b94bb4",
+    "questionnaireVersionId": "c2c43db2-2cfd-4664-90d6-019b0329f4e2",
+    "requirementSetVersionId": "d0aa55e1-f09e-436d-b4ab-e5ee31700056",
+    "compatibleCheckReleaseId": "d1a4be1c-0e70-4b4e-904c-ac85b877a6ee",
+    "promptName": "nis2_gap_guidance",
+    "promptVersion": "6",
+    "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+    "responseSchemaVersion": "6",
+    "evaluatorKind": "nis2_gap_category_v1",
+    "evaluatorVersion": 1,
+    "defaultLocale": "de",
+    "status": "published",
+    "aggregateHash": "6b782a0daf566fe86f028d2b4ba3c2ba95919386e103f13df35b146f90c0507e",
+    "corpusReleaseSetHash": "3efe71fb9c47b5c47bd23916ff0c42b204972896e4f437f724633cd810074814",
+    "publishedAt": "2026-07-26T12:58:29.667Z",
+    "createdAt": "2026-07-26T12:57:01.929Z"
+  },
+  "corpusPins": [
+    {
+      "familyId": "7dce6067-b230-41ac-94ce-5756f0ce46c0",
+      "familyCode": "nis2-de-primary",
+      "frameworkCode": "nis2",
+      "jurisdictionCode": "DE",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "versionLabel": "reviewed-bootstrap-2026-07-26-guided-v5",
+      "contentHash": "f881c800773e301639d3d517f72c79285bd6a8fceed194fab2007dbb5c28d28e",
+      "status": "published",
+      "evaluationState": "passed",
+      "publishedAt": "2026-07-26T12:50:05.534Z"
+    },
+    {
+      "familyId": "dd7f8c34-97a6-4b89-ac9d-afba8e7c4a0a",
+      "familyCode": "nis2-eu-primary",
+      "frameworkCode": "nis2",
+      "jurisdictionCode": "EU",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "versionLabel": "reviewed-bootstrap-2026-07-26-guided-v5",
+      "contentHash": "089f18928d7e679141121e859aac38e77da2a211156469a9e27dbbfba115ee95",
+      "status": "published",
+      "evaluationState": "passed",
+      "publishedAt": "2026-07-26T12:50:03.875Z"
+    }
+  ],
+  "cases": [
+    {
+      "caseNumber": 1,
+      "slug": "mature-baseline-en",
+      "artifact": "case-1-mature-baseline-en.json",
+      "primaryRunId": "7698031b-25c9-4ec5-8ada-13ca671ef9d2",
+      "artifactId": "fdaf1f8f-cc7e-49cb-92b8-cc255702b2e0",
+      "generatedRevisionId": "dbd6e1e9-9167-4c70-ac89-ef784ba2edae",
+      "finalRevisionId": "dbd6e1e9-9167-4c70-ac89-ef784ba2edae",
+      "artifactRevisions": [
+        {
+          "id": "dbd6e1e9-9167-4c70-ac89-ef784ba2edae",
+          "artifactId": "fdaf1f8f-cc7e-49cb-92b8-cc255702b2e0",
+          "revisionNumber": 1,
+          "parentRevisionId": null,
+          "status": "approved",
+          "guidanceRunIds": [
+            "7698031b-25c9-4ec5-8ada-13ca671ef9d2"
+          ]
+        }
+      ]
+    },
+    {
+      "caseNumber": 2,
+      "slug": "absent-controls-en",
+      "artifact": "case-2-absent-controls-en.json",
+      "primaryRunId": "4bd76ef5-493e-475a-b3d0-00eb11f23a12",
+      "artifactId": "284acf86-d390-447b-b3ff-afcfc0ac0a1d",
+      "generatedRevisionId": "7e2d58eb-b5b6-4824-869f-00b7c8dd28ea",
+      "finalRevisionId": "7e2d58eb-b5b6-4824-869f-00b7c8dd28ea",
+      "artifactRevisions": [
+        {
+          "id": "7e2d58eb-b5b6-4824-869f-00b7c8dd28ea",
+          "artifactId": "284acf86-d390-447b-b3ff-afcfc0ac0a1d",
+          "revisionNumber": 1,
+          "parentRevisionId": null,
+          "status": "approved",
+          "guidanceRunIds": [
+            "4bd76ef5-493e-475a-b3d0-00eb11f23a12"
+          ]
+        }
+      ]
+    },
+    {
+      "caseNumber": 3,
+      "slug": "mixed-maturity-en",
+      "artifact": "case-3-mixed-maturity-en.json",
+      "primaryRunId": "04dadbdb-719a-4774-9883-60e9d7fbe756",
+      "artifactId": "6b3d1ef5-5baa-4e5d-8ae2-7a9c23a4f809",
+      "generatedRevisionId": "5a6075b7-2923-4574-85b4-4069a06381ff",
+      "finalRevisionId": "5a6075b7-2923-4574-85b4-4069a06381ff",
+      "artifactRevisions": [
+        {
+          "id": "5a6075b7-2923-4574-85b4-4069a06381ff",
+          "artifactId": "6b3d1ef5-5baa-4e5d-8ae2-7a9c23a4f809",
+          "revisionNumber": 1,
+          "parentRevisionId": null,
+          "status": "approved",
+          "guidanceRunIds": [
+            "04dadbdb-719a-4774-9883-60e9d7fbe756"
+          ]
+        }
+      ]
+    },
+    {
+      "caseNumber": 4,
+      "slug": "uncertain-evidence-de",
+      "artifact": "case-4-uncertain-evidence-de.json",
+      "primaryRunId": "13fc4c16-1240-4b12-8f4b-cc26e18ad6df",
+      "artifactId": "ce01fec6-16bf-4fa5-b561-8585235c862e",
+      "generatedRevisionId": "50e119ed-e0ce-4ac9-9e50-2601ded359b7",
+      "finalRevisionId": "50e119ed-e0ce-4ac9-9e50-2601ded359b7",
+      "artifactRevisions": [
+        {
+          "id": "50e119ed-e0ce-4ac9-9e50-2601ded359b7",
+          "artifactId": "ce01fec6-16bf-4fa5-b561-8585235c862e",
+          "revisionNumber": 1,
+          "parentRevisionId": null,
+          "status": "approved",
+          "guidanceRunIds": [
+            "13fc4c16-1240-4b12-8f4b-cc26e18ad6df"
+          ]
+        }
+      ]
+    },
+    {
+      "caseNumber": 5,
+      "slug": "contradictory-backup-evidence-en",
+      "artifact": "case-5-contradictory-backup-evidence-en.json",
+      "primaryRunId": "8a6f62c0-9c50-47c7-807b-9c411614cb6a",
+      "artifactId": "6252cba3-3d97-43fb-b1b0-db69f690b299",
+      "generatedRevisionId": "e9460dcd-6196-46aa-8f8b-885fe44073c1",
+      "finalRevisionId": "858f4055-49e4-46c5-8527-4f2a241a60a2",
+      "artifactRevisions": [
+        {
+          "id": "e9460dcd-6196-46aa-8f8b-885fe44073c1",
+          "artifactId": "6252cba3-3d97-43fb-b1b0-db69f690b299",
+          "revisionNumber": 1,
+          "parentRevisionId": null,
+          "status": "generated",
+          "guidanceRunIds": [
+            "8a6f62c0-9c50-47c7-807b-9c411614cb6a"
+          ]
+        },
+        {
+          "id": "90d80cf1-fc06-4933-b0f5-73acd04141ea",
+          "artifactId": "6252cba3-3d97-43fb-b1b0-db69f690b299",
+          "revisionNumber": 2,
+          "parentRevisionId": "e9460dcd-6196-46aa-8f8b-885fe44073c1",
+          "status": "reviewed",
+          "guidanceRunIds": [
+            "8a6f62c0-9c50-47c7-807b-9c411614cb6a",
+            "6d68fa5a-d6cb-4d84-b106-f57d2020a317"
+          ]
+        },
+        {
+          "id": "858f4055-49e4-46c5-8527-4f2a241a60a2",
+          "artifactId": "6252cba3-3d97-43fb-b1b0-db69f690b299",
+          "revisionNumber": 3,
+          "parentRevisionId": "90d80cf1-fc06-4933-b0f5-73acd04141ea",
+          "status": "approved",
+          "guidanceRunIds": [
+            "8a6f62c0-9c50-47c7-807b-9c411614cb6a",
+            "8c219c88-69ad-4e16-abe6-c3ec9155eedc"
+          ]
+        }
+      ]
+    }
+  ],
+  "modelRuns": [
+    {
+      "id": "4bd76ef5-493e-475a-b3d0-00eb11f23a12",
+      "operationKind": "gap_analysis",
+      "status": "succeeded",
+      "outputLocale": "en",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "promptName": "nis2_gap_guidance",
+      "promptVersion": "6",
+      "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+      "responseSchemaVersion": "6",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "e3a56ca7314d01e1143bb5caf70640edac22462485092c51fc7e1e49c1aaa231",
+      "inputHash": "fe2223d982d6844ec886f5e02b56c5ea8a0fbaae18e7e2fe666cd655e048e11f",
+      "renderedInputHash": "615f839ccb6941084fbdda4c27da217bf388637807864c6ceece332b058d79c4",
+      "inputTokens": 22512,
+      "outputTokens": 5912,
+      "cachedInputTokens": 0,
+      "createdAt": "2026-07-26T13:22:46.917Z",
+      "completedAt": "2026-07-26T13:23:19.416Z"
+    },
+    {
+      "id": "13fc4c16-1240-4b12-8f4b-cc26e18ad6df",
+      "operationKind": "gap_analysis",
+      "status": "succeeded",
+      "outputLocale": "de",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "promptName": "nis2_gap_guidance",
+      "promptVersion": "6",
+      "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+      "responseSchemaVersion": "6",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "d4bd8691a8b9da7359ac1a91b8ec304abd05e5e0635c8269bb22dda65fba14c9",
+      "inputHash": "bc74c6c31bc5737a59231dfe6f2b3b84fa596efcb65a8e8a38d4d1949c540c8f",
+      "renderedInputHash": "621fd14b59a8e16247922b40a32da3c48913946fb5aa4ab2f0a46e2db07f94d5",
+      "inputTokens": 19478,
+      "outputTokens": 7672,
+      "cachedInputTokens": 19456,
+      "createdAt": "2026-07-26T13:53:54.226Z",
+      "completedAt": "2026-07-26T13:54:45.383Z"
+    },
+    {
+      "id": "7698031b-25c9-4ec5-8ada-13ca671ef9d2",
+      "operationKind": "gap_analysis",
+      "status": "succeeded",
+      "outputLocale": "en",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "promptName": "nis2_gap_guidance",
+      "promptVersion": "6",
+      "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+      "responseSchemaVersion": "6",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "d4bd8691a8b9da7359ac1a91b8ec304abd05e5e0635c8269bb22dda65fba14c9",
+      "inputHash": "cd49a17f268a254937434e856001933950e2d0f0b95516c49987bcaa1c773949",
+      "renderedInputHash": "9d3bcff83f3adca7e0b834675c93f97ec65288e1a5c8b737b5f1cf45ca28564d",
+      "inputTokens": 13989,
+      "outputTokens": 2715,
+      "cachedInputTokens": 0,
+      "createdAt": "2026-07-26T14:23:14.127Z",
+      "completedAt": "2026-07-26T14:23:31.601Z"
+    },
+    {
+      "id": "04dadbdb-719a-4774-9883-60e9d7fbe756",
+      "operationKind": "gap_analysis",
+      "status": "succeeded",
+      "outputLocale": "en",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "promptName": "nis2_gap_guidance",
+      "promptVersion": "6",
+      "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+      "responseSchemaVersion": "6",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "d4bd8691a8b9da7359ac1a91b8ec304abd05e5e0635c8269bb22dda65fba14c9",
+      "inputHash": "48135840a1bd2d83192200865fd02d0b44dc67013d2ac46cc4a362cd8fb625e8",
+      "renderedInputHash": "acc54f731c962203f360868b64a63bd60e6a98ea9f1d7d88e538d1bcbfef9968",
+      "inputTokens": 14659,
+      "outputTokens": 3155,
+      "cachedInputTokens": 0,
+      "createdAt": "2026-07-26T14:24:23.870Z",
+      "completedAt": "2026-07-26T14:24:44.720Z"
+    },
+    {
+      "id": "8a6f62c0-9c50-47c7-807b-9c411614cb6a",
+      "operationKind": "gap_analysis",
+      "status": "succeeded",
+      "outputLocale": "en",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "promptName": "nis2_gap_guidance",
+      "promptVersion": "6",
+      "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+      "responseSchemaVersion": "6",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "d4bd8691a8b9da7359ac1a91b8ec304abd05e5e0635c8269bb22dda65fba14c9",
+      "inputHash": "cd49a17f268a254937434e856001933950e2d0f0b95516c49987bcaa1c773949",
+      "renderedInputHash": "77bbb88318b2f1c8d9aaecb4be23dae52aea2b4772921a37eb4ba0ffd0ed2625",
+      "inputTokens": 14215,
+      "outputTokens": 2745,
+      "cachedInputTokens": 0,
+      "createdAt": "2026-07-26T14:25:40.665Z",
+      "completedAt": "2026-07-26T14:26:16.085Z"
+    },
+    {
+      "id": "6d68fa5a-d6cb-4d84-b106-f57d2020a317",
+      "operationKind": "gap_guidance_regeneration",
+      "status": "succeeded",
+      "outputLocale": "en",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "promptName": "nis2_gap_guidance",
+      "promptVersion": "6",
+      "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+      "responseSchemaVersion": "6",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "11109c09b680d1d32733a5b08d5c134610c248fbdcdaa2030c2892ec7a358212",
+      "inputHash": "6d14e3d37fdd7df60761205b9b2cdc3849aae76efd1cadb0f81d1f518c6a5860",
+      "renderedInputHash": "39cf05dedaa3eeab2edd7282b2c4d74cc009deb189d94ff85e655a35583b2b7e",
+      "inputTokens": 2503,
+      "outputTokens": 959,
+      "cachedInputTokens": 0,
+      "createdAt": "2026-07-26T14:27:28.858Z",
+      "completedAt": "2026-07-26T14:27:42.604Z"
+    },
+    {
+      "id": "8c219c88-69ad-4e16-abe6-c3ec9155eedc",
+      "operationKind": "gap_guidance_regeneration",
+      "status": "succeeded",
+      "outputLocale": "en",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "promptName": "nis2_gap_guidance",
+      "promptVersion": "6",
+      "promptTemplateHash": "a9e66bc3a832faef7ec5e9d8f856037f91e026a47db4b5a91943ca58fdef3ba9",
+      "responseSchemaVersion": "6",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "11109c09b680d1d32733a5b08d5c134610c248fbdcdaa2030c2892ec7a358212",
+      "inputHash": "0dd44b4761aa3f239df5151cfc14b67ce63a899eda349adab7ca54a9cc839280",
+      "renderedInputHash": "e562e2bfa7c8903844317dd4e4aec63d4c576b5c1c41debae9a898beeb111601",
+      "inputTokens": 2502,
+      "outputTokens": 731,
+      "cachedInputTokens": 0,
+      "createdAt": "2026-07-26T14:28:52.603Z",
+      "completedAt": "2026-07-26T14:28:58.739Z"
+    }
+  ],
+  "modelRunLegalInputs": [
+    {
+      "runId": "04dadbdb-719a-4774-9883-60e9d7fbe756",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "sourceVersionId": "ce15347b-8bc8-47f5-8d33-e4a3fd7d6485",
+      "processingGenerationId": "2aa5943d-5fbc-4d21-bb78-f9174362617a",
+      "sourceHash": "726482e152990c2b322bb593745d527ae41a23bbdb18f4cb2b62fe8eb391f628"
+    },
+    {
+      "runId": "04dadbdb-719a-4774-9883-60e9d7fbe756",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "sourceVersionId": "24287e90-0ed5-4add-9457-4f73ffe15122",
+      "processingGenerationId": "9124cf25-c0a3-4a8e-93cd-e536c83e2814",
+      "sourceHash": "a72342b70f9c755fe558d77bf5aaeaf766e05820599f3a3b82b4a63caed1a89e"
+    },
+    {
+      "runId": "13fc4c16-1240-4b12-8f4b-cc26e18ad6df",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "sourceVersionId": "ce15347b-8bc8-47f5-8d33-e4a3fd7d6485",
+      "processingGenerationId": "2aa5943d-5fbc-4d21-bb78-f9174362617a",
+      "sourceHash": "726482e152990c2b322bb593745d527ae41a23bbdb18f4cb2b62fe8eb391f628"
+    },
+    {
+      "runId": "13fc4c16-1240-4b12-8f4b-cc26e18ad6df",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "sourceVersionId": "24287e90-0ed5-4add-9457-4f73ffe15122",
+      "processingGenerationId": "9124cf25-c0a3-4a8e-93cd-e536c83e2814",
+      "sourceHash": "a72342b70f9c755fe558d77bf5aaeaf766e05820599f3a3b82b4a63caed1a89e"
+    },
+    {
+      "runId": "4bd76ef5-493e-475a-b3d0-00eb11f23a12",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "sourceVersionId": "ce15347b-8bc8-47f5-8d33-e4a3fd7d6485",
+      "processingGenerationId": "2aa5943d-5fbc-4d21-bb78-f9174362617a",
+      "sourceHash": "726482e152990c2b322bb593745d527ae41a23bbdb18f4cb2b62fe8eb391f628"
+    },
+    {
+      "runId": "4bd76ef5-493e-475a-b3d0-00eb11f23a12",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "sourceVersionId": "24287e90-0ed5-4add-9457-4f73ffe15122",
+      "processingGenerationId": "9124cf25-c0a3-4a8e-93cd-e536c83e2814",
+      "sourceHash": "a72342b70f9c755fe558d77bf5aaeaf766e05820599f3a3b82b4a63caed1a89e"
+    },
+    {
+      "runId": "6d68fa5a-d6cb-4d84-b106-f57d2020a317",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "sourceVersionId": "ce15347b-8bc8-47f5-8d33-e4a3fd7d6485",
+      "processingGenerationId": "2aa5943d-5fbc-4d21-bb78-f9174362617a",
+      "sourceHash": "726482e152990c2b322bb593745d527ae41a23bbdb18f4cb2b62fe8eb391f628"
+    },
+    {
+      "runId": "6d68fa5a-d6cb-4d84-b106-f57d2020a317",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "sourceVersionId": "24287e90-0ed5-4add-9457-4f73ffe15122",
+      "processingGenerationId": "9124cf25-c0a3-4a8e-93cd-e536c83e2814",
+      "sourceHash": "a72342b70f9c755fe558d77bf5aaeaf766e05820599f3a3b82b4a63caed1a89e"
+    },
+    {
+      "runId": "7698031b-25c9-4ec5-8ada-13ca671ef9d2",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "sourceVersionId": "ce15347b-8bc8-47f5-8d33-e4a3fd7d6485",
+      "processingGenerationId": "2aa5943d-5fbc-4d21-bb78-f9174362617a",
+      "sourceHash": "726482e152990c2b322bb593745d527ae41a23bbdb18f4cb2b62fe8eb391f628"
+    },
+    {
+      "runId": "7698031b-25c9-4ec5-8ada-13ca671ef9d2",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "sourceVersionId": "24287e90-0ed5-4add-9457-4f73ffe15122",
+      "processingGenerationId": "9124cf25-c0a3-4a8e-93cd-e536c83e2814",
+      "sourceHash": "a72342b70f9c755fe558d77bf5aaeaf766e05820599f3a3b82b4a63caed1a89e"
+    },
+    {
+      "runId": "8a6f62c0-9c50-47c7-807b-9c411614cb6a",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "sourceVersionId": "ce15347b-8bc8-47f5-8d33-e4a3fd7d6485",
+      "processingGenerationId": "2aa5943d-5fbc-4d21-bb78-f9174362617a",
+      "sourceHash": "726482e152990c2b322bb593745d527ae41a23bbdb18f4cb2b62fe8eb391f628"
+    },
+    {
+      "runId": "8a6f62c0-9c50-47c7-807b-9c411614cb6a",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "sourceVersionId": "24287e90-0ed5-4add-9457-4f73ffe15122",
+      "processingGenerationId": "9124cf25-c0a3-4a8e-93cd-e536c83e2814",
+      "sourceHash": "a72342b70f9c755fe558d77bf5aaeaf766e05820599f3a3b82b4a63caed1a89e"
+    },
+    {
+      "runId": "8c219c88-69ad-4e16-abe6-c3ec9155eedc",
+      "corpusReleaseId": "6295458f-2677-4a11-96ec-0946bff9aa0a",
+      "sourceVersionId": "ce15347b-8bc8-47f5-8d33-e4a3fd7d6485",
+      "processingGenerationId": "2aa5943d-5fbc-4d21-bb78-f9174362617a",
+      "sourceHash": "726482e152990c2b322bb593745d527ae41a23bbdb18f4cb2b62fe8eb391f628"
+    },
+    {
+      "runId": "8c219c88-69ad-4e16-abe6-c3ec9155eedc",
+      "corpusReleaseId": "d84dfae5-d025-4c98-87a7-9000339be358",
+      "sourceVersionId": "24287e90-0ed5-4add-9457-4f73ffe15122",
+      "processingGenerationId": "9124cf25-c0a3-4a8e-93cd-e536c83e2814",
+      "sourceHash": "a72342b70f9c755fe558d77bf5aaeaf766e05820599f3a3b82b4a63caed1a89e"
+    }
+  ],
+  "invariants": {
+    "oneGapReleaseAcrossCases": true,
+    "activeGapPointerMatches": true,
+    "activeCheckPointerMatches": true,
+    "allRunsSucceeded": true,
+    "allRunsUsePinnedPrompt": true,
+    "allRunLegalInputsUsePinnedCorpusReleases": true
+  }
+}

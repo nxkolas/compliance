@@ -18,6 +18,8 @@ import {
   documents,
   gapFindingEvidence,
   gapFindings,
+  gapItemEvidence,
+  gapItems,
   gapReassessmentDrafts,
   generatedArtifactRevisions,
   generatedArtifacts,
@@ -30,26 +32,16 @@ import { ApiError } from "../api/errors";
 import { assertCanContributeToOrganization } from "../organizations/service";
 import {
   deriveFindingSeverity,
-  buildGapModelResponseSchema,
-  buildGapModelResponseSchemaV5,
-  extractGapGeneratedProse,
-  extractGapGeneratedProseV5,
-  normalizeGroundedGapModelResponse,
-  normalizeGroundedGapModelResponseV5,
-  type GapModelFinding,
-  type GroundedGapModelResponse,
-  type GroundedGapModelResponseV5,
   type SuppliedCitation,
-  validateGapModelResponse,
-} from "./generation-schema";
-import type { GapPromptRequirement } from "./prompt-builder";
+} from "./generation-domain";
 import { loadGapAnalysisRelease } from "./release-loader";
-import { runGroundedOperation } from "../ai/grounding/gateway";
 import { assertOutputLocaleMatches } from "../ai/grounding/language-policy";
 import { assertGapInputsMutable } from "./lifecycle-guards";
 import { buildGeneratedGapRevisionMetadata } from "./gap-revision-metadata";
 import { resolveGapGenerationPrerequisites } from "./applicability-eligibility";
-import { GAP_PROMPT_V5_TEMPLATE } from "./prompt-contract-v5";
+import { deriveAtomicGapTriggerPolicy } from "./trigger-policy";
+import { generateAtomicGapBatch } from "./atomic-gap-generation";
+import type { ValidatedCategoryGapResult } from "./generation-schema-v7";
 
 export async function generateGapAnalysis(input: {
   userId: string;
@@ -63,19 +55,38 @@ export async function generateGapAnalysis(input: {
   asOfDate?: string;
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
-  const assessment = await db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.id, input.assessmentId),
-      eq(table.organizationId, input.organizationId),
-      eq(table.status, "active"),
-    )) ?? operators.sql`true` },
+  const assessment = await db.query.assessments.findFirst({
+    columns: {
+      id: true,
+      organizationId: true,
+      moduleId: true,
+      questionnaireId: true,
+      checkReleaseId: true,
+      gapAnalysisReleaseId: true,
+      applicabilityArtifactRevisionId: true,
+      currentRevisionId: true,
+      status: true,
+      createdBy: true,
+      createdAt: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, input.assessmentId),
+          eq(table.organizationId, input.organizationId),
+          eq(table.status, "active"),
+        ) ?? operators.sql`true`,
+    },
   });
   if (
     !assessment?.gapAnalysisReleaseId ||
     !assessment.applicabilityArtifactRevisionId ||
     !(input.assessmentRevisionId ?? assessment.currentRevisionId)
   ) {
-    throw new ApiError(409, "Submit the pinned gap questionnaire before generation");
+    throw new ApiError(
+      409,
+      "Submit the pinned gap questionnaire before generation",
+    );
   }
   if (!input.jobId) {
     await assertGapInputsMutable({
@@ -83,12 +94,27 @@ export async function generateGapAnalysis(input: {
       moduleId: assessment.moduleId,
     });
   }
-  const assessmentRevisionId = input.assessmentRevisionId ?? assessment.currentRevisionId!;
-  const assessmentRevision = await db.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.id, assessmentRevisionId),
-      eq(table.assessmentId, assessment.id),
-    )) ?? operators.sql`true` },
+  const assessmentRevisionId =
+    input.assessmentRevisionId ?? assessment.currentRevisionId!;
+  const assessmentRevision = await db.query.assessmentRevisions.findFirst({
+    columns: {
+      id: true,
+      assessmentId: true,
+      questionnaireVersionId: true,
+      revisionNumber: true,
+      parentRevisionId: true,
+      status: true,
+      createdBy: true,
+      createdAt: true,
+      submittedAt: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, assessmentRevisionId),
+          eq(table.assessmentId, assessment.id),
+        ) ?? operators.sql`true`,
+    },
   });
   if (!assessmentRevision) {
     throw new ApiError(409, "Pinned gap questionnaire revision is unavailable");
@@ -98,51 +124,79 @@ export async function generateGapAnalysis(input: {
     input.locale,
   );
   if (!release) throw new ApiError(409, "Pinned gap release is unavailable");
-  const applicability = await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-    where: { RAW: (table, operators) => (eq(
-      table.id,
-      assessment.applicabilityArtifactRevisionId!,
-    )) ?? operators.sql`true` },
+  const applicability = await db.query.generatedArtifactRevisions.findFirst({
+    columns: {
+      id: true,
+      artifactId: true,
+      revisionNumber: true,
+      parentRevisionId: true,
+      status: true,
+      result: true,
+      outputLocale: true,
+      modelName: true,
+      promptVersion: true,
+      ruleSetId: true,
+      checkReleaseId: true,
+      gapAnalysisReleaseId: true,
+      evaluatorKind: true,
+      outcomeCode: true,
+      evaluatedAt: true,
+      inputHash: true,
+      generatedBy: true,
+      createdBy: true,
+      approvedBy: true,
+      approvedAt: true,
+      createdAt: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        eq(table.id, assessment.applicabilityArtifactRevisionId!) ??
+        operators.sql`true`,
+    },
   });
   const {
     artifact: applicabilityArtifact,
     requirements: applicableRequirements,
-  } =
-    resolveGapGenerationPrerequisites({
-      compatibleCheckReleaseId: release.compatibleCheckReleaseId,
-      artifact: applicability,
-      requirements: release.requirements,
+  } = resolveGapGenerationPrerequisites({
+    compatibleCheckReleaseId: release.compatibleCheckReleaseId,
+    artifact: applicability,
+    requirements: release.requirements,
+  });
+  if (release.prompt.responseSchemaVersion !== "7") {
+    throw new ApiError(
+      409,
+      "The pinned Gap release contract is unsupported",
+      undefined,
+      "GAP_RELEASE_CONTRACT_UNSUPPORTED",
+    );
+  }
+  const evaluationRows =
+    await db.query.assessmentRequirementEvaluations.findMany({
+      columns: {
+        assessmentRevisionId: true,
+        requirementVersionId: true,
+        status: true,
+        evaluatorKind: true,
+        evaluatorVersion: true,
+        inputHash: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.assessmentRevisionId, assessmentRevisionId) ??
+          operators.sql`true`,
+      },
     });
-  const serverOwnedStatus = release.prompt.responseSchemaVersion === "5";
-  const evaluationRows = serverOwnedStatus
-    ? await db.query.assessmentRequirementEvaluations.findMany({
-        columns: {
-          assessmentRevisionId: true,
-          requirementVersionId: true,
-          status: true,
-          evaluatorKind: true,
-          evaluatorVersion: true,
-          inputHash: true,
-        },
-        where: {
-          RAW: (table, operators) =>
-            eq(table.assessmentRevisionId, assessmentRevisionId) ??
-            operators.sql`true`,
-        },
-      })
-    : [];
   if (
-    serverOwnedStatus &&
-    (evaluationRows.length !== applicableRequirements.length ||
-      applicableRequirements.some(
-        (requirement) =>
-          !evaluationRows.some(
-            (evaluation) =>
-              evaluation.requirementVersionId === requirement.id &&
-              evaluation.evaluatorKind === release.evaluator.kind &&
-              evaluation.evaluatorVersion === release.evaluator.version,
-          ),
-      ))
+    evaluationRows.length !== applicableRequirements.length ||
+    applicableRequirements.some(
+      (requirement) =>
+        !evaluationRows.some(
+          (evaluation) =>
+            evaluation.requirementVersionId === requirement.id &&
+            evaluation.evaluatorKind === release.evaluator.kind &&
+            evaluation.evaluatorVersion === release.evaluator.version,
+        ),
+    )
   ) {
     throw new ApiError(
       409,
@@ -151,11 +205,24 @@ export async function generateGapAnalysis(input: {
       "GAP_EVALUATION_INCOMPLETE",
     );
   }
-  const answerRows = await db.query.assessmentAnswers.findMany({ columns: { id: true, assessmentRevisionId: true, questionId: true, questionStableKey: true, textValue: true, numberValue: true, booleanValue: true, dateValue: true, structuredValue: true, createdAt: true },
-    where: { RAW: (table, operators) => (eq(
-      table.assessmentRevisionId,
-      assessmentRevisionId,
-    )) ?? operators.sql`true` },
+  const answerRows = await db.query.assessmentAnswers.findMany({
+    columns: {
+      id: true,
+      assessmentRevisionId: true,
+      questionId: true,
+      questionStableKey: true,
+      textValue: true,
+      numberValue: true,
+      booleanValue: true,
+      dateValue: true,
+      structuredValue: true,
+      createdAt: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        eq(table.assessmentRevisionId, assessmentRevisionId) ??
+        operators.sql`true`,
+    },
   });
   const answerOptionRows = answerRows.length
     ? await db
@@ -224,23 +291,85 @@ export async function generateGapAnalysis(input: {
     sourceInputHash,
     retryNonce: input.retryNonce ?? "initial",
   });
-  const existingRun = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.organizationId, input.organizationId),
-      eq(table.operationKind, "gap_analysis"),
-      eq(table.idempotencyKey, idempotencyKey),
-    )) ?? operators.sql`true` },
+  const existingRun = await db.query.aiProcessingRuns.findFirst({
+    columns: {
+      id: true,
+      organizationId: true,
+      assessmentRevisionId: true,
+      operationKind: true,
+      status: true,
+      outputLocale: true,
+      attemptCount: true,
+      languageValidation: true,
+      inputHash: true,
+      idempotencyKey: true,
+      provider: true,
+      model: true,
+      promptName: true,
+      promptVersion: true,
+      promptTemplateHash: true,
+      renderedInputHash: true,
+      responseSchemaVersion: true,
+      inputTokens: true,
+      outputTokens: true,
+      cachedInputTokens: true,
+      validatedOutput: true,
+      jobId: true,
+      providerPolicyVersion: true,
+      corpusReleaseSetHash: true,
+      provenanceStatus: true,
+      cancellationRequestedAt: true,
+      outputArtifactRevisionId: true,
+      errorCode: true,
+      errorMessage: true,
+      createdBy: true,
+      createdAt: true,
+      startedAt: true,
+      completedAt: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.organizationId, input.organizationId),
+          eq(table.operationKind, "gap_analysis"),
+          eq(table.idempotencyKey, idempotencyKey),
+        ) ?? operators.sql`true`,
+    },
   });
   if (existingRun) {
     assertOutputLocaleMatches(existingRun.outputLocale, input.locale, {
       runId: existingRun.id,
     });
     const artifactRevision = existingRun.outputArtifactRevisionId
-      ? await db.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-          where: { RAW: (table, operators) => (eq(
-            table.id,
-             existingRun.outputArtifactRevisionId!,
-          )) ?? operators.sql`true` },
+      ? await db.query.generatedArtifactRevisions.findFirst({
+          columns: {
+            id: true,
+            artifactId: true,
+            revisionNumber: true,
+            parentRevisionId: true,
+            status: true,
+            result: true,
+            outputLocale: true,
+            modelName: true,
+            promptVersion: true,
+            ruleSetId: true,
+            checkReleaseId: true,
+            gapAnalysisReleaseId: true,
+            evaluatorKind: true,
+            outcomeCode: true,
+            evaluatedAt: true,
+            inputHash: true,
+            generatedBy: true,
+            createdBy: true,
+            approvedBy: true,
+            approvedAt: true,
+            createdAt: true,
+          },
+          where: {
+            RAW: (table, operators) =>
+              eq(table.id, existingRun.outputArtifactRevisionId!) ??
+              operators.sql`true`,
+          },
         })
       : undefined;
     if (existingRun.status === "succeeded" && artifactRevision) {
@@ -251,20 +380,19 @@ export async function generateGapAnalysis(input: {
   // The rollout is complete: every production Gap analysis enters through the
   // Grounding Gateway, regardless of a stale caller's former feature flag.
   return generateGroundedGapResult({
-      input,
-      release,
-      assessmentRevisionId,
-      applicability: applicabilityArtifact,
-      applicableRequirements,
-      answerRows,
-      answerOptionRows,
-      documentRows,
-      selectedVersionIds,
-      sourceInputHash,
-      idempotencyKey,
-      evaluationRows,
-    });
-
+    input,
+    release,
+    assessmentRevisionId,
+    applicability: applicabilityArtifact,
+    applicableRequirements,
+    answerRows,
+    answerOptionRows,
+    documentRows,
+    selectedVersionIds,
+    sourceInputHash,
+    idempotencyKey,
+    evaluationRows,
+  });
 }
 
 async function generateGroundedGapResult(input: {
@@ -272,10 +400,19 @@ async function generateGroundedGapResult(input: {
   release: NonNullable<Awaited<ReturnType<typeof loadGapAnalysisRelease>>>;
   assessmentRevisionId: string;
   applicability: typeof generatedArtifactRevisions.$inferSelect;
-  applicableRequirements: NonNullable<Awaited<ReturnType<typeof loadGapAnalysisRelease>>>["requirements"];
+  applicableRequirements: NonNullable<
+    Awaited<ReturnType<typeof loadGapAnalysisRelease>>
+  >["requirements"];
   answerRows: Array<typeof assessmentAnswers.$inferSelect>;
-  answerOptionRows: Array<{ answerId: string; option: typeof questionOptions.$inferSelect }>;
-  documentRows: Array<{ id: string; contentHash: string; organizationId: string }>;
+  answerOptionRows: Array<{
+    answerId: string;
+    option: typeof questionOptions.$inferSelect;
+  }>;
+  documentRows: Array<{
+    id: string;
+    contentHash: string;
+    organizationId: string;
+  }>;
   selectedVersionIds: string[];
   sourceInputHash: string;
   idempotencyKey: string;
@@ -292,230 +429,250 @@ async function generateGroundedGapResult(input: {
     inputHash: string;
   }>;
 }) {
+  if (input.release.prompt.responseSchemaVersion !== "7") {
+    throw new ApiError(
+      409,
+      "The pinned Gap release contract is unsupported",
+      undefined,
+      "GAP_RELEASE_CONTRACT_UNSUPPORTED",
+    );
+  }
   const evaluationByRequirementId = new Map(
     input.evaluationRows.map((evaluation) => [
       evaluation.requirementVersionId,
       evaluation,
     ]),
   );
-  const serverOwnedStatus =
-    input.release.prompt.responseSchemaVersion === "5";
-  const queryUnits = input.applicableRequirements.map((requirement) => ({
-    id: requirement.code,
-    query: `${requirement.title}\n${requirement.requirementText}\n${
-      serverOwnedStatus
-        ? `Determined status: ${requireValue(evaluationByRequirementId, requirement.id).status}\n`
-        : ""
-    }`,
-    retrievalQuery: `${requirement.title}\n${requirement.requirementText}\nLegal references: ${JSON.stringify(requirement.legalReferences)}`,
-  }));
-  const questionnaireAssertions = input.applicableRequirements.flatMap((requirement) =>
-    questionnaireCitations(
-      requirement.questionStableKeys,
-      input.answerRows,
-      input.answerOptionRows,
-      input.release.questions,
-    ).map((citation) => ({
-      answerId: citation.sourceId,
-      queryUnitId: requirement.code,
-      excerpt: citation.excerpt,
-    })),
-  );
-  const grounded = await runGroundedOperation<
-    GroundedGapModelResponse | GroundedGapModelResponseV5
-  >({
-    operation: "gap_analysis",
-    actor: { userId: input.input.userId },
-    organizationId: input.input.organizationId,
-    outputLocale: input.input.locale,
-    workflowReleaseId: input.release.id,
-    asOfDate: input.input.asOfDate ?? new Date().toISOString().slice(0, 10),
-    organizationEvidenceVersionIds: input.selectedVersionIds,
-    questionnaireAssertions,
-    queryUnits,
-    systemInstruction: serverOwnedStatus
-      ? GAP_PROMPT_V5_TEMPLATE
-      : undefined,
-    outputContract: {
-      schema(context) {
-        if (!serverOwnedStatus) {
-          return buildGapModelResponseSchema(
-            queryUnits.map((unit) => unit.id),
+  return generateGroundedAtomicGapsV7(input, evaluationByRequirementId);
+}
+
+type PersistableGapFinding = ValidatedCategoryGapResult & {
+  status:
+    | "fulfilled"
+    | "partially_fulfilled"
+    | "not_fulfilled"
+    | "insufficient_evidence";
+  generationRunId: string;
+  questionnaireDisagreements: string[];
+};
+
+type PersistedGapRequirement = {
+  code: string;
+  title: string;
+  requirementText: string;
+  criticality: string;
+  legalReferences: unknown;
+  citations: SuppliedCitation[];
+  determinedStatus?:
+    | "fulfilled"
+    | "partially_fulfilled"
+    | "not_fulfilled"
+    | "insufficient_evidence";
+};
+
+async function generateGroundedAtomicGapsV7(
+  input: Parameters<typeof generateGroundedGapResult>[0],
+  evaluationByRequirementId: Map<
+    string,
+    Parameters<typeof generateGroundedGapResult>[0]["evaluationRows"][number]
+  >,
+) {
+  const requirementPolicies = input.applicableRequirements.map(
+    (requirement) => {
+      const questions = requirement.questionStableKeys.map((stableKey) => {
+        const question = input.release.questions.find(
+          (candidate) => candidate.stableKey === stableKey,
+        );
+        const answer = input.answerRows.find(
+          (candidate) => candidate.questionStableKey === stableKey,
+        );
+        const selectedOptions = answer
+          ? input.answerOptionRows.filter((row) => row.answerId === answer.id)
+          : [];
+        const stableValue = selectedOptions[0]?.option.stableValue;
+        if (
+          !question ||
+          !answer ||
+          selectedOptions.length !== 1 ||
+          !isGapAnswerValue(stableValue)
+        ) {
+          throw new ApiError(
+            409,
+            "Pinned questionnaire answers are incomplete",
+            undefined,
+            "GAP_INPUT_SNAPSHOT_INVALID",
           );
         }
-        return buildGapModelResponseSchemaV5(
-          queryUnits.map((unit) => {
-            const supplied = context.filter(
-              (item) => item.queryUnitId === unit.id,
+        return {
+          stableKey,
+          text: question.questionText,
+          stableValue,
+          legalProvisions: question.legalProvisions,
+        };
+      });
+      return {
+        requirement,
+        determinedStatus: requireValue(
+          evaluationByRequirementId,
+          requirement.id,
+        ).status,
+        policy: deriveAtomicGapTriggerPolicy({
+          determinedStatus: requireValue(
+            evaluationByRequirementId,
+            requirement.id,
+          ).status,
+          questions,
+        }),
+        sourceAssessmentAnswerIdByQuestion: Object.fromEntries(
+          questions.map((question) => {
+            const answer = input.answerRows.find(
+              (candidate) => candidate.questionStableKey === question.stableKey,
             );
-            return {
-              requirementCode: unit.id,
-              permittedCitationIds: supplied.map(
-                (item) => item.citationId,
-              ),
-              legalCitationIds: supplied
-                .filter(
-                  (item) =>
-                    item.channel === "legal" &&
-                    (item.metadata.recovered === true ||
-                      (item.authorityTier !== "curated_secondary" &&
-                        item.translationStatus === "official")),
-                )
-                .map((item) => item.citationId),
-            };
+            if (!answer) {
+              throw new ApiError(
+                409,
+                "Pinned questionnaire answers are incomplete",
+                undefined,
+                "GAP_INPUT_SNAPSHOT_INVALID",
+              );
+            }
+            return [question.stableKey, answer.id];
           }),
-        );
-      },
-      languagePolicy: "localized",
-      generatedProse: (output) =>
-        serverOwnedStatus
-          ? extractGapGeneratedProseV5(output as GroundedGapModelResponseV5)
-          : extractGapGeneratedProse(output as GroundedGapModelResponse),
-      claims(output) {
-        const normalized = serverOwnedStatus
-          ? normalizeGroundedGapModelResponseV5(
-              output as GroundedGapModelResponseV5,
-            )
-          : normalizeGroundedGapModelResponse(
-              output as GroundedGapModelResponse,
-            );
-        return normalized.findings.map((finding) => ({
-          key: `gap:${finding.requirementCode}`,
-          queryUnitId: finding.requirementCode,
-          kind: "legal" as const,
-          binding: true,
-          citationIds: finding.citations,
-          text: JSON.stringify({
-            determinedStatus: serverOwnedStatus
-              ? requireValue(
-                  evaluationByRequirementId,
-                  requireValue(
-                    new Map(
-                      input.applicableRequirements.map((requirement) => [
-                        requirement.code,
-                        requirement,
-                      ]),
-                    ),
-                    finding.requirementCode,
-                  ).id,
-                ).status
-              : (finding as GapModelFinding).status,
-            rationale: finding.rationale,
-            recommendation: finding.recommendation,
-          }),
-        }));
-      },
-      allowConflictingClaim(output, claim) {
-        const normalized = serverOwnedStatus
-          ? normalizeGroundedGapModelResponseV5(
-              output as GroundedGapModelResponseV5,
-            )
-          : normalizeGroundedGapModelResponse(
-              output as GroundedGapModelResponse,
-            );
-        return normalized.findings.some((finding) =>
-          finding.requirementCode === claim.queryUnitId && finding.requiresReview,
-        );
-      },
+        ),
+      };
     },
-    idempotencyKey: input.idempotencyKey,
+  );
+  const questionnaireAssertions = input.applicableRequirements.flatMap(
+    (requirement) =>
+      questionnaireCitations(
+        requirement.questionStableKeys,
+        input.answerRows,
+        input.answerOptionRows,
+        input.release.questions,
+      ).map((citation) => ({
+        answerId: citation.sourceId,
+        queryUnitId: requirement.code,
+        excerpt: citation.excerpt,
+      })),
+  );
+  const generated = await generateAtomicGapBatch({
+    actor: { userId: input.input.userId },
+    organizationId: input.input.organizationId,
     assessmentRevisionId: input.assessmentRevisionId,
+    release: input.release,
+    requirements: requirementPolicies,
+    selectedDocumentVersionIds: input.selectedVersionIds,
+    outputLocale: input.input.locale,
+    idempotencyKey: input.idempotencyKey,
+    questionnaireAssertions,
+    asOfDate: input.input.asOfDate,
     jobId: input.input.jobId,
   });
-  if (grounded.outputLocale !== input.input.locale) {
-    throw new ApiError(
-      409,
-      "Accepted AI output locale conflicts with the generation input",
-      undefined,
-      "GROUNDING_LOCALE_CONFLICT",
-    );
-  }
-  try {
-  const citations: SuppliedCitation[] = grounded.context.map((item) => ({
+  const citations: SuppliedCitation[] = generated.context.map((item) => ({
     id: item.citationId,
-    sourceType: item.channel === "legal"
-      ? "legal_source_chunk"
-      : item.channel === "organization_document"
-        ? "document_chunk"
-        : "assessment_answer",
+    sourceType:
+      item.channel === "legal"
+        ? "legal_source_chunk"
+        : item.channel === "organization_document"
+          ? "document_chunk"
+          : "assessment_answer",
     sourceId: item.sourceId,
     excerpt: item.excerpt,
-    pageNumber: typeof item.metadata.pageNumber === "number" ? item.metadata.pageNumber : null,
-    sectionLabel: typeof item.metadata.sectionPath === "string" ? item.metadata.sectionPath : null,
+    pageNumber:
+      typeof item.metadata.pageNumber === "number"
+        ? item.metadata.pageNumber
+        : null,
+    sectionLabel:
+      typeof item.metadata.sectionPath === "string"
+        ? item.metadata.sectionPath
+        : null,
   }));
-  const normalizedOutput = serverOwnedStatus
-    ? {
-        findings: normalizeGroundedGapModelResponseV5(
-          grounded.output as GroundedGapModelResponseV5,
-        ).findings.map((finding) => {
-          const requirement = requireValue(
-            new Map(
-              input.applicableRequirements.map((requirement) => [
-                requirement.code,
-                requirement,
-              ]),
-            ),
-            finding.requirementCode,
-          );
-          return {
-            ...finding,
-            status: requireValue(
-              evaluationByRequirementId,
-              requirement.id,
-            ).status,
-          };
-        }),
-      }
-    : normalizeGroundedGapModelResponse(
-        grounded.output as GroundedGapModelResponse,
+  const requirementByCode = new Map(
+    input.applicableRequirements.map((requirement) => [
+      requirement.code,
+      requirement,
+    ]),
+  );
+  const findings: PersistableGapFinding[] = generated.findings.map(
+    (finding) => {
+      const requirement = requireValue(
+        requirementByCode,
+        finding.requirementCode,
       );
-  const findings = validateGapModelResponse({
-    value: normalizedOutput,
-    requestedRequirementCodes: queryUnits.map((unit) => unit.id),
-    citations,
-    citationIdsByRequirement: Object.fromEntries(queryUnits.map((unit) => [
-      unit.id,
-      grounded.context.filter((item) => item.queryUnitId === unit.id).map((item) => item.citationId),
-    ])),
-  }).findings;
+      return {
+        ...finding,
+        status: requireValue(evaluationByRequirementId, requirement.id).status,
+        generationRunId: generated.runId,
+        questionnaireDisagreements: [],
+      };
+    },
+  );
   await Promise.all([
-    db.insert(aiProcessingRunAssessmentInputs).values({
-      runId: grounded.runId,
-      assessmentRevisionId: input.assessmentRevisionId,
-      sourceHash: contentHash(input.answerRows),
-    }).onConflictDoNothing(),
-    db.insert(aiProcessingRunArtifactInputs).values({
-      runId: grounded.runId,
-      artifactRevisionId: input.applicability.id,
-      sourceHash: input.applicability.inputHash ?? contentHash(input.applicability.result),
-    }).onConflictDoNothing(),
+    db
+      .insert(aiProcessingRunAssessmentInputs)
+      .values({
+        runId: generated.runId,
+        assessmentRevisionId: input.assessmentRevisionId,
+        sourceHash: contentHash(input.answerRows),
+      })
+      .onConflictDoNothing(),
+    db
+      .insert(aiProcessingRunArtifactInputs)
+      .values({
+        runId: generated.runId,
+        artifactRevisionId: input.applicability.id,
+        sourceHash:
+          input.applicability.inputHash ??
+          contentHash(input.applicability.result),
+      })
+      .onConflictDoNothing(),
     input.documentRows.length
-      ? db.insert(aiProcessingRunDocumentInputs).values(
-          input.documentRows.map((document) => ({
-            runId: grounded.runId,
-            documentVersionId: document.id,
-            sourceHash: document.contentHash,
-          })),
-        ).onConflictDoNothing()
+      ? db
+          .insert(aiProcessingRunDocumentInputs)
+          .values(
+            input.documentRows.map((document) => ({
+              runId: generated.runId,
+              documentVersionId: document.id,
+              sourceHash: document.contentHash,
+            })),
+          )
+          .onConflictDoNothing()
       : Promise.resolve(),
   ]);
-  const run = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true }, where: { RAW: (table, operators) => (eq(table.id, grounded.runId)) ?? operators.sql`true` } });
+  const run = await db.query.aiProcessingRuns.findFirst({
+    columns: {
+      id: true,
+      model: true,
+      renderedInputHash: true,
+      inputTokens: true,
+      outputTokens: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        eq(table.id, generated.runId) ?? operators.sql`true`,
+    },
+  });
   if (!run) throw new Error("Grounded AI run was not persisted");
-  const promptRequirements = input.applicableRequirements.map((requirement) => ({
-    code: requirement.code,
-    title: requirement.title,
-    requirementText: requirement.requirementText,
-    criticality: requirement.criticality,
-    legalReferences: requirement.legalReferences,
-    citations: citations.filter((citation) => grounded.context.some(
-      (item) => item.queryUnitId === requirement.code && item.citationId === citation.id,
-    )),
-    determinedStatus: serverOwnedStatus
-      ? requireValue(evaluationByRequirementId, requirement.id).status
-      : undefined,
-  }));
+  const promptRequirements = input.applicableRequirements.map(
+    (requirement) => ({
+      code: requirement.code,
+      title: requirement.title,
+      requirementText: requirement.requirementText,
+      criticality: requirement.criticality,
+      legalReferences: requirement.legalReferences,
+      citations: citations.filter((citation) =>
+        generated.context.some(
+          (item) =>
+            item.queryUnitId === requirement.code &&
+            item.citationId === citation.id,
+        ),
+      ),
+      determinedStatus: requireValue(evaluationByRequirementId, requirement.id)
+        .status,
+    }),
+  );
   const persisted = await persistGeneratedGapResult({
-    runId: grounded.runId,
+    runId: generated.runId,
     userId: input.input.userId,
     organizationId: input.input.organizationId,
     assessmentRevisionId: input.assessmentRevisionId,
@@ -531,28 +688,18 @@ async function generateGroundedGapResult(input: {
     inputTokens: run.inputTokens ?? 0,
     outputTokens: run.outputTokens ?? 0,
     jobId: input.input.jobId,
-    deterministicStatuses: serverOwnedStatus
-      ? new Map(
-          input.evaluationRows.map((evaluation) => [
-            evaluation.requirementVersionId,
-            evaluation.status,
-          ]),
-        )
-      : null,
+    deterministicStatuses: new Map(
+      input.evaluationRows.map((evaluation) => [
+        evaluation.requirementVersionId,
+        evaluation.status,
+      ]),
+    ),
   });
-  return { run: persisted.run, artifactRevision: persisted.revision, reused: false };
-  } catch (error) {
-    await db.update(aiProcessingRuns).set({
-      status: "failed",
-      errorCode: error instanceof ApiError ? error.code : "GAP_PERSISTENCE_FAILED",
-      errorMessage: "Grounded Gap result persistence failed.",
-      completedAt: new Date(),
-    }).where(and(
-      eq(aiProcessingRuns.id, grounded.runId),
-      eq(aiProcessingRuns.status, "processing"),
-    ));
-    throw error;
-  }
+  return {
+    run: persisted.run,
+    artifactRevision: persisted.revision,
+    reused: false,
+  };
 }
 
 async function persistGeneratedGapResult(input: {
@@ -563,8 +710,8 @@ async function persistGeneratedGapResult(input: {
   applicabilityArtifactRevisionId: string;
   release: NonNullable<Awaited<ReturnType<typeof loadGapAnalysisRelease>>>;
   selectedVersionIds: string[];
-  promptRequirements: GapPromptRequirement[];
-  findings: GapModelFinding[];
+  promptRequirements: PersistedGapRequirement[];
+  findings: PersistableGapFinding[];
   outputLocale: Locale;
   model: { model: string };
   sourceInputHash: string;
@@ -574,7 +721,10 @@ async function persistGeneratedGapResult(input: {
   jobId?: string;
   deterministicStatuses: Map<
     string,
-    "fulfilled" | "partially_fulfilled" | "not_fulfilled" | "insufficient_evidence"
+    | "fulfilled"
+    | "partially_fulfilled"
+    | "not_fulfilled"
+    | "insufficient_evidence"
   > | null;
 }) {
   const citationById = new Map(
@@ -583,18 +733,32 @@ async function persistGeneratedGapResult(input: {
       .map((citation) => [citation.id, citation]),
   );
   const requirementByCode = new Map(
-    input.release.requirements.map((requirement) => [requirement.code, requirement]),
+    input.release.requirements.map((requirement) => [
+      requirement.code,
+      requirement,
+    ]),
   );
   return db.transaction(async (tx) => {
     if (input.jobId) {
-      const [job] = await tx.select({ state: backgroundJobs.state }).from(backgroundJobs)
-        .where(eq(backgroundJobs.id, input.jobId)).limit(1).for("update");
-      if (!job || job.state === "cancellation_requested" || job.state === "cancelled") {
-        const cancellation = new Error("Gap generation was cancelled before persistence");
+      const [job] = await tx
+        .select({ state: backgroundJobs.state })
+        .from(backgroundJobs)
+        .where(eq(backgroundJobs.id, input.jobId))
+        .limit(1)
+        .for("update");
+      if (
+        !job ||
+        job.state === "cancellation_requested" ||
+        job.state === "cancelled"
+      ) {
+        const cancellation = new Error(
+          "Gap generation was cancelled before persistence",
+        );
         cancellation.name = "JobCancellationError";
         throw cancellation;
       }
-      if (job.state !== "running") throw new Error("Gap generation job no longer owns persistence");
+      if (job.state !== "running")
+        throw new Error("Gap generation job no longer owns persistence");
     }
     const [lockedAssessment] = await tx
       .select({ id: assessments.id })
@@ -614,6 +778,17 @@ async function persistGeneratedGapResult(input: {
         "GAP_INPUT_SNAPSHOT_INVALID",
       );
     }
+    const pinnedAnswers = await tx.query.assessmentAnswers.findMany({
+      columns: { id: true, questionStableKey: true },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.assessmentRevisionId, input.assessmentRevisionId) ??
+          operators.sql`true`,
+      },
+    });
+    const pinnedQuestionByAnswerId = new Map(
+      pinnedAnswers.map((answer) => [answer.id, answer.questionStableKey]),
+    );
     if (input.deterministicStatuses) {
       const evaluations =
         await tx.query.assessmentRequirementEvaluations.findMany({
@@ -625,10 +800,8 @@ async function persistGeneratedGapResult(input: {
           },
           where: {
             RAW: (table, operators) =>
-              eq(
-                table.assessmentRevisionId,
-                input.assessmentRevisionId,
-              ) ?? operators.sql`true`,
+              eq(table.assessmentRevisionId, input.assessmentRevisionId) ??
+              operators.sql`true`,
           },
         });
       if (
@@ -639,8 +812,7 @@ async function persistGeneratedGapResult(input: {
             finding.requirementCode,
           );
           const evaluation = evaluations.find(
-            (candidate) =>
-              candidate.requirementVersionId === requirement.id,
+            (candidate) => candidate.requirementVersionId === requirement.id,
           );
           return (
             !evaluation ||
@@ -660,12 +832,24 @@ async function persistGeneratedGapResult(input: {
         );
       }
     }
-    let artifact = await tx.query.generatedArtifacts.findFirst({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true },
-      where: { RAW: (table, operators) => (and(
-        eq(table.organizationId, input.organizationId),
-        eq(table.moduleId, input.release.moduleId),
-        eq(table.artifactType, "gap_analysis_result"),
-      )) ?? operators.sql`true` },
+    let artifact = await tx.query.generatedArtifacts.findFirst({
+      columns: {
+        id: true,
+        organizationId: true,
+        moduleId: true,
+        artifactType: true,
+        currentRevisionId: true,
+        acceptedRevisionId: true,
+        createdAt: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          and(
+            eq(table.organizationId, input.organizationId),
+            eq(table.moduleId, input.release.moduleId),
+            eq(table.artifactType, "gap_analysis_result"),
+          ) ?? operators.sql`true`,
+      },
     });
     if (artifact?.currentRevisionId) {
       throw new ApiError(
@@ -686,17 +870,47 @@ async function persistGeneratedGapResult(input: {
         .returning();
     }
     if (!artifact) throw new Error("Could not create gap artifact");
-    const latest = await tx.query.generatedArtifactRevisions.findFirst({ columns: { id: true, artifactId: true, revisionNumber: true, parentRevisionId: true, status: true, result: true, outputLocale: true, modelName: true, promptVersion: true, ruleSetId: true, checkReleaseId: true, gapAnalysisReleaseId: true, evaluatorKind: true, outcomeCode: true, evaluatedAt: true, inputHash: true, generatedBy: true, createdBy: true, approvedBy: true, approvedAt: true, createdAt: true },
-      where: { RAW: (table, operators) => (eq(table.artifactId, artifact.id)) ?? operators.sql`true` },
+    const latest = await tx.query.generatedArtifactRevisions.findFirst({
+      columns: {
+        id: true,
+        artifactId: true,
+        revisionNumber: true,
+        parentRevisionId: true,
+        status: true,
+        result: true,
+        outputLocale: true,
+        modelName: true,
+        promptVersion: true,
+        ruleSetId: true,
+        checkReleaseId: true,
+        gapAnalysisReleaseId: true,
+        evaluatorKind: true,
+        outcomeCode: true,
+        evaluatedAt: true,
+        inputHash: true,
+        generatedBy: true,
+        createdBy: true,
+        approvedBy: true,
+        approvedAt: true,
+        createdAt: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.artifactId, artifact.id) ?? operators.sql`true`,
+      },
       orderBy: { revisionNumber: "desc" },
     });
     const summary = buildGeneratedGapRevisionMetadata({
       outputLocale: input.outputLocale,
-      expectedRequirementVersionIds: input.findings.map((finding) =>
-        requireValue(requirementByCode, finding.requirementCode).id
+      expectedRequirementVersionIds: input.findings.map(
+        (finding) =>
+          requireValue(requirementByCode, finding.requirementCode).id,
       ),
       findingDiagnostics: input.findings.map((finding) => {
-        const requirement = requireValue(requirementByCode, finding.requirementCode);
+        const requirement = requireValue(
+          requirementByCode,
+          finding.requirementCode,
+        );
         return {
           requirementVersionId: requirement.id,
           contradictions: finding.contradictions,
@@ -741,7 +955,25 @@ async function persistGeneratedGapResult(input: {
       );
     }
     for (const finding of input.findings) {
-      const requirement = requireValue(requirementByCode, finding.requirementCode);
+      const requirement = requireValue(
+        requirementByCode,
+        finding.requirementCode,
+      );
+      assertPersistableAtomicFinding(finding, requirement, input.runId);
+      if (
+        finding.gaps.some(
+          (gap) =>
+            pinnedQuestionByAnswerId.get(gap.sourceAssessmentAnswerId) !==
+            gap.questionStableKey,
+        )
+      ) {
+        throw new ApiError(
+          422,
+          "An atomic Gap is not traceable to the pinned assessment answer",
+          undefined,
+          "GAP_ANSWER_TRACE_INVALID",
+        );
+      }
       const [storedFinding] = await tx
         .insert(gapFindings)
         .values({
@@ -749,32 +981,90 @@ async function persistGeneratedGapResult(input: {
           requirementVersionId: requirement.id,
           status: finding.status,
           evidenceSufficiency: finding.evidenceSufficiency,
-          severity: deriveFindingSeverity(requirement.criticality, finding.status),
-          rationale: finding.rationale,
-          recommendation: finding.recommendation,
+          severity: deriveFindingSeverity(
+            requirement.criticality,
+            finding.status,
+          ),
+          statementBasis: finding.statementBasis,
+          statementBasisHash: finding.statementBasisHash,
+          reviewNotice: finding.reviewNotice,
+          generationRunId: finding.generationRunId,
           assumptions: finding.assumptions,
           requiresReview: finding.requiresReview,
         })
         .returning();
       if (!storedFinding) throw new Error("Could not persist gap finding");
-      if (finding.citations.length > 0) {
-        await tx.insert(gapFindingEvidence).values(
-          finding.citations.map((citationId) => {
-            const citation = requireValue(citationById, citationId);
-            return {
+      const findingCitationIds = [
+        ...new Set([
+          ...finding.citationIds,
+          ...finding.gaps.flatMap((gap) => gap.citationIds),
+        ]),
+      ];
+      const storedEvidence = findingCitationIds.length
+        ? await tx
+            .insert(gapFindingEvidence)
+            .values(
+              findingCitationIds.map((citationId) => {
+                const citation = requireValue(citationById, citationId);
+                return {
+                  findingId: storedFinding.id,
+                  citationId,
+                  sourceType: citation.sourceType,
+                  assessmentAnswerId:
+                    citation.sourceType === "assessment_answer"
+                      ? citation.sourceId
+                      : null,
+                  documentChunkId:
+                    citation.sourceType === "document_chunk"
+                      ? citation.sourceId
+                      : null,
+                  legalSourceChunkId:
+                    citation.sourceType === "legal_source_chunk"
+                      ? citation.sourceId
+                      : null,
+                  excerpt: citation.excerpt,
+                  pageNumber: citation.pageNumber,
+                  sectionLabel: citation.sectionLabel,
+                };
+              }),
+            )
+            .returning({
+              id: gapFindingEvidence.id,
+              citationId: gapFindingEvidence.citationId,
+            })
+        : [];
+      if (finding.gaps.length > 0) {
+        const storedGaps = await tx
+          .insert(gapItems)
+          .values(
+            finding.gaps.map((gap, index) => ({
               findingId: storedFinding.id,
-              citationId,
-              sourceType: citation.sourceType,
-              assessmentAnswerId:
-                citation.sourceType === "assessment_answer" ? citation.sourceId : null,
-              documentChunkId:
-                citation.sourceType === "document_chunk" ? citation.sourceId : null,
-              legalSourceChunkId:
-                citation.sourceType === "legal_source_chunk" ? citation.sourceId : null,
-              excerpt: citation.excerpt,
-              pageNumber: citation.pageNumber,
-              sectionLabel: citation.sectionLabel,
-            };
+              sourceAssessmentAnswerId: gap.sourceAssessmentAnswerId,
+              questionStableKey: gap.questionStableKey,
+              kind: gap.kind,
+              statement: gap.statement,
+              position: index + 1,
+            })),
+          )
+          .returning({ id: gapItems.id, position: gapItems.position });
+        const evidenceIdByCitation = new Map(
+          storedEvidence.map((item) => [item.citationId, item.id]),
+        );
+        await tx.insert(gapItemEvidence).values(
+          finding.gaps.flatMap((gap, index) => {
+            const storedGap = storedGaps.find(
+              (item) => item.position === index + 1,
+            );
+            if (!storedGap) {
+              throw new Error("Stored atomic Gap position is missing");
+            }
+            return gap.citationIds.map((citationId) => ({
+              gapItemId: storedGap.id,
+              gapFindingEvidenceId: requireValue(
+                evidenceIdByCitation,
+                citationId,
+              ),
+            }));
           }),
         );
       }
@@ -823,12 +1113,15 @@ async function persistGeneratedGapResult(input: {
           completedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(
-          eq(gapReassessmentDrafts.generationJobId, input.jobId),
-          eq(gapReassessmentDrafts.status, "locked"),
-        ))
+        .where(
+          and(
+            eq(gapReassessmentDrafts.generationJobId, input.jobId),
+            eq(gapReassessmentDrafts.status, "locked"),
+          ),
+        )
         .returning({ id: gapReassessmentDrafts.id });
-      if (!draft) throw new Error("Gap reassessment draft no longer owns persistence");
+      if (!draft)
+        throw new Error("Gap reassessment draft no longer owns persistence");
       events.push({
         organizationId: input.organizationId,
         actorUserId: input.userId,
@@ -850,12 +1143,15 @@ async function persistGeneratedGapResult(input: {
           finishedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(
-          eq(backgroundJobs.id, input.jobId),
-          eq(backgroundJobs.state, "running"),
-        ))
+        .where(
+          and(
+            eq(backgroundJobs.id, input.jobId),
+            eq(backgroundJobs.state, "running"),
+          ),
+        )
         .returning({ id: backgroundJobs.id });
-      if (!completedJob) throw new Error("Gap generation job no longer owns persistence");
+      if (!completedJob)
+        throw new Error("Gap generation job no longer owns persistence");
       await tx.insert(backgroundJobResults).values({
         jobId: completedJob.id,
         generatedArtifactRevisionId: revision.id,
@@ -869,8 +1165,13 @@ async function persistGeneratedGapResult(input: {
 function questionnaireCitations(
   questionStableKeys: string[],
   answers: Array<typeof assessmentAnswers.$inferSelect>,
-  answerOptions: Array<{ answerId: string; option: typeof questionOptions.$inferSelect }>,
-  releaseQuestions: NonNullable<Awaited<ReturnType<typeof loadGapAnalysisRelease>>>["questions"],
+  answerOptions: Array<{
+    answerId: string;
+    option: typeof questionOptions.$inferSelect;
+  }>,
+  releaseQuestions: NonNullable<
+    Awaited<ReturnType<typeof loadGapAnalysisRelease>>
+  >["questions"],
 ): SuppliedCitation[] {
   return answers
     .filter((answer) => questionStableKeys.includes(answer.questionStableKey))
@@ -880,9 +1181,10 @@ function questionnaireCitations(
       );
       const selected = answerOptions
         .filter((row) => row.answerId === answer.id)
-        .map((row) =>
-          question?.options.find((option) => option.id === row.option.id)?.label ??
-          row.option.stableValue,
+        .map(
+          (row) =>
+            question?.options.find((option) => option.id === row.option.id)
+              ?.label ?? row.option.stableValue,
         );
       return {
         id: `Q:${answer.id}`,
@@ -899,4 +1201,83 @@ function requireValue<K, V>(values: Map<K, V>, key: K) {
   const value = values.get(key);
   if (!value) throw new Error(`Required value ${String(key)} is missing`);
   return value;
+}
+
+function assertPersistableAtomicFinding(
+  finding: PersistableGapFinding,
+  requirement: {
+    questionStableKeys: string[];
+  },
+  expectedRunId: string,
+) {
+  if (
+    finding.generationRunId !== expectedRunId ||
+    finding.statementBasisHash !== contentHash(finding.statementBasis)
+  ) {
+    throw new ApiError(
+      409,
+      "The Gap release does not provide valid atomic gaps",
+      undefined,
+      "GAP_ATOMIC_CONTRACT_UNSUPPORTED",
+    );
+  }
+  const triggers = finding.statementBasis.triggeringQuestions;
+  const fulfilled = finding.status === "fulfilled";
+  if (
+    (fulfilled && (triggers.length > 0 || finding.gaps.length > 0)) ||
+    (!fulfilled && triggers.length === 0)
+  ) {
+    throw new ApiError(
+      422,
+      "Atomic Gap trigger coverage conflicts with category status",
+      undefined,
+      "GAP_TRIGGER_COVERAGE_INVALID",
+    );
+  }
+  for (const trigger of triggers) {
+    if (!requirement.questionStableKeys.includes(trigger.stableKey)) {
+      throw new ApiError(
+        422,
+        "Atomic Gap trigger does not belong to its category",
+        undefined,
+        "GAP_TRIGGER_CATEGORY_INVALID",
+      );
+    }
+    const gaps = finding.gaps.filter(
+      (gap) => gap.questionStableKey === trigger.stableKey,
+    );
+    if (
+      gaps.length < 1 ||
+      gaps.length > 5 ||
+      gaps.some(
+        (gap) =>
+          gap.kind !== trigger.kind ||
+          gap.sourceAssessmentAnswerId !== trigger.sourceAssessmentAnswerId,
+      )
+    ) {
+      throw new ApiError(
+        422,
+        "Atomic Gap trigger coverage is invalid",
+        undefined,
+        "GAP_TRIGGER_COVERAGE_INVALID",
+      );
+    }
+  }
+}
+
+function isGapAnswerValue(
+  value: string | undefined,
+): value is
+  | "fully_implemented"
+  | "partially_implemented"
+  | "not_implemented"
+  | "unsure"
+  | "not_applicable" {
+  return (
+    value === "fully_implemented" ||
+    value === "partially_implemented" ||
+    value === "not_implemented" ||
+    value === "unsure" ||
+    value === "not_applicable"
+  );
 }

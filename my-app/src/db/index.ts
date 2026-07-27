@@ -12,27 +12,34 @@ if (!connectionString) {
   throw new Error("DATABASE_URL is not set");
 }
 
-const maxConnections = Number.parseInt(
-  process.env.POSTGRES_MAX_CONNECTIONS ??
-    (process.env.NODE_ENV === "production" ? "5" : "1"),
-  10,
-);
-
-const client =
-  globalForDb.__complyPostgresClient ??
-  postgres(connectionString, {
-  // Supabase transaction pooler does not support prepared statements.
-    prepare: false,
-    max: Number.isFinite(maxConnections) && maxConnections > 0 ? maxConnections : 1,
-    idle_timeout: 20,
-    debug(_connection, query) {
-      dbQueryObserver?.(query);
-    },
-  });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__complyPostgresClient = client;
+const configuredPoolMax = process.env.DATABASE_POOL_MAX;
+const poolMax = configuredPoolMax ? Number(configuredPoolMax) : 10;
+if (!Number.isInteger(poolMax) || poolMax < 1 || poolMax > 100) {
+  throw new Error("DATABASE_POOL_MAX must be an integer between 1 and 100");
 }
+const configuredIdleTimeout = process.env.DATABASE_POOL_IDLE_TIMEOUT_SECONDS;
+const idleTimeoutSeconds = configuredIdleTimeout
+  ? Number(configuredIdleTimeout)
+  : 20;
+if (
+  !Number.isInteger(idleTimeoutSeconds) ||
+  idleTimeoutSeconds < 1 ||
+  idleTimeoutSeconds > 3_600
+) {
+  throw new Error(
+    "DATABASE_POOL_IDLE_TIMEOUT_SECONDS must be an integer between 1 and 3600",
+  );
+}
+
+const client = postgres(connectionString, {
+  // Supabase transaction pooler does not support prepared statements.
+  prepare: false,
+  max: poolMax,
+  idle_timeout: idleTimeoutSeconds,
+  debug(_connection, query) {
+    dbQueryObserver?.(query);
+  },
+});
 
 export const db = drizzle({ client, relations });
 export type Db = typeof db;

@@ -77,7 +77,7 @@ const legalInstruments = previousRelease.legalInstruments.map((instrument) => {
 /**
  * Immutable successor to 2026-v1. The applicability model, questionnaire,
  * thresholds, profiles, fixtures, and evaluator remain unchanged; only the
- * versioned legal catalogue is extended for guided-v4.
+ * versioned legal catalogue is extended for the current guided-v6 Gap release.
  */
 export const nis2ReleaseDefinition2026V2: Nis2ReleaseDefinition = {
   ...previousRelease,
@@ -124,4 +124,3 @@ function toLegalProvision(
     citationContentKey: citationContentKey(provision),
   };
 }
-

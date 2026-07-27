@@ -17,6 +17,8 @@ const tables = schemaValues
   .sort((left, right) => getTableName(left).localeCompare(getTableName(right)));
 
 const expectedCompositeForeignKeys = [
+  "action_plan_item_gaps.action_plan_item_gaps_action_category_fk:[action_plan_item_id,source_finding_id]->action_plan_items.[id,source_finding_id]",
+  "action_plan_item_gaps.action_plan_item_gaps_gap_category_fk:[gap_item_id,source_finding_id]->gap_items.[id,finding_id]",
   "active_compliance_check_releases.active_compliance_check_releases_identity_fk:[check_code,check_release_id]->compliance_check_releases.[check_code,id]",
   "active_gap_analysis_releases.active_gap_analysis_releases_identity_fk:[release_code,gap_analysis_release_id]->gap_analysis_releases.[release_code,id]",
   "active_legal_corpus_releases.active_legal_corpus_releases_identity_fk:[family_id,release_id]->legal_corpus_releases.[family_id,id]",

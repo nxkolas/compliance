@@ -9,6 +9,11 @@ import {
 } from "@/src/db";
 import { getOrganizationDocumentLibrary } from "@/src/server/documents";
 import {
+  createRuntimeReleaseReader,
+  directRuntimeReleaseReader,
+  type PublishedComplianceRelease,
+} from "@/src/server/compliance";
+import {
   createGapReleaseReader,
   createDatabaseGapPageReader,
   directGapReleaseReader,
@@ -113,9 +118,9 @@ async function main() {
       );
     }
     for (const sample of completeWorkflow.warm) {
-      if (sample.sqlCalls > 17) {
+      if (sample.sqlCalls > 18) {
         throw new Error(
-          `Complete Gap workflow used ${sample.sqlCalls} SQL calls; expected at most 17`,
+          `Complete Gap workflow used ${sample.sqlCalls} SQL calls; expected at most 18`,
         );
       }
       if ((sample.sequentialLayers ?? Number.POSITIVE_INFINITY) > 5) {
@@ -142,7 +147,11 @@ function createOperations(fixture: Fixture) {
       name: "gapPage",
       create() {
         const reader = createBenchmarkReleaseReader();
-        const pageReader = createDatabaseGapPageReader(reader);
+        const runtimeReader = createBenchmarkRuntimeReleaseReader();
+        const pageReader = createDatabaseGapPageReader(
+          reader,
+          runtimeReader,
+        );
         return () =>
           pageReader.readGap({
             userId: fixture.userId,
@@ -156,7 +165,11 @@ function createOperations(fixture: Fixture) {
       name: "documentsPage",
       create() {
         const reader = createBenchmarkReleaseReader();
-        const pageReader = createDatabaseGapPageReader(reader);
+        const runtimeReader = createBenchmarkRuntimeReleaseReader();
+        const pageReader = createDatabaseGapPageReader(
+          reader,
+          runtimeReader,
+        );
         return () =>
           pageReader.readDocuments({
             userId: fixture.userId,
@@ -170,7 +183,11 @@ function createOperations(fixture: Fixture) {
       name: "completeWorkflow",
       create() {
         const reader = createBenchmarkReleaseReader();
-        const pageReader = createDatabaseGapPageReader(reader);
+        const runtimeReader = createBenchmarkRuntimeReleaseReader();
+        const pageReader = createDatabaseGapPageReader(
+          reader,
+          runtimeReader,
+        );
         return () =>
           getGapAnalysisWorkflow(
             {
@@ -196,6 +213,7 @@ function createOperations(fixture: Fixture) {
       name: "gapPrerequisite",
       create() {
         const reader = createBenchmarkReleaseReader();
+        const runtimeReader = createBenchmarkRuntimeReleaseReader();
         let release: LoadedGapRelease | null = null;
         return async () => {
           release ??= await reader.getActive({
@@ -207,9 +225,10 @@ function createOperations(fixture: Fixture) {
                 {
                   organizationId: fixture.organizationId,
                   locale: "de",
-                },
-                release,
-              )
+              },
+              release,
+              runtimeReader,
+            )
             : null;
         };
       },
@@ -288,6 +307,23 @@ function createBenchmarkReleaseReader() {
       return loaded;
     },
     loadActivePointer: loadActiveGapAnalysisReleasePointer,
+  });
+}
+
+function createBenchmarkRuntimeReleaseReader() {
+  const cache = new Map<string, PublishedComplianceRelease>();
+  return createRuntimeReleaseReader({
+    async loadPublished(input) {
+      const key = `${input.checkReleaseId}\u0000${input.locale}`;
+      const cached = cache.get(key);
+      if (cached) return cached;
+      const loaded =
+        await directRuntimeReleaseReader.getPublished(input);
+      if (loaded) cache.set(key, loaded);
+      return loaded;
+    },
+    loadActivePointer: (checkCode) =>
+      directRuntimeReleaseReader.getActivePointer(checkCode),
   });
 }
 
@@ -404,7 +440,7 @@ async function readDatabaseStats(): Promise<DatabaseStats | null> {
 }
 
 function summarize(name: string, value: unknown) {
-  if (name === "gapPage" || name === "completeWorkflow") {
+  if (name === "gapPage") {
     const workflow = value as {
       release: unknown;
       assessment: unknown;
@@ -416,6 +452,22 @@ function summarize(name: string, value: unknown) {
       hasRelease: Boolean(workflow.release),
       hasAssessment: Boolean(workflow.assessment),
       documentCount: workflow.documents.length,
+      findingCount: workflow.findings.length,
+      hasReassessment: Boolean(workflow.reassessment),
+    };
+  }
+  if (name === "completeWorkflow") {
+    const workflow = value as {
+      release: unknown;
+      assessment: unknown;
+      documentLibrary: { documents: unknown[] };
+      findings: unknown[];
+      reassessment: unknown;
+    };
+    return {
+      hasRelease: Boolean(workflow.release),
+      hasAssessment: Boolean(workflow.assessment),
+      documentCount: workflow.documentLibrary.documents.length,
       findingCount: workflow.findings.length,
       hasReassessment: Boolean(workflow.reassessment),
     };

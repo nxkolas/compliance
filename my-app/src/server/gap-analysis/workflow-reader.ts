@@ -456,10 +456,11 @@ function projectCustomerFinding<
         | "partially_fulfilled"
         | "not_fulfilled"
         | "insufficient_evidence";
-      rationale: string;
-      recommendation: string;
+      severity: "low" | "medium" | "high" | "critical";
       requiresReview: boolean;
+      reviewNotice: string | null;
     };
+    gaps: Array<{ id: string; statement: string; position: number }>;
     requirement: { title: unknown; position: number };
     hasOrganizationDocument: boolean;
     manuallyChanged: boolean;
@@ -471,9 +472,12 @@ function projectCustomerFinding<
     finding: {
       id: row.finding.id,
       status: row.finding.status,
-      rationale: row.finding.rationale,
-      recommendation: row.finding.recommendation,
+      severity: row.finding.severity,
       requiresReview: row.finding.requiresReview,
+      reviewNotice: row.finding.reviewNotice,
+      gaps: (row.gaps ?? [])
+        .sort((left, right) => left.position - right.position)
+        .map((gap) => ({ id: gap.id, statement: gap.statement })),
     },
     requirement: {
       title: row.requirement.title,

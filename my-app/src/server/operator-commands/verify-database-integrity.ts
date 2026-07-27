@@ -2,15 +2,14 @@ import "dotenv/config";
 
 import postgres from "postgres";
 
-const databaseUrl = process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error("DRIZZLE_DATABASE_URL or DATABASE_URL is required");
+const databaseUrl =
+  process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
+if (!databaseUrl)
+  throw new Error("DRIZZLE_DATABASE_URL or DATABASE_URL is required");
 
 const sql = postgres(databaseUrl, { max: 1, prepare: false });
 
-async function expectRejectedTransaction(
-  name: string,
-  statement: string,
-) {
+async function expectRejectedTransaction(name: string, statement: string) {
   await sql.unsafe("begin");
   let committing = false;
   try {
@@ -44,7 +43,8 @@ async function main() {
   `;
   const actualTriggers = new Set(triggers.map((row) => row.tgname));
   for (const trigger of expectedTriggers) {
-    if (!actualTriggers.has(trigger)) throw new Error(`Missing trigger ${trigger}`);
+    if (!actualTriggers.has(trigger))
+      throw new Error(`Missing trigger ${trigger}`);
   }
   const [coverageTriggerFunction] = await sql<{ definition: string }[]>`
     select pg_get_functiondef(
@@ -72,8 +72,8 @@ async function main() {
     "upload_session_results_exactly_one_check",
     "idempotency_record_results_exactly_one_check",
   ];
-  const constraints = await sql<{ conname: string }[]>`
-    select conname
+  const constraints = await sql<{ conname: string; definition: string }[]>`
+    select conname, pg_get_constraintdef(oid) as definition
     from pg_constraint
     where conname in ${sql(expectedConstraints)}
   `;
@@ -82,6 +82,14 @@ async function main() {
     if (!actualConstraints.has(constraint)) {
       throw new Error(`Missing constraint ${constraint}`);
     }
+  }
+  const jobResultConstraint = constraints.find(
+    (row) => row.conname === "background_job_results_exactly_one_check",
+  );
+  if (!jobResultConstraint?.definition.includes("action_plan_id")) {
+    throw new Error(
+      "Background-job typed-result constraint omits Action Plans",
+    );
   }
 
   await expectRejectedTransaction(

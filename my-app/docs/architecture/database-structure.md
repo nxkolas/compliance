@@ -90,7 +90,8 @@ instead of mutating the previous one.
 mutable projection used before submission. Every acknowledged autosave
 increments the draft version; stale writes fail their precondition. Submission
 copies one exact draft version into immutable assessment answers and writes one
-immutable `assessment_requirement_evaluations` row per guided-v4 category.
+immutable `assessment_requirement_evaluations` row per supported guided
+category.
 Those deterministic statuses stay server-side until generation.
 
 Answers and organization facts use typed scalar columns plus relational option
@@ -157,24 +158,39 @@ explicitly; a generated candidate is never mutated by later uploads.
 `ai_processing_runs` and the typed
 `ai_processing_run_{artifact,assessment,document}_inputs` tables make each model
 call durable and pin its input hash, prompt/model metadata, and source records.
-Legal inputs remain explicit in `ai_processing_run_legal_inputs`. The
-generation service retrieves evidence only from selected immutable document
-versions.
+Legal inputs remain explicit in `ai_processing_run_legal_inputs`.
+`legal_source_chunk_provisions` records reviewed exact-anchor bindings from
+operative legal provisions to the official corpus chunks that contain them;
+one instrument chunk may represent several mapped subparagraphs without
+duplicating the underlying source or embedding.
+`ai_processing_run_context` records the versioned retrieval policy, allowlisted
+lexical/semantic/combined scores, mapped-provision role, and compact diagnostic
+snapshot for every admitted context row. The generation service retrieves
+evidence only from selected immutable document versions and admits no
+organization chunk below the pinned relevance floor.
 
 `gap_findings` is the sole authority for one result per applicable requirement.
+It stores the server-owned guidance mode and hashed guidance basis, structured
+objective/deliverables/acceptance criteria/suggested evidence, and the exact AI
+run that authored the current guidance. Database checks pair status with
+guidance mode and prohibit execution guidance on fulfilled findings.
 `gap_finding_evidence` stores exact question or document citations, and
 `gap_finding_review_resolutions` records human resolution history. Invalid or
 incomplete structured output fails closed before a result revision is stored.
 The revision JSON is metadata-only (`gap_revision_metadata_v1`); it cannot
-contain a duplicate `findings` array. Review corrections copy normalized rows
-and their evidence into a new immutable revision.
+contain a duplicate `findings` array. Material review corrections regenerate
+the target finding first, then copy normalized rows and evidence into a new
+immutable revision atomically. Unchanged findings preserve their guidance-run
+lineage.
 
 ## Action plans
 
 `action_plans` stores the one fixed plan produced atomically from the approved
 Gap revision.
-`action_plan_items` stores the immutable baseline derived from a finding plus
-mutable operational fields such as status, responsible user, and due date.
+`action_plan_items` stores immutable measure type, source recommendation,
+objective, deliverables, acceptance criteria, and suggested-evidence snapshots
+derived from a finding. Only status, responsible user, due date, and separate
+execution notes are mutable.
 The current lifecycle creates at most one fixed action plan per organization.
 There is no refresh, replacement, or reconciliation workflow.
 

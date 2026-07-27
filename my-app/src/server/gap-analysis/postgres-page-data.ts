@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { actionPlans, assessmentAnswerOptions, assessmentAnswers, assessments, documentChunks, documentExtractions, documentVersions, documents, gapFindingEvidence, gapFindings, gapReassessmentDrafts, gapRequirementVersions, gapAnalysisReleases, generatedArtifactRevisions, generatedArtifacts, legalSourceChunks, legalSourceProcessingGenerations, legalSourceRenditions, legalSources, legalSourceVersions, questionOptions } from "@/src/db/schema";
+import { actionPlans, assessmentAnswerOptions, assessmentAnswers, assessments, documentChunks, documentExtractions, documentVersions, documents, gapFindingEvidence, gapFindings, gapItems, gapReassessmentDrafts, gapRequirementVersions, gapAnalysisReleases, generatedArtifactRevisions, generatedArtifacts, legalSourceChunks, legalSourceProcessingGenerations, legalSourceRenditions, legalSources, legalSourceVersions, questionOptions } from "@/src/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
@@ -328,6 +328,7 @@ export async function loadFindingsForRevisionIds(revisionIds: string[]) {
           legalSource: (typeof rows)[number]["legalSource"];
         }
       >;
+      gaps: Array<typeof gapItems.$inferSelect>;
     }
   >();
   for (const row of rows) {
@@ -335,6 +336,7 @@ export async function loadFindingsForRevisionIds(revisionIds: string[]) {
       finding: row.finding,
       requirement: row.requirement,
       evidence: [],
+      gaps: [],
     };
     if (
       row.evidence &&
@@ -347,6 +349,30 @@ export async function loadFindingsForRevisionIds(revisionIds: string[]) {
       });
     }
     findings.set(row.finding.id, current);
+  }
+  const atomicGaps = findings.size
+    ? await db.query.gapItems.findMany({
+        columns: {
+          id: true,
+          findingId: true,
+          sourceAssessmentAnswerId: true,
+          questionStableKey: true,
+          kind: true,
+          statement: true,
+          position: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        where: {
+          RAW: (table, operators) =>
+            inArray(table.findingId, [...findings.keys()]) ??
+            operators.sql`true`,
+        },
+        orderBy: { position: "asc" },
+      })
+    : [];
+  for (const gap of atomicGaps) {
+    findings.get(gap.findingId)?.gaps.push(gap);
   }
   return [...findings.values()];
 }

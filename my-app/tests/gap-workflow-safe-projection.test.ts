@@ -134,6 +134,12 @@ describe("customer-safe Gap workflow projection", () => {
         templateHash: "PROMPT_HASH_SENTINEL",
         responseSchemaVersion: "1",
       },
+      actionPlanPrompt: {
+        name: "action-plan",
+        version: "1",
+        templateHash: "ACTION_PROMPT_HASH_SENTINEL",
+        responseSchemaVersion: "1",
+      },
       evaluator: { kind: "deterministic", version: 1 },
       questions: [],
       requirements: [

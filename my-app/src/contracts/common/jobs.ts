@@ -23,6 +23,11 @@ export const jobDtoSchema = z.object({
   finishedAt: z.iso.datetime().nullable(),
   cancellable: z.boolean(),
   resultLink: z.string().nullable(),
+  result: z
+    .object({ actionPlanId: z.uuid() })
+    .strict()
+    .nullable()
+    .optional(),
 });
 
 export type JobDto = z.infer<typeof jobDtoSchema>;

@@ -79,6 +79,31 @@ export async function recordWorkerDomainFailure(
       entityId: job.id,
       metadata: { errorCode },
     });
+  } else if (job.kind === "action-plan-generation") {
+    await db
+      .update(aiProcessingRuns)
+      .set({
+        status: "failed",
+        errorCode,
+        errorMessage: "The background operation failed.",
+        completedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(aiProcessingRuns.jobId, job.id),
+          eq(aiProcessingRuns.status, "processing"),
+        ),
+      );
+    if (job.organizationId) {
+      await db.insert(auditEvents).values({
+        organizationId: job.organizationId,
+        actorUserId: job.requestedByUserId,
+        eventType: "action_plan.generation_failed",
+        entityType: "background_job",
+        entityId: job.id,
+        metadata: { errorCode },
+      });
+    }
   } else if (job.kind === "report-render") {
     await db.update(reports).set({ state: "failed", safeErrorCode: errorCode, completedAt: new Date(), updatedAt: new Date() })
       .where(eq(reports.jobId, job.id));
@@ -89,6 +114,33 @@ export async function recordWorkerDomainCancellation(job: BackgroundJobRecord) {
   if (job.kind === "report-render") {
     await db.update(reports).set({ state: "cancelled", completedAt: new Date(), updatedAt: new Date() })
       .where(eq(reports.jobId, job.id));
+    return;
+  }
+  if (job.kind === "action-plan-generation") {
+    await db
+      .update(aiProcessingRuns)
+      .set({
+        status: "failed",
+        errorCode: "JOB_CANCELLED",
+        errorMessage: "The background operation was cancelled.",
+        completedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(aiProcessingRuns.jobId, job.id),
+          eq(aiProcessingRuns.status, "processing"),
+        ),
+      );
+    if (job.organizationId) {
+      await db.insert(auditEvents).values({
+        organizationId: job.organizationId,
+        actorUserId: job.requestedByUserId,
+        eventType: "action_plan.generation_cancelled",
+        entityType: "background_job",
+        entityId: job.id,
+        metadata: {},
+      });
+    }
     return;
   }
   if (job.kind !== "gap-generation") return;

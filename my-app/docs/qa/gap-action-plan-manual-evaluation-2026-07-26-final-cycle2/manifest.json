@@ -1,0 +1,60 @@
+{
+  "runId": "2026-07-26T21-17-04Z",
+  "startedAt": "2026-07-26T21:17:04.594Z",
+  "completedAt": "2026-07-26T21:35:07.077Z",
+  "humanReview": {
+    "status": "passed",
+    "reviewedAt": "2026-07-26T21:40:46.312Z",
+    "checklist": "manual-review-checklist.md",
+    "reviewedCaseNumbers": [1, 2, 3, 4, 5]
+  },
+  "outputDirectory": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\docs\\qa\\gap-action-plan-manual-evaluation-2026-07-26-final-cycle2",
+  "userId": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+  "cases": [
+    {
+      "number": 1,
+      "slug": "mature-baseline-en",
+      "organizationId": "d6162225-881b-4813-9c1b-63b5c37cc8b2",
+      "generatedRevisionId": "62d1b7cf-e730-4105-81cf-6adc7fe2573a",
+      "finalRevisionId": "62d1b7cf-e730-4105-81cf-6adc7fe2573a",
+      "actionPlanId": "ab63f662-8220-4399-85ee-43ddf86545d4",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 2,
+      "slug": "absent-controls-en",
+      "organizationId": "cc496cc6-d7bf-4b08-8352-ece0f5a5d9a2",
+      "generatedRevisionId": "c8de6647-6765-4f67-a07a-e2808638232b",
+      "finalRevisionId": "c8de6647-6765-4f67-a07a-e2808638232b",
+      "actionPlanId": "d623d878-3eb6-412f-8844-a30b23b8837c",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 3,
+      "slug": "mixed-maturity-en",
+      "organizationId": "3a443668-16dc-4af7-b2f6-7b535b17a8b8",
+      "generatedRevisionId": "c60e2b18-800f-4cf3-8522-98583351b647",
+      "finalRevisionId": "c60e2b18-800f-4cf3-8522-98583351b647",
+      "actionPlanId": "9feb9907-7b7f-4d3f-9af0-1466312b4a8d",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 4,
+      "slug": "uncertain-evidence-de",
+      "organizationId": "76bd5db5-0792-41dd-9616-2fab98940c95",
+      "generatedRevisionId": "32d560cc-95eb-441b-b9ef-d726bad58337",
+      "finalRevisionId": "32d560cc-95eb-441b-b9ef-d726bad58337",
+      "actionPlanId": "e845ee32-61ae-4475-8fae-5e68d03fe754",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 5,
+      "slug": "contradictory-backup-evidence-en",
+      "organizationId": "5bc04a7a-e40c-43b6-8ee7-e986419fa3b9",
+      "generatedRevisionId": "9d18fae9-a7f2-43d7-acda-72bf573c106f",
+      "finalRevisionId": "0cd4ee67-b702-4aa7-b95f-23f342515856",
+      "actionPlanId": "7ac34159-dac3-4db2-90ce-394f3da02caf",
+      "automaticChecksPassed": true
+    }
+  ]
+}

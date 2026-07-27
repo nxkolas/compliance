@@ -71,8 +71,8 @@ export async function retrieveDocumentEvidence(
   validateEmbeddings([queryEmbedding], 1, EMBEDDING_DIMENSIONS);
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
   const fullTextRank = sql<number>`coalesce(ts_rank_cd(${documentChunks.searchVector}, websearch_to_tsquery('simple', ${query})), 0)`;
-  const cosineSimilarity = sql<number>`1 - (${documentChunkEmbeddings.embedding} <=> ${vectorLiteral}::vector)`;
-  const combinedScore = sql<number>`(${fullTextRank} * 0.35) + (${cosineSimilarity} * 0.65)`;
+  const cosineSimilarity = sql<number>`(1 - (${documentChunkEmbeddings.embedding} <=> ${vectorLiteral}::vector))`;
+  const combinedScore = sql<number>`((${fullTextRank}) * 0.35) + ((${cosineSimilarity}) * 0.65)`;
   const limit = Math.max(1, Math.min(12, input.limit ?? 6));
   const evidence = await db
     .select({

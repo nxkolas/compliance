@@ -21,6 +21,12 @@ export type LoadedGapRelease = {
     templateHash: string;
     responseSchemaVersion: string;
   };
+  actionPlanPrompt: {
+    name: string;
+    version: string;
+    templateHash: string;
+    responseSchemaVersion: string;
+  };
   evaluator: { kind: string; version: number };
   questions: Array<{
     id: string;
@@ -30,6 +36,12 @@ export type LoadedGapRelease = {
     helpText: string | null;
     answerType: string;
     required: boolean;
+    legalProvisions: Array<{
+      id: string;
+      key: string;
+      provisionCode: string;
+      position: number;
+    }>;
     options: Array<{
       id: string;
       stableValue: string;
@@ -97,7 +109,7 @@ export async function loadGapAnalysisRelease(
   releaseId: string,
   locale: Locale,
 ): Promise<LoadedGapRelease | null> {
-  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
+  const release = await db.query.gapAnalysisReleases.findFirst({ columns: { id: true, releaseCode: true, versionLabel: true, moduleId: true, questionnaireId: true, questionnaireVersionId: true, requirementSetVersionId: true, compatibleCheckReleaseId: true, promptName: true, promptVersion: true, promptTemplateHash: true, responseSchemaVersion: true, actionPlanPromptName: true, actionPlanPromptVersion: true, actionPlanPromptTemplateHash: true, actionPlanResponseSchemaVersion: true, evaluatorKind: true, evaluatorVersion: true, defaultLocale: true, status: true, aggregateHash: true, corpusReleaseSetHash: true, publishedAt: true, createdAt: true },
     where: { RAW: (table, operators) => (eq(table.id, releaseId)) ?? operators.sql`true` },
   });
   if (!release || release.status !== "published") return null;
@@ -188,6 +200,7 @@ export async function loadGapAnalysisRelease(
         .select({
           questionId: gapQuestionLegalProvisions.questionId,
           position: gapQuestionLegalProvisions.position,
+          legalProvisionId: legalProvisions.id,
           provisionCode: legalProvisions.provisionCode,
           officialSourceUrl: legalProvisions.officialSourceUrl,
           citationContentRevisionId:
@@ -293,6 +306,12 @@ export async function loadGapAnalysisRelease(
       templateHash: release.promptTemplateHash,
       responseSchemaVersion: release.responseSchemaVersion,
     },
+    actionPlanPrompt: {
+      name: release.actionPlanPromptName,
+      version: release.actionPlanPromptVersion,
+      templateHash: release.actionPlanPromptTemplateHash,
+      responseSchemaVersion: release.actionPlanResponseSchemaVersion,
+    },
     evaluator: { kind: release.evaluatorKind, version: release.evaluatorVersion },
     questions: questionRows.map((question) => ({
       id: question.id,
@@ -304,6 +323,15 @@ export async function loadGapAnalysisRelease(
         : null,
       answerType: question.answerType,
       required: question.required,
+      legalProvisions: questionLegalRows
+        .filter((row) => row.questionId === question.id)
+        .sort((left, right) => left.position - right.position)
+        .map((row) => ({
+          id: row.legalProvisionId,
+          key: `${row.instrumentCode}.${row.provisionCode}`,
+          provisionCode: row.provisionCode,
+          position: row.position,
+        })),
       options: optionRows
         .filter((option) => option.questionId === question.id)
         .map((option) => ({

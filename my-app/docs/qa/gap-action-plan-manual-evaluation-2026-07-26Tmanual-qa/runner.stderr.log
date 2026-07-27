@@ -1,0 +1,14 @@
+ApiError: Resolve all review blockers before confirmation
+    at assertGapRevisionApprovable (C:\Users\nikok\Documents\projects\compliancetool\compliance\my-app\src\server\gap-analysis\review-service.ts:114:13)
+    at <anonymous> (C:\Users\nikok\Documents\projects\compliancetool\compliance\my-app\src\server\gap-analysis\finalization-service.ts:212:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async scope (C:\Users\nikok\Documents\projects\compliancetool\compliance\my-app\node_modules\postgres\cjs\src\index.js:260:18)
+    at async Function.begin (C:\Users\nikok\Documents\projects\compliancetool\compliance\my-app\node_modules\postgres\cjs\src\index.js:243:14)
+    at async finalizeGapAnalysisAndGenerateActionPlan (C:\Users\nikok\Documents\projects\compliancetool\compliance\my-app\src\server\gap-analysis\finalization-service.ts:40:12)
+    at async executeCase (C:\Users\nikok\Documents\projects\compliancetool\compliance\my-app\scripts\manual-gap-action-plan-evaluation.ts:573:21)
+    at async main (C:\Users\nikok\Documents\projects\compliancetool\compliance\my-app\scripts\manual-gap-action-plan-evaluation.ts:245:20) {
+  status: 409,
+  details: { findingId: '8267b6f7-b163-49a9-96f1-af5b545ddbb0' },
+  headers: undefined,
+  code: 'GAP_REVIEW_UNRESOLVED'
+}

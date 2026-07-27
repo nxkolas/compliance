@@ -10,18 +10,16 @@ import {
   submitApplicabilityCheckForUser,
   type ApplicabilityAnswerValue,
 } from "@/src/server/applicability-check";
-import { getCurrentActionPlan } from "@/src/server/action-plans";
 import {
-  claimIdempotency,
-  fingerprintRequest,
-} from "@/src/server/api/idempotency";
+  enqueueActionPlanGeneration,
+  getCurrentActionPlan,
+} from "@/src/server/action-plans";
 import { directRuntimeReleaseReader } from "@/src/server/compliance";
 import {
   correctGapRevision,
   createDatabaseGapPageReader,
   createOrOpenGapAssessment,
   directGapReleaseReader,
-  finalizeGapAnalysisAndGenerateActionPlan,
   generateGapReassessment,
   getActiveGapAnalysisRelease,
   getGapAnalysisWorkflow,
@@ -30,7 +28,6 @@ import {
   saveQuestionnaireDraftAnswer,
   submitGapQuestionnaire,
 } from "@/src/server/gap-analysis";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import {
   getOrganizationAiProviderPolicy,
   updateOrganizationAiProviderPolicy,
@@ -244,7 +241,6 @@ async function main() {
   const generatedFindings = await db.query.gapFindings.findMany({
     columns: {
       id: true,
-      rationale: true,
       requiresReview: true,
     },
     where: { RAW: (table, operators) => (eq(table.artifactRevisionId, generated.id)) ?? operators.sql`true` },
@@ -300,25 +296,20 @@ async function main() {
     });
     return;
   }
-  const corrections = generatedFindings
-    .filter((finding, index) => index === 0 || finding.requiresReview)
-    .map((finding, index) => ({
-      findingId: finding.id,
-      ...(index === 0
-        ? {
-            rationale:
-              `${finding.rationale}\n\nAcceptance correction verified.`,
-          }
-        : {}),
-      ...(finding.requiresReview
-        ? {
-            requiresReview: false,
-            resolutionReason:
-              "Acceptance operator resolved the generated review blocker.",
-          }
-        : {}),
-      reason: "Database remediation acceptance correction",
-    }));
+  const correctionTarget =
+    generatedFindings.find((finding) => finding.requiresReview) ??
+    generatedFindings[0]!;
+  const corrections = [{
+    findingId: correctionTarget.id,
+    ...(correctionTarget.requiresReview
+      ? {
+          requiresReview: false,
+          resolutionReason:
+            "Acceptance operator resolved the generated review blocker.",
+        }
+      : {}),
+    reason: "Database remediation acceptance correction",
+  }];
   const corrected = await correctGapRevision({
     userId,
     organizationId: organization.id,
@@ -327,24 +318,15 @@ async function main() {
   });
   assertMetadataOnly(corrected.result, "corrected");
 
-  const request = { gapRevisionId: corrected.id };
-  const claim = await claimIdempotency(databaseIdempotencyRepository, {
-    actorKey: userId,
-    organizationId: organization.id,
-    scope: organization.id,
-    operation: "action-plan.generate",
-    key: `remediation-gap-finalize-${randomUUID()}`,
-    requestFingerprint: fingerprintRequest(request),
-  });
-  if (claim.kind !== "started") {
-    throw new Error("Finalization idempotency claim unexpectedly replayed");
-  }
-  const finalized = await finalizeGapAnalysisAndGenerateActionPlan({
+  await enqueueActionPlanGeneration({
     userId,
     organizationId: organization.id,
-    gapRevisionId: corrected.id,
-    command: claim.record,
+    sourceGapRevisionId: corrected.id,
   });
+  const actionWorked = await runOneJobWithClockSkewTolerance();
+  if (!actionWorked) {
+    throw new Error("The queued Action Plan generation job was not leased");
+  }
   const pageReader = createDatabaseGapPageReader(
     directGapReleaseReader,
     directRuntimeReleaseReader,
@@ -366,7 +348,7 @@ async function main() {
     workflow.revision?.id !== corrected.id ||
     repeatedWorkflow.revision?.id !== corrected.id ||
     workflow.findings.length !== generatedFindings.length ||
-    currentPlan?.plan.id !== finalized.plan.id
+    !currentPlan
   ) {
     throw new Error(
       "Read-only workflow does not reflect the finalized correction",
@@ -381,7 +363,7 @@ async function main() {
     generationJobId,
     generatedRevisionId: generated.id,
     correctedRevisionId: corrected.id,
-    actionPlanId: finalized.plan.id,
+    actionPlanId: currentPlan.plan.id,
     findingCount: workflow.findings.length,
     resumedFinalized: false,
   });

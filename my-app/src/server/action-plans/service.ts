@@ -1,60 +1,80 @@
 import { db } from "@/src/db";
-import { actionPlanItems, actionPlans, auditEvents } from "@/src/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import {
+  actionPlanItems,
+  actionPlans,
+  auditEvents,
+} from "@/src/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { getGapRevisionStaleness } from "@/src/server/gap-analysis";
 import {
   assertCanAccessOrganization,
   assertCanContributeToOrganization,
 } from "../organizations/service";
+import {
+  getGapRevisionStaleness,
+  loadGapAnalysisRelease,
+} from "../gap-analysis";
 
-type PlanSourceFinding = {
-  id: string;
-  status:
-    | "fulfilled"
-    | "partially_fulfilled"
-    | "not_fulfilled"
-    | "insufficient_evidence";
-  severity: "low" | "medium" | "high" | "critical";
-  requirementTitle: string;
-  recommendation: string;
-};
+const planColumns = {
+  id: true,
+  organizationId: true,
+  sourceGapArtifactRevisionId: true,
+  outputLocale: true,
+  generationRunId: true,
+  generationJobId: true,
+  status: true,
+  revisionNumber: true,
+  activatedBy: true,
+  activatedAt: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+  archivedAt: true,
+  version: true,
+} as const;
 
-export function buildActionPlanItems(findings: PlanSourceFinding[]) {
-  return findings
-    .filter((finding) => finding.status !== "fulfilled")
-    .map((finding) => ({
-      sourceFindingId: finding.id,
-      title: finding.requirementTitle,
-      description: finding.recommendation,
-      priority: finding.severity,
-      status: "open" as const,
-    }));
-}
+const itemColumns = {
+  id: true,
+  actionPlanId: true,
+  sourceFindingId: true,
+  title: true,
+  result: true,
+  suggestedEvidence: true,
+  position: true,
+  executionNotes: true,
+  priority: true,
+  status: true,
+  ownerUserId: true,
+  dueDate: true,
+  createdAt: true,
+  updatedAt: true,
+  version: true,
+} as const;
 
 export async function getCurrentActionPlan(
   userId: string,
   organizationId: string,
 ) {
   await assertCanAccessOrganization(userId, organizationId);
-  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.organizationId, organizationId),
-      eq(table.status, "active"),
-    )) ?? operators.sql`true` },
+  const plan = await db.query.actionPlans.findFirst({
+    columns: planColumns,
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.organizationId, organizationId),
+          eq(table.status, "active"),
+        ) ?? operators.sql`true`,
+    },
     orderBy: { createdAt: "desc" },
   });
   if (!plan) return null;
-  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, description: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
-    where: { RAW: (table, operators) => (eq(table.actionPlanId, plan.id)) ?? operators.sql`true` },
-    orderBy: { priority: "desc", createdAt: "asc" },
-  });
+  const categories = await loadGroupedItems(plan);
   const sourceStaleness = await getGapRevisionStaleness({
     userId,
     organizationId,
     revisionId: plan.sourceGapArtifactRevisionId,
   });
-  return { plan, items, sourceStaleness };
+  return { plan, categories, sourceStaleness };
 }
 
 export async function getActionPlanDetail(
@@ -63,11 +83,15 @@ export async function getActionPlanDetail(
   planId: string,
 ) {
   await assertCanAccessOrganization(userId, organizationId);
-  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.id, planId),
-      eq(table.organizationId, organizationId),
-    )) ?? operators.sql`true` },
+  const plan = await db.query.actionPlans.findFirst({
+    columns: planColumns,
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, planId),
+          eq(table.organizationId, organizationId),
+        ) ?? operators.sql`true`,
+    },
   });
   if (!plan) {
     throw new ApiError(
@@ -77,11 +101,88 @@ export async function getActionPlanDetail(
       "ACTION_PLAN_NOT_FOUND",
     );
   }
-  const items = await db.query.actionPlanItems.findMany({ columns: { id: true, actionPlanId: true, sourceFindingId: true, title: true, description: true, priority: true, status: true, ownerUserId: true, dueDate: true, createdAt: true, updatedAt: true, version: true },
-    where: { RAW: (table, operators) => (eq(table.actionPlanId, plan.id)) ?? operators.sql`true` },
-    orderBy: { priority: "desc", createdAt: "asc" },
+  return { plan, categories: await loadGroupedItems(plan) };
+}
+
+async function loadGroupedItems(plan: {
+  id: string;
+  sourceGapArtifactRevisionId: string;
+  outputLocale: string;
+}) {
+  if (plan.outputLocale !== "de" && plan.outputLocale !== "en") {
+    throw new ApiError(
+      409,
+      "Action Plan locale is invalid",
+      undefined,
+      "GAP_OUTPUT_LOCALE_INVALID",
+    );
+  }
+  const revision =
+    await db.query.generatedArtifactRevisions.findFirst({
+      columns: { gapAnalysisReleaseId: true },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.id, plan.sourceGapArtifactRevisionId) ??
+          operators.sql`true`,
+      },
+    });
+  if (!revision?.gapAnalysisReleaseId) {
+    throw new ApiError(
+      409,
+      "Action Plan source release is unavailable",
+      undefined,
+      "GAP_INPUT_SNAPSHOT_INVALID",
+    );
+  }
+  const release = await loadGapAnalysisRelease(
+    revision.gapAnalysisReleaseId,
+    plan.outputLocale,
+  );
+  if (!release) {
+    throw new ApiError(
+      409,
+      "Action Plan source release is unavailable",
+      undefined,
+      "GAP_INPUT_SNAPSHOT_INVALID",
+    );
+  }
+  const items = await db.query.actionPlanItems.findMany({
+    columns: itemColumns,
+    where: {
+      RAW: (table, operators) =>
+        eq(table.actionPlanId, plan.id) ?? operators.sql`true`,
+    },
   });
-  return { plan, items };
+  const findings = items.length
+    ? await db.query.gapFindings.findMany({
+        columns: { id: true, requirementVersionId: true },
+        where: {
+          RAW: (table, operators) =>
+            inArray(
+              table.id,
+              items.map((item) => item.sourceFindingId),
+            ) ?? operators.sql`true`,
+        },
+      })
+    : [];
+  const findingById = new Map(
+    findings.map((finding) => [finding.id, finding]),
+  );
+  return release.requirements
+    .map((requirement) => ({
+      requirementVersionId: requirement.id,
+      title: requirement.title,
+      position: requirement.position,
+      actions: items
+        .filter(
+          (item) =>
+            findingById.get(item.sourceFindingId)
+              ?.requirementVersionId === requirement.id,
+        )
+        .sort((left, right) => left.position - right.position),
+    }))
+    .filter((category) => category.actions.length > 0)
+    .sort((left, right) => left.position - right.position);
 }
 
 export async function updateActionPlanItem(input: {
@@ -91,6 +192,7 @@ export async function updateActionPlanItem(input: {
   status?: "open" | "in_progress" | "done" | "cancelled";
   ownerUserId?: string | null;
   dueDate?: string | null;
+  executionNotes?: string;
   expectedVersion: number;
 }) {
   await assertCanContributeToOrganization(
@@ -114,15 +216,16 @@ export async function updateActionPlanItem(input: {
     .limit(1);
   if (!current) throw new ApiError(404, "Action-plan item not found");
   if (input.ownerUserId) {
-    const owner = await db.query.organizationMemberships.findFirst({ columns: { id: true, organizationId: true, userId: true, role: true, status: true, version: true, createdAt: true, updatedAt: true },
-      where: { RAW: (table, operators) => (and(
-        eq(
-          table.organizationId,
-          input.organizationId,
-        ),
-        eq(table.userId, input.ownerUserId!),
-        eq(table.status, "active"),
-      )) ?? operators.sql`true` },
+    const owner = await db.query.organizationMemberships.findFirst({
+      columns: { id: true },
+      where: {
+        RAW: (table, operators) =>
+          and(
+            eq(table.organizationId, input.organizationId),
+            eq(table.userId, input.ownerUserId!),
+            eq(table.status, "active"),
+          ) ?? operators.sql`true`,
+      },
     });
     if (!owner) {
       throw new ApiError(
@@ -131,8 +234,17 @@ export async function updateActionPlanItem(input: {
       );
     }
   }
-  if (input.dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)) {
+  if (
+    input.dueDate &&
+    !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)
+  ) {
     throw new ApiError(400, "dueDate must use YYYY-MM-DD");
+  }
+  if (
+    input.executionNotes !== undefined &&
+    input.executionNotes.length > 20_000
+  ) {
+    throw new ApiError(400, "executionNotes is too long");
   }
   const updatedAt = new Date();
   const changes = {
@@ -141,6 +253,9 @@ export async function updateActionPlanItem(input: {
       ? { ownerUserId: input.ownerUserId }
       : {}),
     ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
+    ...(input.executionNotes !== undefined
+      ? { executionNotes: input.executionNotes }
+      : {}),
     updatedAt,
   };
   return db.transaction(async (tx) => {

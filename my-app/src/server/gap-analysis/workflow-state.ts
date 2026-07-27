@@ -132,7 +132,7 @@ export function countGapStatuses(
   };
   for (const row of findings) {
     counts[row.finding.status] += 1;
-    if (row.finding.status !== "fulfilled") counts.all += 1;
+    counts.all += 1;
   }
   return counts;
 }
@@ -145,8 +145,6 @@ export function sortGapFindings<
 >(findings: T[]) {
   return [...findings].sort(
     (left, right) =>
-      gapStatusOrder.indexOf(left.finding.status) -
-        gapStatusOrder.indexOf(right.finding.status) ||
       left.requirement.position - right.requirement.position,
   );
 }

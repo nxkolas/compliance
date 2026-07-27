@@ -1,0 +1,74 @@
+
+[1/5] Mature baseline (English, no documents)
+Worker job started {
+  jobId: '5906d88a-5cb2-4332-b684-1b32260656a1',
+  kind: 'gap-generation',
+  attempt: 1
+}
+Worker job finished {
+  jobId: '5906d88a-5cb2-4332-b684-1b32260656a1',
+  kind: 'gap-generation',
+  outcome: 'succeeded',
+  durationMs: 39283,
+  attempt: 1
+}
+Saved case 1: QA Gap Eval 2026-07-26Tmanual-qa 1 — Mature baseline (English, no documents) (a442a223-ae0e-4bee-b15a-3f585c319ced)
+
+[2/5] Absent controls (English)
+Worker job started {
+  jobId: '7ac1e3c3-339a-42fd-900a-f236e77bc057',
+  kind: 'gap-generation',
+  attempt: 1
+}
+Worker job finished {
+  jobId: '7ac1e3c3-339a-42fd-900a-f236e77bc057',
+  kind: 'gap-generation',
+  outcome: 'succeeded',
+  durationMs: 27160,
+  attempt: 1
+}
+Saved case 2: QA Gap Eval 2026-07-26Tmanual-qa 2 — Absent controls (English) (6af53394-6ed3-4b24-9b87-e66ecaac4e4d)
+
+[3/5] Mixed maturity (English)
+Worker job started {
+  jobId: '71bf0980-869a-4069-9d31-704da44e42fe',
+  kind: 'gap-generation',
+  attempt: 1
+}
+Worker job finished {
+  jobId: '71bf0980-869a-4069-9d31-704da44e42fe',
+  kind: 'gap-generation',
+  outcome: 'succeeded',
+  durationMs: 113456,
+  attempt: 1
+}
+Saved case 3: QA Gap Eval 2026-07-26Tmanual-qa 3 — Mixed maturity (English) (92947386-b668-402c-a0e6-0dd0783ceaac)
+
+[4/5] Evidence uncertainty (German)
+Worker job started {
+  jobId: '53aa1863-8fd8-4e07-97cb-72b943547a3d',
+  kind: 'gap-generation',
+  attempt: 1
+}
+Worker job finished {
+  jobId: '53aa1863-8fd8-4e07-97cb-72b943547a3d',
+  kind: 'gap-generation',
+  outcome: 'succeeded',
+  durationMs: 44758,
+  attempt: 1
+}
+Saved case 4: QA Gap Eval 2026-07-26Tmanual-qa 4 — Evidence uncertainty (German) (42542779-eb81-44a7-8c9d-588182adaacc)
+
+[5/5] Contradictory backup evidence (English)
+Worker job started {
+  jobId: 'e58519ce-725c-4ebf-a420-bdf9389bcfe1',
+  kind: 'gap-generation',
+  attempt: 1
+}
+Worker job finished {
+  jobId: 'e58519ce-725c-4ebf-a420-bdf9389bcfe1',
+  kind: 'gap-generation',
+  outcome: 'succeeded',
+  durationMs: 55497,
+  attempt: 1
+}

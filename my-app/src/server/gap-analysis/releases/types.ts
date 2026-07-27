@@ -24,7 +24,7 @@ export type GapRequirementDefinition = {
   criticality: "low" | "medium" | "high" | "critical";
   title: LocalizedText;
   requirementText: LocalizedText;
-  /** Legacy demo-only references. guided-v4 derives these relationally. */
+  /** Optional placeholder references; published releases derive authority relationally. */
   legalReferences: Array<{
     label: LocalizedText;
     url: string;
@@ -42,6 +42,12 @@ export type GapAnalysisReleaseDefinition = {
   requiredCorpusFamilies: string[];
   defaultLocale: "de" | "en";
   prompt: {
+    name: string;
+    version: string;
+    templateHash: string;
+    responseSchemaVersion: string;
+  };
+  actionPlanPrompt?: {
     name: string;
     version: string;
     templateHash: string;

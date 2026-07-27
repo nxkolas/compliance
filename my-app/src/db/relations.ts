@@ -318,4 +318,66 @@ export const relations = defineRelations(schema, (r) => ({
       optional: false,
     }),
   },
+  gapFindings: {
+    gaps: r.many.gapItems(),
+    evidence: r.many.gapFindingEvidence(),
+    actions: r.many.actionPlanItems(),
+  },
+  gapFindingEvidence: {
+    finding: r.one.gapFindings({
+      from: r.gapFindingEvidence.findingId,
+      to: r.gapFindings.id,
+      optional: false,
+    }),
+    gapLinks: r.many.gapItemEvidence(),
+  },
+  gapItems: {
+    finding: r.one.gapFindings({
+      from: r.gapItems.findingId,
+      to: r.gapFindings.id,
+      optional: false,
+    }),
+    evidenceLinks: r.many.gapItemEvidence(),
+    actionLinks: r.many.actionPlanItemGaps(),
+  },
+  gapItemEvidence: {
+    gap: r.one.gapItems({
+      from: r.gapItemEvidence.gapItemId,
+      to: r.gapItems.id,
+      optional: false,
+    }),
+    evidence: r.one.gapFindingEvidence({
+      from: r.gapItemEvidence.gapFindingEvidenceId,
+      to: r.gapFindingEvidence.id,
+      optional: false,
+    }),
+  },
+  actionPlans: {
+    items: r.many.actionPlanItems(),
+  },
+  actionPlanItems: {
+    plan: r.one.actionPlans({
+      from: r.actionPlanItems.actionPlanId,
+      to: r.actionPlans.id,
+      optional: false,
+    }),
+    sourceFinding: r.one.gapFindings({
+      from: r.actionPlanItems.sourceFindingId,
+      to: r.gapFindings.id,
+      optional: false,
+    }),
+    gapLinks: r.many.actionPlanItemGaps(),
+  },
+  actionPlanItemGaps: {
+    action: r.one.actionPlanItems({
+      from: r.actionPlanItemGaps.actionPlanItemId,
+      to: r.actionPlanItems.id,
+      optional: false,
+    }),
+    gap: r.one.gapItems({
+      from: r.actionPlanItemGaps.gapItemId,
+      to: r.gapItems.id,
+      optional: false,
+    }),
+  },
 }));

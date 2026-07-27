@@ -37,6 +37,29 @@ export async function assertGapInputsMutable(input: {
 }
 
 export async function assertGapFindingsMutable(organizationId: string) {
+  const reservation = await db.query.backgroundJobs.findFirst({
+    columns: { id: true },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.organizationId, organizationId),
+          eq(table.kind, "action-plan-generation"),
+          operators.inArray(table.state, [
+            "queued",
+            "running",
+            "cancellation_requested",
+          ]),
+        ) ?? operators.sql`true`,
+    },
+  });
+  if (reservation) {
+    throw new ApiError(
+      409,
+      "The Gap Analysis is reserved for Action Plan generation",
+      undefined,
+      "GAP_RESERVED_BY_ACTION_PLAN_GENERATION",
+    );
+  }
   const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true },
     where: { RAW: (table, operators) => (and(
       eq(table.organizationId, organizationId),

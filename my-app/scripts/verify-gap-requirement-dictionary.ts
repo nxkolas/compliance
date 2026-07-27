@@ -23,6 +23,11 @@ type RequirementRow = {
 };
 
 async function main() {
+  const releaseReference = readArgument("--release");
+  if (releaseReference) {
+    await verifyPublishedMappedAuthority(releaseReference);
+    return;
+  }
   const columns = await sql<
     { column_name: string; is_nullable: "YES" | "NO" }[]
   >`
@@ -162,6 +167,14 @@ async function main() {
     getActiveGapAnalysisRelease("nis2-gap", "en"),
   ]);
   assert(german && english, "The active Gap release did not load bilingually");
+  assert(
+    german.versionLabel === "guided-v6" &&
+      german.prompt.version === "7" &&
+      german.prompt.responseSchemaVersion === "7" &&
+      german.actionPlanPrompt.version === "1" &&
+      german.actionPlanPrompt.responseSchemaVersion === "1",
+    "The active Gap release is not guided-v6 contracts 7/1",
+  );
   const germanById = new Map(
     german.requirements.map((requirement) => [requirement.id, requirement]),
   );
@@ -187,22 +200,216 @@ async function main() {
     );
   }
 
+  const missingMappedAuthority = await sql<
+    {
+      question_stable_key: string;
+      provision_key: string;
+    }[]
+  >`
+    with active_release as (
+      select release.*
+      from active_gap_analysis_releases active
+      join gap_analysis_releases release
+        on release.id = active.gap_analysis_release_id
+      where active.release_code = 'nis2-gap'
+        and release.version_label = 'guided-v6'
+    ),
+    mapped as (
+      select question.stable_key as question_stable_key,
+        mapping.legal_provision_id,
+        instrument.code || '.' || provision.provision_code
+          as provision_key
+      from active_release release
+      join questions question
+        on question.questionnaire_version_id =
+          release.questionnaire_version_id
+      join gap_question_legal_provisions mapping
+        on mapping.question_id = question.id
+      join legal_provisions provision
+        on provision.id = mapping.legal_provision_id
+      join legal_instrument_versions instrument_version
+        on instrument_version.id =
+          provision.legal_instrument_version_id
+      join legal_instruments instrument
+        on instrument.id = instrument_version.legal_instrument_id
+    )
+    select mapped.question_stable_key, mapped.provision_key
+    from mapped
+    where not exists (
+      select 1
+      from active_release release
+      join gap_analysis_release_corpus_releases pin
+        on pin.gap_analysis_release_id = release.id
+      join legal_corpus_release_members member
+        on member.release_id = pin.corpus_release_id
+      join legal_source_versions source_version
+        on source_version.id = member.source_version_id
+      join legal_sources source
+        on source.id = source_version.source_id
+       and source.authority_tier = 'primary_authority'
+      join legal_source_renditions rendition
+        on rendition.id = member.rendition_id
+       and rendition.translation_status = 'official'
+      join legal_source_processing_generations generation
+        on generation.id = member.processing_generation_id
+       and generation.state = 'reviewed'
+      join legal_source_chunks chunk
+        on chunk.generation_id = generation.id
+      join legal_source_chunk_provisions chunk_provision
+        on chunk_provision.chunk_id = chunk.id
+       and chunk_provision.legal_provision_id =
+          mapped.legal_provision_id
+      join legal_source_chunk_embeddings embedding
+        on embedding.generation_id = generation.id
+       and embedding.chunk_id = chunk.id
+    )
+    order by mapped.question_stable_key, mapped.provision_key
+  `;
+  assert(
+    missingMappedAuthority.length === 0,
+    `Mapped primary authority coverage is incomplete: ${missingMappedAuthority
+      .map(
+        (row) =>
+          `${row.question_stable_key}/${row.provision_key}`,
+      )
+      .join(", ")}`,
+  );
+
+}
+
+async function verifyPublishedMappedAuthority(releaseReference: string) {
+  const separator = releaseReference.lastIndexOf("/");
+  assert(separator > 0, "Gap release must use <code>/<version>");
+  const releaseCode = releaseReference.slice(0, separator);
+  const versionLabel = releaseReference.slice(separator + 1);
+  const releases = await sql<
+    {
+      id: string;
+      prompt_version: string;
+      response_schema_version: string;
+      action_plan_prompt_version: string;
+      action_plan_response_schema_version: string;
+      status: string;
+      question_count: number;
+      requirement_count: number;
+    }[]
+  >`
+    select release.id,
+      release.prompt_version,
+      release.response_schema_version,
+      release.action_plan_prompt_version,
+      release.action_plan_response_schema_version,
+      release.status,
+      (
+        select count(*)::int
+        from questions question
+        where question.questionnaire_version_id =
+          release.questionnaire_version_id
+      ) as question_count,
+      (
+        select count(*)::int
+        from gap_requirement_set_members member
+        where member.requirement_set_version_id =
+          release.requirement_set_version_id
+      ) as requirement_count
+    from gap_analysis_releases release
+    where release.release_code = ${releaseCode}
+      and release.version_label = ${versionLabel}
+  `;
+  const release = releases[0];
+  assert(release, `Published Gap release ${releaseReference} is missing`);
+  assert(
+    release.status === "published" &&
+      release.prompt_version === "7" &&
+      release.response_schema_version === "7" &&
+      release.action_plan_prompt_version === "1" &&
+      release.action_plan_response_schema_version === "1" &&
+      release.question_count === 31 &&
+      release.requirement_count === 10,
+    `Published Gap release ${releaseReference} does not match guided-v6 contract 7`,
+  );
+  const missing = await sql<
+    { question_stable_key: string; provision_key: string }[]
+  >`
+    with mapped as (
+      select question.stable_key as question_stable_key,
+        mapping.legal_provision_id,
+        instrument.code || '.' || provision.provision_code
+          as provision_key
+      from gap_analysis_releases release
+      join questions question
+        on question.questionnaire_version_id =
+          release.questionnaire_version_id
+      join gap_question_legal_provisions mapping
+        on mapping.question_id = question.id
+      join legal_provisions provision
+        on provision.id = mapping.legal_provision_id
+      join legal_instrument_versions instrument_version
+        on instrument_version.id =
+          provision.legal_instrument_version_id
+      join legal_instruments instrument
+        on instrument.id = instrument_version.legal_instrument_id
+      where release.id = ${release.id}
+    )
+    select mapped.question_stable_key, mapped.provision_key
+    from mapped
+    where not exists (
+      select 1
+      from gap_analysis_release_corpus_releases pin
+      join legal_corpus_release_members member
+        on member.release_id = pin.corpus_release_id
+      join legal_source_versions source_version
+        on source_version.id = member.source_version_id
+      join legal_sources source
+        on source.id = source_version.source_id
+       and source.authority_tier = 'primary_authority'
+      join legal_source_renditions rendition
+        on rendition.id = member.rendition_id
+       and rendition.translation_status = 'official'
+      join legal_source_processing_generations generation
+        on generation.id = member.processing_generation_id
+       and generation.state = 'reviewed'
+      join legal_source_chunks chunk
+        on chunk.generation_id = generation.id
+      join legal_source_chunk_provisions chunk_provision
+        on chunk_provision.chunk_id = chunk.id
+       and chunk_provision.legal_provision_id =
+          mapped.legal_provision_id
+      join legal_source_chunk_embeddings embedding
+        on embedding.generation_id = generation.id
+       and embedding.chunk_id = chunk.id
+      where pin.gap_analysis_release_id = ${release.id}
+    )
+    order by mapped.question_stable_key, mapped.provision_key
+  `;
+  assert(
+    missing.length === 0,
+    `Mapped primary authority coverage is incomplete: ${missing
+      .map(
+        (row) =>
+          `${row.question_stable_key}/${row.provision_key}`,
+      )
+      .join(", ")}`,
+  );
   console.log(
     JSON.stringify(
       {
-        activeReleaseId: german.id,
-        requirements: requirements.map((row) => ({
-          id: row.requirement_version_id,
-          code: row.code,
-          titleContentRevisionId: row.title_content_revision_id,
-          requirementTextContentRevisionId:
-            row.requirement_text_content_revision_id,
-        })),
+        releaseReference,
+        releaseId: release.id,
+        questionCount: release.question_count,
+        requirementCount: release.requirement_count,
+        mappedPrimaryAuthorityCoverage: "complete",
+        activationReady: true,
       },
       null,
       2,
     ),
   );
+}
+
+function readArgument(name: string) {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
 function assertExactlyBilingual(

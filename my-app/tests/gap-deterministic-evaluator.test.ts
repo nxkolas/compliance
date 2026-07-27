@@ -3,11 +3,8 @@ import {
   evaluateGapCategory,
   evaluateGapRequirement,
 } from "@/src/server/gap-analysis/deterministic-evaluator";
-import {
-  buildGapModelResponseSchemaV5,
-} from "@/src/server/gap-analysis/generation-schema";
 
-describe("guided-v4 deterministic category evaluator", () => {
+describe("guided-v6 deterministic category evaluator", () => {
   it.each([
     [["fully_implemented"], "fulfilled"],
     [["fully_implemented", "not_applicable"], "fulfilled"],
@@ -66,36 +63,5 @@ describe("guided-v4 deterministic category evaluator", () => {
         answers: [{ ...base.answers[0], stableValue: "not_implemented" }],
       }).inputHash,
     );
-  });
-
-  it("rejects a model-supplied status in response schema v5", () => {
-    const schema = buildGapModelResponseSchemaV5([
-      {
-        requirementCode: "NIS2-GOV-01",
-        permittedCitationIds: ["L:1"],
-        legalCitationIds: ["L:1"],
-      },
-    ]);
-    const finding = {
-      evidenceSufficiency: "sufficient",
-      rationale: "Rationale",
-      recommendation: "Recommendation",
-      assumptions: [],
-      legalCitation: "L:1",
-      citations: [],
-      contradictions: [],
-      questionnaireDisagreements: [],
-      requiresReview: false,
-    };
-    expect(
-      schema.safeParse({ findings: { "NIS2-GOV-01": finding } }).success,
-    ).toBe(true);
-    expect(
-      schema.safeParse({
-        findings: {
-          "NIS2-GOV-01": { ...finding, status: "fulfilled" },
-        },
-      }).success,
-    ).toBe(false);
   });
 });

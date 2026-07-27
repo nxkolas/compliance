@@ -35,6 +35,7 @@ const expectedTables = [
   "legal_corpus_releases",
   "legal_source_change_alerts",
   "legal_source_chunk_embeddings",
+  "legal_source_chunk_provisions",
   "legal_source_chunks",
   "legal_source_monitor_checks",
   "legal_source_monitors",
