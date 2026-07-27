@@ -161,6 +161,18 @@ export function ApplicabilityQuestionnaireForm({
     Math.max(visibleQuestions.length - 1, 0),
   );
 
+  function markQuestionAsInteracted(questionId: string) {
+    setInteractedQuestionIds((current) => {
+      if (current.has(questionId)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(questionId);
+      return next;
+    });
+  }
+
   function updateAnswer(
     question: ApplicabilityQuestionDto,
     value: ApplicabilityAnswerValue,
@@ -171,12 +183,18 @@ export function ApplicabilityQuestionnaireForm({
         [question.id]: value,
       }),
     );
-    setInteractedQuestionIds((current) => {
-      const next = new Set(current);
-      next.add(question.id);
-      return next;
-    });
+    markQuestionAsInteracted(question.id);
     setNotice({ message: null, tone: "default" });
+  }
+
+  function navigateToQuestion(index: number) {
+    const activeQuestion = visibleQuestions[activeQuestionIndex];
+
+    if (activeQuestion && isAnswered(answers[activeQuestion.id])) {
+      markQuestionAsInteracted(activeQuestion.id);
+    }
+
+    setCurrentQuestionIndex(index);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -254,7 +272,7 @@ export function ApplicabilityQuestionnaireForm({
           isSubmitting={isSubmitting}
           labels={labels}
           onAnswerChange={updateAnswer}
-          onQuestionSelect={setCurrentQuestionIndex}
+          onQuestionSelect={navigateToQuestion}
           progress={questionnaireProgress}
           requiredComplete={requiredComplete}
           questionCount={catalogQuestions.length}
