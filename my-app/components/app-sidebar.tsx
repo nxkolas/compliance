@@ -37,6 +37,7 @@ export function AppSidebar({
         top-0
         h-svh
         max-h-svh
+        min-h-0
         w-96
         shrink-0
         overflow-hidden

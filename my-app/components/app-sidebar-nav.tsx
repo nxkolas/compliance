@@ -110,10 +110,10 @@ export function AppSidebarNav({
   };
 
   return (
-    <div className="h-svh w-full overflow-y-auto bg-transparent font-['Space_Grotesk']">
-      <div className="relative min-h-[max(100svh,1117px)] w-full bg-transparent">
+    <div className="h-svh w-full overflow-hidden bg-transparent font-['Space_Grotesk']">
+      <div className="flex h-full min-h-0 w-full flex-col bg-transparent px-[54px] py-[52px] [@media(max-height:950px)]:py-5">
         {/* Logo */}
-        <SidebarHeader className="absolute left-[54px] top-[52px] w-72 bg-transparent p-0">
+        <SidebarHeader className="w-72 shrink-0 bg-transparent p-0">
           <Link
             href="/tool/organizations"
             className="inline-flex w-72 flex-col items-start gap-4"
@@ -155,12 +155,12 @@ export function AppSidebarNav({
         {/* Organisationsauswahl */}
         <div
           className="
-            absolute
-            left-[54px]
-            top-[231px]
+            mt-[79px]
             h-12
             w-72
             min-w-0
+            shrink-0
+            [@media(max-height:950px)]:mt-5
 
             [&>*]:h-12
             [&>*]:w-full
@@ -191,18 +191,20 @@ export function AppSidebarNav({
         {mainLinks.length > 0 && (
           <SidebarContent
             className="
-              absolute
-              left-[54px]
-              top-[331px]
+              mt-[52px]
+              min-h-0
               w-72
-              flex-none
-              overflow-visible
+              flex-1
+              overflow-x-hidden
+              overflow-y-auto
+              overscroll-contain
               bg-transparent
               p-0
+              [@media(max-height:950px)]:mt-5
             "
           >
             <SidebarGroup className="w-72 p-0">
-              <SidebarMenu className="w-72 gap-4">
+              <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2">
                 {mainLinks.map((link) => (
                   <SidebarLink
                     key={link.href}
@@ -218,16 +220,15 @@ export function AppSidebarNav({
         {/* Einstellungen, Tutorial und Profil */}
         <SidebarFooter
           className="
-            absolute
-            bottom-[54px]
-            left-[54px]
+            mt-auto
             w-72
+            shrink-0
             bg-transparent
             p-0
           "
         >
           <SidebarGroup className="w-72 p-0">
-            <SidebarMenu className="w-72 gap-4">
+            <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2">
               {settingsLink ? (
                 <SidebarLink
                   currentPath={pathname}
