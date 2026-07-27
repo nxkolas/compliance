@@ -200,6 +200,7 @@ export const organizationsMessages = defineFeatureMessages({
           description: "Sende eine Einladung per E-Mail an diese Organisation.",
           email: "E-Mail",
           emailPlaceholder: "teammitglied@beispiel.de",
+          dialogEmailPlaceholder: "E-Mail eingeben",
           role: "Rolle",
           roles: {
             owner: "Inhaber",
@@ -431,6 +432,7 @@ export const organizationsMessages = defineFeatureMessages({
           description: "Send an invitation to this organization by email.",
           email: "Email",
           emailPlaceholder: "teammate@example.com",
+          dialogEmailPlaceholder: "Enter email",
           role: "Role",
           roles: {
             owner: "Owner",

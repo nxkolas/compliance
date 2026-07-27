@@ -25,9 +25,10 @@ import type {
   OrganizationInvitationDto,
   OrganizationRole,
 } from "@/src/server/organizations/types";
-import { Loader2, Send } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { Loader2, MailSearch, Plus, Send, Trash2 } from "lucide-react";
+import { FormEvent, type ReactNode, useState } from "react";
 import { organizationsClient } from "@/src/client/organizations";
+import { OrganizationAvatar } from "./organization-avatar";
 
 type SerializedInvitation = SerializeDates<OrganizationInvitationDto>;
 
@@ -37,6 +38,8 @@ type OrganizationInvitePanelProps = {
   labels: Dictionary["invite"];
   locale: Locale;
   canManage: boolean;
+  presentation?: "default" | "dialog";
+  children?: ReactNode;
 };
 
 type InviteState = {
@@ -69,6 +72,8 @@ export function OrganizationInvitePanel({
   labels,
   locale,
   canManage,
+  presentation = "default",
+  children,
 }: OrganizationInvitePanelProps) {
   const [invitations, setInvitations] = useState(initialInvitations);
   const [inviteForm, setInviteForm] = useState<InviteState>({
@@ -144,6 +149,167 @@ export function OrganizationInvitePanel({
     } finally {
       setPendingAction(null);
     }
+  }
+
+  if (presentation === "dialog") {
+    const pendingInvitations = invitations.filter(
+      (invitation) => invitation.status === "pending",
+    );
+
+    return (
+      <div className="grid">
+        {notice.message && (
+          <div
+            role="status"
+            className={cn(
+              "mb-3 rounded-lg border px-4 py-3 text-sm",
+              notice.tone === "success" &&
+                "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+              notice.tone === "error" &&
+                "border-red-500/40 bg-red-500/10 text-red-300",
+            )}
+          >
+            {notice.message}
+          </div>
+        )}
+
+        {canManage && (
+          <form
+            className="grid gap-3 pb-5 sm:grid-cols-[288px_minmax(0,1fr)_176px_112px] sm:items-center sm:gap-6"
+            onSubmit={handleCreateInvitation}
+          >
+            <div className="relative">
+              <Label htmlFor="dialog-invite-email" className="sr-only">
+                {labels.email}
+              </Label>
+              <MailSearch
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-neutral-400"
+              />
+              <Input
+                id="dialog-invite-email"
+                type="email"
+                placeholder={labels.dialogEmailPlaceholder}
+                value={inviteForm.email}
+                onChange={(event) =>
+                  setInviteForm((current) => ({
+                    ...current,
+                    email: event.target.value,
+                  }))
+                }
+                className="h-12 rounded-lg border-[1.5px] border-[#3D4049] bg-[#292C3433] pl-9 pr-3 font-['Space_Grotesk'] text-base font-normal text-white shadow-none placeholder:text-neutral-50/60 focus-visible:border-[#002BFF] focus-visible:ring-0 dark:bg-[#292C3433]"
+                required
+              />
+            </div>
+
+            <span aria-hidden="true" className="hidden sm:block" />
+
+            <div>
+              <Label htmlFor="dialog-invite-role" className="sr-only">
+                {labels.role}
+              </Label>
+              <Select
+                value={inviteForm.role}
+                onValueChange={(value) =>
+                  setInviteForm((current) => ({
+                    ...current,
+                    role: value as InviteState["role"],
+                  }))
+                }
+              >
+                <SelectTrigger
+                  id="dialog-invite-role"
+                  className="h-12 w-full rounded-lg border-[1.5px] border-zinc-700 bg-[#292C34] px-5 font-['Space_Grotesk'] text-base font-normal text-white shadow-none focus-visible:border-[#002BFF] focus-visible:ring-0"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="w-44 rounded-2xl border-[#292C34] bg-[#292C34] p-0 font-['Space_Grotesk'] text-white shadow-[0px_8px_32px_0px_rgba(0,0,0,0.50)]">
+                  {roleOptions.map((role) => (
+                    <SelectItem
+                      key={role}
+                      value={role}
+                      className="h-12 rounded-lg px-5 text-base font-normal focus:bg-[#18275D] focus:text-white data-[state=checked]:bg-[#18275D]"
+                    >
+                      {labels.roles[role]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isCreatingInvitation}
+              className="h-12 w-full rounded-lg bg-[#002BFF] px-4 text-sm font-semibold text-white hover:bg-[#002BFF]/90"
+            >
+              {isCreatingInvitation ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              {labels.invite}
+            </Button>
+          </form>
+        )}
+
+        {children}
+
+        {pendingInvitations.map((invitation) => (
+          <article
+            key={invitation.id}
+            className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_176px_32px] items-center gap-4 border-t border-zinc-700/50 px-3"
+            title={`${labels.expires} ${formatDate(
+              invitation.expiresAt,
+              locale,
+              labels.withoutDeadline,
+            )}`}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <OrganizationAvatar
+                id={invitation.id}
+                name={invitation.email}
+                className="size-10 rounded-full text-sm"
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-medium leading-5 text-slate-200">
+                    {invitation.email.split("@")[0]}
+                  </p>
+                  <span className="shrink-0 rounded-sm bg-green-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-4 text-green-500">
+                    {labels.statuses.pending}
+                  </span>
+                </div>
+                <p className="truncate pt-0.5 text-xs font-normal leading-4 text-gray-500">
+                  {invitation.email}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex h-12 w-44 items-center rounded-lg border-[1.5px] border-zinc-700 bg-[#292C34] px-5 text-base text-white">
+              {labels.roles[invitation.role]}
+            </div>
+
+            <div className="flex size-8 items-center justify-center">
+              {pendingAction === invitation.id ? (
+                <Loader2 className="size-4 animate-spin text-zinc-400" />
+              ) : canManage ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`${labels.revoke}: ${invitation.email}`}
+                  title={labels.revoke}
+                  onClick={() => handleInvitationAction(invitation, "revoke")}
+                  className="size-8 rounded-[10px] text-zinc-400 hover:bg-red-900/20 hover:text-red-400 focus-visible:ring-red-400/30 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                >
+                  <Trash2 className="size-5" />
+                </Button>
+              ) : null}
+            </div>
+          </article>
+        ))}
+      </div>
+    );
   }
 
   return (

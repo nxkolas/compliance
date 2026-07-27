@@ -122,7 +122,7 @@ export function LoginForm({
   return (
     <div
       className={cn(
-        "flex w-full max-w-110.5 flex-col items-start gap-4 px-4 font-['Space_Grotesk']",
+        "flex w-full max-w-[476px] flex-col items-start gap-4 px-4 font-['Space_Grotesk']",
         className,
       )}
       {...props}
