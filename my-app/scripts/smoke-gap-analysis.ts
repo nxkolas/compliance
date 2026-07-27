@@ -9,6 +9,10 @@ async function main() {
     const [release] = await sql<{
       release_code: string;
       version_label: string;
+      prompt_version: string;
+      response_schema_version: string;
+      action_plan_prompt_version: string;
+      action_plan_response_schema_version: string;
       requirement_count: number;
       question_count: number;
       requirement_question_mapping_count: number;
@@ -16,6 +20,10 @@ async function main() {
       rule_count: number;
     }[]>`
       select r.release_code, r.version_label,
+        r.prompt_version,
+        r.response_schema_version,
+        r.action_plan_prompt_version,
+        r.action_plan_response_schema_version,
         (select count(*)::int from gap_requirement_set_members m
           where m.requirement_set_version_id = r.requirement_set_version_id) as requirement_count,
         (select count(*)::int from questions q
@@ -34,14 +42,18 @@ async function main() {
     `;
     if (!release) throw new Error("No active nis2-gap release");
     if (
-      release.version_label !== "guided-v6" ||
+      release.version_label !== "reliability-v1" ||
+      release.prompt_version !== "8" ||
+      release.response_schema_version !== "8" ||
+      release.action_plan_prompt_version !== "2" ||
+      release.action_plan_response_schema_version !== "2" ||
       release.requirement_count !== 10 ||
       release.question_count !== 31 ||
       release.requirement_question_mapping_count !== 31 ||
       release.legal_mapping_count < 31 ||
       release.rule_count !== 10
     ) {
-      throw new Error("The active guided-v6 release is incomplete");
+      throw new Error("The active reliability-v1 release is incomplete");
     }
     const [vector] = await sql<{ installed: boolean }[]>`
       select exists(select 1 from pg_extension where extname = 'vector') as installed

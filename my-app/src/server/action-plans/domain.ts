@@ -7,7 +7,7 @@ export {
 } from "./prompt-contract";
 
 export const ACTION_PLAN_GENERATION_JOB_POLICY = {
-  maxAttempts: 5,
+  maxAttempts: 3,
   cancellable: true,
   cancellationCapability: "plans:activate",
 } as const;

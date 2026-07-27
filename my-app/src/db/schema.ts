@@ -3458,7 +3458,7 @@ export const backgroundJobs = pgTable.withRLS(
     uniqueIndex("background_jobs_action_plan_generation_active_unique")
       .on(table.organizationId)
       .where(
-        sql`${table.kind} = 'action-plan-generation' and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
+        sql`${table.kind} in ('action-plan-generation', 'action-plan-generation-v2') and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
       ),
     check("background_jobs_progress_check", sql`${table.progress} between 0 and 100`),
     check("background_jobs_attempts_check", sql`${table.attemptCount} >= 0 and ${table.maxAttempts} > 0`),

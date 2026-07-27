@@ -10,6 +10,8 @@ export type GapQuestionDefinition = {
   required: true;
   answerType: "single_choice";
   legalProvisionKeys?: string[];
+  splittable?: true;
+  maximumStatements?: number;
   options: Array<{
     stableValue: string;
     position: number;

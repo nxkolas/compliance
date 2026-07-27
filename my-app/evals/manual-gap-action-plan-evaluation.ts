@@ -102,7 +102,8 @@ const OUTPUT_DIR = resolve(
 );
 const QA_GAP_RELEASE = {
   releaseCode: "nis2-gap",
-  versionLabel: "guided-v6",
+  versionLabel:
+    readArgument("--gap-release-version") || "guided-v6",
 } as const;
 
 async function loadQaGapRelease(locale: Locale) {
@@ -123,7 +124,9 @@ async function loadQaGapRelease(locale: Locale) {
   }
   const release = await loadGapAnalysisRelease(row.id, locale);
   if (!release) {
-    throw new Error("Published guided-v6 Gap release is unavailable");
+    throw new Error(
+      `Published ${QA_GAP_RELEASE.versionLabel} Gap release is unavailable`,
+    );
   }
   return release;
 }
@@ -742,6 +745,7 @@ async function executeCase(testCase: EvaluationCase) {
   const actionAiRun = await captureAiRun(plan.plan.generationRunId, null);
   const automaticChecks = buildAutomaticChecks({
     testCase,
+    release,
     generated,
     finalRevision,
     plan,
@@ -922,6 +926,7 @@ async function resumeCaseFive(organizationId: string) {
   });
   const automaticChecks = buildAutomaticChecks({
     testCase,
+    release,
     generated,
     finalRevision,
     plan,
@@ -1330,6 +1335,7 @@ async function captureActionPlan(planId: string) {
 
 function buildAutomaticChecks(input: {
   testCase: EvaluationCase;
+  release: Awaited<ReturnType<typeof loadQaGapRelease>>;
   generated: Awaited<ReturnType<typeof captureRevision>>;
   finalRevision: Awaited<ReturnType<typeof captureRevision>>;
   plan: Awaited<ReturnType<typeof captureActionPlan>>;
@@ -1398,9 +1404,13 @@ function buildAutomaticChecks(input: {
   checks.push({
     name: "Gap prompt and response contract",
     passed:
-      input.aiRun?.run.promptVersion === "7" &&
-      input.aiRun.run.responseSchemaVersion === "7",
-    expected: { promptVersion: "7", responseSchemaVersion: "7" },
+      input.aiRun?.run.promptVersion === input.release.prompt.version &&
+      input.aiRun.run.responseSchemaVersion ===
+        input.release.prompt.responseSchemaVersion,
+    expected: {
+      promptVersion: input.release.prompt.version,
+      responseSchemaVersion: input.release.prompt.responseSchemaVersion,
+    },
     actual: input.aiRun
       ? {
           promptVersion: input.aiRun.run.promptVersion,
@@ -1414,15 +1424,18 @@ function buildAutomaticChecks(input: {
       input.plan.items.length === 0
         ? input.actionAiRun === null
         : input.actionAiRun?.run.operationKind === "action_plan_generation" &&
-          input.actionAiRun.run.promptVersion === "1" &&
-          input.actionAiRun.run.responseSchemaVersion === "1",
+          input.actionAiRun.run.promptVersion ===
+            input.release.actionPlanPrompt.version &&
+          input.actionAiRun.run.responseSchemaVersion ===
+            input.release.actionPlanPrompt.responseSchemaVersion,
     expected:
       input.plan.items.length === 0
         ? "deterministic empty plan without an AI run"
         : {
             operationKind: "action_plan_generation",
-            promptVersion: "1",
-            responseSchemaVersion: "1",
+            promptVersion: input.release.actionPlanPrompt.version,
+            responseSchemaVersion:
+              input.release.actionPlanPrompt.responseSchemaVersion,
           },
     actual: input.actionAiRun?.run ?? null,
   });

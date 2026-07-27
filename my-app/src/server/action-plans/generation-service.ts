@@ -18,7 +18,12 @@ import { contentHash } from "@/src/server/compliance";
 import { runGroundedOperation } from "../ai/grounding/gateway";
 import type { GroundingContextItem } from "../ai/grounding/types";
 import { ApiError } from "../api/errors";
-import { enqueueJob } from "../jobs";
+import {
+  ACTION_PLAN_GENERATION_JOB_KINDS,
+  actionPlanGenerationJobKind,
+  enqueueJob,
+  isActionPlanGenerationJobKind,
+} from "../jobs";
 import { assertCanManageOrganization } from "../organizations/service";
 import {
   assertGapRevisionApprovable,
@@ -42,6 +47,24 @@ import {
   ACTION_PLAN_RESPONSE_SCHEMA_VERSION,
   buildActionPlanCategoryQuery,
 } from "./prompt-contract";
+import {
+  buildActionPlanCategoryResponseSchemaV2,
+  normalizeActionPlanCategoryResponseV2,
+  type ActionPlanCategoryPolicyV2,
+  type ActionPlanCategoryResponseV2,
+} from "./generation-schema-v2";
+import {
+  ACTION_PLAN_PROMPT_V2_NAME,
+  ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V2_VERSION,
+  ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION,
+  actionPlanPromptV2,
+  actionPlanRepairPromptV2,
+} from "./prompt-contract-v2";
+import {
+  coordinateCategoryGeneration,
+  safeGenerationIssues,
+} from "../ai/generation";
 
 const ACTIVE_JOB_STATES = [
   "queued",
@@ -60,6 +83,7 @@ export async function enqueueActionPlanGeneration(input: {
     userId: input.userId,
     organizationId: input.organizationId,
     sourceGapRevisionId: input.sourceGapRevisionId,
+    publishedReleaseQa: input.publishedReleaseQa,
   });
   const existingPlan = await db.query.actionPlans.findFirst({
     columns: { id: true },
@@ -105,7 +129,9 @@ export async function enqueueActionPlanGeneration(input: {
       RAW: (table, operators) =>
         and(
           eq(table.organizationId, input.organizationId),
-          eq(table.kind, "action-plan-generation"),
+          operators.inArray(table.kind, [
+            ...ACTION_PLAN_GENERATION_JOB_KINDS,
+          ]),
           operators.inArray(table.state, [...ACTIVE_JOB_STATES]),
         ) ?? operators.sql`true`,
     },
@@ -119,7 +145,9 @@ export async function enqueueActionPlanGeneration(input: {
     );
   }
   return enqueueJob({
-    kind: "action-plan-generation",
+    kind: actionPlanGenerationJobKind(
+      snapshot.release.actionPlanPrompt.responseSchemaVersion,
+    ),
     payload: {
       sourceGapRevisionId: snapshot.revision.id,
       locale: snapshot.locale,
@@ -138,14 +166,18 @@ export async function generateActionPlanContent(input: {
   outputLocale: "de" | "en";
   jobId: string;
   idempotencyKey: string;
+  abortSignal?: AbortSignal;
+  publishedReleaseQa?: true;
 }): Promise<{
   runId: string | null;
+  runIds?: string[];
   content: ValidatedActionPlanContent;
 }> {
   const snapshot = await loadSourceSnapshot({
     userId: input.actor.userId,
     organizationId: input.organizationId,
     sourceGapRevisionId: input.sourceGapRevisionId,
+    publishedReleaseQa: input.publishedReleaseQa,
   });
   if (snapshot.locale !== input.outputLocale) {
     throw new ApiError(
@@ -292,6 +324,24 @@ export async function generateActionPlanContent(input: {
       },
     };
   });
+  if (
+    snapshot.release.actionPlanPrompt.version ===
+      ACTION_PLAN_PROMPT_V2_VERSION &&
+    snapshot.release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION &&
+    snapshot.release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH
+  ) {
+    return generateActionPlanCategoriesV2({
+      input,
+      snapshot,
+      categoryInputs,
+      questionnaireAssertions,
+      queryUnits,
+      answerRows,
+      selectedOptions,
+    });
+  }
   let policies: ActionPlanCategoryPolicy[] = [];
   const grounded = await runGroundedOperation<ActionPlanModelResponse>({
     operation: "gap_analysis",
@@ -338,6 +388,7 @@ export async function generateActionPlanContent(input: {
     idempotencyKey: input.idempotencyKey,
     assessmentRevisionId: snapshot.assessmentRevisionId,
     jobId: input.jobId,
+    abortSignal: input.abortSignal,
     promptMetadata: {
       name: ACTION_PLAN_PROMPT_NAME,
       version: ACTION_PLAN_PROMPT_VERSION,
@@ -392,6 +443,7 @@ export async function activateGeneratedActionPlan(input: {
   sourceGapRevisionId: string;
   jobId: string;
   runId: string | null;
+  runIds?: string[];
   content: ValidatedActionPlanContent;
   publishedReleaseQa?: true;
 }) {
@@ -410,6 +462,7 @@ export async function activateGeneratedActionPlan(input: {
     userId: input.userId,
     organizationId: input.organizationId,
     sourceGapRevisionId: input.sourceGapRevisionId,
+    publishedReleaseQa: input.publishedReleaseQa,
   });
   validateContentAgainstSnapshot(input.content, snapshot);
   if ((snapshot.gaps.length === 0) !== (input.runId === null)) {
@@ -435,7 +488,7 @@ export async function activateGeneratedActionPlan(input: {
       .for("update");
     if (
       !job ||
-      job.kind !== "action-plan-generation" ||
+      !isActionPlanGenerationJobKind(job.kind) ||
       job.organizationId !== input.organizationId
     ) {
       throw new ApiError(
@@ -521,7 +574,8 @@ export async function activateGeneratedActionPlan(input: {
       );
     }
     if (input.runId) {
-      const run = await tx.query.aiProcessingRuns.findFirst({
+      const runIds = input.runIds ?? [input.runId];
+      const runs = await tx.query.aiProcessingRuns.findMany({
         columns: {
           id: true,
           organizationId: true,
@@ -531,17 +585,19 @@ export async function activateGeneratedActionPlan(input: {
           jobId: true,
         },
         where: {
-          RAW: (table, operators) =>
-            eq(table.id, input.runId!) ?? operators.sql`true`,
+          RAW: (table) => inArray(table.id, runIds),
         },
       });
       if (
-        !run ||
-        run.organizationId !== input.organizationId ||
-        run.assessmentRevisionId !== snapshot.assessmentRevisionId ||
-        run.operationKind !== "action_plan_generation" ||
-        run.status !== "processing" ||
-        run.jobId !== input.jobId
+        runs.length !== runIds.length ||
+        runs.some(
+          (run) =>
+            run.organizationId !== input.organizationId ||
+            run.assessmentRevisionId !== snapshot.assessmentRevisionId ||
+            run.operationKind !== "action_plan_generation" ||
+            run.status !== "processing" ||
+            run.jobId !== input.jobId,
+        )
       ) {
         throw new ApiError(
           409,
@@ -660,7 +716,7 @@ export async function activateGeneratedActionPlan(input: {
         .set({ status: "succeeded", completedAt: approvedAt })
         .where(
           and(
-            eq(aiProcessingRuns.id, input.runId),
+            inArray(aiProcessingRuns.id, input.runIds ?? [input.runId]),
             eq(aiProcessingRuns.status, "processing"),
           ),
         );
@@ -703,6 +759,7 @@ export async function executeActionPlanGenerationJob(input: {
   locale: "de" | "en";
   publishedReleaseQa?: true;
   attemptCount?: number;
+  abortSignal?: AbortSignal;
 }) {
   const existing = await db.query.actionPlans.findFirst({
     columns: { id: true },
@@ -728,6 +785,8 @@ export async function executeActionPlanGenerationJob(input: {
       publishedReleaseQa: input.publishedReleaseQa,
       attemptCount: input.attemptCount ?? 1,
     }),
+    abortSignal: input.abortSignal,
+    publishedReleaseQa: input.publishedReleaseQa,
   });
   const plan = await activateGeneratedActionPlan({
     userId: input.userId,
@@ -735,10 +794,347 @@ export async function executeActionPlanGenerationJob(input: {
     sourceGapRevisionId: input.sourceGapRevisionId,
     jobId: input.jobId,
     runId: generated.runId,
+    runIds: generated.runIds,
     content: generated.content,
     publishedReleaseQa: input.publishedReleaseQa,
   });
   return { type: "action_plan", id: plan.id };
+}
+
+async function generateActionPlanCategoriesV2(input: {
+  input: Parameters<typeof generateActionPlanContent>[0];
+  snapshot: Awaited<ReturnType<typeof loadSourceSnapshot>>;
+  categoryInputs: Array<{
+    finding: {
+      id: string;
+      severity: "low" | "medium" | "high" | "critical";
+    };
+    requirement: {
+      code: string;
+    };
+    gaps: Array<{
+      key: string;
+      row: {
+        kind: "missing" | "partial" | "uncertain";
+        sourceAssessmentAnswerId: string;
+      };
+    }>;
+  }>;
+  questionnaireAssertions: Array<{
+    answerId: string;
+    queryUnitId: string;
+    excerpt: string;
+  }>;
+  queryUnits: Array<{
+    id: string;
+    query: string;
+    retrievalQuery: string;
+    preferredMappedLegalProvisionIds: string[];
+    preferredMappedLegalProvisionKeys: string[];
+    legalTierLimits: {
+      primary_authority: number;
+      official_guidance: number;
+      curated_secondary: number;
+    };
+  }>;
+  answerRows: Array<{ id: string; questionId: string; questionStableKey: string }>;
+  selectedOptions: Array<{ answerId: string; stableValue: string }>;
+}): Promise<{
+  runId: string;
+  runIds: string[];
+  content: ValidatedActionPlanContent;
+}> {
+  const contextByCategory = new Map<string, GroundingContextItem[]>();
+  const runIdsByCategory: Record<string, string> = {};
+  const coordinated = await coordinateCategoryGeneration<
+    (typeof input.categoryInputs)[number],
+    ActionPlanCategoryResponseV2,
+    ValidatedActionPlanContent["categories"][number]
+  >({
+    signal: input.input.abortSignal ?? new AbortController().signal,
+    concurrency: actionPlanGenerationConcurrency(),
+    tasks: input.categoryInputs.map((category) => ({
+      categoryCode: category.requirement.code,
+      taskId: contentHash({
+        operation: "action_plan_generation",
+        sourceGapRevisionId: input.input.sourceGapRevisionId,
+        releaseId: input.snapshot.release.id,
+        contract: ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION,
+        locale: input.input.outputLocale,
+        categoryCode: category.requirement.code,
+        generationReservation: input.input.jobId,
+      }),
+      input: category,
+    })),
+    async generate({
+      task,
+      phase,
+      rejectedCandidate,
+      issues,
+      signal,
+      providerAttempt,
+    }) {
+      const queryUnit = input.queryUnits.find(
+        (candidate) => candidate.id === task.categoryCode,
+      );
+      if (!queryUnit) throw new Error("Action Plan category query is missing");
+      let responsePolicy: ActionPlanCategoryPolicyV2 | undefined;
+      const grounded = await runGroundedOperation<ActionPlanCategoryResponseV2>(
+        {
+          operation: "gap_analysis",
+          runOperationKind: "action_plan_generation",
+          actor: input.input.actor,
+          organizationId: input.input.organizationId,
+          outputLocale: input.input.outputLocale,
+          workflowReleaseId: input.snapshot.release.id,
+          asOfDate: new Date().toISOString().slice(0, 10),
+          organizationEvidenceVersionIds: input.snapshot.documentVersionIds,
+          questionnaireAssertions: input.questionnaireAssertions.filter(
+            (assertion) => assertion.queryUnitId === task.categoryCode,
+          ),
+          queryUnits: [
+            phase === "repair"
+              ? {
+                  ...queryUnit,
+                  query: JSON.stringify({
+                    pinnedCategoryInput: JSON.parse(queryUnit.query),
+                    rejectedCandidate,
+                  }),
+                }
+              : queryUnit,
+          ],
+          systemInstruction:
+            phase === "initial"
+              ? actionPlanPromptV2(input.input.outputLocale)
+              : actionPlanRepairPromptV2({
+                  locale: input.input.outputLocale,
+                  categoryCode: task.categoryCode,
+                  issues: issues ?? [],
+                }),
+          outputContract: {
+            schema(context) {
+              responsePolicy = actionPlanV2Policy(
+                task.input,
+                context,
+                input.input.outputLocale,
+              );
+              return buildActionPlanCategoryResponseSchemaV2(responsePolicy);
+            },
+            languagePolicy: "localized",
+            generatedProse(value) {
+              return value.actions.flatMap((action) =>
+                action.mode === "remediation"
+                  ? [action.title, action.result, ...action.suggestedEvidence]
+                  : [
+                      action.verificationTitle,
+                      action.verificationResult,
+                      ...(action.conditionalRemediation
+                        ? [action.conditionalRemediation]
+                        : []),
+                      ...action.suggestedEvidence,
+                    ],
+              );
+            },
+            claims(value) {
+              const policy =
+                responsePolicy ??
+                actionPlanV2Policy(
+                  task.input,
+                  contextByCategory.get(task.categoryCode) ?? [],
+                  input.input.outputLocale,
+                );
+              return value.actions.map((action, index) => ({
+                key: `action-plan:${task.categoryCode}:${index + 1}`,
+                queryUnitId: task.categoryCode,
+                kind: "legal" as const,
+                binding: true,
+                citationIds: [
+                  ...new Set([
+                    ...action.gapKeys.flatMap(
+                      (key) =>
+                        policy.mandatoryCitationIdsByGapKey[key] ?? [],
+                    ),
+                    ...action.supportingOrganizationCitationIds,
+                  ]),
+                ],
+                text:
+                  action.mode === "remediation"
+                    ? `${action.title}. ${action.result}`
+                    : `${action.verificationTitle}. ${action.verificationResult}`,
+              }));
+            },
+          },
+          idempotencyKey: contentHash({
+            taskId: task.taskId,
+            phase,
+            providerAttempt,
+          }),
+          assessmentRevisionId: input.snapshot.assessmentRevisionId,
+          jobId: input.input.jobId,
+          abortSignal: signal,
+          promptMetadata: {
+            name: ACTION_PLAN_PROMPT_V2_NAME,
+            version: ACTION_PLAN_PROMPT_V2_VERSION,
+            templateHash: ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH,
+            responseSchemaVersion: ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION,
+          },
+        },
+      );
+      contextByCategory.set(task.categoryCode, grounded.context);
+      runIdsByCategory[task.categoryCode] = grounded.runId;
+      await db.insert(auditEvents).values({
+        organizationId: input.input.organizationId,
+        actorUserId: input.input.actor.userId,
+        eventType: "ai_generation.category_run",
+        entityType: "ai_processing_run",
+        entityId: grounded.runId,
+        metadata: {
+          categoryCode: task.categoryCode,
+          phase,
+          providerAttempt,
+          recovered: grounded.recovered === true,
+        },
+      });
+      return grounded.output;
+    },
+    validate(candidate, task) {
+      try {
+        const normalized = normalizeActionPlanCategoryResponseV2({
+          value: candidate,
+          policy: actionPlanV2Policy(
+            task.input,
+            contextByCategory.get(task.categoryCode) ?? [],
+            input.input.outputLocale,
+          ),
+        });
+        return {
+          valid: true,
+          value: normalized.value,
+          normalizedIssueCodes: normalized.normalizationCodes,
+        };
+      } catch (error) {
+        return {
+          valid: false,
+          failureClass: "repairable_content",
+          issues:
+            error && typeof error === "object" && "issues" in error &&
+            Array.isArray(error.issues)
+              ? safeGenerationIssues(error.issues)
+              : [{ code: "content_invalid", path: [] }],
+        };
+      }
+    },
+    async onDiagnostic(diagnostic) {
+      await db.insert(auditEvents).values({
+        organizationId: input.input.organizationId,
+        actorUserId: input.input.actor.userId,
+        eventType: "ai_generation.category_diagnostic",
+        entityType: "background_job",
+        entityId: input.input.jobId,
+        metadata: diagnostic,
+      });
+    },
+  });
+  const runIds = input.categoryInputs.map(
+    (category) => runIdsByCategory[category.requirement.code]!,
+  );
+  if (runIds.some((runId) => !runId)) {
+    throw new Error("Action Plan category run coverage is incomplete");
+  }
+  await Promise.all([
+    db
+      .insert(aiProcessingRunAssessmentInputs)
+      .values(
+        runIds.map((runId) => ({
+          runId,
+          assessmentRevisionId: input.snapshot.assessmentRevisionId,
+          sourceHash: contentHash({
+            answers: input.answerRows,
+            options: input.selectedOptions,
+          }),
+        })),
+      )
+      .onConflictDoNothing(),
+    input.snapshot.documentVersions.length
+      ? db
+          .insert(aiProcessingRunDocumentInputs)
+          .values(
+            runIds.flatMap((runId) =>
+              input.snapshot.documentVersions.map((documentVersion) => ({
+                runId,
+                documentVersionId: documentVersion.id,
+                sourceHash: documentVersion.contentHash,
+              })),
+            ),
+          )
+          .onConflictDoNothing()
+      : Promise.resolve(),
+  ]);
+  return {
+    runId: runIds[0]!,
+    runIds,
+    content: { categories: coordinated.categories },
+  };
+}
+
+function actionPlanV2Policy(
+  category: {
+    finding: {
+      id: string;
+      severity: "low" | "medium" | "high" | "critical";
+    };
+    requirement: { code: string };
+    gaps: Array<{
+      key: string;
+      row: {
+        kind: "missing" | "partial" | "uncertain";
+        sourceAssessmentAnswerId: string;
+      };
+    }>;
+  },
+  context: GroundingContextItem[],
+  outputLocale: "de" | "en",
+): ActionPlanCategoryPolicyV2 {
+  const supplied = context.filter(
+    (item) => item.queryUnitId === category.requirement.code,
+  );
+  const legal = supplied.find(
+    (item) =>
+      item.channel === "legal" &&
+      item.metadata.selectionRole === "mapped_primary",
+  );
+  if (!legal) throw new Error("Action Plan primary legal citation is missing");
+  return {
+    requirementCode: category.requirement.code,
+    sourceFindingId: category.finding.id,
+    priority: category.finding.severity,
+    outputLocale,
+    gaps: category.gaps.map((gap) => ({
+      key: gap.key,
+      kind: gap.row.kind,
+    })),
+    admittedOrganizationCitationIds: supplied
+      .filter((item) => item.channel === "organization_document")
+      .map((item) => item.citationId),
+    mandatoryCitationIdsByGapKey: Object.fromEntries(
+      category.gaps.map((gap) => {
+        const questionnaire = supplied.find(
+          (item) =>
+            item.channel === "questionnaire_assertion" &&
+            item.sourceId === gap.row.sourceAssessmentAnswerId,
+        );
+        if (!questionnaire) {
+          throw new Error("Action Plan questionnaire citation is missing");
+        }
+        return [gap.key, [questionnaire.citationId, legal.citationId]];
+      }),
+    ),
+  };
+}
+
+function actionPlanGenerationConcurrency() {
+  const value = Number(process.env.AI_CATEGORY_CONCURRENCY ?? 3);
+  return Number.isFinite(value) ? Math.max(1, Math.min(3, value)) : 3;
 }
 
 function buildPolicies(
@@ -774,13 +1170,18 @@ async function loadSourceSnapshot(input: {
   userId: string;
   organizationId: string;
   sourceGapRevisionId: string;
+  publishedReleaseQa?: true;
 }) {
   const staleness = await getGapRevisionStaleness({
     userId: input.userId,
     organizationId: input.organizationId,
     revisionId: input.sourceGapRevisionId,
   });
-  if (staleness.stale || staleness.outdatedRelease || staleness.archived) {
+  if (
+    staleness.stale ||
+    (staleness.outdatedRelease && !input.publishedReleaseQa) ||
+    staleness.archived
+  ) {
     throw new ApiError(
       409,
       "The Gap Analysis inputs are no longer current",
@@ -1021,13 +1422,23 @@ function assertActionPrompt(release: {
     responseSchemaVersion: string;
   };
 }) {
+  const v2 =
+    release.actionPlanPrompt.name === ACTION_PLAN_PROMPT_V2_NAME &&
+    release.actionPlanPrompt.version === ACTION_PLAN_PROMPT_V2_VERSION &&
+    release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH &&
+    release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION;
+  const v1 =
+    release.actionPlanPrompt.name === ACTION_PLAN_PROMPT_NAME &&
+    release.actionPlanPrompt.version === ACTION_PLAN_PROMPT_VERSION &&
+    release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_TEMPLATE_HASH &&
+    release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_VERSION;
   if (
-    release.actionPlanPrompt.name !== ACTION_PLAN_PROMPT_NAME ||
-    release.actionPlanPrompt.version !== ACTION_PLAN_PROMPT_VERSION ||
-    release.actionPlanPrompt.templateHash !==
-      ACTION_PLAN_PROMPT_TEMPLATE_HASH ||
-    release.actionPlanPrompt.responseSchemaVersion !==
-      ACTION_PLAN_RESPONSE_SCHEMA_VERSION
+    !v1 &&
+    !v2
   ) {
     throw new ApiError(
       409,

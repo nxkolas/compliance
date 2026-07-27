@@ -240,7 +240,16 @@ export async function publishGapAnalysisRelease(
           helpContentRevisionId: contentRevisionId(`${prefix}.help`),
           answerType: source.answerType,
           required: source.required,
-          config: {},
+          config: {
+            ...(source.splittable
+              ? {
+                  gapStatementPolicy: {
+                    splittable: true,
+                    maximumStatements: source.maximumStatements,
+                  },
+                }
+              : {}),
+          },
         })
         .returning();
       if (!question) throw new Error(`Could not create question ${source.stableKey}`);

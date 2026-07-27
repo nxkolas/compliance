@@ -6,9 +6,9 @@ import {
 import { ACTION_PLAN_GENERATION_JOB_POLICY } from "@/src/server/action-plans/domain";
 
 describe("independent Action Plan response contract", () => {
-  it("allows bounded retries for whole-plan structured generation", () => {
+  it("bounds top-level retries to transient generation failures", () => {
     expect(ACTION_PLAN_GENERATION_JOB_POLICY).toEqual({
-      maxAttempts: 5,
+      maxAttempts: 3,
       cancellable: true,
       cancellationCapability: "plans:activate",
     });

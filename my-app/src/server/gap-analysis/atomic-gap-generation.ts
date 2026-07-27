@@ -22,6 +22,27 @@ import {
   GAP_RESPONSE_SCHEMA_V7_VERSION,
 } from "./prompt-contract-v7";
 import type { LoadedGapRelease } from "./release-loader";
+import {
+  buildGapCategoryResponseSchemaV8,
+  normalizeGapCategoryResponseV8,
+  type GapCategoryResponseV8,
+  type GapResponsePolicyV8,
+} from "./generation-schema-v8";
+import {
+  GAP_PROMPT_V8_TEMPLATE_HASH,
+  GAP_PROMPT_V8_NAME,
+  GAP_PROMPT_V8_VERSION,
+  GAP_RESPONSE_SCHEMA_V8_VERSION,
+  gapPromptV8,
+  gapRepairPromptV8,
+} from "./prompt-contract-v8";
+import {
+  coordinateCategoryGeneration,
+  safeGenerationIssues,
+} from "../ai/generation";
+import { contentHash } from "../compliance";
+import { auditEvents } from "@/src/db/schema";
+import { db } from "@/src/db";
 
 export type AtomicGapRequirementInput = {
   requirement: LoadedGapRelease["requirements"][number];
@@ -32,6 +53,7 @@ export type AtomicGapRequirementInput = {
     | "insufficient_evidence";
   policy: AtomicGapTriggerPolicy;
   sourceAssessmentAnswerIdByQuestion: Record<string, string>;
+  statementMaximumByQuestion?: Record<string, number>;
   forcedEvidenceSufficiency?: "sufficient" | "partial" | "none";
   forcedRequiresReview?: boolean;
   reviewCorrection?: {
@@ -57,12 +79,22 @@ export async function generateAtomicGapBatch(input: {
   asOfDate?: string;
   jobId?: string;
   runOperationKind?: "gap_analysis" | "gap_guidance_regeneration";
+  abortSignal?: AbortSignal;
 }): Promise<{
   runId: string;
   outputLocale: Locale;
   context: GroundingContextItem[];
   findings: ValidatedCategoryGapResult[];
+  runIdsByCategory?: Record<string, string>;
 }> {
+  if (
+    input.release.prompt.version === GAP_PROMPT_V8_VERSION &&
+    input.release.prompt.responseSchemaVersion ===
+      GAP_RESPONSE_SCHEMA_V8_VERSION &&
+    input.release.prompt.templateHash === GAP_PROMPT_V8_TEMPLATE_HASH
+  ) {
+    return generateAtomicGapCategoriesV8(input);
+  }
   if (
     input.release.prompt.version !== GAP_PROMPT_V7_VERSION ||
     input.release.prompt.responseSchemaVersion !==
@@ -152,6 +184,7 @@ export async function generateAtomicGapBatch(input: {
     idempotencyKey: input.idempotencyKey,
     assessmentRevisionId: input.assessmentRevisionId,
     jobId: input.jobId,
+    abortSignal: input.abortSignal,
     promptMetadata: {
       name: GAP_PROMPT_V7_NAME,
       version: GAP_PROMPT_V7_VERSION,
@@ -175,6 +208,318 @@ export async function generateAtomicGapBatch(input: {
       policies: responsePolicies,
     }),
   };
+}
+
+async function generateAtomicGapCategoriesV8(
+  input: Parameters<typeof generateAtomicGapBatch>[0],
+): Promise<{
+  runId: string;
+  outputLocale: Locale;
+  context: GroundingContextItem[];
+  findings: ValidatedCategoryGapResult[];
+  runIdsByCategory: Record<string, string>;
+}> {
+  const controller = new AbortController();
+  const signal = input.abortSignal
+    ? AbortSignal.any([input.abortSignal, controller.signal])
+    : controller.signal;
+  const contextByCategory = new Map<string, GroundingContextItem[]>();
+  const runIdsByCategory: Record<string, string> = {};
+  const coordinated = await coordinateCategoryGeneration<
+    AtomicGapRequirementInput,
+    GapCategoryResponseV8,
+    ValidatedCategoryGapResult
+  >({
+    signal,
+    concurrency: generationConcurrency(),
+    tasks: input.requirements.map((item) => ({
+      categoryCode: item.requirement.code,
+      taskId: contentHash({
+        operation: input.runOperationKind ?? "gap_analysis",
+        revisionId: input.assessmentRevisionId,
+        releaseId: input.release.id,
+        contract: GAP_RESPONSE_SCHEMA_V8_VERSION,
+        locale: input.outputLocale,
+        categoryCode: item.requirement.code,
+        generationReservation: input.idempotencyKey,
+      }),
+      input: item,
+    })),
+    async generate({
+      task,
+      phase,
+      rejectedCandidate,
+      issues,
+      signal: taskSignal,
+      providerAttempt,
+    }) {
+      const item = task.input;
+      let responsePolicy: GapResponsePolicyV8 | undefined;
+      const queryUnit = gapV8QueryUnit(input, item, phase, rejectedCandidate);
+      const grounded = await runGroundedOperation<GapCategoryResponseV8>({
+        operation: "gap_analysis",
+        runOperationKind: input.runOperationKind,
+        actor: input.actor,
+        organizationId: input.organizationId,
+        outputLocale: input.outputLocale,
+        workflowReleaseId: input.release.id,
+        asOfDate: input.asOfDate ?? new Date().toISOString().slice(0, 10),
+        organizationEvidenceVersionIds: input.selectedDocumentVersionIds,
+        questionnaireAssertions: input.questionnaireAssertions.filter(
+          (assertion) => assertion.queryUnitId === item.requirement.code,
+        ),
+        queryUnits: [queryUnit],
+        systemInstruction:
+          phase === "initial"
+            ? gapPromptV8(input.outputLocale)
+            : gapRepairPromptV8({
+                locale: input.outputLocale,
+                categoryCode: item.requirement.code,
+                issues: issues ?? [],
+              }),
+        outputContract: {
+          schema(context) {
+            responsePolicy = gapV8ResponsePolicy(
+              item,
+              context,
+              input.outputLocale,
+            );
+            return buildGapCategoryResponseSchemaV8(responsePolicy);
+          },
+          languagePolicy: "localized",
+          generatedProse: gapV8GeneratedProse,
+          claims(value) {
+            const policy =
+              responsePolicy ??
+              gapV8ResponsePolicy(
+                item,
+                contextByCategory.get(item.requirement.code) ?? [],
+                input.outputLocale,
+              );
+            const claims = Object.entries(value.gaps).flatMap(([key, gaps]) =>
+              gaps.map((gap, index) => ({
+                key: `atomic-gap:${item.requirement.code}:${key}:${index + 1}`,
+                queryUnitId: item.requirement.code,
+                kind: "organization" as const,
+                binding: false,
+                citationIds: [
+                  policy.questionnaireCitationIdsByQuestion[key]!,
+                  ...gap.supportingOrganizationCitationIds,
+                ],
+                text: gap.statement,
+              })),
+            );
+            return claims.length
+              ? claims
+              : [
+                  {
+                    key: `atomic-gap:${item.requirement.code}:no-gap`,
+                    queryUnitId: item.requirement.code,
+                    kind: "legal" as const,
+                    binding: true,
+                    citationIds: [
+                      policy.preferredPrimaryLegalCitationId,
+                    ],
+                    text: `${item.requirement.code}: no triggering atomic gaps`,
+                  },
+                ];
+          },
+          allowConflictingClaim(value) {
+            return value.requiresReview || Boolean(item.reviewCorrection);
+          },
+        },
+        idempotencyKey: contentHash({
+          taskId: task.taskId,
+          phase,
+          providerAttempt,
+        }),
+        assessmentRevisionId: input.assessmentRevisionId,
+        jobId: input.jobId,
+        abortSignal: taskSignal,
+        promptMetadata: {
+          name: GAP_PROMPT_V8_NAME,
+          version: GAP_PROMPT_V8_VERSION,
+          templateHash: GAP_PROMPT_V8_TEMPLATE_HASH,
+          responseSchemaVersion: GAP_RESPONSE_SCHEMA_V8_VERSION,
+        },
+      });
+      contextByCategory.set(item.requirement.code, grounded.context);
+      runIdsByCategory[item.requirement.code] = grounded.runId;
+      await db.insert(auditEvents).values({
+        organizationId: input.organizationId,
+        actorUserId: input.actor.userId,
+        eventType: "ai_generation.category_run",
+        entityType: "ai_processing_run",
+        entityId: grounded.runId,
+        metadata: {
+          categoryCode: item.requirement.code,
+          phase,
+          providerAttempt,
+          recovered: grounded.recovered === true,
+        },
+      });
+      return grounded.output;
+    },
+    validate(candidate, task) {
+      try {
+        const policy = gapV8ResponsePolicy(
+          task.input,
+          contextByCategory.get(task.categoryCode) ?? [],
+          input.outputLocale,
+        );
+        const normalized = normalizeGapCategoryResponseV8({
+          value: candidate,
+          policy,
+        });
+        return {
+          valid: true,
+          value: normalized.value,
+          normalizedIssueCodes: normalized.normalizationCodes,
+        };
+      } catch (error) {
+        return {
+          valid: false,
+          failureClass: "repairable_content",
+          issues:
+            error && typeof error === "object" && "issues" in error &&
+            Array.isArray(error.issues)
+              ? safeGenerationIssues(error.issues)
+              : [{ code: "content_invalid", path: [] }],
+        };
+      }
+    },
+    async onDiagnostic(diagnostic) {
+      if (!input.jobId) return;
+      await db.insert(auditEvents).values({
+        organizationId: input.organizationId,
+        actorUserId: input.actor.userId,
+        eventType: "ai_generation.category_diagnostic",
+        entityType: "background_job",
+        entityId: input.jobId,
+        metadata: diagnostic,
+      });
+    },
+  });
+  const contexts = [...contextByCategory.values()].flat();
+  const firstRunId = input.requirements
+    .map((item) => runIdsByCategory[item.requirement.code])
+    .find(Boolean);
+  if (!firstRunId) throw new Error("Gap category generation produced no run");
+  return {
+    runId: firstRunId,
+    outputLocale: input.outputLocale,
+    context: contexts,
+    findings: coordinated.categories,
+    runIdsByCategory,
+  };
+}
+
+function gapV8QueryUnit(
+  input: Parameters<typeof generateAtomicGapBatch>[0],
+  item: AtomicGapRequirementInput,
+  phase: "initial" | "repair",
+  rejectedCandidate?: GapCategoryResponseV8,
+) {
+  const base = {
+    id: item.requirement.code,
+    query: buildAtomicGapQuery({
+      requirement: item.requirement,
+      policy: provisionalResponsePolicy(item, input.outputLocale),
+      questions: input.release.questions.map((question) => ({
+        stableKey: question.stableKey,
+        text: question.questionText,
+      })),
+      reviewCorrection: item.reviewCorrection,
+    }),
+    retrievalQuery: buildAtomicGapRetrievalQuery({
+      requirement: item.requirement,
+      triggerQuestionTexts: item.policy.triggeringQuestions.map(
+        (question) => question.text,
+      ),
+      preferredMappedLegalProvisionKeys:
+        item.policy.preferredLegalProvisionKeys,
+    }),
+    organizationRetrievalQuery: buildAtomicGapOrganizationRetrievalQuery({
+      requirement: item.requirement,
+      categoryQuestionTexts: input.release.questions
+        .filter((question) =>
+          item.requirement.questionStableKeys.includes(question.stableKey),
+        )
+        .map((question) => question.questionText),
+    }),
+    preferredMappedLegalProvisionIds: item.policy.preferredLegalProvisionIds,
+    preferredMappedLegalProvisionKeys: item.policy.preferredLegalProvisionKeys,
+    legalTierLimits: {
+      primary_authority: 0,
+      official_guidance: 0,
+      curated_secondary: 0,
+    } as const,
+  };
+  return phase === "repair"
+    ? {
+        ...base,
+        query: JSON.stringify({
+          pinnedCategoryInput: JSON.parse(base.query),
+          rejectedCandidate,
+        }),
+      }
+    : base;
+}
+
+function gapV8ResponsePolicy(
+  item: AtomicGapRequirementInput,
+  context: GroundingContextItem[],
+  outputLocale: Locale,
+): GapResponsePolicyV8 {
+  const supplied = context.filter(
+    (candidate) => candidate.queryUnitId === item.requirement.code,
+  );
+  const legal = supplied.find(
+    (candidate) =>
+      candidate.channel === "legal" &&
+      candidate.metadata.selectionRole === "mapped_primary",
+  );
+  if (!legal) throw new Error("Preferred mapped primary citation is missing");
+  return {
+    requirementCode: item.requirement.code,
+    outputLocale,
+    statementBasis: provisionalResponsePolicy(item, outputLocale).statementBasis,
+    statementMaximumByQuestion: item.statementMaximumByQuestion,
+    admittedOrganizationCitationIds: supplied
+      .filter((candidate) => candidate.channel === "organization_document")
+      .map((candidate) => candidate.citationId),
+    questionnaireCitationIdsByQuestion: Object.fromEntries(
+      item.policy.triggeringQuestions.map((trigger) => {
+        const answerId = item.sourceAssessmentAnswerIdByQuestion[trigger.stableKey];
+        const citation = supplied.find(
+          (candidate) =>
+            candidate.channel === "questionnaire_assertion" &&
+            candidate.sourceId === answerId,
+        );
+        if (!citation) throw new Error("Questionnaire citation is missing");
+        return [trigger.stableKey, citation.citationId];
+      }),
+    ),
+    preferredPrimaryLegalCitationId: legal.citationId,
+    forcedEvidenceSufficiency: item.forcedEvidenceSufficiency,
+    forcedRequiresReview: item.forcedRequiresReview,
+  };
+}
+
+function gapV8GeneratedProse(value: GapCategoryResponseV8) {
+  return [
+    ...Object.values(value.gaps).flatMap((gaps) =>
+      gaps.map((gap) => gap.statement),
+    ),
+    ...(value.reviewNotice ? [value.reviewNotice] : []),
+    ...value.assumptions,
+    ...value.contradictions,
+  ];
+}
+
+function generationConcurrency() {
+  const value = Number(process.env.AI_CATEGORY_CONCURRENCY ?? 3);
+  return Number.isFinite(value) ? Math.max(1, Math.min(3, value)) : 3;
 }
 
 export function extractAtomicGapGeneratedProse(

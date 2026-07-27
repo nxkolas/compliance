@@ -11,7 +11,7 @@ import {
 import { generateGapAnalysis } from "./generation-service";
 import { loadGapAnalysisRelease } from "./release-loader";
 import { buildReassessmentEvidenceSelection } from "./reassessment-selection";
-import { toJobDto } from "@/src/server/jobs";
+import { gapGenerationJobKind, toJobDto } from "@/src/server/jobs";
 import { retryableGapReassessmentStatuses } from "@/src/contracts/gap-analysis/generation";
 import type { LoadedGapRelease } from "./release-loader";
 import { assertGapInputsMutable } from "./lifecycle-guards";
@@ -782,7 +782,9 @@ async function enqueueDraftGeneration(input: {
     const [job] = await tx.insert(backgroundJobs).values({
       organizationId: input.organizationId,
       requestedByUserId: input.userId,
-      kind: "gap-generation",
+      kind: gapGenerationJobKind(
+        pinnedRelease.prompt.responseSchemaVersion,
+      ),
       payload: {
         draftId: locked.id,
         locale: outputLocale,
@@ -790,7 +792,8 @@ async function enqueueDraftGeneration(input: {
       },
       cancellable: true,
       cancellationCapability: "gap:contribute",
-      maxAttempts: 1,
+      maxAttempts:
+        pinnedRelease.prompt.responseSchemaVersion === "8" ? 3 : 1,
     }).returning();
     const [linkedDraft] = await tx.update(gapReassessmentDrafts).set({
       generationJobId: job.id,
@@ -918,7 +921,11 @@ async function lockEligibleEvidenceSelection(
 
 async function runLockedDraft(
   draft: typeof gapReassessmentDrafts.$inferSelect,
-  input: { userId: string; organizationId: string },
+  input: {
+    userId: string;
+    organizationId: string;
+    abortSignal?: AbortSignal;
+  },
   retryNonce?: string,
   jobId?: string,
   deferFailure = false,
@@ -946,6 +953,7 @@ async function runLockedDraft(
         retryNonce,
         jobId,
         asOfDate: draft.lockedAt?.toISOString().slice(0, 10),
+        abortSignal: input.abortSignal,
       },
     );
     if (!result.artifactRevision) {
@@ -1020,6 +1028,7 @@ export async function executeGapGenerationJob(input: {
   organizationId: string;
   locale: Locale;
   retryNonce?: string;
+  abortSignal?: AbortSignal;
 }) {
   const draft = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
     where: { RAW: (table, operators) => (and(

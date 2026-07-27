@@ -46,7 +46,7 @@ export function validateAtomicGapStatement(input: {
     throw new Error("Gap statement must not contain action content");
   }
   const uncertain =
-    /\b(?:unclear|unknown|uncertain|not known whether|not (?:evidenced|demonstrated|established|clear)(?: whether)?|unklar|ungewiss|ungeklärt|offen|nicht (?:bekannt|nachgewiesen|belegt|ersichtlich|nachvollziehbar|transparent|geklärt|klar)(?:,? ob)?|keine gesicherten informationen|es fehlen (?:hinweise|nachweise|informationen))\b/iu.test(
+    /\b(?:unclear|unknown|uncertain|not known whether|not (?:evidenced|demonstrated|established|clear)(?: whether)?|unklar|ungewiss|unsicher(?:heit)?|ungeklärt|offen|nicht (?:bekannt|nachgewiesen|belegt|ersichtlich|nachvollziehbar|transparent|geklärt|klar)(?:,? ob)?|keine gesicherten informationen|es fehlen (?:hinweise|nachweise|informationen))\b/iu.test(
       statement,
     ) || /\bgeht\b[^.!?]{0,80}\bnicht hervor\b/iu.test(statement);
   const partial =

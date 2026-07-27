@@ -36,6 +36,8 @@ export type LoadedGapRelease = {
     helpText: string | null;
     answerType: string;
     required: boolean;
+    splittable: boolean;
+    maximumStatements: number;
     legalProvisions: Array<{
       id: string;
       key: string;
@@ -323,6 +325,9 @@ export async function loadGapAnalysisRelease(
         : null,
       answerType: question.answerType,
       required: question.required,
+      splittable: questionGapStatementPolicy(question.config).splittable,
+      maximumStatements:
+        questionGapStatementPolicy(question.config).maximumStatements,
       legalProvisions: questionLegalRows
         .filter((row) => row.questionId === question.id)
         .sort((left, right) => left.position - right.position)
@@ -379,6 +384,21 @@ export async function loadGapAnalysisRelease(
         ...conditions,
       };
     }),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function questionGapStatementPolicy(config: unknown) {
+  const policy = isRecord(config) ? config.gapStatementPolicy : undefined;
+  return {
+    splittable: isRecord(policy) && policy.splittable === true,
+    maximumStatements:
+      isRecord(policy) && typeof policy.maximumStatements === "number"
+        ? policy.maximumStatements
+        : 1,
   };
 }
 
