@@ -130,7 +130,7 @@ export function AppSidebarNav({
 
               <div className="absolute left-[96px] top-[-2px] h-8 w-48">
                 <span className="absolute left-[-0.4px] top-0 w-36 whitespace-nowrap text-3xl font-normal leading-7 text-white">
-                  comply
+                  {labels.brandPrefix}
                 </span>
 
                 <Image
@@ -145,9 +145,9 @@ export function AppSidebarNav({
             </div>
 
             <div className="w-72 text-sm font-normal leading-5 text-indigo-50">
-              setzt das Puzzle fort, für NIS2-Schutz
+              {labels.brandTaglineFirst}
               <br />
-              an jedem Ort.
+              {labels.brandTaglineSecond}
             </div>
           </Link>
         </SidebarHeader>

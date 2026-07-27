@@ -1,0 +1,52 @@
+# Resource-constrained local mode for 16 GB WSL/Docker Desktop installations.
+#
+# This overlay keeps the complete base service topology and functional
+# acceptance coverage. Ollama unloads each model after a request so the chat
+# and embedding models are never resident together. Heavy optional profiles
+# are exercised in separate phases by local-acceptance.ps1.
+services:
+  db:
+    mem_limit: 2g
+
+  auth:
+    mem_limit: 256m
+
+  rest:
+    mem_limit: 256m
+
+  rustfs:
+    mem_limit: 1g
+
+  storage:
+    mem_limit: 512m
+
+  kong:
+    mem_limit: 1536m
+
+  mailpit:
+    mem_limit: 128m
+
+  ollama:
+    environment:
+      OLLAMA_KEEP_ALIVE: "0"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+    mem_limit: 9g
+
+  litellm:
+    mem_limit: 1536m
+
+  migrate:
+    mem_limit: 512m
+
+  supabase-bootstrap:
+    mem_limit: 512m
+
+  worker:
+    mem_limit: 2g
+
+  web:
+    mem_limit: 1g
+
+  caddy:
+    mem_limit: 128m

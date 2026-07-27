@@ -1,0 +1,31 @@
+groups:
+  - name: compliancetool-app-host
+    rules:
+      - alert: RequiredTargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "A required application-host metrics target is unavailable"
+      - alert: PostgreSQLConnectionsHigh
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL connection count is unexpectedly high"
+      - alert: FilesystemFreeSpaceLow
+        expr: node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"} < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Application-host filesystem free space is below 15%"
+      - alert: PostgreSQLBackupStale
+        expr: time() - compliancetool_backup_last_success_timestamp_seconds > 86400
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The latest successful PostgreSQL backup is older than 24 hours"

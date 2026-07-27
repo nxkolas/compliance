@@ -22,6 +22,7 @@ vi.mock("@supabase/ssr", () => ({
 
 import { NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
+import { config as proxyConfig } from "@/proxy";
 
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalSupabaseKey =
@@ -40,6 +41,14 @@ function anonymousUser() {
 }
 
 describe("Supabase authentication proxy", () => {
+  it("keeps health probes outside the authentication proxy", () => {
+    const matcher = new RegExp(`^${proxyConfig.matcher[0]}$`);
+
+    expect(matcher.test("/api/health/live")).toBe(false);
+    expect(matcher.test("/api/health/ready")).toBe(false);
+    expect(matcher.test("/api/organizations")).toBe(true);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";

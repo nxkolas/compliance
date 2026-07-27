@@ -6,6 +6,9 @@ export const navigationMessages = defineFeatureMessages({
       productName: "NIS2 Compliance Checker",
       productTagline:
         "Compliance- und Sicherheitsdesign für Finanzdienstleistungen",
+      brandPrefix: "comply",
+      brandTaglineFirst: "setzt das Puzzle fort, für NIS2-Schutz",
+      brandTaglineSecond: "an jedem Ort.",
           actionPlan: "Maßnahmenplan",
           applicabilityCheck: "Betroffenheitscheck",
           assessment: "Bewertung",
@@ -39,6 +42,9 @@ export const navigationMessages = defineFeatureMessages({
       productName: "NIS2 Compliance Checker",
       productTagline:
         "Compliance & Security Design Validation for Financial Services",
+      brandPrefix: "comply",
+      brandTaglineFirst: "completes the puzzle for NIS2 protection",
+      brandTaglineSecond: "wherever you work.",
           actionPlan: "Action plan",
           applicabilityCheck: "Applicability check",
           assessment: "Assessment",

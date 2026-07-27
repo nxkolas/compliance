@@ -1,6 +1,8 @@
 import { contentHash } from "@/src/server/compliance/domain";
 import { ACTION_PLAN_PROMPT_TEMPLATE_HASH } from "@/src/server/action-plans/domain";
+import { ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH } from "../../ai/generation";
 import { GAP_PROMPT_V7_TEMPLATE_HASH } from "../prompt-contract-v7";
+import { GAP_PROMPT_V8_TEMPLATE_HASH } from "../prompt-contract-v8";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -12,12 +14,17 @@ export function compileGapAnalysisRelease(
   requireNonEmpty(release.compatibleCheck.checkCode, "compatible check code", errors);
   unique(release.requiredCorpusFamilies, "required corpus family", errors);
   if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
-  if (release.prompt.templateHash !== GAP_PROMPT_V7_TEMPLATE_HASH) {
+  if (
+    release.prompt.templateHash !== GAP_PROMPT_V7_TEMPLATE_HASH &&
+    release.prompt.templateHash !== GAP_PROMPT_V8_TEMPLATE_HASH
+  ) {
     errors.push("Prompt template hash does not match the code-defined prompt");
   }
   if (
     !release.actionPlanPrompt ||
-    release.actionPlanPrompt.templateHash !== ACTION_PLAN_PROMPT_TEMPLATE_HASH
+    release.actionPlanPrompt.templateHash !== ACTION_PLAN_PROMPT_TEMPLATE_HASH &&
+    release.actionPlanPrompt.templateHash !==
+      ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH
   ) {
     errors.push(
       "Action Plan prompt template hash does not match the code-defined prompt",
@@ -81,6 +88,16 @@ export function compileGapAnalysisRelease(
         question.legalProvisionKeys,
         `legal provision for ${question.stableKey}`,
         errors,
+      );
+    }
+    if (
+      question.splittable &&
+      (!Number.isInteger(question.maximumStatements) ||
+        (question.maximumStatements ?? 0) < 2 ||
+        (question.maximumStatements ?? 0) > 5)
+    ) {
+      errors.push(
+        `Question ${question.stableKey} has an invalid splittable statement bound`,
       );
     }
   }

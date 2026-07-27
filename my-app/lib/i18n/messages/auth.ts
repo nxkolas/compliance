@@ -10,6 +10,9 @@ export const authMessages = defineFeatureMessages({
           password: "Passwort",
           keepSignedIn: "Angemeldet bleiben",
           forgotPassword: "Passwort vergessen?",
+          forgotPasswordDescription:
+            "Wir senden Ihnen einen Link zum Zurücksetzen.",
+          backToLogin: "Zurück zur",
           signingIn: "Anmelden...",
           noAccount: "Noch kein Konto?",
           repeatPassword: "Passwort wiederholen",
@@ -84,6 +87,9 @@ export const authMessages = defineFeatureMessages({
           password: "Password",
           keepSignedIn: "Keep me signed in",
           forgotPassword: "Forgot password?",
+          forgotPasswordDescription:
+            "We will send you a password reset link.",
+          backToLogin: "Back to",
           signingIn: "Signing in...",
           noAccount: "No account yet?",
           repeatPassword: "Repeat password",

@@ -2,7 +2,12 @@ import { generateObject } from "ai";
 import type * as z from "zod";
 import { getChatModelId, getComplianceChatModelById } from "@/lib/ai/models";
 import type { AiProviderMode } from "@/lib/ai/types";
+import { getGenerationOptions } from "@/lib/ai/generation-options";
 import type { GroundedProvider } from "../types";
+import {
+  combineAbortSignals,
+  GenerationFailure,
+} from "../../generation";
 
 export function createAiSdkGroundedProvider(
   mode: AiProviderMode,
@@ -12,7 +17,13 @@ export function createAiSdkGroundedProvider(
     mode,
     provider: mode,
     model,
-    async run(input: { system: string; prompt: string; schema: z.ZodType }) {
+    async run(input: {
+      system: string;
+      prompt: string;
+      schema: z.ZodType;
+      abortSignal?: AbortSignal;
+    }) {
+      const timeoutSignal = AbortSignal.timeout(providerTimeoutMs());
       try {
         const result = await generateObject({
           model: getComplianceChatModelById(mode, model),
@@ -21,7 +32,11 @@ export function createAiSdkGroundedProvider(
           prompt: input.prompt,
           maxRetries: 0,
           maxOutputTokens: groundedMaxOutputTokens(),
-          abortSignal: AbortSignal.timeout(providerTimeoutMs()),
+          abortSignal: combineAbortSignals([
+            input.abortSignal,
+            timeoutSignal,
+          ]),
+          ...getGenerationOptions(mode, { thinking: false }),
         });
         return {
           output: result.object,
@@ -32,6 +47,21 @@ export function createAiSdkGroundedProvider(
           },
         };
       } catch (error) {
+        if (input.abortSignal?.aborted) {
+          const cancelled = new Error("AI provider request was cancelled", {
+            cause: error,
+          });
+          cancelled.name = "AbortError";
+          throw cancelled;
+        }
+        if (timeoutSignal.aborted) {
+          const transient = new Error("AI provider request timed out", {
+            cause: error,
+          });
+          transient.name = "ProviderTimeoutError";
+          Object.assign(transient, { code: "ETIMEDOUT", statusCode: 503 });
+          throw transient;
+        }
         const issues = validationIssues(error);
         if (
           issues.length > 0 &&
@@ -41,6 +71,13 @@ export function createAiSdkGroundedProvider(
           console.error(
             "AI schema validation diagnostic",
             JSON.stringify({ issues }),
+          );
+        }
+        if (issues.length > 0) {
+          throw new GenerationFailure(
+            "repairable_content",
+            "GENERATION_SCHEMA_INVALID",
+            { cause: error },
           );
         }
         throw error;

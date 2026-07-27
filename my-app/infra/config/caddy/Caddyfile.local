@@ -1,0 +1,31 @@
+{
+	auto_https off
+	admin off
+	log {
+		format json
+		level INFO
+	}
+}
+
+:3000 {
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	reverse_proxy web:3000 {
+		health_uri /api/health/live
+		health_interval 10s
+	}
+}
+
+:8000 {
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+	}
+	request_body {
+		max_size 55MB
+	}
+	reverse_proxy kong:8000
+}

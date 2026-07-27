@@ -1,0 +1,100 @@
+name: Qualify production AI
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact application revision to qualify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qualify-production-ai
+  cancel-in-progress: false
+
+jobs:
+  qualify:
+    runs-on: [self-hosted, linux, x64, ai-qualification]
+    timeout-minutes: 180
+    environment: ai-qualification
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.revision }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: my-app/package-lock.json
+      - name: Validate revision and install exact dependencies
+        working-directory: my-app
+        env:
+          REVISION: ${{ inputs.revision }}
+        run: |
+          [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$REVISION"
+          npm ci
+          npm run test:ai
+      - name: Scan heavyweight inference dependencies and generate SBOMs
+        working-directory: my-app
+        run: |
+          set -euo pipefail
+          source infra/versions.env
+          [[ "$VLLM_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]]
+          [[ "$DOCLING_IMAGE" =~ @sha256:[0-9a-f]{64}$ ]]
+          docker run --rm -v "$PWD:/evidence" "$TRIVY_IMAGE" image \
+            --quiet --timeout 45m --scanners vuln --ignore-unfixed \
+            --format json --output /evidence/vllm-scan.json "$VLLM_IMAGE"
+          jq -r '
+            [.Results[]?.Vulnerabilities[]?
+              | select(.Severity == "CRITICAL")
+              | .VulnerabilityID] | unique[]
+          ' vllm-scan.json | sort -u > "$RUNNER_TEMP/vllm-actual.txt"
+          grep -v '^#' infra/security/vllm-critical-header-allowlist.txt \
+            | sed '/^[[:space:]]*$/d' | sort -u \
+            > "$RUNNER_TEMP/vllm-allowed.txt"
+          diff -u "$RUNNER_TEMP/vllm-allowed.txt" "$RUNNER_TEMP/vllm-actual.txt"
+          test "$(
+            jq -r '
+              [.Results[]?.Vulnerabilities[]?
+                | select(
+                    .Severity == "CRITICAL" and
+                    .PkgName != "linux-libc-dev"
+                  )] | length
+            ' vllm-scan.json
+          )" = "0"
+          docker run --rm "$TRIVY_IMAGE" image \
+            --quiet --timeout 45m --scanners vuln \
+            --severity CRITICAL --ignore-unfixed --exit-code 1 "$DOCLING_IMAGE"
+          for coordinate in "$VLLM_IMAGE" "$DOCLING_IMAGE"; do
+            name="$(printf '%s' "$coordinate" | sha256sum | cut -c1-16)"
+            docker run --rm -v "$PWD:/evidence" "$TRIVY_IMAGE" image \
+              --quiet --timeout 45m --format spdx-json \
+              --output "/evidence/${name}.spdx.json" "$coordinate"
+          done
+      - name: Run live schema, citation, latency, and embedding checks
+        working-directory: my-app
+        env:
+          AI_QUALIFICATION_BASE_URL: ${{ secrets.AI_QUALIFICATION_BASE_URL }}
+          AI_QUALIFICATION_API_KEY: ${{ secrets.AI_QUALIFICATION_API_KEY }}
+          AI_QUALIFICATION_CHAT_MODEL: compliance-chat
+          AI_QUALIFICATION_EMBEDDING_MODEL: compliance-embedding
+          AI_QUALIFICATION_CHAT_REVISION: 97f5941bf617e31c5e237364a8602ce3f03a551a
+          AI_QUALIFICATION_EMBEDDING_REVISION: 5cf2132abc99cad020ac570b19d031efec650f2b
+        run: |
+          set -euo pipefail
+          source infra/versions.env
+          export AI_QUALIFICATION_VLLM_IMAGE="$VLLM_IMAGE"
+          node node_modules/tsx/dist/cli.mjs scripts/ai-live-qualification.ts
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ai-qualification-${{ inputs.revision }}
+          path: |
+            my-app/*.spdx.json
+            my-app/vllm-scan.json
+            my-app/ai-qualification-evidence.json
+          if-no-files-found: error
+          retention-days: 365

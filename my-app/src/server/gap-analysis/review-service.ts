@@ -392,7 +392,11 @@ export async function regenerateAndCorrectGapFinding(input: {
     sourceRevision.gapAnalysisReleaseId,
     sourceRevision.outputLocale,
   );
-  if (!release || release.prompt.responseSchemaVersion !== "7") {
+  if (
+    !release ||
+    (release.prompt.responseSchemaVersion !== "7" &&
+      release.prompt.responseSchemaVersion !== "8")
+  ) {
     throw new ApiError(
       409,
       "This Gap release does not support atomic Gap regeneration",

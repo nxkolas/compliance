@@ -211,7 +211,7 @@ export function OrganizationManagementList({
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Nach Organisation suchen"
+            placeholder={labels.searchPlaceholder}
             aria-label={labels.searchLabel}
             className="h-12 rounded-lg border-0 bg-transparent py-3 pl-10 pr-3 font-['Space_Grotesk'] text-base font-normal text-neutral-50 shadow-none placeholder:text-neutral-50/60 focus-visible:border-0 focus-visible:ring-blue-700/40"
           />

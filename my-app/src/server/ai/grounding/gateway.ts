@@ -69,6 +69,7 @@ export async function runGroundedOperation<T>(input: {
     templateHash: string;
     responseSchemaVersion: string;
   };
+  abortSignal?: AbortSignal;
 }, dependencies: {
   providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
   languageDetector?: LanguageDetector;
@@ -257,6 +258,7 @@ export async function runGroundedOperation<T>(input: {
             detector:
               dependencies.languageDetector ??
               localAggregateLanguageDetector,
+            abortSignal: input.abortSignal,
             async onProviderAttempt(progress) {
               await db
                 .update(aiProcessingRuns)
@@ -274,6 +276,7 @@ export async function runGroundedOperation<T>(input: {
             prompt,
             schema: outputSchema,
             outputLocale: input.outputLocale,
+            abortSignal: input.abortSignal,
           });
     const parsed = result.output;
     await db
@@ -325,7 +328,12 @@ export async function runGroundedOperation<T>(input: {
   } catch (error) {
     await db.update(aiProcessingRuns).set({
       status: "failed",
-      errorCode: error instanceof ApiError ? error.code : "GROUNDING_FAILED",
+      errorCode:
+        error instanceof ApiError
+          ? error.code
+          : error instanceof Error && error.name === "AbortError"
+            ? "GENERATION_CANCELLED"
+            : "GROUNDING_FAILED",
       errorMessage: safeGroundingFailureMessage(error),
       ...(error instanceof LanguagePolicyError
         ? {
@@ -362,10 +370,12 @@ async function runLanguageNeutralProvider<T>(input: {
   prompt: { system: string; prompt: string };
   schema: z.ZodType<T>;
   outputLocale: "de" | "en";
+  abortSignal?: AbortSignal;
 }) {
   const result = await input.provider.run({
     ...input.prompt,
     schema: input.schema,
+    abortSignal: input.abortSignal,
   });
   return {
     output: input.schema.parse(result.output),

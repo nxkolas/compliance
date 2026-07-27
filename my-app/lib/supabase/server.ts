@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getInternalSupabaseEnvironment } from "@/src/config/env/supabase";
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a
@@ -8,10 +9,11 @@ import { cookies } from "next/headers";
  */
 export async function createClient() {
   const cookieStore = await cookies();
+  const environment = getInternalSupabaseEnvironment();
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    environment.url,
+    environment.publishableKey,
     {
       cookies: {
         getAll() {

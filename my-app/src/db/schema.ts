@@ -2592,7 +2592,9 @@ export const documentEmbeddingGenerations = pgTable.withRLS(
     extractionId: uuid("extraction_id").notNull(),
     provider: text("provider").notNull(),
     model: text("model").notNull(),
+    modelRevision: text("model_revision").notNull(),
     dimensions: integer("dimensions").notNull(),
+    retrievalInstructionId: text("retrieval_instruction_id").notNull(),
     chunkingVersion: text("chunking_version").notNull(),
     status: processingStatusEnum("status").notNull(),
     errorCode: text("error_code"),
@@ -2613,7 +2615,9 @@ export const documentEmbeddingGenerations = pgTable.withRLS(
       table.extractionId,
       table.provider,
       table.model,
+      table.modelRevision,
       table.dimensions,
+      table.retrievalInstructionId,
       table.chunkingVersion,
     ),
     index("document_embedding_generations_status_idx").on(table.status),
@@ -3454,7 +3458,7 @@ export const backgroundJobs = pgTable.withRLS(
     uniqueIndex("background_jobs_action_plan_generation_active_unique")
       .on(table.organizationId)
       .where(
-        sql`${table.kind} = 'action-plan-generation' and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
+        sql`${table.kind} in ('action-plan-generation', 'action-plan-generation-v2') and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
       ),
     check("background_jobs_progress_check", sql`${table.progress} between 0 and 100`),
     check("background_jobs_attempts_check", sql`${table.attemptCount} >= 0 and ${table.maxAttempts} > 0`),
@@ -3855,7 +3859,9 @@ export const legalSourceChunkEmbeddings = pgTable.withRLS(
     chunkId: uuid("chunk_id").notNull(),
     provider: text("provider").notNull(),
     model: text("model").notNull(),
+    modelRevision: text("model_revision").notNull(),
     dimensions: integer("dimensions").notNull(),
+    retrievalInstructionId: text("retrieval_instruction_id").notNull(),
     embedding: vector("embedding").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },

@@ -39,21 +39,28 @@ export function getComplianceChatModelById(
  * models are separate, but they must come from the same provider family.
  */
 export function getComplianceEmbeddingModel(providerMode: AiProviderMode) {
+  const modelId = getEmbeddingModelId(providerMode);
   if (providerMode === "openai") {
-    return getOpenAIProvider().embeddingModel(
-      requireModelEnv("OPENAI_EMBEDDING_MODEL"),
-    );
+    return getOpenAIProvider().embeddingModel(modelId);
   }
 
   if (providerMode === "self_hosted") {
-    return getSelfHostedChatProvider().embeddingModel(
-      requireModelEnv("SELF_HOSTED_AI_EMBEDDING_MODEL"),
-    );
+    return getSelfHostedChatProvider().embeddingModel(modelId);
   }
 
-  return getCompanyHostedChatProvider().embeddingModel(
-    requireModelEnv("COMPANY_AI_EMBEDDING_MODEL"),
-  );
+  return getCompanyHostedChatProvider().embeddingModel(modelId);
+}
+
+export function getEmbeddingModelId(providerMode: AiProviderMode) {
+  if (providerMode === "openai") {
+    return requireModelEnv("OPENAI_EMBEDDING_MODEL");
+  }
+
+  if (providerMode === "self_hosted") {
+    return requireModelEnv("SELF_HOSTED_AI_EMBEDDING_MODEL");
+  }
+
+  return requireModelEnv("COMPANY_AI_EMBEDDING_MODEL");
 }
 
 /**

@@ -78,6 +78,10 @@ export function getSelfHostedChatProvider() {
     name: "self-hosted",
     baseURL: requireAbsoluteUrl("SELF_HOSTED_AI_BASE_URL"),
     apiKey: requireEnv("SELF_HOSTED_AI_API_KEY"),
+    supportsStructuredOutputs: readBooleanEnvironment(
+      "SELF_HOSTED_AI_SUPPORTS_STRUCTURED_OUTPUTS",
+      false,
+    ),
   });
 }
 
@@ -89,6 +93,10 @@ export function getCompanyHostedChatProvider() {
     name: "company-hosted",
     baseURL: requireAbsoluteUrl("COMPANY_AI_BASE_URL"),
     apiKey: requireEnv("COMPANY_AI_API_KEY"),
+    supportsStructuredOutputs: readBooleanEnvironment(
+      "COMPANY_AI_SUPPORTS_STRUCTURED_OUTPUTS",
+      false,
+    ),
   });
 }
 
@@ -101,4 +109,11 @@ function isAiProviderMode(value: unknown): value is AiProviderMode {
     typeof value === "string" &&
     aiProviderModes.includes(value as AiProviderMode)
   );
+}
+
+function readBooleanEnvironment(name: string, fallback: boolean) {
+  const value = optionalEnv(name)?.toLowerCase();
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+  return fallback;
 }

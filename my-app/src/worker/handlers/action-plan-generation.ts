@@ -8,7 +8,10 @@ const payloadSchema = z.object({
   publishedReleaseQa: z.literal(true).optional(),
 });
 
-export async function handleActionPlanGeneration(job: BackgroundJobRecord) {
+export async function handleActionPlanGeneration(
+  job: BackgroundJobRecord,
+  abortSignal?: AbortSignal,
+) {
   const payload = payloadSchema.parse(job.payload);
   if (!job.organizationId || !job.requestedByUserId) {
     throw new Error("Action Plan generation job scope is incomplete");
@@ -18,6 +21,7 @@ export async function handleActionPlanGeneration(job: BackgroundJobRecord) {
     organizationId: job.organizationId,
     userId: job.requestedByUserId,
     attemptCount: job.attemptCount,
+    abortSignal,
     ...payload,
   });
 }

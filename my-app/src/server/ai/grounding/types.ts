@@ -72,7 +72,12 @@ export type GroundedProvider = {
   mode: string;
   provider: string;
   model: string;
-  run(input: { system: string; prompt: string; schema: z.ZodType }): Promise<{
+  run(input: {
+    system: string;
+    prompt: string;
+    schema: z.ZodType;
+    abortSignal?: AbortSignal;
+  }): Promise<{
     output: unknown;
     usage: { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number };
   }>;

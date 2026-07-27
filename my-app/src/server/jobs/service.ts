@@ -6,6 +6,10 @@ import { organizationCapabilities, type OrganizationCapability } from "@/src/ser
 import { and, asc, eq, inArray, isNotNull, lte, or } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { cancellationTransition, nextFailureState } from "./state-machine";
+import {
+  isActionPlanGenerationJobKind,
+  isGapGenerationJobKind,
+} from "./generation-kinds";
 
 export type EnqueueJobInput = {
   kind: string;
@@ -196,6 +200,8 @@ export async function succeedJob(input: {
       .set({
         state: "succeeded",
         progress: 100,
+        safeErrorCode: null,
+        safeErrorMessage: null,
         leaseOwner: null,
         leaseExpiresAt: null,
         finishedAt: now,
@@ -215,6 +221,7 @@ export async function failJob(input: {
   errorCode: string;
   safeMessage: string;
   retryDelaySeconds?: number;
+  retryable?: boolean;
   now?: Date;
 }) {
   const now = input.now ?? new Date();
@@ -231,7 +238,10 @@ export async function failJob(input: {
       .limit(1)
       .for("update");
     if (!current) throw leaseLost();
-    const state = nextFailureState(current.attemptCount, current.maxAttempts);
+    const state =
+      input.retryable === false
+        ? ("failed" as const)
+        : nextFailureState(current.attemptCount, current.maxAttempts);
     const [job] = await tx
       .update(backgroundJobs)
       .set({
@@ -250,6 +260,42 @@ export async function failJob(input: {
       .returning();
     return job;
   });
+}
+
+export function monitorJobCancellation(jobId: string, intervalMs = 1_000) {
+  const controller = new AbortController();
+  let stopped = false;
+  let checking = false;
+  const check = async () => {
+    if (stopped || checking || controller.signal.aborted) return;
+    checking = true;
+    try {
+      const job = await db.query.backgroundJobs.findFirst({
+        columns: { state: true },
+        where: {
+          RAW: (table, operators) =>
+            eq(table.id, jobId) ?? operators.sql`true`,
+        },
+      });
+      if (
+        !job ||
+        job.state === "cancellation_requested" ||
+        job.state === "cancelled"
+      ) {
+        controller.abort("job_cancellation_requested");
+      }
+    } finally {
+      checking = false;
+    }
+  };
+  const timer = setInterval(() => void check(), Math.max(250, intervalMs));
+  return {
+    signal: controller.signal,
+    stop() {
+      stopped = true;
+      clearInterval(timer);
+    },
+  };
 }
 
 export async function requestJobCancellation(userId: string, jobId: string) {
@@ -282,7 +328,7 @@ export async function requestJobCancellation(userId: string, jobId: string) {
     .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.state, current.state)))
     .returning();
   if (!job) throw new ApiError(409, "Job state changed", undefined, "JOB_STATE_CHANGED");
-  if (job.kind === "gap-generation") {
+  if (isGapGenerationJobKind(job.kind)) {
     await db.update(aiProcessingRuns).set({ cancellationRequestedAt: now })
       .where(eq(aiProcessingRuns.jobId, job.id));
     if (job.state === "cancelled") {
@@ -298,7 +344,7 @@ export async function requestJobCancellation(userId: string, jobId: string) {
       metadata: { state: job.state },
     });
   }
-  if (job.kind === "action-plan-generation") {
+  if (isActionPlanGenerationJobKind(job.kind)) {
     await db
       .update(aiProcessingRuns)
       .set({ cancellationRequestedAt: now })
@@ -343,7 +389,8 @@ export function toJobDto(
     state: job.state,
     progress: job.progress,
     attemptCount: job.attemptCount,
-    safeError: job.safeErrorCode && job.safeErrorMessage
+    safeError:
+      job.state === "failed" && job.safeErrorCode && job.safeErrorMessage
       ? { code: job.safeErrorCode, message: job.safeErrorMessage }
       : null,
     createdAt: job.createdAt.toISOString(),

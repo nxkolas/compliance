@@ -75,6 +75,7 @@ export async function executeLanguageValidatedProvider<T>(input: {
   expectedLocale: OutputLocale;
   generatedProse(output: T): string[];
   detector: LanguageDetector;
+  abortSignal?: AbortSignal;
   onProviderAttempt?(progress: {
     attemptCount: number;
     usage: Usage;
@@ -95,6 +96,7 @@ export async function executeLanguageValidatedProvider<T>(input: {
     const result = await input.provider.run({
       ...input.prompt,
       schema: input.schema,
+      abortSignal: input.abortSignal,
     });
     usage = aggregateUsage(usage, result.usage);
     await input.onProviderAttempt?.({ attemptCount: attempt, usage });

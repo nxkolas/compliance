@@ -24,6 +24,12 @@ export const organizationsMessages = defineFeatureMessages({
             "Prüfe alle Organisationen, zu denen du gehörst, und öffne einen Arbeitsbereich, um NIS2-Bewertungen zu verwalten.",
           newDescription:
             "Erstellen Sie einen Arbeitsbereich für eine juristische Person.",
+          newPageTitle: "Neue Organisation",
+          newPageDescription:
+            "Legen Sie einen Arbeitsbereich für Ihr Unternehmen an. Diese Angaben werden später für den Betroffenheitscheck und weitere Analysen verwendet.",
+          managementTitle: "Organisationen verwalten",
+          managementDescription:
+            "Wechseln Sie den aktiven Arbeitsbereich oder passen Sie Stammdaten und Mitgliedschaften an.",
           loadingForm: "Organisationsformular wird geladen...",
           details: "Organisationsdaten",
           workspaceDescription:
@@ -50,6 +56,11 @@ export const organizationsMessages = defineFeatureMessages({
           employees: "Mitarbeitende",
           size: "Größe",
           country: "Land",
+          organizationNameHelp:
+            "Interner Anzeigename für Ihren Arbeitsbereich.",
+          legalNameHelp:
+            "Offizieller Firmenname laut Handelsregister.",
+          countryHelp: "Land, in dem die Organisation registriert ist.",
           createButton: "Organisation erstellen",
           createPending: "Organisation wird erstellt...",
           createError: "Organisation konnte nicht erstellt werden",
@@ -256,6 +267,12 @@ export const organizationsMessages = defineFeatureMessages({
             "Review every organization you belong to and open a workspace to manage NIS2 assessments.",
           newDescription:
             "Create a workspace for a legal entity.",
+          newPageTitle: "New organization",
+          newPageDescription:
+            "Create a workspace for your company. These details will be used for the applicability check and later analyses.",
+          managementTitle: "Manage organizations",
+          managementDescription:
+            "Switch the active workspace or update master data and memberships.",
           loadingForm: "Loading organization form...",
           details: "Organization details",
           workspaceDescription:
@@ -282,6 +299,11 @@ export const organizationsMessages = defineFeatureMessages({
           employees: "Employees",
           size: "Size",
           country: "Country",
+          organizationNameHelp:
+            "Internal display name for your workspace.",
+          legalNameHelp:
+            "Official company name from the commercial register.",
+          countryHelp: "Country in which the organization is registered.",
           createButton: "Create organization",
           createPending: "Creating organization...",
           createError: "Organization could not be created",

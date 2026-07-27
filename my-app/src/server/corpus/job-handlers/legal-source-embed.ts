@@ -30,7 +30,9 @@ export async function handleLegalSourceEmbed(
       chunkId: chunk.id,
       provider: embedder.provider,
       model: embedder.model,
+      modelRevision: embedder.modelRevision,
       dimensions: embedder.dimensions,
+      retrievalInstructionId: embedder.retrievalInstructionId,
       embedding: embeddings[index],
     }))).onConflictDoNothing();
     await tx.update(legalSourceProcessingGenerations).set({

@@ -13,6 +13,10 @@ import {
 import { and, eq } from "drizzle-orm";
 import { nextLegalSourceMonitorCheck } from "@/src/contracts/admin/legal-source-monitor-schedule";
 import type { BackgroundJobRecord } from "./service";
+import {
+  isActionPlanGenerationJobKind,
+  isGapGenerationJobKind,
+} from "./generation-kinds";
 
 export async function recordWorkerDomainFailure(
   job: BackgroundJobRecord,
@@ -62,7 +66,7 @@ export async function recordWorkerDomainFailure(
       evaluationState: "failed",
       updatedAt: new Date(),
     }).where(eq(legalCorpusReleases.id, payload.data.releaseId));
-  } else if (job.kind === "gap-generation") {
+  } else if (isGapGenerationJobKind(job.kind)) {
     await db.update(aiProcessingRuns).set({
       status: "failed",
       errorCode,
@@ -79,7 +83,7 @@ export async function recordWorkerDomainFailure(
       entityId: job.id,
       metadata: { errorCode },
     });
-  } else if (job.kind === "action-plan-generation") {
+  } else if (isActionPlanGenerationJobKind(job.kind)) {
     await db
       .update(aiProcessingRuns)
       .set({
@@ -116,7 +120,7 @@ export async function recordWorkerDomainCancellation(job: BackgroundJobRecord) {
       .where(eq(reports.jobId, job.id));
     return;
   }
-  if (job.kind === "action-plan-generation") {
+  if (isActionPlanGenerationJobKind(job.kind)) {
     await db
       .update(aiProcessingRuns)
       .set({
@@ -143,7 +147,7 @@ export async function recordWorkerDomainCancellation(job: BackgroundJobRecord) {
     }
     return;
   }
-  if (job.kind !== "gap-generation") return;
+  if (!isGapGenerationJobKind(job.kind)) return;
   await db.update(gapReassessmentDrafts).set({ status: "cancelled", completedAt: new Date(), updatedAt: new Date() })
     .where(eq(gapReassessmentDrafts.generationJobId, job.id));
   if (job.organizationId) await db.insert(auditEvents).values({

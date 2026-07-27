@@ -49,11 +49,11 @@ export async function retrievePinnedLegalContext(
     throw new ApiError(409, "Workflow release has incomplete corpus pins", undefined, "CORPUS_PINS_INCOMPLETE");
   }
   const provider = dependencies.embeddingProvider ?? createDocumentEmbeddingProvider();
-  const [queryEmbedding] = await provider.embed([input.query]);
+  const [queryEmbedding] = await provider.embed([input.query], "query");
   validateEmbeddings([queryEmbedding], 1, provider.dimensions);
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
   const lexical = sql<number>`coalesce(ts_rank_cd(${legalSourceChunks.searchVector}, websearch_to_tsquery('simple', ${input.query})), 0)`;
-  const semantic = sql<number>`1 - (${legalSourceChunkEmbeddings.embedding} <=> ${vectorLiteral}::vector)`;
+  const semantic = sql<number>`1 - (${legalSourceChunkEmbeddings.embedding} OPERATOR(extensions.<=>) ${vectorLiteral}::extensions.vector)`;
   const score = sql<number>`(${lexical} * 0.35) + (${semantic} * 0.65)`;
   const preferredProvisionIds = [
     ...new Set(input.preferredMappedLegalProvisionIds ?? []),

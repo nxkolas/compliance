@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { getDictionary, getLocale } from "@/lib/i18n";
+import { serializeBrowserSupabaseEnvironment } from "@/src/config/env/supabase";
 import "./globals.css";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+const defaultUrl = process.env.APP_PUBLIC_URL ?? "http://localhost:3000";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -28,9 +27,17 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
+  const browserConfiguration = serializeBrowserSupabaseEnvironment();
 
   return (
     <html lang={locale}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__COMPLIANCETOOL_CONFIG__=${browserConfiguration};`,
+          }}
+        />
+      </head>
       <body className={`${spaceGrotesk.className} antialiased`}>
         {children}
       </body>

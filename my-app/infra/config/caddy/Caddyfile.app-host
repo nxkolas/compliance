@@ -1,0 +1,66 @@
+{
+	email {$CADDY_ACME_EMAIL}
+	# The admin/metrics listener is private to Docker networks; no host port is
+	# published for it.
+	admin 0.0.0.0:2019
+	metrics {
+		per_host
+	}
+	log {
+		format json
+		level INFO
+	}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	log {
+		output file /var/log/caddy/access.json {
+			roll_size 100MiB
+			roll_keep 10
+		}
+		format filter {
+			wrap json
+			fields {
+				request>headers>Authorization delete
+				request>headers>Cookie delete
+				request>headers>Apikey delete
+				request>uri replace "[REDACTED]"
+			}
+		}
+	}
+	import /etc/caddy/active-upstream.caddy
+}
+
+{$SUPABASE_DOMAIN} {
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+	}
+	request_body {
+		max_size 55MB
+	}
+	log {
+		output file /var/log/caddy/access.json {
+			roll_size 100MiB
+			roll_keep 10
+		}
+		format filter {
+			wrap json
+			fields {
+				request>headers>Authorization delete
+				request>headers>Cookie delete
+				request>headers>Apikey delete
+				request>uri replace "[REDACTED]"
+			}
+		}
+	}
+	reverse_proxy kong:8000
+}

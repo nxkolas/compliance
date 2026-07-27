@@ -3,6 +3,7 @@ import { db } from "@/src/db";
 import { backgroundJobs, legalSourceProcessingGenerations, legalSourceRenditions, legalSourceVersions, platformAuditEvents, uploadSessionResults, uploadSessions } from "@/src/db/schema";
 import { requirePlatformCapability } from "@/src/server/auth/capability-service";
 import { createUploadSession, verifyUploadedObject } from "@/src/server/uploads";
+import { createDocumentEmbeddingProvider } from "@/src/server/documents";
 import { getSupabaseAdminClient } from "../supabase-admin";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -177,13 +178,20 @@ export async function completeLegalSourceUpload(input: {
       requestedByUserId: input.actorUserId,
       cancellable: true,
     }).returning();
+    const embeddingProvider = createDocumentEmbeddingProvider();
     const [generation] = await tx.insert(legalSourceProcessingGenerations).values({
       renditionId: rendition.id,
       jobId: job.id,
       generationNumber: 1,
       parserConfig: { version: "legal-v1" },
       chunkerConfig: { version: "paragraph-v1" },
-      embeddingConfig: { provider: "openai", model: "text-embedding-3-small", dimensions: 1536 },
+      embeddingConfig: {
+        provider: embeddingProvider.provider,
+        model: embeddingProvider.model,
+        modelRevision: embeddingProvider.modelRevision,
+        dimensions: embeddingProvider.dimensions,
+        retrievalInstructionId: embeddingProvider.retrievalInstructionId,
+      },
     }).returning();
     await tx.update(backgroundJobs).set({ payload: { renditionId: rendition.id, generationId: generation.id } }).where(eq(backgroundJobs.id, job.id));
     await tx.update(uploadSessions).set({

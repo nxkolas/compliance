@@ -42,6 +42,7 @@ import { resolveGapGenerationPrerequisites } from "./applicability-eligibility";
 import { deriveAtomicGapTriggerPolicy } from "./trigger-policy";
 import { generateAtomicGapBatch } from "./atomic-gap-generation";
 import type { ValidatedCategoryGapResult } from "./generation-schema-v7";
+import { defaultGapStatementMaximum } from "./generation-schema-v8";
 
 export async function generateGapAnalysis(input: {
   userId: string;
@@ -53,6 +54,7 @@ export async function generateGapAnalysis(input: {
   retryNonce?: string;
   jobId?: string;
   asOfDate?: string;
+  abortSignal?: AbortSignal;
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const assessment = await db.query.assessments.findFirst({
@@ -162,7 +164,7 @@ export async function generateGapAnalysis(input: {
     artifact: applicability,
     requirements: release.requirements,
   });
-  if (release.prompt.responseSchemaVersion !== "7") {
+  if (!["7", "8"].includes(release.prompt.responseSchemaVersion)) {
     throw new ApiError(
       409,
       "The pinned Gap release contract is unsupported",
@@ -429,7 +431,7 @@ async function generateGroundedGapResult(input: {
     inputHash: string;
   }>;
 }) {
-  if (input.release.prompt.responseSchemaVersion !== "7") {
+  if (!["7", "8"].includes(input.release.prompt.responseSchemaVersion)) {
     throw new ApiError(
       409,
       "The pinned Gap release contract is unsupported",
@@ -539,6 +541,20 @@ async function generateGroundedAtomicGapsV7(
             return [question.stableKey, answer.id];
           }),
         ),
+        statementMaximumByQuestion: Object.fromEntries(
+          questions.map((question) => {
+            const definition = input.release.questions.find(
+              (candidate) => candidate.stableKey === question.stableKey,
+            );
+            return [
+              question.stableKey,
+              defaultGapStatementMaximum({
+                splittable: definition?.splittable,
+                maximumStatements: definition?.maximumStatements,
+              }),
+            ];
+          }),
+        ),
       };
     },
   );
@@ -567,6 +583,7 @@ async function generateGroundedAtomicGapsV7(
     questionnaireAssertions,
     asOfDate: input.input.asOfDate,
     jobId: input.input.jobId,
+    abortSignal: input.input.abortSignal,
   });
   const citations: SuppliedCitation[] = generated.context.map((item) => ({
     id: item.citationId,
@@ -602,44 +619,55 @@ async function generateGroundedAtomicGapsV7(
       return {
         ...finding,
         status: requireValue(evaluationByRequirementId, requirement.id).status,
-        generationRunId: generated.runId,
+        generationRunId:
+          generated.runIdsByCategory?.[finding.requirementCode] ??
+          generated.runId,
         questionnaireDisagreements: [],
       };
     },
   );
+  const generatedRunIds = [
+    ...new Set(
+      generated.runIdsByCategory
+        ? Object.values(generated.runIdsByCategory)
+        : [generated.runId],
+    ),
+  ];
   await Promise.all([
     db
       .insert(aiProcessingRunAssessmentInputs)
-      .values({
-        runId: generated.runId,
+      .values(generatedRunIds.map((runId) => ({
+        runId,
         assessmentRevisionId: input.assessmentRevisionId,
         sourceHash: contentHash(input.answerRows),
-      })
+      })))
       .onConflictDoNothing(),
     db
       .insert(aiProcessingRunArtifactInputs)
-      .values({
-        runId: generated.runId,
+      .values(generatedRunIds.map((runId) => ({
+        runId,
         artifactRevisionId: input.applicability.id,
         sourceHash:
           input.applicability.inputHash ??
           contentHash(input.applicability.result),
-      })
+      })))
       .onConflictDoNothing(),
     input.documentRows.length
       ? db
           .insert(aiProcessingRunDocumentInputs)
           .values(
-            input.documentRows.map((document) => ({
-              runId: generated.runId,
-              documentVersionId: document.id,
-              sourceHash: document.contentHash,
-            })),
+            generatedRunIds.flatMap((runId) =>
+              input.documentRows.map((document) => ({
+                runId,
+                documentVersionId: document.id,
+                sourceHash: document.contentHash,
+              })),
+            ),
           )
           .onConflictDoNothing()
       : Promise.resolve(),
   ]);
-  const run = await db.query.aiProcessingRuns.findFirst({
+  const runs = await db.query.aiProcessingRuns.findMany({
     columns: {
       id: true,
       model: true,
@@ -649,9 +677,10 @@ async function generateGroundedAtomicGapsV7(
     },
     where: {
       RAW: (table, operators) =>
-        eq(table.id, generated.runId) ?? operators.sql`true`,
+        operators.inArray(table.id, generatedRunIds),
     },
   });
+  const run = runs.find((candidate) => candidate.id === generated.runId);
   if (!run) throw new Error("Grounded AI run was not persisted");
   const promptRequirements = input.applicableRequirements.map(
     (requirement) => ({
@@ -673,6 +702,7 @@ async function generateGroundedAtomicGapsV7(
   );
   const persisted = await persistGeneratedGapResult({
     runId: generated.runId,
+    runIds: generatedRunIds,
     userId: input.input.userId,
     organizationId: input.input.organizationId,
     assessmentRevisionId: input.assessmentRevisionId,
@@ -684,9 +714,17 @@ async function generateGroundedAtomicGapsV7(
     outputLocale: input.input.locale,
     model: { model: run.model ?? "grounded-provider" },
     sourceInputHash: input.sourceInputHash,
-    renderedInputHash: run.renderedInputHash,
-    inputTokens: run.inputTokens ?? 0,
-    outputTokens: run.outputTokens ?? 0,
+    renderedInputHash: contentHash(
+      runs.map((candidate) => candidate.renderedInputHash),
+    ),
+    inputTokens: runs.reduce(
+      (total, candidate) => total + (candidate.inputTokens ?? 0),
+      0,
+    ),
+    outputTokens: runs.reduce(
+      (total, candidate) => total + (candidate.outputTokens ?? 0),
+      0,
+    ),
     jobId: input.input.jobId,
     deterministicStatuses: new Map(
       input.evaluationRows.map((evaluation) => [
@@ -704,6 +742,7 @@ async function generateGroundedAtomicGapsV7(
 
 async function persistGeneratedGapResult(input: {
   runId: string;
+  runIds?: string[];
   userId: string;
   organizationId: string;
   assessmentRevisionId: string;
@@ -959,7 +998,11 @@ async function persistGeneratedGapResult(input: {
         requirementByCode,
         finding.requirementCode,
       );
-      assertPersistableAtomicFinding(finding, requirement, input.runId);
+      assertPersistableAtomicFinding(
+        finding,
+        requirement,
+        new Set(input.runIds ?? [input.runId]),
+      );
       if (
         finding.gaps.some(
           (gap) =>
@@ -1073,7 +1116,7 @@ async function persistGeneratedGapResult(input: {
       .update(generatedArtifacts)
       .set({ currentRevisionId: revision.id })
       .where(eq(generatedArtifacts.id, artifact.id));
-    const [completedRun] = await tx
+    const completedRuns = await tx
       .update(aiProcessingRuns)
       .set({
         status: "succeeded",
@@ -1083,8 +1126,10 @@ async function persistGeneratedGapResult(input: {
         outputTokens: input.outputTokens,
         completedAt: new Date(),
       })
-      .where(eq(aiProcessingRuns.id, input.runId))
+      .where(inArray(aiProcessingRuns.id, input.runIds ?? [input.runId]))
       .returning();
+    const completedRun = completedRuns.find((run) => run.id === input.runId);
+    if (!completedRun) throw new Error("Primary Gap generation run is missing");
     const events: Array<typeof auditEvents.$inferInsert> = [
       {
         organizationId: input.organizationId,
@@ -1138,6 +1183,8 @@ async function persistGeneratedGapResult(input: {
         .set({
           state: "succeeded",
           progress: 100,
+          safeErrorCode: null,
+          safeErrorMessage: null,
           leaseOwner: null,
           leaseExpiresAt: null,
           finishedAt: new Date(),
@@ -1208,10 +1255,10 @@ function assertPersistableAtomicFinding(
   requirement: {
     questionStableKeys: string[];
   },
-  expectedRunId: string,
+  expectedRunIds: Set<string>,
 ) {
   if (
-    finding.generationRunId !== expectedRunId ||
+    !expectedRunIds.has(finding.generationRunId) ||
     finding.statementBasisHash !== contentHash(finding.statementBasis)
   ) {
     throw new ApiError(

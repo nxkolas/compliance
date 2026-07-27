@@ -1,0 +1,115 @@
+services:
+  db:
+    networks: [data, observability]
+
+  litellm:
+    networks: [app, observability]
+
+  postgres-exporter:
+    image: ${POSTGRES_EXPORTER_IMAGE}
+    profiles: [observability]
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgresql://postgres:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [data, observability]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE}
+    profiles: [observability]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ../../config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../config/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      postgres-exporter:
+        condition: service_started
+      alertmanager:
+        condition: service_started
+    networks: [observability]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  alertmanager:
+    image: ${ALERTMANAGER_IMAGE}
+    profiles: [observability]
+    restart: unless-stopped
+    command: [--config.file=/etc/alertmanager/alertmanager.yml]
+    volumes:
+      - ../../config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks: [observability]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  loki:
+    image: ${LOKI_IMAGE}
+    profiles: [observability]
+    restart: unless-stopped
+    command: [-config.file=/etc/loki/loki.yml]
+    volumes:
+      - ../../config/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    networks: [observability]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  alloy:
+    image: ${ALLOY_IMAGE}
+    profiles: [observability]
+    restart: unless-stopped
+    command: [run, /etc/alloy/config.alloy]
+    volumes:
+      - ../../config/alloy/local.alloy:/etc/alloy/config.alloy:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      loki:
+        condition: service_started
+    networks: [observability]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: ${GRAFANA_IMAGE}
+    profiles: [observability]
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:3001:3000
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_USER: ${DASHBOARD_USERNAME}
+      GF_SECURITY_ADMIN_PASSWORD: ${DASHBOARD_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../../config/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+      loki:
+        condition: service_started
+    networks: [observability]
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  observability:
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:

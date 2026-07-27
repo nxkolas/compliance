@@ -1,0 +1,173 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Staging-qualified 40-character Git revision
+        required: true
+        type: string
+      web_image:
+        description: Staging-qualified web image including sha256 digest
+        required: true
+        type: string
+      worker_image:
+        description: Staging-qualified worker image including sha256 digest
+        required: true
+        type: string
+      database_image:
+        description: Staging-qualified database image including sha256 digest
+        required: true
+        type: string
+      storage_image:
+        description: Staging-qualified hardened Storage image including sha256 digest
+        required: true
+        type: string
+      studio_image:
+        description: Staging-qualified hardened Studio image including sha256 digest
+        required: true
+        type: string
+      postgres_meta_image:
+        description: Staging-qualified hardened postgres-meta image including sha256 digest
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.revision }}
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+      - name: Validate and package the promoted release
+        working-directory: my-app
+        env:
+          REVISION: ${{ inputs.revision }}
+          WEB_IMAGE: ${{ inputs.web_image }}
+          WORKER_IMAGE: ${{ inputs.worker_image }}
+          DATABASE_IMAGE: ${{ inputs.database_image }}
+          STORAGE_IMAGE: ${{ inputs.storage_image }}
+          STUDIO_IMAGE: ${{ inputs.studio_image }}
+          META_IMAGE: ${{ inputs.postgres_meta_image }}
+        run: |
+          [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$REVISION"
+          registry="ghcr.io/${GITHUB_REPOSITORY_OWNER}"
+          validate_image() {
+            local image="$1" repository="$2" prefix digest
+            prefix="${registry}/${repository}@"
+            [[ "$image" == "$prefix"* ]]
+            digest="${image#"$prefix"}"
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          }
+          validate_image "$WEB_IMAGE" compliancetool-web
+          validate_image "$WORKER_IMAGE" compliancetool-worker
+          validate_image "$DATABASE_IMAGE" compliancetool-database
+          validate_image "$STORAGE_IMAGE" compliancetool-storage
+          validate_image "$STUDIO_IMAGE" compliancetool-studio
+          validate_image "$META_IMAGE" compliancetool-postgres-meta
+          verify_revision_label() {
+            local image="$1" repository manifest child labels actual
+            repository="${image%@*}"
+            manifest="$(
+              docker buildx imagetools inspect "$image" \
+                --format '{{json .Manifest}}'
+            )"
+            child="$(
+              jq -r '
+                if .manifests then
+                  .manifests[]
+                    | select(
+                        .platform.os == "linux" and
+                        .platform.architecture == "amd64"
+                      )
+                    | .digest
+                else
+                  empty
+                end
+              ' <<< "$manifest" | head -n1
+            )"
+            if [[ -z "$child" ]]; then
+              child="${image#*@}"
+            fi
+            labels="$(
+              docker buildx imagetools inspect "${repository}@${child}" \
+                --format '{{json .Image.Config.Labels}}'
+            )"
+            actual="$(
+              jq -r '."org.opencontainers.image.revision" // empty' \
+                <<< "$labels"
+            )"
+            test "$actual" = "$REVISION"
+          }
+          for image in \
+            "$WEB_IMAGE" "$WORKER_IMAGE" "$DATABASE_IMAGE" \
+            "$STORAGE_IMAGE" "$STUDIO_IMAGE" "$META_IMAGE"; do
+            verify_revision_label "$image"
+          done
+          certificate_identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/containers.yml@refs/heads/main"
+          for image in \
+            "$WEB_IMAGE" "$WORKER_IMAGE" "$DATABASE_IMAGE" \
+            "$STORAGE_IMAGE" "$STUDIO_IMAGE" "$META_IMAGE"; do
+            cosign verify \
+              --certificate-identity "$certificate_identity" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$image" >/dev/null
+          done
+          printf 'RELEASE_REVISION=%s\nWEB_IMAGE=%s\nWORKER_IMAGE=%s\nCOMPLIANCETOOL_DB_IMAGE=%s\nCOMPLIANCETOOL_STORAGE_IMAGE=%s\nCOMPLIANCETOOL_STUDIO_IMAGE=%s\nCOMPLIANCETOOL_META_IMAGE=%s\n' \
+            "$REVISION" "$WEB_IMAGE" "$WORKER_IMAGE" "$DATABASE_IMAGE" "$STORAGE_IMAGE" "$STUDIO_IMAGE" "$META_IMAGE" > release-manifest.env
+          tar -czf deployment-bundle.tgz infra
+          sha256sum release-manifest.env deployment-bundle.tgz > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 0700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 0600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+      - name: Deploy protected immutable release
+        env:
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.PRODUCTION_DEPLOY_USER }}
+          RELEASE_ROOT: ${{ secrets.PRODUCTION_RELEASE_ROOT }}
+          ENVIRONMENT_FILE: ${{ secrets.PRODUCTION_ENVIRONMENT_FILE }}
+          REVISION: ${{ inputs.revision }}
+        run: |
+          remote_archive="deployment-${REVISION}.tgz"
+          remote_manifest="release-${REVISION}.env"
+          scp my-app/deployment-bundle.tgz "${DEPLOY_USER}@${DEPLOY_HOST}:${remote_archive}"
+          scp my-app/release-manifest.env "${DEPLOY_USER}@${DEPLOY_HOST}:${remote_manifest}"
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" bash -s -- \
+            "$RELEASE_ROOT" "$REVISION" "$remote_archive" "$remote_manifest" "$ENVIRONMENT_FILE" <<'REMOTE'
+          set -euo pipefail
+          release_root="$1"
+          revision="$2"
+          archive="$3"
+          manifest="$4"
+          environment_file="$5"
+          source_root="${release_root}/source-${revision}"
+          sudo -n install -d -o 0 -g 0 -m 0750 "$source_root"
+          sudo -n tar -xzf "$archive" -C "$source_root"
+          sudo -n "$source_root/infra/scripts/deploy-from-manifest.sh" "$manifest" "$environment_file"
+          rm -f "$archive" "$manifest"
+          REMOTE

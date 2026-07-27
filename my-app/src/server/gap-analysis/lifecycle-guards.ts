@@ -1,5 +1,6 @@
 import { db } from "@/src/db";import { and, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
+import { ACTION_PLAN_GENERATION_JOB_KINDS } from "../jobs";
 
 export async function assertGapInputsMutable(input: {
   organizationId: string;
@@ -43,7 +44,9 @@ export async function assertGapFindingsMutable(organizationId: string) {
       RAW: (table, operators) =>
         and(
           eq(table.organizationId, organizationId),
-          eq(table.kind, "action-plan-generation"),
+          operators.inArray(table.kind, [
+            ...ACTION_PLAN_GENERATION_JOB_KINDS,
+          ]),
           operators.inArray(table.state, [
             "queued",
             "running",

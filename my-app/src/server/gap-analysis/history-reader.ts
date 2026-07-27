@@ -1,5 +1,6 @@
 import { db } from "@/src/db";import type { Locale } from "@/lib/i18n-config";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { getPublicSupabaseEnvironment } from "@/src/config/env/supabase";
 import { and, eq, inArray } from "drizzle-orm";
 
 const gapEventTypes = [
@@ -124,10 +125,7 @@ async function resolveActors(
     if (id === currentUserId) result.set(id, locale === "de" ? "Sie" : "You");
     else result.set(id, fallback);
   }
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SECRET_KEY
-  ) {
+  if (!process.env.SUPABASE_SECRET_KEY || !hasSupabaseEnvironment()) {
     return result;
   }
   try {
@@ -155,4 +153,13 @@ async function resolveActors(
     // History stays useful with a localized, non-identifying fallback.
   }
   return result;
+}
+
+function hasSupabaseEnvironment() {
+  try {
+    getPublicSupabaseEnvironment();
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -4,9 +4,6 @@ import { relations } from "./relations";
 
 const connectionString = process.env.DATABASE_URL;
 let dbQueryObserver: ((query: string) => void) | undefined;
-const globalForDb = globalThis as typeof globalThis & {
-  __complyPostgresClient?: ReturnType<typeof postgres>;
-};
 
 if (!connectionString) {
   throw new Error("DATABASE_URL is not set");

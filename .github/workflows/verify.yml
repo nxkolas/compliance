@@ -1,0 +1,338 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: my-app
+
+jobs:
+  application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: my-app/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run check:i18n
+      - run: npm run test:worker
+      - run: npm run test:routes
+      - run: npm run test:ai
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=critical
+
+  deployment:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.0
+      - name: Generate isolated non-secret configuration
+        run: node infra/scripts/generate-local-env.mjs .env.docker.local compliancetool-test
+      - name: Validate GitHub Actions workflows
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          source my-app/infra/versions.env
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo \
+            "$ACTIONLINT_IMAGE"
+      - name: Validate shell and PowerShell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in infra/scripts/*.sh; do bash -n "$script"; done
+          # shellcheck disable=SC2016
+          pwsh -NoProfile -Command '
+            Get-ChildItem infra/scripts/*.ps1 | ForEach-Object {
+              [void][scriptblock]::Create((Get-Content -Raw $_.FullName))
+            }
+          '
+      - name: Validate every Compose combination
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=(docker compose --project-name compliancetool-test
+            --env-file infra/versions.env --env-file .env.docker.local)
+          "${base[@]}" -f infra/compose/local/compose.yml config --quiet
+          for overlay in compose.infra.yml compose.studio.yml compose.docling.yml compose.observability.yml; do
+            "${base[@]}" -f infra/compose/local/compose.yml \
+              -f "infra/compose/local/$overlay" \
+              --profile admin --profile docling --profile observability config --quiet
+          done
+          "${base[@]}" -f infra/compose/local/compose.yml \
+            -f infra/compose/local/compose.studio.yml \
+            -f infra/compose/local/compose.docling.yml \
+            -f infra/compose/local/compose.observability.yml \
+            --profile admin --profile docling --profile observability config --quiet
+          docker compose --env-file infra/versions.env \
+            --env-file infra/env/examples/app-host.env.example \
+            -f infra/compose/app-host/compose.platform.yml config --quiet
+          docker compose --env-file infra/versions.env \
+            --env-file infra/env/examples/app-host.env.example \
+            -f infra/compose/app-host/compose.platform.yml \
+            -f infra/compose/app-host/compose.observability.yml config --quiet
+          docker compose --env-file infra/versions.env \
+            --env-file infra/env/examples/app-host.env.example \
+            -f infra/compose/app-host/compose.platform.yml \
+            -f infra/compose/app-host/compose.studio.yml \
+            --profile admin config --quiet
+          docker compose --env-file infra/versions.env \
+            --env-file infra/env/examples/app-host.env.example \
+            -f infra/compose/app-host/compose.platform.yml \
+            -f infra/compose/app-host/compose.studio.yml \
+            -f infra/compose/app-host/compose.observability.yml \
+            --profile admin config --quiet
+          APP_ENV_FILE="$PWD/infra/env/examples/app-host.env.example" \
+            docker compose --env-file infra/versions.env \
+            --env-file infra/env/examples/app-host.env.example \
+            -f infra/compose/app-host/compose.release.yml \
+            --profile blue --profile green config --quiet
+          docker compose --env-file infra/versions.env \
+            --env-file infra/env/examples/ai-host.env.example \
+            -f infra/compose/ai-host/compose.yml config --quiet
+          docker compose --env-file infra/versions.env \
+            --env-file infra/env/examples/ai-host.env.example \
+            -f infra/compose/ai-host/compose.yml \
+            -f infra/compose/ai-host/compose.observability.yml config --quiet
+      - name: Rehearse two independent empty database builds
+        run: pwsh -NoProfile -File infra/scripts/migration-rehearsal.ps1 -EnvironmentFile .env.docker.local
+      - name: Validate Caddy and monitoring configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          source infra/versions.env
+          printf 'reverse_proxy web-blue:3000\n' > "$RUNNER_TEMP/active-upstream.caddy"
+          printf 'https://alerts.invalid/receiver\n' > "$RUNNER_TEMP/alert-webhook"
+          docker run --rm \
+            -e APP_DOMAIN=app.example.com \
+            -e SUPABASE_DOMAIN=supabase.example.com \
+            -e CADDY_ACME_EMAIL=operations@example.com \
+            -v "$PWD/infra/config/caddy/Caddyfile.app-host:/etc/caddy/Caddyfile:ro" \
+            -v "$RUNNER_TEMP/active-upstream.caddy:/etc/caddy/active-upstream.caddy:ro" \
+            "$CADDY_IMAGE" caddy validate --config /etc/caddy/Caddyfile
+          docker run --rm \
+            -v "$PWD/infra/config/caddy/Caddyfile.local:/etc/caddy/Caddyfile:ro" \
+            "$CADDY_IMAGE" caddy validate --config /etc/caddy/Caddyfile
+          for config in app-host ai-host; do
+            docker run --rm --entrypoint promtool \
+              -v "$PWD/infra/config/prometheus:/etc/prometheus:ro" \
+              "$PROMETHEUS_IMAGE" \
+              check config "/etc/prometheus/$config.yml"
+          done
+          docker run --rm --entrypoint amtool \
+            -v "$PWD/infra/config/alertmanager/production.yml:/etc/alertmanager.yml:ro" \
+            -v "$RUNNER_TEMP/alert-webhook:/run/secrets/alertmanager_webhook_url:ro" \
+            "$ALERTMANAGER_IMAGE" check-config /etc/alertmanager.yml
+          docker run --rm \
+            -v "$PWD/infra/config/loki/loki.yml:/etc/loki/loki.yml:ro" \
+            "$LOKI_IMAGE" \
+            -config.file=/etc/loki/loki.yml -verify-config=true
+          docker run --rm \
+            -v "$PWD/infra/config/alloy/local.alloy:/etc/alloy/config.alloy:ro" \
+            "$ALLOY_IMAGE" validate /etc/alloy/config.alloy
+          docker run --rm --entrypoint python \
+            -v "$PWD/infra/config/litellm:/config:ro" \
+            "$LITELLM_IMAGE" -c \
+            "import pathlib,yaml; [yaml.safe_load(pathlib.Path(p).read_text()) for p in ('/config/local.yaml','/config/production.yaml')]; compile(pathlib.Path('/config/custom_auth.py').read_text(), '/config/custom_auth.py', 'exec')"
+          docker run --rm --entrypoint /bin/sh \
+            --env-file .env.docker.local \
+            -e KONG_DATABASE=off \
+            -e KONG_DECLARATIVE_CONFIG=/tmp/kong.yml \
+            -v "$PWD/infra/config/kong/kong.yml.template:/home/kong/temp.yml:ro" \
+            -v "$PWD/infra/vendor/supabase/volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro" \
+            -v "$PWD/infra/scripts/validate-kong-config.sh:/validate-kong-config.sh:ro" \
+            "$KONG_IMAGE" /validate-kong-config.sh
+
+  images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build first-party images
+        run: |
+          docker build --platform linux/amd64 --target web \
+            --build-arg VCS_REF="${GITHUB_SHA}" \
+            -t compliancetool-web:verify .
+          docker build --platform linux/amd64 --target worker \
+            --build-arg VCS_REF="${GITHUB_SHA}" \
+            -t compliancetool-worker:verify .
+          docker build --platform linux/amd64 --target storage \
+            -t compliancetool-storage:verify .
+          docker build --platform linux/amd64 --target database \
+            -t compliancetool-database:verify .
+          docker build --platform linux/amd64 --target studio \
+            -t compliancetool-studio:verify .
+          docker build --platform linux/amd64 --target postgres-meta \
+            -t compliancetool-postgres-meta:verify .
+      - name: Scan web image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: compliancetool-web:verify
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan worker image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: compliancetool-worker:verify
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan hardened Storage image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: compliancetool-storage:verify
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan WAL-G-enabled database image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: compliancetool-database:verify
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan hardened Studio image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: compliancetool-studio:verify
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan hardened postgres-meta image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: compliancetool-postgres-meta:verify
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Generate web SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: compliancetool-web:verify
+          format: spdx-json
+          output-file: my-app/web.spdx.json
+      - name: Generate worker SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: compliancetool-worker:verify
+          format: spdx-json
+          output-file: my-app/worker.spdx.json
+      - name: Generate hardened Storage SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: compliancetool-storage:verify
+          format: spdx-json
+          output-file: my-app/storage.spdx.json
+      - name: Generate WAL-G-enabled database SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: compliancetool-database:verify
+          format: spdx-json
+          output-file: my-app/database.spdx.json
+      - name: Generate hardened Studio SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: compliancetool-studio:verify
+          format: spdx-json
+          output-file: my-app/studio.spdx.json
+      - name: Generate hardened postgres-meta SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: compliancetool-postgres-meta:verify
+          format: spdx-json
+          output-file: my-app/postgres-meta.spdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verification-sboms
+          path: |
+            my-app/web.spdx.json
+            my-app/worker.spdx.json
+            my-app/database.spdx.json
+            my-app/storage.spdx.json
+            my-app/studio.spdx.json
+            my-app/postgres-meta.spdx.json
+          if-no-files-found: error
+          retention-days: 30
+
+  dependency-images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        image_key:
+          - SUPABASE_AUTH_IMAGE
+          - SUPABASE_REST_IMAGE
+          - KONG_IMAGE
+          - CADDY_IMAGE
+          - MAILPIT_IMAGE
+          - RUSTFS_IMAGE
+          - OLLAMA_IMAGE
+          - LITELLM_IMAGE
+          - CURL_IMAGE
+          - PROMETHEUS_IMAGE
+          - GRAFANA_IMAGE
+          - LOKI_IMAGE
+          - ALLOY_IMAGE
+          - ALERTMANAGER_IMAGE
+          - NODE_EXPORTER_IMAGE
+          - POSTGRES_EXPORTER_IMAGE
+          - DCGM_EXPORTER_IMAGE
+          - ACTIONLINT_IMAGE
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Scan and inventory pinned dependency
+        working-directory: my-app
+        env:
+          IMAGE_KEY: ${{ matrix.image_key }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source infra/versions.env
+          image="${!IMAGE_KEY}"
+          [[ "$image" =~ @sha256:[0-9a-f]{64}$ ]]
+          docker run --rm "$TRIVY_IMAGE" image \
+            --quiet --timeout 20m --scanners vuln \
+            --severity CRITICAL --ignore-unfixed --exit-code 1 "$image"
+          docker run --rm -v "$PWD:/evidence" "$TRIVY_IMAGE" image \
+            --quiet --timeout 20m --format spdx-json \
+            --output /evidence/dependency.spdx.json "$image"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dependency-sbom-${{ matrix.image_key }}
+          path: my-app/dependency.spdx.json
+          if-no-files-found: error
+          retention-days: 30

@@ -8,13 +8,17 @@ const payloadSchema = z.object({
   retryNonce: z.string().optional(),
 });
 
-export async function handleGapGeneration(job: BackgroundJobRecord) {
+export async function handleGapGeneration(
+  job: BackgroundJobRecord,
+  abortSignal?: AbortSignal,
+) {
   const payload = payloadSchema.parse(job.payload);
   if (!job.organizationId || !job.requestedByUserId) throw new Error("Gap generation job scope is incomplete");
   return executeGapGenerationJob({
     jobId: job.id,
     organizationId: job.organizationId,
     userId: job.requestedByUserId,
+    abortSignal,
     ...payload,
   });
 }

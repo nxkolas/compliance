@@ -2,7 +2,10 @@ import {
   failJob,
   finalizeJobCancellation,
   heartbeatJob,
+  isActionPlanGenerationJobKind,
+  isGapGenerationJobKind,
   leaseNextJob,
+  monitorJobCancellation,
   recordWorkerDomainCancellation,
   recordWorkerDomainFailure,
   succeedJob,
@@ -19,17 +22,29 @@ import { handleActionPlanGeneration } from "./handlers/action-plan-generation";
 import { ensureScheduledCleanupJob } from "@/src/server/api/cleanup";
 import { ApiError } from "@/src/server/api/errors";
 import { ensureScheduledLegalSourceMonitorJobs } from "@/src/server/corpus";
+import {
+  classifyGenerationFailure,
+  isCancellationFailure,
+} from "@/src/server/ai/generation";
 
 const handlers = {
-  "legal-source-process": handleLegalSourceProcess,
-  "legal-source-embed": handleLegalSourceEmbed,
-  "legal-source-monitor": handleLegalSourceMonitor,
-  "legal-source-import": handleLegalSourceImport,
-  "grounding-evaluation": handleGroundingEvaluation,
+  "legal-source-process": (job: Parameters<typeof handleLegalSourceProcess>[0]) =>
+    handleLegalSourceProcess(job),
+  "legal-source-embed": (job: Parameters<typeof handleLegalSourceEmbed>[0]) =>
+    handleLegalSourceEmbed(job),
+  "legal-source-monitor": (job: Parameters<typeof handleLegalSourceMonitor>[0]) =>
+    handleLegalSourceMonitor(job),
+  "legal-source-import": (job: Parameters<typeof handleLegalSourceImport>[0]) =>
+    handleLegalSourceImport(job),
+  "grounding-evaluation": (job: Parameters<typeof handleGroundingEvaluation>[0]) =>
+    handleGroundingEvaluation(job),
   "gap-generation": handleGapGeneration,
+  "gap-generation-v8": handleGapGeneration,
   "action-plan-generation": handleActionPlanGeneration,
-  "report-render": handleReportRender,
-  cleanup: handleCleanup,
+  "action-plan-generation-v2": handleActionPlanGeneration,
+  "report-render": (job: Parameters<typeof handleReportRender>[0]) =>
+    handleReportRender(job),
+  cleanup: (job: Parameters<typeof handleCleanup>[0]) => handleCleanup(job),
 } as const;
 
 export async function runOneJob(workerId: string) {
@@ -59,6 +74,7 @@ export async function runOneJob(workerId: string) {
       }),
     );
   }, 20_000);
+  const cancellationMonitor = monitorJobCancellation(job.id);
   try {
     if (job.state === "cancellation_requested") {
       await finalizeJobCancellation(job.id, workerId);
@@ -68,7 +84,12 @@ export async function runOneJob(workerId: string) {
     }
     const handler = handlers[job.kind as keyof typeof handlers];
     if (!handler) throw new Error(`No worker handler for ${job.kind}`);
-    const result = await handler(job);
+    const result = await (
+      handler as (
+        leasedJob: typeof job,
+        abortSignal?: AbortSignal,
+      ) => Promise<{ type: string; id: string } | undefined>
+    )(job, cancellationMonitor.signal);
     const current = await heartbeatJob({
       jobId: job.id,
       workerId,
@@ -106,29 +127,45 @@ export async function runOneJob(workerId: string) {
         ...(error instanceof ApiError ? { details: error.details } : {}),
       });
     }
-    if (error instanceof Error && error.name === "JobCancellationError") {
+    if (
+      cancellationMonitor.signal.aborted ||
+      isCancellationFailure(error)
+    ) {
       await finalizeJobCancellation(job.id, workerId);
       await recordWorkerDomainCancellation(job);
       outcome = "cancelled";
       return true;
     }
-    const errorCode =
-      error instanceof Error && error.name === "AbortError"
+    const generationFailure =
+      isGapGenerationJobKind(job.kind) ||
+      isActionPlanGenerationJobKind(job.kind)
+      ? classifyGenerationFailure(error)
+      : null;
+    const errorCode = generationFailure?.safeCode ??
+      (error instanceof Error && error.name === "AbortError"
         ? "JOB_TIMEOUT"
         : error instanceof ApiError
           ? error.code
-          : "JOB_FAILED";
+          : "JOB_FAILED");
     const failed = await failJob({
       jobId: job.id,
       workerId,
       errorCode,
       safeMessage: "The background operation failed.",
+      retryable:
+        generationFailure === null ||
+        generationFailure.failureClass === "transient_provider",
+      retryDelaySeconds:
+        generationFailure?.failureClass === "transient_provider"
+          ? Math.ceil((generationFailure.retryAfterMs ?? 1_000) / 1_000)
+          : undefined,
     });
     if (failed.state === "failed")
       await recordWorkerDomainFailure(job, errorCode);
     outcome = failed.state;
   } finally {
     clearInterval(heartbeat);
+    cancellationMonitor.stop();
     if (job.kind === "cleanup" && outcome === "succeeded") {
       await ensureScheduledCleanupJob().catch((error) =>
         console.error("Could not schedule the next cleanup job", {

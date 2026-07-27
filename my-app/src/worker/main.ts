@@ -1,26 +1,48 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { closeDatabaseConnection } from "@/src/server/database-lifecycle";
-import { runOneJob } from "./runtime";
-import { ensureScheduledCleanupJob } from "@/src/server/api/cleanup";
-import { ensureScheduledLegalSourceMonitorJobs } from "@/src/server/corpus";
+import { getWorkerEnvironment } from "@/src/config/env/worker";
 
 const once = process.argv.includes("--once");
-const workerId = process.env.WORKER_ID ?? `worker-${randomUUID()}`;
+const environment = getWorkerEnvironment();
+const workerId = environment.WORKER_ID ?? `worker-${randomUUID()}`;
+let draining = false;
 
-async function main() {
-  await ensureScheduledCleanupJob();
-  await ensureScheduledLegalSourceMonitorJobs();
-  do {
-    const worked = await runOneJob(workerId);
-    if (once) return;
-    if (!worked) await new Promise((resolve) => setTimeout(resolve, 1_000));
-  } while (true);
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    draining = true;
+    console.info("Worker drain requested", { signal });
+  });
 }
 
-main()
-  .catch((error) => {
-    console.error("Worker stopped", { errorType: error instanceof Error ? error.name : "unknown" });
-    process.exitCode = 1;
-  })
-  .finally(() => closeDatabaseConnection());
+async function main() {
+  const [
+    { closeDatabaseConnection },
+    { runOneJob },
+    { ensureScheduledCleanupJob },
+    { ensureScheduledLegalSourceMonitorJobs },
+  ] = await Promise.all([
+    import("@/src/server/database-lifecycle"),
+    import("./runtime"),
+    import("@/src/server/api/cleanup"),
+    import("@/src/server/corpus"),
+  ]);
+
+  try {
+    await ensureScheduledCleanupJob();
+    await ensureScheduledLegalSourceMonitorJobs();
+    while (!draining) {
+      const worked = await runOneJob(workerId);
+      if (once || draining) break;
+      if (!worked) await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  } finally {
+    await closeDatabaseConnection();
+  }
+}
+
+main().catch((error) => {
+  console.error("Worker stopped", {
+    errorType: error instanceof Error ? error.name : "unknown",
+  });
+  process.exitCode = 1;
+});
