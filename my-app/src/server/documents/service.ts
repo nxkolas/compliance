@@ -774,11 +774,22 @@ async function loadDocumentUsageRows(
       acceptedRevisionId: string | null;
     }>;
   }
+  return buildDocumentUsageQuery(organizationId, documentVersionIds);
+}
+
+export function buildDocumentUsageQuery(
+  organizationId: string,
+  documentVersionIds: string[],
+) {
   const artifactUsage = db
     .select({
-      usageKind: sql<"artifact" | "draft" | "plan">`'artifact'`,
+      usageKind: sql<"artifact" | "draft" | "plan">`'artifact'`.as(
+        "usage_kind",
+      ),
       documentVersionId: artifactRevisionDocumentSources.documentVersionId,
-      revisionId: sql<string | null>`${generatedArtifactRevisions.id}`,
+      revisionId: sql<string | null>`${generatedArtifactRevisions.id}`.as(
+        "revision_id",
+      ),
       currentRevisionId: generatedArtifacts.currentRevisionId,
       acceptedRevisionId: generatedArtifacts.acceptedRevisionId,
     })
@@ -798,17 +809,20 @@ async function loadDocumentUsageRows(
       and(
         eq(generatedArtifacts.organizationId, organizationId),
         eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-        inArray(artifactRevisionDocumentSources.documentVersionId, documentVersionIds),
+        inArray(
+          artifactRevisionDocumentSources.documentVersionId,
+          documentVersionIds,
+        ),
       ),
     );
   const draftUsage = db
     .select({
-      usageKind: sql<"artifact" | "draft" | "plan">`'draft'`,
+      usageKind: sql<"artifact" | "draft" | "plan">`'draft'`.as("usage_kind"),
       documentVersionId:
         gapReassessmentDraftDocuments.documentVersionId,
-      revisionId: sql<string | null>`null`,
-      currentRevisionId: sql<string | null>`null`,
-      acceptedRevisionId: sql<string | null>`null`,
+      revisionId: sql<string | null>`null`.as("revision_id"),
+      currentRevisionId: sql<string | null>`null`.as("current_revision_id"),
+      acceptedRevisionId: sql<string | null>`null`.as("accepted_revision_id"),
     })
     .from(gapReassessmentDraftDocuments)
     .innerJoin(
@@ -827,11 +841,11 @@ async function loadDocumentUsageRows(
     );
   const planUsage = db
     .select({
-      usageKind: sql<"artifact" | "draft" | "plan">`'plan'`,
+      usageKind: sql<"artifact" | "draft" | "plan">`'plan'`.as("usage_kind"),
       documentVersionId: artifactRevisionDocumentSources.documentVersionId,
-      revisionId: sql<string | null>`null`,
-      currentRevisionId: sql<string | null>`null`,
-      acceptedRevisionId: sql<string | null>`null`,
+      revisionId: sql<string | null>`null`.as("revision_id"),
+      currentRevisionId: sql<string | null>`null`.as("current_revision_id"),
+      acceptedRevisionId: sql<string | null>`null`.as("accepted_revision_id"),
     })
     .from(actionPlans)
     .innerJoin(
