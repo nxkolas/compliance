@@ -9,3 +9,4 @@ This folder contains system architecture, data model, and API design notes.
 - [Framework change and extension effort](./framework-change-effort.md)
 - [Organization API architecture](./organization-api-architecture.md)
 - [API route inventory](./api-route-inventory.md)
+- [Organization progress and tutorial boundary](./tutorial/organization-progress.md)
