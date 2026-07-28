@@ -13,6 +13,7 @@ export const authMessages = defineFeatureMessages({
           forgotPasswordDescription:
             "Wir senden Ihnen einen Link zum Zurücksetzen.",
           backToLogin: "Zurück zur",
+          loginNoun: "Anmeldung",
           signingIn: "Anmelden...",
           noAccount: "Noch kein Konto?",
           repeatPassword: "Passwort wiederholen",
@@ -90,6 +91,7 @@ export const authMessages = defineFeatureMessages({
           forgotPasswordDescription:
             "We will send you a password reset link.",
           backToLogin: "Back to",
+          loginNoun: "login",
           signingIn: "Signing in...",
           noAccount: "No account yet?",
           repeatPassword: "Repeat password",

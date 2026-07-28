@@ -141,7 +141,7 @@ export function ForgotPasswordForm({
               href="/auth/login"
               className="absolute left-0 top-0 font-bold leading-5 hover:underline"
             >
-              {labels.login}
+              {labels.loginNoun}
             </Link>
           </div>
         </div>
