@@ -251,6 +251,7 @@ export async function loadFindingsForRevisionIds(revisionIds: string[]) {
       evidence: gapFindingEvidence,
       documentSource: {
         versionId: documentVersions.id,
+        documentId: documents.id,
         title: documents.title,
         mimeType: documentVersions.mimeType,
         chunkPageNumber: documentChunks.pageNumber,

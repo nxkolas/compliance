@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
-import { archiveOrganizationDocument } from "@/src/server/documents";
+import { retryOrganizationDocumentIndexing } from "@/src/server/documents";
 
 export const POST = apiRoute(
   async ({
@@ -14,7 +14,7 @@ export const POST = apiRoute(
   }) => {
     const user = await requireApiUser();
     const params = await routeContext.params;
-    const document = await archiveOrganizationDocument(
+    const document = await retryOrganizationDocumentIndexing(
       user.id,
       params.organizationId,
       params.documentId,

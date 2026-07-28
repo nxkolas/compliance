@@ -22,10 +22,7 @@ import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import * as z from "zod";
 import { ApiError } from "../api/errors";
 import { hasOrganizationCapability } from "../auth/capabilities";
-import {
-  assertCanAccessOrganization,
-  assertCanContributeToOrganization,
-} from "../organizations/service";
+import { requireOrganizationCapability } from "../auth/capability-service";
 import { chunkExtractedPages } from "./chunker";
 import {
   CHUNKING_VERSION,
@@ -45,6 +42,10 @@ import {
   deriveDocumentUsageLabels,
   type DocumentUsageLabel,
 } from "./usage";
+import type {
+  DocumentDto,
+  DocumentListQuery,
+} from "@/src/contracts/documents";
 export type { DocumentUsageLabel } from "./usage";
 
 export type DocumentStorage = {
@@ -78,7 +79,11 @@ export async function uploadOrganizationDocument(
     embeddingProvider?: DocumentEmbeddingProvider;
   } = {},
 ) {
-  await assertCanContributeToOrganization(command.userId, command.organizationId);
+  await requireOrganizationCapability(
+    command.userId,
+    command.organizationId,
+    "documents:write",
+  );
   validateDocumentUpload({
     fileName: command.fileName,
     mimeType: command.mimeType,
@@ -182,7 +187,11 @@ export async function uploadOrganizationDocumentVersion(
     embeddingProvider?: DocumentEmbeddingProvider;
   } = {},
 ) {
-  await assertCanContributeToOrganization(command.userId, command.organizationId);
+  await requireOrganizationCapability(
+    command.userId,
+    command.organizationId,
+    "documents:write",
+  );
   validateDocumentUpload({
     fileName: command.fileName,
     mimeType: command.mimeType,
@@ -306,13 +315,291 @@ export async function listOrganizationDocuments(
   userId: string,
   organizationId: string,
 ) {
-  await assertCanAccessOrganization(userId, organizationId);
+  await requireOrganizationCapability(userId, organizationId, "documents:read");
   return db
     .select({ document: documents, version: documentVersions })
     .from(documents)
     .leftJoin(documentVersions, eq(documents.currentVersionId, documentVersions.id))
     .where(eq(documents.organizationId, organizationId))
     .orderBy(desc(documents.createdAt));
+}
+
+type CurrentDocumentRow = {
+  document: Pick<
+    typeof documents.$inferSelect,
+    "id" | "title" | "status" | "createdAt"
+  >;
+  version: Pick<
+    typeof documentVersions.$inferSelect,
+    "id" | "mimeType" | "byteSize" | "fileName" | "storageBucket" | "storagePath"
+  >;
+  extraction: Pick<
+    typeof documentExtractions.$inferSelect,
+    "id" | "status"
+  > | null;
+  embedding: Pick<
+    typeof documentEmbeddingGenerations.$inferSelect,
+    "id" | "status"
+  > | null;
+};
+
+function toDocumentDto(row: CurrentDocumentRow): DocumentDto {
+  const indexStatus: DocumentDto["indexStatus"] =
+    row.extraction?.status === "failed" || row.embedding?.status === "failed"
+      ? "failed"
+      : row.extraction?.status === "succeeded" &&
+          row.embedding?.status === "succeeded"
+        ? "indexed"
+        : "processing";
+
+  return {
+    id: row.document.id,
+    title: row.document.title,
+    mimeType: row.version.mimeType,
+    byteSize: row.version.byteSize,
+    uploadedAt: row.document.createdAt.toISOString(),
+    status: row.document.status,
+    indexStatus,
+  };
+}
+
+function documentCursorScope(
+  organizationId: string,
+  status: DocumentListQuery["status"],
+  search?: string,
+) {
+  return `organization-documents:${JSON.stringify({
+    organizationId,
+    status,
+    search: search?.toLowerCase() ?? "",
+  })}`;
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+async function loadProcessingRows(versionIds: string[]) {
+  if (!versionIds.length) {
+    return new Map<
+      string,
+      {
+        extraction: CurrentDocumentRow["extraction"];
+        embedding: CurrentDocumentRow["embedding"];
+      }
+    >();
+  }
+
+  const rows = await db
+    .select({
+      versionId: documentVersions.id,
+      extraction: {
+        id: documentExtractions.id,
+        status: documentExtractions.status,
+      },
+      embedding: {
+        id: documentEmbeddingGenerations.id,
+        status: documentEmbeddingGenerations.status,
+      },
+    })
+    .from(documentVersions)
+    .leftJoin(
+      documentExtractions,
+      eq(documentExtractions.documentVersionId, documentVersions.id),
+    )
+    .leftJoin(
+      documentEmbeddingGenerations,
+      eq(documentEmbeddingGenerations.extractionId, documentExtractions.id),
+    )
+    .where(inArray(documentVersions.id, versionIds))
+    .orderBy(
+      desc(documentExtractions.createdAt),
+      desc(documentEmbeddingGenerations.createdAt),
+    );
+
+  const byVersion = new Map<
+    string,
+    {
+      extraction: CurrentDocumentRow["extraction"];
+      embedding: CurrentDocumentRow["embedding"];
+    }
+  >();
+  for (const row of rows) {
+    if (!byVersion.has(row.versionId)) {
+      byVersion.set(row.versionId, {
+        extraction: row.extraction?.id ? row.extraction : null,
+        embedding: row.embedding?.id ? row.embedding : null,
+      });
+    }
+  }
+  return byVersion;
+}
+
+export async function listOrganizationDocumentDtos(input: {
+  userId: string;
+  organizationId: string;
+  query: DocumentListQuery;
+}) {
+  const membership = await requireOrganizationCapability(
+    input.userId,
+    input.organizationId,
+    "documents:read",
+  );
+  const { status, search, limit } = input.query;
+  const cursorScope = documentCursorScope(
+    input.organizationId,
+    status,
+    search,
+  );
+  const cursor = input.query.cursor
+    ? z
+        .tuple([z.iso.datetime(), z.uuid()])
+        .parse(getCursorCodec().decode(input.query.cursor, cursorScope))
+    : null;
+  const searchPredicate = search
+    ? sql`${documents.title} ilike ${`%${escapeLikePattern(search)}%`} escape '\\'`
+    : undefined;
+
+  const pagePromise = db
+    .select({
+      document: {
+        id: documents.id,
+        title: documents.title,
+        status: documents.status,
+        createdAt: documents.createdAt,
+      },
+      version: {
+        id: documentVersions.id,
+        mimeType: documentVersions.mimeType,
+        byteSize: documentVersions.byteSize,
+        fileName: documentVersions.fileName,
+        storageBucket: documentVersions.storageBucket,
+        storagePath: documentVersions.storagePath,
+      },
+    })
+    .from(documents)
+    .innerJoin(
+      documentVersions,
+      eq(documents.currentVersionId, documentVersions.id),
+    )
+    .where(
+      and(
+        eq(documents.organizationId, input.organizationId),
+        status === "all" ? undefined : eq(documents.status, status),
+        searchPredicate,
+        cursor
+          ? or(
+              lt(documents.createdAt, new Date(cursor[0])),
+              and(
+                eq(documents.createdAt, new Date(cursor[0])),
+                lt(documents.id, cursor[1]),
+              ),
+            )
+          : undefined,
+      ),
+    )
+    .orderBy(desc(documents.createdAt), desc(documents.id))
+    .limit(limit + 1);
+
+  const countsPromise = db
+    .select({
+      all: sql<number>`count(*)::int`,
+      active:
+        sql<number>`count(*) filter (where ${documents.status} = 'active')::int`,
+      archived:
+        sql<number>`count(*) filter (where ${documents.status} = 'archived')::int`,
+    })
+    .from(documents)
+    .where(eq(documents.organizationId, input.organizationId));
+
+  const [pageRows, countRows] = await Promise.all([
+    pagePromise,
+    countsPromise,
+  ]);
+  const page = pageRows.slice(0, limit);
+  const processing = await loadProcessingRows(
+    page.map((row) => row.version.id),
+  );
+  const last = page.at(-1);
+
+  return {
+    documents: page.map((row) =>
+      toDocumentDto({
+        ...row,
+        ...(processing.get(row.version.id) ?? {
+          extraction: null,
+          embedding: null,
+        }),
+      }),
+    ),
+    permissions: {
+      canUpload: hasOrganizationCapability(membership.role, "documents:write"),
+      canArchive: hasOrganizationCapability(
+        membership.role,
+        "documents:archive",
+      ),
+      canRestore: hasOrganizationCapability(
+        membership.role,
+        "documents:archive",
+      ),
+      canRetryIndexing: hasOrganizationCapability(
+        membership.role,
+        "documents:write",
+      ),
+    },
+    counts: countRows[0] ?? { all: 0, active: 0, archived: 0 },
+    nextCursor:
+      pageRows.length > limit && last
+        ? getCursorCodec().encode(cursorScope, [
+            last.document.createdAt.toISOString(),
+            last.document.id,
+          ])
+        : undefined,
+  };
+}
+
+async function getCurrentDocumentRow(
+  organizationId: string,
+  documentId: string,
+) {
+  const [base] = await db
+    .select({
+      document: {
+        id: documents.id,
+        title: documents.title,
+        status: documents.status,
+        createdAt: documents.createdAt,
+      },
+      version: {
+        id: documentVersions.id,
+        mimeType: documentVersions.mimeType,
+        byteSize: documentVersions.byteSize,
+        fileName: documentVersions.fileName,
+        storageBucket: documentVersions.storageBucket,
+        storagePath: documentVersions.storagePath,
+      },
+    })
+    .from(documents)
+    .innerJoin(
+      documentVersions,
+      eq(documents.currentVersionId, documentVersions.id),
+    )
+    .where(
+      and(
+        eq(documents.id, documentId),
+        eq(documents.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  if (!base) return null;
+  const processing = await loadProcessingRows([base.version.id]);
+  return {
+    ...base,
+    ...(processing.get(base.version.id) ?? {
+      extraction: null,
+      embedding: null,
+    }),
+  } satisfies CurrentDocumentRow;
 }
 
 export async function getOrganizationDocumentLibrary(
@@ -325,7 +612,11 @@ export async function getOrganizationDocumentLibrary(
     includeUsage?: boolean;
   } = {},
 ) {
-  const membership = await assertCanAccessOrganization(userId, organizationId);
+  const membership = await requireOrganizationCapability(
+    userId,
+    organizationId,
+    "documents:read",
+  );
   return getOrganizationDocumentLibraryPreauthorized(
     membership,
     organizationId,
@@ -334,7 +625,7 @@ export async function getOrganizationDocumentLibrary(
 }
 
 export async function getOrganizationDocumentLibraryPreauthorized(
-  membership: Awaited<ReturnType<typeof assertCanAccessOrganization>>,
+  membership: Awaited<ReturnType<typeof requireOrganizationCapability>>,
   organizationId: string,
   options: {
     limit?: number;
@@ -345,7 +636,8 @@ export async function getOrganizationDocumentLibraryPreauthorized(
 ) {
   if (
     membership.organizationId !== organizationId ||
-    membership.status !== "active"
+    membership.status !== "active" ||
+    !hasOrganizationCapability(membership.role, "documents:read")
   ) {
     throw new ApiError(403, "Active organization membership required");
   }
@@ -561,8 +853,9 @@ async function loadDocumentUsageRows(
 }
 
 export async function getOrganizationDocumentDetail(userId: string, organizationId: string, documentId: string) {
-  const library = await getOrganizationDocumentLibrary(userId, organizationId, { documentId });
-  return library.documents.find((entry) => entry.document.id === documentId) ?? null;
+  await requireOrganizationCapability(userId, organizationId, "documents:read");
+  const row = await getCurrentDocumentRow(organizationId, documentId);
+  return row ? toDocumentDto(row) : null;
 }
 
 export async function listOrganizationDocumentVersions(userId: string, organizationId: string, documentId: string) {
@@ -570,7 +863,7 @@ export async function listOrganizationDocumentVersions(userId: string, organizat
 }
 
 export async function listOrganizationDocumentVersionsPage(input: { userId: string; organizationId: string; documentId: string; limit: number; cursor?: string }) {
-  await assertCanAccessOrganization(input.userId, input.organizationId);
+  await requireOrganizationCapability(input.userId, input.organizationId, "documents:read");
   const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (and(eq(table.id, input.documentId), eq(table.organizationId, input.organizationId))) ?? operators.sql`true` } });
   if (!document) return null;
   const scope = `document-versions:${input.organizationId}:${input.documentId}`;
@@ -609,7 +902,7 @@ export async function listOrganizationDocumentVersionsPage(input: { userId: stri
 }
 
 export async function getOrganizationDocumentVersion(userId: string, organizationId: string, versionId: string) {
-  await assertCanAccessOrganization(userId, organizationId);
+  await requireOrganizationCapability(userId, organizationId, "documents:read");
   const [row] = await db.select({ version: documentVersions, document: documents, extraction: documentExtractions, embedding: documentEmbeddingGenerations })
     .from(documentVersions).innerJoin(documents, eq(documentVersions.documentId, documents.id))
     .leftJoin(documentExtractions, eq(documentExtractions.documentVersionId, documentVersions.id))
@@ -621,16 +914,26 @@ export async function getOrganizationDocumentVersion(userId: string, organizatio
 export async function createDocumentSourceAccess(
   userId: string,
   organizationId: string,
-  versionId: string,
+  documentId: string,
   options: {
     mode?: "download" | "inline";
     page?: number;
   } = {},
 ) {
-  const row = await getOrganizationDocumentVersion(userId, organizationId, versionId);
-  if (!row) throw new ApiError(404, "Document version not found", undefined, "DOCUMENT_VERSION_NOT_FOUND");
+  await requireOrganizationCapability(userId, organizationId, "documents:read");
+  const row = await getCurrentDocumentRow(organizationId, documentId);
+  if (!row) {
+    throw new ApiError(
+      404,
+      "Document not found",
+      undefined,
+      "DOCUMENT_NOT_FOUND",
+    );
+  }
   try {
-    const source = getSupabaseAdminClient().storage.from(row.version.storageBucket);
+    const source = getSupabaseAdminClient().storage.from(
+      row.version.storageBucket,
+    );
     const { data, error } =
       options.mode === "inline"
         ? await source.createSignedUrl(row.version.storagePath, 300)
@@ -661,7 +964,7 @@ export async function createDocumentSourceAccess(
 }
 
 export async function updateOrganizationDocument(input: { userId: string; organizationId: string; documentId: string; title: string; expectedVersion: number }) {
-  await assertCanContributeToOrganization(input.userId, input.organizationId);
+  await requireOrganizationCapability(input.userId, input.organizationId, "documents:write");
   const title = input.title.trim();
   if (!title) throw new ApiError(400, "A document title is required", undefined, "DOCUMENT_TITLE_REQUIRED");
   const [document] = await db.update(documents).set({ title, version: input.expectedVersion + 1, updatedAt: new Date() }).where(and(
@@ -671,66 +974,131 @@ export async function updateOrganizationDocument(input: { userId: string; organi
   return document;
 }
 
-export async function restoreOrganizationDocument(userId: string, organizationId: string, documentId: string, expectedVersion: number) {
-  await assertCanContributeToOrganization(userId, organizationId);
-  const [document] = await db.update(documents).set({ status: "active", archivedAt: null, version: sql`${documents.version} + 1`, updatedAt: new Date() }).where(and(
-    eq(documents.id, documentId), eq(documents.organizationId, organizationId), eq(documents.status, "archived"), eq(documents.version, expectedVersion),
-  )).returning();
-  if (!document) throw new ApiError(412, "The document changed or is not archived", undefined, "PRECONDITION_FAILED");
-  return document;
+export async function restoreOrganizationDocument(
+  userId: string,
+  organizationId: string,
+  documentId: string,
+) {
+  await requireOrganizationCapability(
+    userId,
+    organizationId,
+    "documents:archive",
+  );
+  const changed = await db.transaction(async (tx) => {
+    const [document] = await tx
+      .update(documents)
+      .set({
+        status: "active",
+        archivedAt: null,
+        version: sql`${documents.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(documents.id, documentId),
+          eq(documents.organizationId, organizationId),
+          eq(documents.status, "archived"),
+        ),
+      )
+      .returning({ id: documents.id });
+    if (document) {
+      await tx.insert(auditEvents).values({
+        organizationId,
+        actorUserId: userId,
+        eventType: "document.restored",
+        entityType: "document",
+        entityId: documentId,
+        metadata: {},
+      });
+    }
+    return Boolean(document);
+  });
+  const row = await getCurrentDocumentRow(organizationId, documentId);
+  if (!row) {
+    throw new ApiError(
+      404,
+      "Document not found",
+      undefined,
+      "DOCUMENT_NOT_FOUND",
+    );
+  }
+  if (!changed && row.document.status !== "active") {
+    throw new ApiError(409, "Document could not be restored");
+  }
+  return toDocumentDto(row);
 }
 
 export async function archiveOrganizationDocument(
   userId: string,
   organizationId: string,
   documentId: string,
-  expectedVersion: number,
 ) {
-  await assertCanContributeToOrganization(userId, organizationId);
-  const [document] = await db
-    .update(documents)
-    .set({ status: "archived", archivedAt: new Date(), version: sql`${documents.version} + 1`, updatedAt: new Date() })
-    .where(
-      and(
-        eq(documents.id, documentId),
-        eq(documents.organizationId, organizationId),
-        eq(documents.status, "active"),
-        eq(documents.version, expectedVersion),
-      ),
-    )
-    .returning();
-  if (!document) throw new ApiError(412, "The document changed or is not active", undefined, "PRECONDITION_FAILED");
-  await db.insert(auditEvents).values({
+  await requireOrganizationCapability(
+    userId,
     organizationId,
-    actorUserId: userId,
-    eventType: "document.archived",
-    entityType: "document",
-    entityId: documentId,
-    metadata: {},
+    "documents:archive",
+  );
+  const changed = await db.transaction(async (tx) => {
+    const [document] = await tx
+      .update(documents)
+      .set({
+        status: "archived",
+        archivedAt: new Date(),
+        version: sql`${documents.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(documents.id, documentId),
+          eq(documents.organizationId, organizationId),
+          eq(documents.status, "active"),
+        ),
+      )
+      .returning({ id: documents.id });
+    if (document) {
+      await tx.insert(auditEvents).values({
+        organizationId,
+        actorUserId: userId,
+        eventType: "document.archived",
+        entityType: "document",
+        entityId: documentId,
+        metadata: {},
+      });
+    }
+    return Boolean(document);
   });
-  return document;
+  const row = await getCurrentDocumentRow(organizationId, documentId);
+  if (!row) {
+    throw new ApiError(
+      404,
+      "Document not found",
+      undefined,
+      "DOCUMENT_NOT_FOUND",
+    );
+  }
+  if (!changed && row.document.status !== "archived") {
+    throw new ApiError(409, "Document could not be archived");
+  }
+  return toDocumentDto(row);
 }
 
 export async function createDocumentUploadSession(input: {
   userId: string;
   organizationId: string;
-  documentId?: string;
   fileName: string;
   mimeType: string;
   size: number;
   sha256?: string;
 }) {
-  await assertCanContributeToOrganization(input.userId, input.organizationId);
-  if (input.documentId) {
-    const document = await db.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (and(
-      eq(table.id, input.documentId!), eq(table.organizationId, input.organizationId), eq(table.status, "active"),
-    )) ?? operators.sql`true` } });
-    if (!document) throw new ApiError(404, "Active document not found", undefined, "DOCUMENT_NOT_FOUND");
-  }
+  await requireOrganizationCapability(
+    input.userId,
+    input.organizationId,
+    "documents:write",
+  );
   return createUploadSession({
     organizationId: input.organizationId,
     userId: input.userId,
-    scope: input.documentId ? `document-version:${input.documentId}` : "document:new",
+    scope: "document:new",
     fileName: input.fileName,
     mimeType: input.mimeType,
     size: input.size,
@@ -748,13 +1116,11 @@ export async function completeDocumentUpload(input: {
   userId: string;
   organizationId: string;
   sessionId: string;
-  title?: string;
-  documentId?: string;
+  title: string;
 }) {
-  await assertCanContributeToOrganization(input.userId, input.organizationId);
+  await requireOrganizationCapability(input.userId, input.organizationId, "documents:write");
   const verified = await verifyUploadedObject({ sessionId: input.sessionId, userId: input.userId, verifyObject: verifyDocumentObject });
-  const expectedScope = input.documentId ? `document-version:${input.documentId}` : "document:new";
-  if (verified.organizationId !== input.organizationId || verified.scope !== expectedScope) {
+  if (verified.organizationId !== input.organizationId || verified.scope !== "document:new") {
     throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
   }
   if (verified.state === "completed") {
@@ -764,17 +1130,22 @@ export async function completeDocumentUpload(input: {
     });
     const documentVersionId = completedResult?.documentVersionId;
     if (!documentVersionId) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
-    const version = await db.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: { RAW: (table, operators) => (eq(table.id, documentVersionId)) ?? operators.sql`true` } });
-    if (!version) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
-    return { documentId: version.documentId, documentVersionId: version.id, replayed: true };
+    const version = await db.query.documentVersions.findFirst({ columns: { id: true, documentId: true }, where: { RAW: (table, operators) => (eq(table.id, documentVersionId)) ?? operators.sql`true` } });
+    const row = version ? await getCurrentDocumentRow(input.organizationId, version.documentId) : null;
+    if (!row) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
+    return {
+      document: toDocumentDto(row),
+      internalResultId: documentVersionId,
+      replayed: true,
+    };
   }
   const { bytes } = await downloadDocumentObject(verified.bucket, verified.objectPath);
   const embeddingProvider = createDocumentEmbeddingProvider();
-  const documentId = input.documentId ?? randomUUID();
+  const documentId = randomUUID();
   const documentVersionId = randomUUID();
   const extractionId = randomUUID();
   const embeddingGenerationId = randomUUID();
-  const result = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     const [locked] = await tx.select({
       id: uploadSessions.id,
       fileName: uploadSessions.fileName,
@@ -787,27 +1158,16 @@ export async function completeDocumentUpload(input: {
       eq(uploadSessions.id, verified.id), eq(uploadSessions.state, "verified"),
     )).limit(1).for("update");
     if (!locked?.actualSha256 || !locked.actualMimeType || !locked.actualSize) throw new ApiError(409, "Upload session is not verified");
-    let versionNumber = 1;
-    if (input.documentId) {
-      const document = await tx.query.documents.findFirst({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (and(
-        eq(table.id, input.documentId!), eq(table.organizationId, input.organizationId), eq(table.status, "active"),
-      )) ?? operators.sql`true` } });
-      if (!document) throw new ApiError(404, "Active document not found", undefined, "DOCUMENT_NOT_FOUND");
-      const latest = await tx.query.documentVersions.findFirst({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true }, where: { RAW: (table, operators) => (eq(table.documentId, document.id)) ?? operators.sql`true` }, orderBy: { versionNumber: "desc" } });
-      versionNumber = (latest?.versionNumber ?? 0) + 1;
-    } else {
-      const title = input.title?.trim();
-      if (!title) throw new ApiError(400, "A document title is required", undefined, "DOCUMENT_TITLE_REQUIRED");
-      await tx.insert(documents).values({ id: documentId, organizationId: input.organizationId, title, createdBy: input.userId });
-    }
+    const title = input.title.trim();
+    if (!title) throw new ApiError(400, "A document title is required", undefined, "DOCUMENT_TITLE_REQUIRED");
+    await tx.insert(documents).values({ id: documentId, organizationId: input.organizationId, title, createdBy: input.userId });
     await tx.insert(documentVersions).values({
-      id: documentVersionId, documentId, versionNumber, fileName: locked.fileName, mimeType: locked.actualMimeType,
+      id: documentVersionId, documentId, versionNumber: 1, fileName: locked.fileName, mimeType: locked.actualMimeType,
       byteSize: locked.actualSize, storageBucket: locked.bucket, storagePath: locked.objectPath,
       contentHash: locked.actualSha256, uploadedBy: input.userId,
     });
     await tx.update(documents).set({
       currentVersionId: documentVersionId,
-      ...(input.documentId ? { version: sql`${documents.version} + 1` } : {}),
       updatedAt: new Date(),
     }).where(eq(documents.id, documentId));
     await tx.insert(documentExtractions).values({
@@ -823,17 +1183,242 @@ export async function completeDocumentUpload(input: {
     await tx.insert(uploadSessionResults).values({ sessionId: locked.id, documentVersionId });
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId, actorUserId: input.userId,
-      eventType: input.documentId ? "document.version_uploaded" : "document.uploaded",
+      eventType: "document.uploaded",
       entityType: "document_version", entityId: documentVersionId,
-      metadata: { documentId, versionNumber, contentHash: locked.actualSha256, uploadSessionId: locked.id },
+      metadata: { documentId, versionNumber: 1, contentHash: locked.actualSha256, uploadSessionId: locked.id },
     });
-    return { documentId, documentVersionId, versionNumber, extractionId, embeddingGenerationId, replayed: false };
   });
   await processDocumentVersion({
     userId: input.userId, organizationId: input.organizationId, bytes, mimeType: verified.actualMimeType!,
     documentVersionId, extractionId, embeddingGenerationId, embeddingProvider,
   });
-  return result;
+  const row = await getCurrentDocumentRow(input.organizationId, documentId);
+  if (!row) throw new ApiError(409, "Completed upload result is unavailable", undefined, "UPLOAD_RESULT_MISSING");
+  return {
+    document: toDocumentDto(row),
+    internalResultId: documentVersionId,
+    replayed: false,
+  };
+}
+
+async function getCurrentProcessingRecord(
+  organizationId: string,
+  documentId: string,
+) {
+  const [row] = await db
+    .select({
+      document: {
+        id: documents.id,
+        status: documents.status,
+      },
+      version: {
+        id: documentVersions.id,
+        mimeType: documentVersions.mimeType,
+        storageBucket: documentVersions.storageBucket,
+        storagePath: documentVersions.storagePath,
+      },
+      extraction: {
+        id: documentExtractions.id,
+        status: documentExtractions.status,
+      },
+      embedding: {
+        id: documentEmbeddingGenerations.id,
+        status: documentEmbeddingGenerations.status,
+      },
+    })
+    .from(documents)
+    .innerJoin(
+      documentVersions,
+      eq(documents.currentVersionId, documentVersions.id),
+    )
+    .leftJoin(
+      documentExtractions,
+      eq(documentExtractions.documentVersionId, documentVersions.id),
+    )
+    .leftJoin(
+      documentEmbeddingGenerations,
+      eq(documentEmbeddingGenerations.extractionId, documentExtractions.id),
+    )
+    .where(
+      and(
+        eq(documents.id, documentId),
+        eq(documents.organizationId, organizationId),
+      ),
+    )
+    .orderBy(
+      desc(documentExtractions.createdAt),
+      desc(documentEmbeddingGenerations.createdAt),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function retryOrganizationDocumentIndexing(
+  userId: string,
+  organizationId: string,
+  documentId: string,
+) {
+  await requireOrganizationCapability(
+    userId,
+    organizationId,
+    "documents:write",
+  );
+  const current = await getCurrentProcessingRecord(
+    organizationId,
+    documentId,
+  );
+  if (!current) {
+    throw new ApiError(
+      404,
+      "Document not found",
+      undefined,
+      "DOCUMENT_NOT_FOUND",
+    );
+  }
+  if (current.document.status === "archived") {
+    throw new ApiError(
+      409,
+      "Restore the document before retrying indexing",
+      undefined,
+      "DOCUMENT_RESTORE_REQUIRED",
+    );
+  }
+  if (
+    !current.extraction ||
+    !current.embedding ||
+    (current.extraction.status !== "failed" &&
+      current.embedding.status !== "failed")
+  ) {
+    const row = await getCurrentDocumentRow(organizationId, documentId);
+    if (!row) {
+      throw new ApiError(
+        404,
+        "Document not found",
+        undefined,
+        "DOCUMENT_NOT_FOUND",
+      );
+    }
+    return toDocumentDto(row);
+  }
+
+  await db.insert(auditEvents).values({
+    organizationId,
+    actorUserId: userId,
+    eventType: "document.index_retry_requested",
+    entityType: "document_version",
+    entityId: current.version.id,
+    metadata: {
+      documentId,
+      extractionId: current.extraction.id,
+      embeddingGenerationId: current.embedding.id,
+    },
+  });
+
+  const embeddingProvider = createDocumentEmbeddingProvider();
+  try {
+    if (current.extraction.status === "failed") {
+      const { bytes } = await downloadDocumentObject(
+        current.version.storageBucket,
+        current.version.storagePath,
+      );
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(documentChunkEmbeddings)
+          .where(
+            eq(
+              documentChunkEmbeddings.generationId,
+              current.embedding!.id,
+            ),
+          );
+        await tx
+          .delete(documentChunks)
+          .where(eq(documentChunks.extractionId, current.extraction!.id));
+        await tx
+          .update(documentExtractions)
+          .set({
+            status: "processing",
+            extractedText: null,
+            extractedTextHash: null,
+            metadata: {},
+            errorCode: null,
+            errorMessage: null,
+            startedAt: new Date(),
+            completedAt: null,
+          })
+          .where(eq(documentExtractions.id, current.extraction!.id));
+        await tx
+          .update(documentEmbeddingGenerations)
+          .set({
+            status: "pending",
+            errorCode: null,
+            errorMessage: null,
+            startedAt: null,
+            completedAt: null,
+          })
+          .where(
+            eq(documentEmbeddingGenerations.id, current.embedding!.id),
+          );
+      });
+      await processDocumentVersion({
+        userId,
+        organizationId,
+        bytes,
+        mimeType: current.version.mimeType,
+        documentVersionId: current.version.id,
+        extractionId: current.extraction.id,
+        embeddingGenerationId: current.embedding.id,
+        embeddingProvider,
+      });
+    } else {
+      const chunks = await db
+        .select({ id: documentChunks.id, content: documentChunks.content })
+        .from(documentChunks)
+        .where(eq(documentChunks.extractionId, current.extraction.id))
+        .orderBy(documentChunks.chunkIndex);
+      if (!chunks.length) {
+        throw new ApiError(
+          422,
+          "Document chunks are unavailable",
+          undefined,
+          "DOCUMENT_CHUNKS_MISSING",
+        );
+      }
+      await processEmbeddingStage({
+        userId,
+        organizationId,
+        documentVersionId: current.version.id,
+        extractionId: current.extraction.id,
+        embeddingGenerationId: current.embedding.id,
+        embeddingProvider,
+        chunks,
+      });
+    }
+  } catch (error) {
+    await db.insert(auditEvents).values({
+      organizationId,
+      actorUserId: userId,
+      eventType: "document.index_retry_failed",
+      entityType: "document_version",
+      entityId: current.version.id,
+      metadata: {
+        documentId,
+        extractionId: current.extraction.id,
+        embeddingGenerationId: current.embedding.id,
+      },
+    });
+    throw error;
+  }
+
+  const row = await getCurrentDocumentRow(organizationId, documentId);
+  if (!row) {
+    throw new ApiError(
+      404,
+      "Document not found",
+      undefined,
+      "DOCUMENT_NOT_FOUND",
+    );
+  }
+  return toDocumentDto(row);
 }
 
 async function verifyDocumentObject(input: { bucket: string; objectPath: string }) {
@@ -899,30 +1484,70 @@ async function processDocumentVersion(input: {
     throw toProcessingError(error, "Document extraction failed");
   }
 
+  await processEmbeddingStage({
+    userId: input.userId,
+    organizationId: input.organizationId,
+    documentVersionId: input.documentVersionId,
+    extractionId: input.extractionId,
+    embeddingGenerationId: input.embeddingGenerationId,
+    embeddingProvider: input.embeddingProvider,
+    chunks: persistedChunks,
+  });
+}
+
+async function processEmbeddingStage(input: {
+  userId: string;
+  organizationId: string;
+  documentVersionId: string;
+  extractionId: string;
+  embeddingGenerationId: string;
+  embeddingProvider: DocumentEmbeddingProvider;
+  chunks: Array<{ id: string; content: string }>;
+}) {
   try {
     await db
       .update(documentEmbeddingGenerations)
-      .set({ status: "processing", startedAt: new Date() })
+      .set({
+        status: "processing",
+        errorCode: null,
+        errorMessage: null,
+        startedAt: new Date(),
+        completedAt: null,
+      })
       .where(eq(documentEmbeddingGenerations.id, input.embeddingGenerationId));
     const embeddings = await input.embeddingProvider.embed(
-      persistedChunks.map((chunk) => chunk.content),
+      input.chunks.map((chunk) => chunk.content),
     );
     validateEmbeddings(
       embeddings,
-      persistedChunks.length,
+      input.chunks.length,
       input.embeddingProvider.dimensions,
     );
     await db.transaction(async (tx) => {
-      await tx.insert(documentChunkEmbeddings).values(
-        persistedChunks.map((chunk, index) => ({
-          generationId: input.embeddingGenerationId,
-          chunkId: chunk.id,
-          embedding: embeddings[index],
-        })),
-      );
+      for (const [index, chunk] of input.chunks.entries()) {
+        await tx
+          .insert(documentChunkEmbeddings)
+          .values({
+            generationId: input.embeddingGenerationId,
+            chunkId: chunk.id,
+            embedding: embeddings[index],
+          })
+          .onConflictDoUpdate({
+            target: [
+              documentChunkEmbeddings.generationId,
+              documentChunkEmbeddings.chunkId,
+            ],
+            set: { embedding: embeddings[index] },
+          });
+      }
       await tx
         .update(documentEmbeddingGenerations)
-        .set({ status: "succeeded", completedAt: new Date() })
+        .set({
+          status: "succeeded",
+          errorCode: null,
+          errorMessage: null,
+          completedAt: new Date(),
+        })
         .where(eq(documentEmbeddingGenerations.id, input.embeddingGenerationId));
       await tx.insert(auditEvents).values({
         organizationId: input.organizationId,
@@ -933,7 +1558,7 @@ async function processDocumentVersion(input: {
         metadata: {
           extractionId: input.extractionId,
           embeddingGenerationId: input.embeddingGenerationId,
-          chunkCount: persistedChunks.length,
+          chunkCount: input.chunks.length,
         },
       });
     });
@@ -1012,5 +1637,10 @@ function errorMessage(error: unknown) {
 function toProcessingError(error: unknown, fallback: string) {
   return error instanceof ApiError
     ? error
-    : new ApiError(422, `${fallback}: ${errorMessage(error)}`);
+    : new ApiError(
+        422,
+        fallback,
+        undefined,
+        "DOCUMENT_PROCESSING_FAILED",
+      );
 }

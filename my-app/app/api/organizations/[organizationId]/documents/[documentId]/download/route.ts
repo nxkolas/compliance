@@ -1,9 +1,8 @@
-import { revalidatePath } from "next/cache";
 import { apiRoute } from "@/src/server/api/handler";
 import { requireApiUser } from "@/src/server/api/auth";
-import { archiveOrganizationDocument } from "@/src/server/documents";
+import { createDocumentSourceAccess } from "@/src/server/documents";
 
-export const POST = apiRoute(
+export const GET = apiRoute(
   async ({
     routeContext,
   }: {
@@ -14,13 +13,18 @@ export const POST = apiRoute(
   }) => {
     const user = await requireApiUser();
     const params = await routeContext.params;
-    const document = await archiveOrganizationDocument(
+    const access = await createDocumentSourceAccess(
       user.id,
       params.organizationId,
       params.documentId,
+      { mode: "download" },
     );
-    revalidatePath(`/tool/organizations/${params.organizationId}/documents`);
-    revalidatePath(`/tool/organizations/${params.organizationId}/gap-analysis`);
-    return { data: { document } };
+    return new Response(null, {
+      status: 307,
+      headers: {
+        Location: access.url,
+        "Cache-Control": "no-store",
+      },
+    });
   },
 );

@@ -30,6 +30,7 @@ describe("Gap finding source projection", () => {
           sectionLabel: "  Access control  ",
           documentSource: {
             versionId: "00000000-0000-4000-8000-000000000010",
+            documentId: "00000000-0000-4000-8000-000000000010",
             title: "Security policy",
             mimeType: "application/pdf",
             chunkPageNumber: 1,
@@ -42,6 +43,7 @@ describe("Gap finding source projection", () => {
           sectionLabel: "Access control",
           documentSource: {
             versionId: "00000000-0000-4000-8000-000000000010",
+            documentId: "00000000-0000-4000-8000-000000000010",
             title: "Security policy",
             mimeType: "application/pdf",
             chunkPageNumber: null,
@@ -80,8 +82,8 @@ describe("Gap finding source projection", () => {
         key: "document:00000000-0000-4000-8000-000000000010",
         label: "Security policy",
         href:
-          `/api/organizations/${organizationId}/document-versions/` +
-          "00000000-0000-4000-8000-000000000010/source-access?mode=inline&page=2",
+          `/api/organizations/${organizationId}/documents/` +
+          "00000000-0000-4000-8000-000000000010/source-access?page=2",
         available: true,
         pageNumbers: [2, 7],
         sectionLabels: ["Access control"],
@@ -108,6 +110,7 @@ describe("Gap finding source projection", () => {
             sourceType: "document_chunk",
             documentSource: {
               versionId,
+              documentId: versionId,
               title: "Richtlinie",
               mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
               chunkPageNumber: null,

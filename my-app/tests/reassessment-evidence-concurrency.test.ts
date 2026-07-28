@@ -17,7 +17,7 @@ import { PATCH } from "@/app/api/organizations/[organizationId]/gap-analysis/rea
 const userId = "00000000-0000-4000-8000-000000000001";
 const organizationId = "00000000-0000-4000-8000-000000000002";
 const draftId = "00000000-0000-4000-8000-000000000003";
-const documentVersionId = "00000000-0000-4000-8000-000000000004";
+const documentId = "00000000-0000-4000-8000-000000000004";
 
 function request(ifMatch?: number) {
   const headers = new Headers({ "content-type": "application/json" });
@@ -28,7 +28,7 @@ function request(ifMatch?: number) {
     body: JSON.stringify({
       draftId,
       expectedLockVersion: 2,
-      selectedDocumentVersionIds: [documentVersionId],
+      selectedDocumentIds: [documentId],
     }),
   });
 }
@@ -80,7 +80,7 @@ describe("reassessment evidence optimistic concurrency", () => {
       organizationId,
       draftId,
       expectedLockVersion: 2,
-      selectedDocumentVersionIds: [documentVersionId],
+      selectedDocumentIds: [documentId],
     });
   });
 });
