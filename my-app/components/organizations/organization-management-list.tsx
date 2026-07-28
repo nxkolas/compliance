@@ -274,6 +274,8 @@ export function OrganizationManagementList({
         locale={locale}
         teamLabels={teamLabels}
         inviteLabels={inviteLabels}
+        manageTitle={labels.manageMembers}
+        viewTitle={labels.viewMembers}
         closeLabel={labels.close}
         onClose={() => setManagingMembers(null)}
       />
@@ -407,27 +409,37 @@ function OrganizationRow({
             <MoreHorizontal className="size-5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64 rounded-2xl border border-[#3D4149] bg-[#1B1E27] p-0 font-['Space_Grotesk'] text-zinc-200 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.60)]">
+        <DropdownMenuContent align="end" className="w-64 rounded-2xl border border-[#3D4149] bg-[#1B1E27] p-1 font-['Space_Grotesk'] text-zinc-200 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.60)]">
           {item.allowedActions.edit && (
-            <DropdownMenuItem className="h-12 rounded-none px-4 py-3 text-sm font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200" onSelect={() => onEdit(item)}>
-              <Pencil className="size-3.5 text-zinc-400" />
+            <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200" onSelect={() => onEdit(item)}>
+              <span className="flex size-4 shrink-0 items-center justify-center">
+                <Pencil className="size-3.5 text-zinc-400" />
+              </span>
               {labels.edit}
             </DropdownMenuItem>
           )}
           {!item.archivedAt && (
             <DropdownMenuItem
-              className="h-12 rounded-lg border-x-[5px] border-y-[3px] border-[#1B1E27] px-4 py-3 text-sm font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200"
+              className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200"
               onSelect={() => onManageMembers(item)}
             >
-              <Users className="size-3.5 text-zinc-400" />
+              <span className="flex size-4 shrink-0 items-center justify-center">
+                <Users className="size-3.5 text-zinc-400" />
+              </span>
               {item.allowedActions.manageMembers ? labels.manageMembers : labels.viewMembers}
             </DropdownMenuItem>
           )}
           {(item.allowedActions.archive || item.allowedActions.restore) && (
             <>
               <DropdownMenuSeparator className="mx-3 my-1 h-px bg-zinc-700/60" />
-              <DropdownMenuItem className="h-12 rounded-none px-4 py-3 text-sm font-medium text-red-400 focus:bg-[#18275D] focus:text-red-400 [&_svg]:text-red-400" variant={item.allowedActions.archive ? "destructive" : "default"} onSelect={() => onArchive(item)}>
-                {item.allowedActions.restore ? <RotateCcw className="size-4" /> : <Trash2 className="size-4" />}
+              <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-red-400 focus:bg-[#18275D] focus:text-red-400 [&_svg]:text-red-400" variant={item.allowedActions.archive ? "destructive" : "default"} onSelect={() => onArchive(item)}>
+                <span className="flex size-4 shrink-0 items-center justify-center">
+                  {item.allowedActions.restore ? (
+                    <RotateCcw className="size-4" />
+                  ) : (
+                    <Trash2 className="size-4 text-red-400" />
+                  )}
+                </span>
                 {item.allowedActions.restore ? labels.restore : labels.archive}
               </DropdownMenuItem>
             </>
@@ -443,6 +455,8 @@ function OrganizationMembersDialog({
   locale,
   teamLabels,
   inviteLabels,
+  manageTitle,
+  viewTitle,
   closeLabel,
   onClose,
 }: {
@@ -450,6 +464,8 @@ function OrganizationMembersDialog({
   locale: Locale;
   teamLabels: Dictionary["teamManagement"];
   inviteLabels: Dictionary["invite"];
+  manageTitle: string;
+  viewTitle: string;
   closeLabel: string;
   onClose: () => void;
 }) {
@@ -503,47 +519,56 @@ function OrganizationMembersDialog({
     <Dialog open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         closeLabel={closeLabel}
-        className="max-h-[88svh] w-[min(960px,calc(100vw-32px))] max-w-none overflow-y-auto border-[1.5px] border-[#3D4149] bg-[#1B1E27] font-['Space_Grotesk'] text-white"
+        overlayClassName="border border-black bg-black/75 backdrop-blur-[3px]"
+        className="max-h-[88svh] w-[min(790px,calc(100vw-32px))] !max-w-none gap-0 overflow-hidden rounded-xl border-[1.5px] border-[#3D4149] bg-[#1B1E27] p-0 font-['Space_Grotesk'] text-white shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] [&>[data-slot=dialog-close]]:right-[38px] [&>[data-slot=dialog-close]]:top-[38px] [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-none [&>[data-slot=dialog-close]]:text-zinc-400 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent [&>[data-slot=dialog-close]]:focus:!ring-0 [&>[data-slot=dialog-close]]:focus:!ring-offset-0 [&>[data-slot=dialog-close]]:focus:!outline-none"
       >
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
+        <DialogHeader className="relative min-h-[88px] gap-0 px-[38px] pt-[38px] text-left">
+          <div className="flex items-center gap-[15px]">
+            <span
+              aria-hidden="true"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-600 text-sm font-semibold leading-5 text-neutral-50"
+            >
+              {item ? organizationInitials(item.name) : ""}
+            </span>
+            <span className="text-base font-semibold leading-5 text-white">
+              {item?.allowedActions.manageMembers ? manageTitle : viewTitle}
+            </span>
+          </div>
+          <DialogTitle className="sr-only">
             {item?.name} · {teamLabels.title}
           </DialogTitle>
-          <DialogDescription className="text-gray-400">
+          <DialogDescription className="sr-only">
             {item?.allowedActions.manageMembers
               ? teamLabels.manageDescription
               : teamLabels.readOnlyDescription}
           </DialogDescription>
+          <div
+            aria-hidden="true"
+            className="absolute bottom-0 left-[37px] right-[37px] border-t-[1.5px] border-zinc-700/50"
+          />
         </DialogHeader>
 
-        {loading && (
+        <div className="min-h-0 overflow-y-auto px-[37px] pb-8 pt-9 [scrollbar-color:rgba(161,161,170,0.45)_transparent] [scrollbar-width:thin]">
+          {loading && (
           <div
             role="status"
-            className="flex min-h-48 items-center justify-center gap-3 text-sm text-gray-400"
+            className="flex min-h-72 items-center justify-center gap-3 text-sm text-gray-400"
           >
             <Loader2 className="size-5 animate-spin" />
             {labelsForLoading(teamLabels)}
           </div>
-        )}
+          )}
 
-        {error && !loading && (
+          {error && !loading && (
           <div
             role="alert"
             className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"
           >
             {error}
           </div>
-        )}
+          )}
 
-        {item && controls && !loading && !error && (
-          <div className="grid gap-8">
-            <OrganizationMemberRoster
-              key={`members-${item.id}`}
-              organizationId={item.id}
-              initialMembers={members}
-              controls={controls}
-              labels={teamLabels}
-            />
+          {item && controls && !loading && !error && (
             <OrganizationInvitePanel
               key={`invites-${item.id}`}
               organizationId={item.id}
@@ -551,9 +576,19 @@ function OrganizationMembersDialog({
               labels={inviteLabels}
               locale={locale}
               canManage={controls.canManage}
-            />
-          </div>
-        )}
+              presentation="dialog"
+            >
+              <OrganizationMemberRoster
+                key={`members-${item.id}`}
+                organizationId={item.id}
+                initialMembers={members}
+                controls={controls}
+                labels={teamLabels}
+                presentation="dialog"
+              />
+            </OrganizationInvitePanel>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

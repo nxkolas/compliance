@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { OrganizationDto } from "@/src/server/organizations/types";
-import { Check, ChevronsUpDown, List, Plus } from "lucide-react";
+import { Check, ChevronDown, List, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { OrganizationAvatar } from "@/components/organizations/organization-avatar";
 
@@ -57,7 +57,7 @@ export function OrganizationSwitcher({
                   {selectedOrganization?.name ?? placeholder}
                 </span>
               </div>
-              <ChevronsUpDown className="ml-auto" />
+              <ChevronDown className="ml-auto" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -103,7 +103,7 @@ export function OrganizationSwitcherFallback({
         <SidebarMenuButton size="lg" disabled>
           <span className="size-8 rounded-lg border border-dashed bg-sidebar-accent" aria-hidden />
           <span className="truncate">{label}</span>
-          <ChevronsUpDown className="ml-auto" />
+          <ChevronDown className="ml-auto" />
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>

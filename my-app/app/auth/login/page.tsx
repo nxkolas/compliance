@@ -23,7 +23,7 @@ export default function Page() {
 </div>
 
       {/* VORDERGRUND: Die Maske schwebt darüber */}
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 w-full max-w-[476px]">
         <Suspense fallback={null}>
           <LoginFormLoader />
         </Suspense>

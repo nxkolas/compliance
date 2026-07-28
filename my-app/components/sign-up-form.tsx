@@ -106,7 +106,7 @@ export function SignUpForm({
         />
       </div>
 
-      <div className={cn("relative z-10 w-full max-w-110.5 flex flex-col justify-start items-start gap-4 font-['Space_Grotesk']", className)} {...props}>
+      <div className={cn("relative z-10 flex w-full max-w-[476px] flex-col items-start justify-start gap-4 px-4 font-['Space_Grotesk']", className)} {...props}>
         <div className="h-16 flex items-center justify-start">
           <Image 
             src="/images/Logo-weiß.svg"

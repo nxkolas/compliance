@@ -9,6 +9,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -160,6 +161,18 @@ export function ApplicabilityQuestionnaireForm({
     Math.max(visibleQuestions.length - 1, 0),
   );
 
+  function markQuestionAsInteracted(questionId: string) {
+    setInteractedQuestionIds((current) => {
+      if (current.has(questionId)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(questionId);
+      return next;
+    });
+  }
+
   function updateAnswer(
     question: ApplicabilityQuestionDto,
     value: ApplicabilityAnswerValue,
@@ -170,12 +183,18 @@ export function ApplicabilityQuestionnaireForm({
         [question.id]: value,
       }),
     );
-    setInteractedQuestionIds((current) => {
-      const next = new Set(current);
-      next.add(question.id);
-      return next;
-    });
+    markQuestionAsInteracted(question.id);
     setNotice({ message: null, tone: "default" });
+  }
+
+  function navigateToQuestion(index: number) {
+    const activeQuestion = visibleQuestions[activeQuestionIndex];
+
+    if (activeQuestion && isAnswered(answers[activeQuestion.id])) {
+      markQuestionAsInteracted(activeQuestion.id);
+    }
+
+    setCurrentQuestionIndex(index);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -253,7 +272,7 @@ export function ApplicabilityQuestionnaireForm({
           isSubmitting={isSubmitting}
           labels={labels}
           onAnswerChange={updateAnswer}
-          onQuestionSelect={setCurrentQuestionIndex}
+          onQuestionSelect={navigateToQuestion}
           progress={questionnaireProgress}
           requiredComplete={requiredComplete}
           questionCount={catalogQuestions.length}
@@ -503,12 +522,17 @@ function QuestionStepper({
                 >
                   <span
                     className={cn(
-                      "inline-flex size-8 items-center justify-center rounded-full bg-zinc-600/25 text-center font-['Space_Grotesk'] text-base leading-4 font-normal text-white/60 outline outline-1 outline-offset-[-1px] outline-white/0 transition-colors",
+                      "grid size-8 shrink-0 place-items-center rounded-full bg-zinc-600/25 text-center font-['Space_Grotesk'] text-base leading-none font-normal tabular-nums text-white/60 outline outline-1 outline-offset-[-1px] outline-white/0 transition-colors",
                       active &&
                         "size-10 bg-primary font-semibold text-white ring-4 ring-primary/20",
                     )}
                   >
-                    {index + 1}
+                    <span
+                      aria-hidden="true"
+                      className="flex size-full items-center justify-center leading-none"
+                    >
+                      {index + 1}
+                    </span>
                   </span>
                 </span>
               </button>
@@ -549,6 +573,7 @@ function QuestionBlock({
       (option) => typeof answer === "string" && option.value === answer,
     ) ?? null;
   const authenticated = presentation === "authenticated-stepper";
+  const comboboxAnchor = useComboboxAnchor();
 
   return (
     <article
@@ -561,9 +586,9 @@ function QuestionBlock({
       <div className={cn("flex gap-4", authenticated && "gap-4 sm:gap-6")}>
         <div
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-background text-sm font-semibold",
+            "grid size-8 shrink-0 place-items-center rounded-full border bg-background text-center text-sm leading-none font-semibold tabular-nums",
             authenticated &&
-              "size-8 rounded-full border-[1.5px] border-zinc-700 bg-gray-800 text-base text-white",
+              "rounded-full border-[1.5px] border-zinc-700 bg-gray-800 text-base text-white",
           )}
         >
           {stepNumber ?? question.position}
@@ -642,23 +667,27 @@ function QuestionBlock({
               onValueChange={(option) => onChange(option?.value ?? "")}
               isItemEqualToValue={(item, value) => item.value === value.value}
             >
-              <ComboboxInput
+              <div
+                ref={comboboxAnchor}
                 className={cn(
-                  "h-11 max-w-xl",
-                  authenticated &&
-                    "h-12 w-full max-w-[505px] rounded-lg border-0 bg-gray-800 px-0 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline outline-1 outline-offset-[-1px] outline-blue-700 !ring-0 [&_[data-slot=combobox-trigger-icon]]:text-slate-400 [&_[data-slot=input-group-control]]:px-5 [&_[data-slot=input-group-control]]:font-['Space_Grotesk'] [&_[data-slot=input-group-control]]:text-base [&_[data-slot=input-group-control]]:leading-6 [&_[data-slot=input-group-control]]:font-normal [&_[data-slot=input-group-control]]:text-white",
+                  authenticated ? "w-full max-w-[505px]" : "contents",
                 )}
-                placeholder={labels.selectPlaceholder}
-                showClear={
-                  !authenticated &&
-                  typeof answer === "string" &&
-                  Boolean(answer)
-                }
-              />
+              >
+                <ComboboxInput
+                  className={cn(
+                    "h-11 max-w-xl",
+                    authenticated &&
+                      "h-12 w-full max-w-none rounded-lg border border-[#002BFF] bg-gray-800 px-0 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-none !ring-0 focus-within:!border-[#002BFF] [&_[data-slot=combobox-trigger-icon]]:text-slate-400 [&_[data-slot=input-group-addon]]:pr-5 [&_[data-slot=input-group-control]]:px-5 [&_[data-slot=input-group-control]]:font-['Space_Grotesk'] [&_[data-slot=input-group-control]]:text-base [&_[data-slot=input-group-control]]:leading-6 [&_[data-slot=input-group-control]]:font-normal [&_[data-slot=input-group-control]]:text-white [&_[data-slot=input-group-control]::placeholder]:text-slate-400",
+                  )}
+                  placeholder={labels.selectPlaceholder}
+                  showClear={typeof answer === "string" && Boolean(answer)}
+                />
+              </div>
               <ComboboxContent
+                anchor={authenticated ? comboboxAnchor : undefined}
                 className={cn(
                   authenticated &&
-                    "max-h-80 min-w-(--anchor-width) rounded-2xl bg-gray-800 p-0 font-['Space_Grotesk'] text-white shadow-[0px_8px_32px_0px_rgba(0,0,0,0.50)] ring-1 ring-gray-800",
+                    "max-h-80 !w-(--anchor-width) !min-w-(--anchor-width) !max-w-(--anchor-width) overflow-hidden rounded-2xl !bg-[#292C34] p-0 font-['Space_Grotesk'] text-white shadow-[0px_8px_32px_0px_rgba(0,0,0,0.50)] ring-1 ring-[#292C34]",
                 )}
               >
                 <ComboboxEmpty
@@ -672,7 +701,7 @@ function QuestionBlock({
                 <ComboboxList
                   className={cn(
                     authenticated &&
-                      "max-h-80 scroll-py-1.5 p-1.5",
+                      "flex max-h-80 flex-col scroll-py-1.5 p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                   )}
                 >
                   {(option: (typeof comboboxOptions)[number]) => (
@@ -681,7 +710,7 @@ function QuestionBlock({
                       value={option}
                       className={cn(
                         authenticated &&
-                          "h-12 rounded-lg px-5 py-3 font-['Space_Grotesk'] text-base leading-6 font-normal text-white data-highlighted:bg-slate-800 data-highlighted:text-white data-selected:bg-slate-800 [&_[data-slot=combobox-item-indicator]]:right-5 [&_[data-slot=combobox-item-indicator]]:text-white",
+                          "h-12 shrink-0 rounded-lg px-5 py-3 font-['Space_Grotesk'] text-base leading-6 font-normal text-white data-highlighted:bg-[#18275D] data-highlighted:text-white data-selected:bg-[#18275D] data-selected:text-white [&_[data-slot=combobox-item-indicator]]:right-5 [&_[data-slot=combobox-item-indicator]]:text-white",
                       )}
                     >
                       {option.label}
