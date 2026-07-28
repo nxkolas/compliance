@@ -4,7 +4,7 @@ Status: proposed implementation plan based on the repository and configured
 database audit performed on 2026-07-28.
 
 This is a follow-on plan to
-`docs/plans/authoritative-legal-corpus-and-grounded-ai.md`. The underlying
+`docs/plans/done/authoritative-legal-corpus-and-grounded-ai.md`. The underlying
 versioned corpus, Grounding Gateway, processing worker, release pinning, and
 administrative API already exist. This plan closes the remaining source
 coverage, operational freshness, ingestion usability, evaluation, and

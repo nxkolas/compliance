@@ -7,7 +7,7 @@ organization document library, persisted reassessment workflow, separate
 accepted/candidate revisions, and non-destructive action-plan reconciliation
 supersede its inline evidence-selection and archive-and-regenerate behavior.
 See [Document Management, Gap Reassessment, and Plan Reconciliation](./document-management-reassessment-and-plan-reconciliation.md)
-for that successor design and [Current Gap-Analysis Workflow](../product/gap-analysis-current-workflow.md)
+for that successor design and [Current Gap-Analysis Workflow](../../product/gap-analysis-current-workflow.md)
 for current runtime behavior.
 
 > Persistence update (2026-07-24): Gap revision JSON is metadata-only and
@@ -70,7 +70,7 @@ Remove-Item Env:RUN_LIVE_GAP_EVAL
 This plan completes the unfinished Gap-Analyse, Dokumentenanalyse, Maßnahmenplan,
 and audit portions of `docs/architecture/db-schema-plan.md`. It preserves the
 implemented immutable applicability-check release architecture described in
-`docs/plans/immutable-compliance-release-architecture.md`.
+`docs/plans/done/immutable-compliance-release-architecture.md`.
 
 ## Outcome
 

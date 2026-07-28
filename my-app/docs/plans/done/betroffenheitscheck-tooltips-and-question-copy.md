@@ -4,7 +4,7 @@ Status: approved for implementation on 2026-07-25. No code or database
 changes have been applied by this plan.
 
 The authoritative German product copy is
-[`BetroffenheitscheckFRAGEN.pdf`](../product/BetroffenheitscheckFRAGEN.pdf).
+[`BetroffenheitscheckFRAGEN.pdf`](../../product/BetroffenheitscheckFRAGEN.pdf).
 
 ## Outcome
 
@@ -95,7 +95,7 @@ development clear and reseed.
 
 ## Target data model
 
-Extend `questions` in [`src/db/schema.ts`](../../src/db/schema.ts):
+Extend `questions` in [`src/db/schema.ts`](../../../src/db/schema.ts):
 
 ```ts
 tooltipContentRevisionId: uuid("tooltip_content_revision_id")
@@ -135,7 +135,7 @@ Do not introduce hand-written DDL for this ordinary Drizzle-owned column.
 ### Source types
 
 In
-[`release-source.ts`](../../src/server/compliance/nis2/releases/2026-v1/release-source.ts),
+[`release-source.ts`](../../../src/server/compliance/nis2/releases/2026-v1/release-source.ts),
 extend `Nis2SeedQuestion` with required:
 
 ```ts
@@ -147,7 +147,7 @@ Making these fields required at the concrete NIS2 source level prevents a
 twelfth-question omission during authoring.
 
 In
-[`releases/types.ts`](../../src/server/compliance/nis2/releases/types.ts),
+[`releases/types.ts`](../../../src/server/compliance/nis2/releases/types.ts),
 extend the reusable `ReleaseQuestionSource` with:
 
 ```ts
@@ -160,7 +160,7 @@ not forced to add tooltip content.
 ### Content creation
 
 In
-[`2026-v1/release.ts`](../../src/server/compliance/nis2/releases/2026-v1/release.ts),
+[`2026-v1/release.ts`](../../../src/server/compliance/nis2/releases/2026-v1/release.ts),
 create one localized content item per question with the stable-key pattern:
 
 ```text
@@ -217,7 +217,7 @@ Its English translation should be:
 
 Translate every tooltip directly from the corresponding German paragraph.
 Use the established NIS2 vocabulary in
-[`current-nis2-ruleset.de-en.md`](../product/current-nis2-ruleset.de-en.md),
+[`current-nis2-ruleset.de-en.md`](../../product/current-nis2-ruleset.de-en.md),
 including:
 
 - `Einrichtungsart` / `entity type`;
@@ -261,7 +261,7 @@ Preserve the existing meanings:
   because no group aggregation is required.
 
 Update only the current `nis2_scope_v3` verification-code lists in
-[`rules.ts`](../../src/server/applicability-check/rules.ts). Do not reinterpret
+[`rules.ts`](../../../src/server/applicability-check/rules.ts). Do not reinterpret
 the retained historical `nis2_scope_v2` evaluator.
 
 Update the fact description in both languages so it describes correctly
@@ -284,7 +284,7 @@ retaining the approved `2026-v1` label and evaluator identifier.
 ### Publisher
 
 In
-[`publish-release.ts`](../../src/server/compliance/publishing/publish-release.ts),
+[`publish-release.ts`](../../../src/server/compliance/publishing/publish-release.ts),
 write:
 
 ```ts
@@ -302,7 +302,7 @@ for the new optional column.
 ### Runtime assembly
 
 Extend `RuntimeReleaseQuestion` in
-[`runtime-release/types.ts`](../../src/server/compliance/runtime-release/types.ts)
+[`runtime-release/types.ts`](../../../src/server/compliance/runtime-release/types.ts)
 with:
 
 ```ts
@@ -310,7 +310,7 @@ tooltipText: string | null;
 ```
 
 In
-[`postgres-assembler.ts`](../../src/server/compliance/runtime-release/postgres-assembler.ts),
+[`postgres-assembler.ts`](../../../src/server/compliance/runtime-release/postgres-assembler.ts),
 resolve `entry.question.tooltipContentRevisionId` through the same
 locale/fallback function used for question and help content.
 
@@ -332,7 +332,7 @@ explicit column selections still compile.
 ### Applicability DTO
 
 Extend `ApplicabilityQuestionDto` in
-[`applicability-check/service.ts`](../../src/server/applicability-check/service.ts)
+[`applicability-check/service.ts`](../../../src/server/applicability-check/service.ts)
 with:
 
 ```ts
@@ -343,21 +343,21 @@ Both guest and authenticated questionnaire readers already map the same
 runtime questions, so no route-specific duplication is needed.
 
 Keep `QuestionnairePreviewDto` and
-[`questionnaire-preview.tsx`](../../components/questionnaires/questionnaire-preview.tsx)
+[`questionnaire-preview.tsx`](../../../components/questionnaires/questionnaire-preview.tsx)
 unchanged. If the runtime mapper would otherwise leak the extra property into
 that preview object, explicitly omit `tooltipText` there.
 
 ## Frontend interaction
 
 Update
-[`applicability-questionnaire-form.tsx`](../../components/applicability-check/applicability-questionnaire-form.tsx):
+[`applicability-questionnaire-form.tsx`](../../../components/applicability-check/applicability-questionnaire-form.tsx):
 
 1. wrap the question list in one `TooltipProvider`;
 2. render the existing question title unchanged;
 3. when `question.tooltipText` is non-null, place an icon-only `button` directly
    after the title and before the required badge;
 4. use the existing primitives from
-   [`components/ui/tooltip.tsx`](../../components/ui/tooltip.tsx);
+   [`components/ui/tooltip.tsx`](../../../components/ui/tooltip.tsx);
 5. use the Lucide `Info` icon with the SVG hidden from assistive technology;
 6. give the button `type="button"` so it never submits the questionnaire;
 7. give it a visible keyboard focus ring and an adequate touch target;
@@ -365,7 +365,7 @@ Update
 9. keep the visible `helpText` paragraph below the title row.
 
 Add this static interface label to the German and English applicability form
-dictionary in [`lib/i18n/messages/modules.ts`](../../lib/i18n/messages/modules.ts):
+dictionary in [`lib/i18n/messages/modules.ts`](../../../lib/i18n/messages/modules.ts):
 
 ```text
 DE: Weitere Informationen
@@ -395,23 +395,23 @@ than replacing the application-wide tooltip primitive.
 
 Update these active documents during implementation:
 
-1. [`docs/product/current-nis2-ruleset.de-en.md`](../product/current-nis2-ruleset.de-en.md)
+1. [`docs/product/current-nis2-ruleset.de-en.md`](../../product/current-nis2-ruleset.de-en.md)
    - document the new question 9 option code;
    - state that it is an accepted verified-size state for both profile paths;
    - retain `no` and `unsure` as unresolved;
    - add it to the German size-logic accepted values.
-2. [`docs/architecture/db-schema-plan.md`](../architecture/db-schema-plan.md)
+2. [`docs/architecture/db-schema-plan.md`](../../architecture/db-schema-plan.md)
    - replace the stale claim that English question text lives in JSON;
    - document question, help, and optional tooltip content-revision foreign
      keys;
    - show JSON as UI/visibility configuration only;
    - update the question schema example to the implemented model.
-3. [`docs/architecture/end-to-end-compliance-workflow.md`](../architecture/end-to-end-compliance-workflow.md)
+3. [`docs/architecture/end-to-end-compliance-workflow.md`](../../architecture/end-to-end-compliance-workflow.md)
    - include short descriptions and tooltips in the pinned release-content
      provenance;
    - reiterate that stable option values, not localized prose, drive the
      evaluator.
-4. [`docs/product/product-structure.md`](../product/product-structure.md)
+4. [`docs/product/product-structure.md`](../../product/product-structure.md)
    - state that Betroffenheitscheck question, description, and tooltip content
      comes from the pinned localized Compliance Release.
 
@@ -461,7 +461,7 @@ a fixture is specifically testing the new not-applicable state.
 
 ### Database smoke
 
-Extend [`scripts/smoke-nis2-scope.ts`](../../scripts/smoke-nis2-scope.ts) to
+Extend [`scripts/smoke-nis2-scope.ts`](../../../scripts/smoke-nis2-scope.ts) to
 verify after reseeding that:
 
 - the active release still has twelve questions;
@@ -485,7 +485,7 @@ npm.cmd run build
 ```
 
 After reseeding, run the complete gates from
-[`development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md),
+[`development-database-reset-and-bootstrap.md`](../../database/development-database-reset-and-bootstrap.md),
 including schema drift, server-only security, integrity, storage, corpus,
 localized metadata, Gap requirements, applicability, Gap, authenticated
 workflow, tests, and build checks.
@@ -493,7 +493,7 @@ workflow, tests, and build checks.
 ## Disposable database rollout
 
 Follow
-[`development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md)
+[`development-database-reset-and-bootstrap.md`](../../database/development-database-reset-and-bootstrap.md)
 without abbreviating its governance steps.
 
 ### 1. Preflight

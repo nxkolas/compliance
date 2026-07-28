@@ -1,7 +1,7 @@
 # Gap Analysis Guided-v5 Content Quality and Action Guidance
 
-Status: proposed on 2026-07-26 after review of
-[`manual-review-report.md`](../qa/gap-action-plan-manual-evaluation-2026-07-26Tmanual-qa/manual-review-report.md)
+Status: proposed on 2026-07-26 after review of the retained
+[`Gap and Action Plan acceptance evidence`](../../qa/gap-action-plan-acceptance-evidence-2026-07-26.md)
 and a product-decision interview.
 
 ## Goal
@@ -1276,9 +1276,9 @@ Run code-level tests before touching the connected database.
 ### 1. Verify the target without printing credentials
 
 Follow
-[`development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md)
+[`development-database-reset-and-bootstrap.md`](../../database/development-database-reset-and-bootstrap.md)
 and
-[`drizzle-workflow.md`](../database/drizzle-workflow.md).
+[`drizzle-workflow.md`](../../database/drizzle-workflow.md).
 
 Confirm host, port, and database name from
 `DRIZZLE_DATABASE_URL ?? DATABASE_URL`. Stop if it is not the intended

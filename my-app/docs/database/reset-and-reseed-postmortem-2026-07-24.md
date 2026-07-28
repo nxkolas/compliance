@@ -210,4 +210,4 @@ destructive boundary.
 - [Current development database reset and bootstrap](development-database-reset-and-bootstrap.md)
 - [API and legal-corpus rollout runbook](api-corpus-rollout-runbook.md)
 - [Supabase security runbook](supabase-security-runbook.md)
-- [AI-generated output-language pinning plan](../plans/ai-generated-output-language-pinning.md)
+- [AI-generated output-language pinning plan](../plans/done/ai-generated-output-language-pinning.md)
