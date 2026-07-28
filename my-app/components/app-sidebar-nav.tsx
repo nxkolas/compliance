@@ -368,9 +368,11 @@ function SidebarStaticItem({
 }) {
   return (
     <SidebarMenuItem className="h-12 w-72">
-      <div
-        aria-disabled="true"
-        className="flex h-12 w-72 cursor-not-allowed items-center gap-[14px] rounded-lg px-[18px] text-neutral-50"
+      <SidebarMenuButton
+        type="button"
+        size="lg"
+        disabled
+        className="h-12 w-72 cursor-not-allowed items-center gap-[14px] rounded-lg px-[18px] text-neutral-50 disabled:opacity-100"
       >
         <span className="flex size-[24px] shrink-0 items-center justify-center">
           <Icon className={iconClassName} />
@@ -379,7 +381,7 @@ function SidebarStaticItem({
         <span className="min-w-0 flex-1 truncate text-base font-semibold leading-5">
           {label}
         </span>
-      </div>
+      </SidebarMenuButton>
     </SidebarMenuItem>
   );
 }

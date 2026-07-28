@@ -32,6 +32,8 @@ describe("responsive organization creation form", () => {
     expect(formClassName).toContain("w-full");
     expect(formClassName).toContain("min-w-0");
     expect(html).not.toContain("min-w-[1225px]");
+    expect(html).not.toContain("max-w-[1205px]");
+    expect(html).not.toContain("max-w-[1159px]");
     expect(submitButtonClassName).toContain("w-full");
     expect(submitButtonClassName).toContain("sm:w-72");
   });

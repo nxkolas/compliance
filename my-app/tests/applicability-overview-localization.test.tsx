@@ -97,5 +97,6 @@ describe("applicability overview localization", () => {
     expect(markup).not.toContain(
       "Deutsche Anlage-1-Identität mit mittlerer Unternehmensgröße.",
     );
+    expect(markup).not.toContain("max-w-[1278.5px]");
   });
 });

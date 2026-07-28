@@ -1,6 +1,8 @@
 import { ApplicabilityResultCard } from "@/components/applicability-check/applicability-result-card";
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
@@ -60,37 +62,48 @@ export default async function ApplicabilityResultPage({
     "h-12 w-full max-w-full gap-1 rounded-lg bg-[#002BFF] px-2 text-sm outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] sm:w-[21rem] sm:gap-2 sm:px-4 sm:text-base";
 
   return (
-    <section className="mx-auto flex w-full max-w-[1278.5px] flex-col gap-8">
+    <section className="@container/result-page flex w-full min-w-0 flex-col gap-8">
       <PageHeader title={pageTitle} subtitle={pageSubtitle} />
 
       {recalculationLock.locked ? (
-        <div className="flex items-start gap-2 rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm">
+        <Alert className="items-start gap-x-2 gap-y-0 rounded-md border-primary/35 bg-primary/10 px-4 py-3 text-sm has-[>svg]:gap-x-2 [&>svg]:translate-y-0">
           <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <span>{dictionary.modules.applicabilityCheck.recalculationLocked}</span>
-        </div>
+          <AlertDescription className="text-foreground">
+            {dictionary.modules.applicabilityCheck.recalculationLocked}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between min-[1440px]:mt-0 min-[1440px]:mb-[34px]">
+      <div className="mb-12 flex flex-col gap-4 sm:mb-0 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between @5xl/result-page:mb-[17px]">
         <nav
           aria-label={locale === "en" ? "Result views" : "Ergebnisansichten"}
-          className="flex h-12 items-stretch"
         >
-          <Link
-            href={`${baseHref}/result`}
-            aria-current="page"
-            className="inline-flex items-center border-b-2 border-white px-5 text-base font-medium text-white"
-          >
-            {labels.overview}
-          </Link>
-          <Link
-            href={`${baseHref}/answers`}
-            className="inline-flex items-center border-b-[1.5px] border-gray-800 px-5 text-base font-medium text-zinc-600 transition-colors hover:text-zinc-300"
-          >
-            {labels.answers}
-          </Link>
+          <Tabs value={`${baseHref}/result`} className="gap-0">
+            <TabsList
+              variant="line"
+              className="h-12 gap-0 rounded-none p-0"
+            >
+              <TabsTrigger
+                value={`${baseHref}/result`}
+                asChild
+                className="h-12 flex-none rounded-none border-x-0 border-t-0 border-b-2 border-white bg-transparent px-5 py-0 text-base font-medium text-white shadow-none after:hidden hover:text-white data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none dark:text-white dark:hover:text-white dark:data-[state=active]:border-white dark:data-[state=active]:bg-transparent"
+              >
+                <Link href={`${baseHref}/result`} aria-current="page">
+                  {labels.overview}
+                </Link>
+              </TabsTrigger>
+              <TabsTrigger
+                value={`${baseHref}/answers`}
+                asChild
+                className="h-12 flex-none rounded-none border-x-0 border-t-0 border-b-[1.5px] border-gray-800 bg-transparent px-5 py-0 text-base font-medium text-zinc-600 shadow-none after:hidden hover:text-zinc-300 data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:text-zinc-600 dark:hover:text-zinc-300 dark:data-[state=active]:bg-transparent"
+              >
+                <Link href={`${baseHref}/answers`}>{labels.answers}</Link>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </nav>
 
-        <div className="flex justify-end sm:ml-auto sm:translate-y-12 min-[1440px]:translate-y-[17px]">
+        <div className="flex justify-end sm:mt-12 sm:ml-auto @5xl/result-page:mt-[17px]">
           {recalculationLock.locked ? (
             <Button
               disabled

@@ -1,4 +1,8 @@
 import { PageHeader } from "@/components/page-header";
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -59,46 +63,60 @@ export default async function ApplicabilityCheckPage({
     locale === "en"
       ? overview.result?.result.reasonsEn
       : overview.result?.result.reasons;
+  const actionButtonClassName =
+    "h-auto min-h-9 w-full min-w-0 whitespace-normal py-2 text-center sm:w-auto";
 
   return (
-    <section className="flex w-full flex-col gap-8">
+    <section className="flex w-full min-w-0 flex-col gap-8">
       <PageHeader
         title={dictionary.modules.applicabilityCheck.title}
         subtitle={dictionary.modules.applicabilityCheck.description}
       />
 
       {recalculationLock.locked ? (
-        <div className="flex items-start gap-2 rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm">
-          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <span>{dictionary.modules.applicabilityCheck.recalculationLocked}</span>
-        </div>
+        <Alert className="min-w-0 rounded-md border-primary/35 bg-primary/10 has-[>svg]:gap-x-2">
+          <LockKeyhole className="shrink-0 text-primary" />
+          <AlertDescription className="min-w-0 break-words text-foreground">
+            {dictionary.modules.applicabilityCheck.recalculationLocked}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-md border bg-card px-4 py-3">
-          <p className="text-sm text-muted-foreground">{labels.resultMetric}</p>
-          <p className="mt-1 text-xl font-semibold">
-            {resultLabel ?? labels.pending}
-          </p>
-        </div>
-        <div className="rounded-md border bg-card px-4 py-3">
-          <p className="text-sm text-muted-foreground">
-            {labels.revisionMetric}
-          </p>
-          <p className="mt-1 text-xl font-semibold">
-            {overview.assessmentRevisionNumber}
-          </p>
-        </div>
-        <div className="rounded-md border bg-card px-4 py-3">
-          <p className="text-sm text-muted-foreground">{labels.statusMetric}</p>
-          <p className="mt-1 text-xl font-semibold">
-            {formatOutcome(outcome, labels.outcomes)}
-          </p>
-        </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3">
+        <Card className="min-w-0 gap-0 rounded-md py-0 shadow-none">
+          <CardContent className="px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              {labels.resultMetric}
+            </p>
+            <p className="mt-1 break-words text-xl font-semibold">
+              {resultLabel ?? labels.pending}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="min-w-0 gap-0 rounded-md py-0 shadow-none">
+          <CardContent className="px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              {labels.revisionMetric}
+            </p>
+            <p className="mt-1 break-words text-xl font-semibold">
+              {overview.assessmentRevisionNumber}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="min-w-0 gap-0 rounded-md py-0 shadow-none">
+          <CardContent className="px-4 py-3">
+            <p className="text-sm text-muted-foreground">
+              {labels.statusMetric}
+            </p>
+            <p className="mt-1 break-words text-xl font-semibold">
+              {formatOutcome(outcome, labels.outcomes)}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader>
+      <Card className="min-w-0 overflow-hidden rounded-lg shadow-sm">
+        <CardHeader className="min-w-0 px-4 sm:px-6">
           <CardTitle>{labels.currentTitle}</CardTitle>
           <CardDescription>
             {labels.lastCalculation}:{" "}
@@ -107,31 +125,43 @@ export default async function ApplicabilityCheckPage({
               : labels.noDate}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+        <CardContent className="flex min-w-0 flex-col gap-4 px-4 sm:px-6">
+          <p className="max-w-2xl break-words text-sm leading-6 text-muted-foreground">
             {reasons?.join(" ") ?? labels.noResult}
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button asChild className={actionButtonClassName}>
               <Link href={`${baseHref}/result`}>
                 <FileText />
                 {labels.viewResult}
                 <ArrowRight />
               </Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button
+              asChild
+              variant="outline"
+              className={actionButtonClassName}
+            >
               <Link href={`${baseHref}/answers`}>
                 <ClipboardList />
                 {labels.viewAnswers}
               </Link>
             </Button>
             {recalculationLock.locked ? (
-              <Button disabled variant="secondary">
+              <Button
+                disabled
+                variant="secondary"
+                className={actionButtonClassName}
+              >
                 <LockKeyhole />
                 {labels.recalculate}
               </Button>
             ) : (
-              <Button asChild variant="secondary">
+              <Button
+                asChild
+                variant="secondary"
+                className={actionButtonClassName}
+              >
                 <Link href={`${baseHref}/new`}>
                   <RefreshCw />
                   {labels.recalculate}

@@ -1,7 +1,10 @@
 "use client";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import type { Locale } from "@/lib/i18n-config";
@@ -119,10 +122,9 @@ export function OrganizationCreateForm({
   }
 
   return (
-    <div className="w-full min-w-0 max-w-[1205px]">
+    <div className="w-full min-w-0">
       {notice.message && (
-        <div
-          role="alert"
+        <Alert
           className={cn(
             "mb-6 break-words rounded-lg border px-4 py-3 text-sm",
             notice.tone === "success" &&
@@ -133,25 +135,36 @@ export function OrganizationCreateForm({
               "border-zinc-700 bg-gray-900 text-gray-200",
           )}
         >
-          {notice.message}
-        </div>
+          <AlertDescription className="break-words text-inherit">
+            {notice.message}
+          </AlertDescription>
+        </Alert>
       )}
 
-      <form
-        onSubmit={handleCreateOrganization}
+      <Card
         className="
           box-border
           w-full
           min-w-0
-          max-w-[1205px]
-          p-5
-          sm:p-8
           rounded-xl
           border-[1.5px]
           border-[#3D4049]
           bg-[#1B1E27]
+          py-0
           font-['Space_Grotesk']
           shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)]
+          gap-0
+        "
+      >
+        <form
+          onSubmit={handleCreateOrganization}
+          className="
+          box-border
+          w-full
+          min-w-0
+          p-5
+          sm:p-8
+          font-['Space_Grotesk']
           inline-flex
           flex-col
           items-start
@@ -159,13 +172,13 @@ export function OrganizationCreateForm({
         "
       >
         {/* Organisationsname */}
-        <div className="flex w-full max-w-[1159px] flex-col items-start gap-0">
-          <label
+        <div className="flex w-full min-w-0 flex-col items-start gap-0">
+          <Label
             htmlFor="organization-name"
             className={labelClassName}
           >
             {labels.organizationName}
-          </label>
+          </Label>
 
           <p className={descriptionClassName}>
             {labels.organizationNameHelp}
@@ -188,13 +201,13 @@ export function OrganizationCreateForm({
         </div>
 
         {/* Rechtlicher Name */}
-        <div className="flex w-full max-w-[1159px] flex-col items-start gap-0">
-          <label
+        <div className="flex w-full min-w-0 flex-col items-start gap-0">
+          <Label
             htmlFor="legal-name"
             className={labelClassName}
           >
             {labels.legalName}
-          </label>
+          </Label>
 
           <p className={descriptionClassName}>
             {labels.legalNameHelp}
@@ -227,12 +240,12 @@ export function OrganizationCreateForm({
             gap-0
           "
         >
-          <label
+          <Label
             htmlFor="country"
             className={labelClassName}
           >
             {labels.country}
-          </label>
+          </Label>
 
           <p className={descriptionClassName}>
             {labels.countryHelp}
@@ -338,7 +351,8 @@ export function OrganizationCreateForm({
             </>
           )}
         </Button>
-      </form>
+        </form>
+      </Card>
     </div>
   );
 }

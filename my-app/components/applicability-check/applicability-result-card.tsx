@@ -1,6 +1,17 @@
 "use client";
 
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import type { Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
 import type { ApplicabilityResultDto } from "@/src/server/applicability-check/service";
@@ -128,35 +139,41 @@ export function ApplicabilityResultCard({
   });
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="@container/result-card flex min-w-0 flex-col gap-8">
       {result.release.isOutdated ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300/40 bg-amber-300/10 p-4 text-sm text-amber-100">
-          <span>{labels.outdated}</span>
+        <Alert className="grid grid-cols-1 items-center gap-3 rounded-lg border-amber-300/40 bg-amber-300/10 p-4 text-sm text-amber-100 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <AlertDescription className="col-start-1 text-sm text-amber-100">
+            {labels.outdated}
+          </AlertDescription>
           {!recalculationLocked ? (
-            <Button asChild size="sm">
+            <Button
+              asChild
+              size="sm"
+              className="col-start-1 row-start-2 justify-self-start sm:col-start-2 sm:row-start-1"
+            >
               <Link href={startCurrentHref}>{labels.startCurrent}</Link>
             </Button>
           ) : null}
-        </div>
+        </Alert>
       ) : null}
 
       {unsupportedCountry ? (
-        <div className="rounded-lg border border-amber-300/40 bg-amber-300/10 p-4 text-amber-100">
-          <h2 className="font-semibold">
+        <Alert className="rounded-lg border-amber-300/40 bg-amber-300/10 p-4 text-amber-100">
+          <AlertTitle className="min-h-0 line-clamp-none font-semibold tracking-normal">
             {labels.unsupportedCountryTitle}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-amber-50/75">
+          </AlertTitle>
+          <AlertDescription className="mt-2 text-sm leading-6 text-amber-50/75">
             {labels.unsupportedCountryBody.replace(
               "{countries}",
               supportedCountries,
             )}
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      <section
+      <Card
         className={cn(
-          "relative overflow-hidden rounded-xl border-[1.5px] bg-[#1B1E27] px-5 py-5 shadow-[0_4px_4px_rgba(0,0,0,0.25)] sm:px-8 sm:py-6",
+          "relative gap-0 overflow-hidden rounded-xl border-[1.5px] bg-[#1B1E27] px-5 py-5 shadow-[0_4px_4px_rgba(0,0,0,0.25)] sm:px-8 sm:py-6",
           presentation.borderClass,
         )}
       >
@@ -237,7 +254,7 @@ export function ApplicabilityResultCard({
           </p>
 
           <div
-            className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,11.5rem),1fr))] gap-4 min-[1280px]:gap-6 min-[1600px]:gap-10"
+            className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,11.5rem),1fr))] gap-4 @5xl/result-card:gap-6 @7xl/result-card:gap-10"
           >
             <Metric
               icon={Building2}
@@ -286,16 +303,16 @@ export function ApplicabilityResultCard({
             </ul>
           </div>
         </div>
-      </section>
+      </Card>
 
-      <section className="grid items-center gap-6 min-[1280px]:mx-auto min-[1280px]:mt-4 min-[1280px]:w-full min-[1280px]:max-w-[1278.5px] min-[1280px]:grid-cols-[minmax(0,1.46fr)_minmax(0,1fr)] min-[1280px]:gap-[52px]">
-        <div className="relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center px-6 py-10 sm:px-[54px] min-[1280px]:justify-start min-[1280px]:pt-[65px] min-[1280px]:pb-[30px]">
+      <section className="grid min-w-0 items-center gap-6 @5xl/result-card:mt-4 @5xl/result-card:w-full @5xl/result-card:grid-cols-[minmax(0,1.46fr)_minmax(0,1fr)] @5xl/result-card:gap-[52px]">
+        <div className="relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center px-6 py-10 sm:px-[54px] @5xl/result-card:justify-start @5xl/result-card:pt-[65px] @5xl/result-card:pb-[30px] @7xl/result-card:max-w-none">
           <div
             aria-hidden="true"
-            className="absolute inset-0 rounded-xl bg-gradient-to-br from-slate-800 to-gray-900 outline outline-[1.5px] outline-offset-[-0.75px] outline-zinc-700 min-[1280px]:hidden"
+            className="absolute inset-0 rounded-xl bg-gradient-to-br from-slate-800 to-gray-900 outline outline-[1.5px] outline-offset-[-0.75px] outline-zinc-700 @5xl/result-card:hidden"
           />
           <SpeechBubbleBackground />
-          <h2 className="relative z-10 w-full max-w-80 text-lg font-semibold tracking-wide text-white uppercase sm:text-xl min-[1280px]:leading-5">
+          <h2 className="relative z-10 w-full max-w-80 text-lg font-semibold tracking-wide text-white uppercase sm:text-xl @5xl/result-card:leading-5">
             {labels.meaningTitle ??
               (locale === "en"
                 ? "What does this mean for you?"
@@ -324,14 +341,14 @@ export function ApplicabilityResultCard({
             </Button>
           ) : null}
         </div>
-        <div className="flex items-center justify-center min-[1280px]:min-h-72 min-[1280px]:translate-y-[19px] min-[1280px]:justify-end">
+        <div className="flex min-w-0 items-center justify-center @5xl/result-card:min-h-72 @5xl/result-card:translate-y-[19px] @5xl/result-card:justify-end">
           <Image
             src="/images/Maskottchen_ohneLogo.svg"
             alt=""
             aria-hidden="true"
             width={520}
             height={350}
-            className="h-auto w-full max-w-[360px] sm:max-w-[430px] min-[1280px]:max-w-[520px]"
+            className="h-auto w-full max-w-[360px] sm:max-w-[430px] @5xl/result-card:max-w-[520px] @7xl/result-card:max-w-none"
           />
         </div>
       </section>
@@ -354,8 +371,8 @@ export function ApplicabilityResultCard({
         }
       />
 
-      <footer className="min-[1280px]:mt-[18px]">
-        <div className="flex items-start gap-3 rounded-lg border-[1.5px] border-zinc-700 bg-[#1B1E27] px-5 py-2.5 text-xs leading-5 text-white/35">
+      <footer className="@5xl/result-card:mt-[18px]">
+        <Alert className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-3 gap-y-0 rounded-lg border-[1.5px] border-zinc-700 bg-[#1B1E27] px-5 py-2.5 text-xs leading-5 text-white/35 has-[>svg]:grid-cols-[1rem_minmax(0,1fr)] [&>svg]:translate-y-0">
           <svg
             aria-hidden="true"
             width="16"
@@ -387,12 +404,12 @@ export function ApplicabilityResultCard({
               strokeLinejoin="round"
             />
           </svg>
-          <p>
+          <AlertDescription className="min-w-0 text-xs leading-5 text-white/35">
             {locale === "en" ? evaluation.disclaimerEn : evaluation.disclaimer}
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-zinc-400 min-[1280px]:mt-5">
+        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-zinc-400 @5xl/result-card:mt-5">
           <Metadata label={labels.release} value={result.release.versionLabel} />
           <Metadata
             label={
@@ -429,16 +446,16 @@ function Metric({
   value: string;
 }) {
   return (
-    <div
+    <Card
       className={cn(
-        "flex min-h-24 min-w-0 flex-col justify-center rounded-xl border-[1.5px] px-5 py-4 sm:px-6",
+        "min-h-24 min-w-0 gap-0 justify-center rounded-xl border-[1.5px] px-5 py-4 shadow-none sm:px-6",
         presentation.metricBackgroundClass,
         presentation.metricBorderClass,
       )}
     >
       <div
         className={cn(
-          "flex min-w-0 items-center gap-1.5 text-sm font-medium tracking-wide sm:text-base min-[1600px]:text-lg min-[1600px]:leading-4",
+          "flex min-w-0 items-center gap-1.5 text-sm font-medium tracking-wide sm:text-base @7xl/result-card:text-lg @7xl/result-card:leading-4",
           presentation.textClass,
         )}
       >
@@ -451,7 +468,7 @@ function Metric({
       >
         {value}
       </p>
-    </div>
+    </Card>
   );
 }
 
@@ -459,7 +476,7 @@ function SpeechBubbleBackground() {
   return (
     <svg
       aria-hidden="true"
-      className="pointer-events-none absolute inset-y-0 left-[0.25px] hidden h-full w-[calc(100%+24px)] overflow-visible min-[1280px]:block"
+      className="pointer-events-none absolute inset-y-0 left-[0.25px] hidden h-full w-[calc(100%+24px)] overflow-visible @5xl/result-card:block"
       viewBox="0 0 782 288"
       fill="none"
       preserveAspectRatio="none"
@@ -506,11 +523,11 @@ function ResultDetails({
   const allExpanded =
     sections.length > 0 && expanded.size === sections.length;
 
-  function toggleSection(id: string) {
+  function setSectionExpanded(id: string, open: boolean) {
     setExpanded((current) => {
       const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (open) next.add(id);
+      else next.delete(id);
       return next;
     });
   }
@@ -522,15 +539,16 @@ function ResultDetails({
   }
 
   return (
-    <section className="mt-12 min-[1280px]:mt-[92px]">
+    <section className="mt-12 @5xl/result-card:mt-[92px]">
       <div className="mb-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <h2 className="text-base font-medium tracking-[0.04em] text-white uppercase sm:text-lg">
           {title}
         </h2>
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={toggleAll}
-          className="inline-flex shrink-0 self-end items-center gap-2 text-sm font-medium text-white transition-colors hover:text-blue-200 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary sm:self-auto sm:text-base"
+          className="h-auto shrink-0 self-end rounded-none px-0 py-0 text-sm font-medium text-white has-[>svg]:px-0 hover:bg-transparent hover:text-blue-200 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-transparent sm:self-auto sm:text-base"
         >
           {allExpanded ? collapseAllLabel : expandAllLabel}
           <ChevronDown
@@ -539,45 +557,51 @@ function ResultDetails({
               allExpanded && "rotate-180",
             )}
           />
-        </button>
+        </Button>
       </div>
 
-      <div className="grid gap-4 min-[1280px]:gap-[22px]">
+      <div className="grid gap-4 @5xl/result-card:gap-[22px]">
         {sections.map((section) => {
           const Icon = section.icon;
           const isExpanded = expanded.has(section.id);
 
           return (
-            <div
+            <Collapsible
               key={section.id}
+              open={isExpanded}
+              onOpenChange={(open) =>
+                setSectionExpanded(section.id, open)
+              }
               className="overflow-hidden rounded-xl border-[1.5px] border-zinc-700 bg-[#1B1E27]"
             >
-              <button
-                type="button"
-                aria-expanded={isExpanded}
-                onClick={() => toggleSection(section.id)}
-                className="flex min-h-12 w-full items-center justify-between gap-4 bg-[#1B1E27] px-5 py-3.5 text-left font-['Space_Grotesk'] text-[#9F9FA9] transition-colors hover:bg-white/[0.025] hover:text-[#9F9FA9] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  <Icon className="size-4 shrink-0" strokeWidth={1.5} />
-                  <span className="truncate text-lg leading-5 font-medium">
-                    {section.title}
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-auto min-h-12 w-full justify-between gap-4 rounded-none bg-[#1B1E27] px-5 py-3.5 text-left whitespace-normal font-['Space_Grotesk'] text-[#9F9FA9] has-[>svg]:px-5 hover:bg-white/[0.025] hover:text-[#9F9FA9] focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-white/[0.025] dark:hover:text-[#9F9FA9]"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Icon className="size-4 shrink-0" strokeWidth={1.5} />
+                    <span className="truncate text-lg leading-5 font-medium">
+                      {section.title}
+                    </span>
                   </span>
-                </span>
-                <DetailChevron
-                  className={cn(
-                    "size-3.5 shrink-0 transition-transform",
-                    isExpanded && "rotate-180",
-                  )}
-                />
-              </button>
-              <div
+                  <DetailChevron
+                    className={cn(
+                      "size-3.5 shrink-0 transition-transform",
+                      isExpanded && "rotate-180",
+                    )}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent
+                forceMount
                 hidden={!isExpanded}
                 className="border-t border-zinc-700 px-5 py-5 text-sm leading-6 text-zinc-300"
               >
                 {section.content}
-              </div>
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
       </div>

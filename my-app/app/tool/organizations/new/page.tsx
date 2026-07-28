@@ -46,20 +46,9 @@ export default async function NewOrganizationPage({
         id="organization-create-page"
         className="w-full min-w-0 overflow-x-hidden"
       >
-        <style>
-          {`
-            #organization-create-page form {
-              background-color: #1B1E27 !important;
-              border-color: #3D4049 !important;
-              outline-color: #3D4049 !important;
-              border-width: 1.5px !important;
-              border-radius: 12px !important;
-            }
-          `}
-        </style>
-        <div className="w-full max-w-[1205px] pt-0 xl:w-[calc(100%+21px)] xl:max-w-[1259px] xl:pl-[54px]">
+        <div className="w-full min-w-0 pt-0 xl:pl-[54px]">
           {/* Überschrift */}
-          <header className="min-h-[112px] w-full max-w-[1205px]">
+          <header className="min-h-[112px] w-full min-w-0">
             <h1 className="break-words font-['Space_Grotesk'] text-3xl leading-9 font-bold tracking-tight text-white sm:text-4xl">
               {dictionary.organizations.newPageTitle}
             </h1>

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,35 +45,51 @@ export default async function ApplicabilityAnswersPage({
 
   const baseHref = `/tool/organizations/${organizationId}/applicability-check`;
   const labels = dictionary.modules.applicabilityCheck.answers;
+  const actionButtonClassName =
+    "h-auto min-h-9 w-full min-w-0 whitespace-normal py-2 text-center sm:w-auto";
 
   return (
-    <section className="flex w-full flex-col gap-8">
+    <section className="flex w-full min-w-0 flex-col gap-8">
       <PageHeader
         title={labels.title}
         subtitle={dictionary.modules.applicabilityCheck.description}
       />
 
       {recalculationLock.locked ? (
-        <div className="flex items-start gap-2 rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm">
-          <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <span>{dictionary.modules.applicabilityCheck.recalculationLocked}</span>
-        </div>
+        <Alert className="min-w-0 rounded-md border-primary/35 bg-primary/10 has-[>svg]:gap-x-2">
+          <LockKeyhole className="shrink-0 text-primary" />
+          <AlertDescription className="min-w-0 break-words text-foreground">
+            {dictionary.modules.applicabilityCheck.recalculationLocked}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button
+          asChild
+          variant="outline"
+          className={actionButtonClassName}
+        >
           <Link href={baseHref}>
             <ArrowLeft />
             {labels.overview}
           </Link>
         </Button>
         {recalculationLock.locked ? (
-          <Button disabled variant="secondary">
+          <Button
+            disabled
+            variant="secondary"
+            className={actionButtonClassName}
+          >
             <LockKeyhole />
             {labels.recalculate}
           </Button>
         ) : (
-          <Button asChild variant="secondary">
+          <Button
+            asChild
+            variant="secondary"
+            className={actionButtonClassName}
+          >
             <Link href={`${baseHref}/new`}>
               <RefreshCw />
               {labels.recalculate}
@@ -81,8 +98,8 @@ export default async function ApplicabilityAnswersPage({
         )}
       </div>
 
-      <Card className="rounded-lg shadow-sm">
-        <CardHeader>
+      <Card className="min-w-0 overflow-hidden rounded-lg shadow-sm">
+        <CardHeader className="min-w-0 px-4 sm:px-6">
           <CardTitle>
             {labels.revision} {answers.assessmentRevisionNumber}
           </CardTitle>
@@ -93,20 +110,22 @@ export default async function ApplicabilityAnswersPage({
               : labels.noDate}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 px-4 sm:px-6">
           <dl className="grid gap-4">
             {answers.answers.map((answer) => (
               <div
                 key={answer.questionStableKey}
-                className="rounded-md border bg-muted/20 px-4 py-3"
+                className="min-w-0 rounded-md border bg-muted/20 px-4 py-3"
               >
-                <dt className="flex gap-3 text-sm font-medium">
+                <dt className="flex min-w-0 gap-3 text-sm font-medium">
                   <span className="text-muted-foreground">
                     {answer.questionPosition}.
                   </span>
-                  <span>{answer.questionText}</span>
+                  <span className="min-w-0 break-words">
+                    {answer.questionText}
+                  </span>
                 </dt>
-                <dd className="mt-2 text-sm text-muted-foreground">
+                <dd className="mt-2 min-w-0 break-words text-sm text-muted-foreground">
                   {answer.answerLabel ??
                     formatAnswerValue(answer.answerValue, labels.unset)}
                 </dd>

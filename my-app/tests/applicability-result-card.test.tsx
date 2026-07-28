@@ -252,6 +252,17 @@ describe("unsupported-country applicability result", () => {
 });
 
 describe("applicability result outcomes", () => {
+  it("uses the available content width for responsive layout changes", () => {
+    const html = renderOutcome("important_entity", "de");
+
+    expect(html).toContain("@container/result-card");
+    expect(html).toContain(
+      "@5xl/result-card:grid-cols-[minmax(0,1.46fr)_minmax(0,1fr)]",
+    );
+    expect(html).not.toContain("min-[1280px]");
+    expect(html).not.toContain("max-w-[1278.5px]");
+  });
+
   it.each(outcomeCases)(
     "renders $outcome in $locale with the correct Gap Analysis CTA eligibility",
     ({ locale, outcome, shouldShowGapCta }) => {

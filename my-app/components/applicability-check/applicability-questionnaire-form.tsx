@@ -1,7 +1,14 @@
 "use client";
 
+import {
+  Alert,
+  AlertDescription,
+} from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 import {
   Combobox,
   ComboboxContent,
@@ -11,7 +18,13 @@ import {
   ComboboxList,
   useComboboxAnchor,
 } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Toggle } from "@/components/ui/toggle";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 import {
   Tooltip,
   TooltipContent,
@@ -100,7 +113,7 @@ export function ApplicabilityQuestionnaireForm({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [interactedQuestionIds, setInteractedQuestionIds] = useState<
+  const [confirmedQuestionIds, setConfirmedQuestionIds] = useState<
     Set<string>
   >(() => new Set());
   const [notice, setNotice] = useState<RequestState>({
@@ -139,9 +152,9 @@ export function ApplicabilityQuestionnaireForm({
   const completedRequiredQuestions = requiredQuestions.filter(
     (question) => isAnswered(answers[question.id]),
   ).length;
-  const completedQuestions = catalogQuestions.filter(
+  const completedQuestions = visibleQuestions.filter(
     (question) =>
-      interactedQuestionIds.has(question.id) &&
+      confirmedQuestionIds.has(question.id) &&
       isAnswered(answers[question.id]),
   ).length;
   const progress =
@@ -151,9 +164,9 @@ export function ApplicabilityQuestionnaireForm({
           (completedRequiredQuestions / requiredQuestions.length) * 100,
         );
   const questionnaireProgress =
-    catalogQuestions.length === 0
+    visibleQuestions.length === 0
       ? 100
-      : Math.round((completedQuestions / catalogQuestions.length) * 100);
+      : Math.round((completedQuestions / visibleQuestions.length) * 100);
   const requiredComplete =
     completedRequiredQuestions === requiredQuestions.length;
   const activeQuestionIndex = Math.min(
@@ -161,8 +174,8 @@ export function ApplicabilityQuestionnaireForm({
     Math.max(visibleQuestions.length - 1, 0),
   );
 
-  function markQuestionAsInteracted(questionId: string) {
-    setInteractedQuestionIds((current) => {
+  function confirmQuestion(questionId: string) {
+    setConfirmedQuestionIds((current) => {
       if (current.has(questionId)) {
         return current;
       }
@@ -170,6 +183,21 @@ export function ApplicabilityQuestionnaireForm({
       const next = new Set(current);
       next.add(questionId);
       return next;
+    });
+  }
+
+  function clearConfirmationsFrom(question: ApplicabilityQuestionDto) {
+    const affectedQuestionIds = new Set(
+      questionnaire.questions
+        .filter((candidate) => candidate.position >= question.position)
+        .map((candidate) => candidate.id),
+    );
+
+    setConfirmedQuestionIds((current) => {
+      const next = new Set(
+        [...current].filter((questionId) => !affectedQuestionIds.has(questionId)),
+      );
+      return next.size === current.size ? current : next;
     });
   }
 
@@ -183,15 +211,19 @@ export function ApplicabilityQuestionnaireForm({
         [question.id]: value,
       }),
     );
-    markQuestionAsInteracted(question.id);
+    clearConfirmationsFrom(question);
     setNotice({ message: null, tone: "default" });
   }
 
   function navigateToQuestion(index: number) {
+    setCurrentQuestionIndex(index);
+  }
+
+  function confirmCurrentQuestionAndNavigate(index: number) {
     const activeQuestion = visibleQuestions[activeQuestionIndex];
 
     if (activeQuestion && isAnswered(answers[activeQuestion.id])) {
-      markQuestionAsInteracted(activeQuestion.id);
+      confirmQuestion(activeQuestion.id);
     }
 
     setCurrentQuestionIndex(index);
@@ -245,63 +277,68 @@ export function ApplicabilityQuestionnaireForm({
   return (
     <form
       className={cn(
-        "flex flex-col gap-6",
+        "flex w-full min-w-0 flex-col gap-6",
         presentation === "authenticated-stepper" &&
           "font-['Space_Grotesk'] lg:gap-8",
       )}
       onSubmit={handleSubmit}
     >
       {notice.message ? (
-        <div
+        <Alert
           className={cn(
-            "rounded-md border px-4 py-3 text-sm",
+            "break-words rounded-md border px-4 py-3 text-sm",
             notice.tone === "error" &&
               "border-destructive/40 bg-destructive/10 text-foreground",
           )}
         >
-          {notice.message}
-        </div>
+          <AlertDescription className="min-w-0 break-words text-foreground">
+            {notice.message}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       {presentation === "authenticated-stepper" ? (
         <AuthenticatedQuestionnaire
           activeQuestionIndex={activeQuestionIndex}
-          allQuestions={catalogQuestions}
           answers={answers}
           completedQuestions={completedQuestions}
+          confirmedQuestionIds={confirmedQuestionIds}
           isSubmitting={isSubmitting}
           labels={labels}
           onAnswerChange={updateAnswer}
+          onContinue={confirmCurrentQuestionAndNavigate}
           onQuestionSelect={navigateToQuestion}
           progress={questionnaireProgress}
           requiredComplete={requiredComplete}
-          questionCount={catalogQuestions.length}
+          questionCount={visibleQuestions.length}
           visibleQuestions={visibleQuestions}
         />
       ) : (
         <>
-          <div className="rounded-lg border bg-card p-5 shadow-sm">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {questionnaire.versionLabel}
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold">
-                  {questionnaire.title}
-                </h2>
-              </div>
-              <div className="min-w-52">
-                <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{labels.progress}</span>
-                  <span>
-                    {completedRequiredQuestions} {labels.of}{" "}
-                    {requiredQuestions.length} {labels.answered}
-                  </span>
+          <Card className="gap-0 rounded-lg py-0 shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {questionnaire.versionLabel}
+                  </p>
+                  <h2 className="mt-1 text-2xl font-semibold">
+                    {questionnaire.title}
+                  </h2>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <div className="min-w-52">
+                  <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{labels.progress}</span>
+                    <span>
+                      {completedRequiredQuestions} {labels.of}{" "}
+                      {requiredQuestions.length} {labels.answered}
+                    </span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           <TooltipProvider>
             <div className="flex flex-col gap-4">
@@ -336,15 +373,16 @@ export function ApplicabilityQuestionnaireForm({
 
 type AuthenticatedQuestionnaireProps = {
   activeQuestionIndex: number;
-  allQuestions: ApplicabilityQuestionDto[];
   answers: Record<string, ApplicabilityAnswerValue>;
   completedQuestions: number;
+  confirmedQuestionIds: Set<string>;
   isSubmitting: boolean;
   labels: ApplicabilityQuestionnaireFormLabels;
   onAnswerChange: (
     question: ApplicabilityQuestionDto,
     value: ApplicabilityAnswerValue,
   ) => void;
+  onContinue: (index: number) => void;
   onQuestionSelect: (index: number) => void;
   progress: number;
   questionCount: number;
@@ -354,12 +392,13 @@ type AuthenticatedQuestionnaireProps = {
 
 function AuthenticatedQuestionnaire({
   activeQuestionIndex,
-  allQuestions,
   answers,
   completedQuestions,
+  confirmedQuestionIds,
   isSubmitting,
   labels,
   onAnswerChange,
+  onContinue,
   onQuestionSelect,
   progress,
   questionCount,
@@ -382,10 +421,10 @@ function AuthenticatedQuestionnaire({
         <QuestionStepper
           activeQuestionId={activeQuestion?.id}
           answers={answers}
+          confirmedQuestionIds={confirmedQuestionIds}
           labels={labels}
           onQuestionSelect={onQuestionSelect}
-          questions={allQuestions}
-          visibleQuestions={visibleQuestions}
+          questions={visibleQuestions}
         />
 
         <div className="grid gap-x-1 gap-y-1 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -399,7 +438,7 @@ function AuthenticatedQuestionnaire({
           <span className="min-w-12 text-right text-base font-semibold text-white">
             {progress} %
           </span>
-          <span className="h-14 w-56 justify-self-end text-left font-['Space_Grotesk'] text-base leading-[54px] font-normal text-white sm:col-span-2">
+          <span className="flex min-h-14 w-full max-w-56 items-center justify-self-end text-left font-['Space_Grotesk'] text-base leading-6 font-normal text-white sm:col-span-2">
             {completedQuestions} {labels.of} {questionCount}{" "}
             {labels.questionsAnswered}
           </span>
@@ -426,7 +465,7 @@ function AuthenticatedQuestionnaire({
             variant="ghost"
             size="lg"
             onClick={() => onQuestionSelect(activeQuestionIndex - 1)}
-            className="h-12 w-28 overflow-hidden rounded-lg bg-[#002BFF]/50 px-0 hover:bg-[#002BFF]/60"
+            className="h-12 w-full overflow-hidden rounded-lg bg-[#002BFF]/50 px-0 hover:bg-[#002BFF]/60 sm:w-28"
           >
             <ArrowLeft className="text-white/50" />
             <span className="font-['Space_Grotesk'] text-base font-medium text-white/50">
@@ -450,8 +489,8 @@ function AuthenticatedQuestionnaire({
             type="button"
             size="lg"
             disabled={!canContinue}
-            onClick={() => onQuestionSelect(activeQuestionIndex + 1)}
-            className="h-12 w-48 overflow-hidden rounded-lg bg-[#002BFF] px-8 hover:bg-[#002BFF]/90"
+            onClick={() => onContinue(activeQuestionIndex + 1)}
+            className="h-12 w-full overflow-hidden rounded-lg bg-[#002BFF] px-8 hover:bg-[#002BFF]/90 sm:w-48"
           >
             <span className="font-['Space_Grotesk'] text-base font-medium text-white">
               {labels.next}
@@ -467,33 +506,31 @@ function AuthenticatedQuestionnaire({
 type QuestionStepperProps = {
   activeQuestionId?: string;
   answers: Record<string, ApplicabilityAnswerValue>;
+  confirmedQuestionIds: Set<string>;
   labels: ApplicabilityQuestionnaireFormLabels;
   onQuestionSelect: (index: number) => void;
   questions: ApplicabilityQuestionDto[];
-  visibleQuestions: ApplicabilityQuestionDto[];
 };
 
 function QuestionStepper({
   activeQuestionId,
   answers,
+  confirmedQuestionIds,
   labels,
   onQuestionSelect,
   questions,
-  visibleQuestions,
 }: QuestionStepperProps) {
   return (
     <nav
       aria-label={labels.progress}
-      className="overflow-x-auto pb-2 sm:overflow-visible sm:pr-[52px]"
+      className="overflow-x-auto pb-2 [scrollbar-width:none] sm:pr-[52px] [&::-webkit-scrollbar]:hidden"
     >
-      <ol className="flex min-w-[60rem] items-center justify-between sm:w-full sm:min-w-0">
+      <ol className="flex w-max min-w-full items-center justify-between gap-3">
         {questions.map((question, index) => {
           const active = question.id === activeQuestionId;
-          const visibleQuestionIndex = visibleQuestions.findIndex(
-            (visibleQuestion) => visibleQuestion.id === question.id,
-          );
           const answered =
-            visibleQuestionIndex >= 0 && isAnswered(answers[question.id]);
+            confirmedQuestionIds.has(question.id) &&
+            isAnswered(answers[question.id]);
           const statusLabel = active
             ? labels.current
             : answered
@@ -505,13 +542,14 @@ function QuestionStepper({
               key={question.id}
               className="flex size-10 shrink-0 items-center justify-center"
             >
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
                 aria-current={active ? "step" : undefined}
                 aria-label={`${index + 1}: ${statusLabel}`}
-                disabled={visibleQuestionIndex < 0}
-                onClick={() => onQuestionSelect(visibleQuestionIndex)}
-                className="group flex w-full items-center justify-center rounded-md py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default"
+                onClick={() => onQuestionSelect(index)}
+                className="group h-auto w-full items-center justify-center rounded-md py-1 hover:bg-transparent focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default disabled:opacity-100"
               >
                 <span
                   className={cn(
@@ -523,8 +561,15 @@ function QuestionStepper({
                   <span
                     className={cn(
                       "grid size-8 shrink-0 place-items-center rounded-full bg-zinc-600/25 text-center font-['Space_Grotesk'] text-sm leading-none font-normal tabular-nums text-white/60 outline outline-1 outline-offset-[-1px] outline-white/0 transition-colors",
+                      answered &&
+                        "bg-emerald-500 font-semibold text-white outline-emerald-300/70",
+                      active && "size-10 text-base font-semibold ring-4",
                       active &&
-                        "size-10 bg-primary text-base font-semibold text-white ring-4 ring-primary/20",
+                        !answered &&
+                        "bg-primary text-white ring-primary/20",
+                      active &&
+                        answered &&
+                        "bg-emerald-500 text-white ring-emerald-500/20",
                     )}
                   >
                     <span
@@ -535,7 +580,7 @@ function QuestionStepper({
                     </span>
                   </span>
                 </span>
-              </button>
+              </Button>
             </li>
           );
         })}
@@ -576,14 +621,21 @@ function QuestionBlock({
   const comboboxAnchor = useComboboxAnchor();
 
   return (
-    <article
+    <Card
+      role="article"
       className={cn(
-        "rounded-lg border bg-card p-5 shadow-sm",
+        "min-w-0 gap-0 rounded-lg py-0 shadow-sm",
         authenticated &&
-          "rounded-xl border-[1.5px] border-[#3D4149] bg-[#1B1E27] px-5 py-6 sm:px-8",
+          "rounded-xl border-[1.5px] border-[#3D4149] bg-[#1B1E27]",
       )}
     >
-      <div className={cn("flex gap-4", authenticated && "gap-4 sm:gap-6")}>
+      <CardContent
+        className={cn(
+          "p-5",
+          authenticated && "px-5 py-6 sm:px-8",
+        )}
+      >
+        <div className={cn("flex gap-4", authenticated && "gap-4 sm:gap-6")}>
         <div
           className={cn(
             "grid size-8 shrink-0 place-items-center rounded-full border bg-background text-center text-sm leading-none font-semibold tabular-nums",
@@ -602,13 +654,13 @@ function QuestionBlock({
           <div>
             <div
               className={cn(
-                "flex flex-wrap items-start gap-2",
+                "flex min-w-0 flex-wrap items-start gap-2",
                 authenticated && "flex-nowrap",
               )}
             >
               <h3
                 className={cn(
-                  "text-base font-semibold leading-7",
+                  "min-w-0 break-words text-base font-semibold leading-7",
                   authenticated && "max-w-4xl text-white",
                 )}
               >
@@ -617,8 +669,10 @@ function QuestionBlock({
               {question.tooltipText ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       aria-label={labels.moreInformation}
                       className={cn(
                         "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -627,7 +681,7 @@ function QuestionBlock({
                       )}
                     >
                       <Info aria-hidden="true" className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm whitespace-normal text-left leading-5 text-pretty">
                     {question.tooltipText}
@@ -670,7 +724,9 @@ function QuestionBlock({
               <div
                 ref={comboboxAnchor}
                 className={cn(
-                  authenticated ? "w-full max-w-[505px]" : "contents",
+                  authenticated
+                    ? "w-full min-w-0 max-w-[505px]"
+                    : "contents",
                 )}
               >
                 <ComboboxInput
@@ -720,9 +776,18 @@ function QuestionBlock({
               </ComboboxContent>
             </Combobox>
           ) : (
-            <div
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              spacing={1}
+              value={typeof answer === "string" ? answer : ""}
+              onValueChange={(value) => {
+                if (value) {
+                  onChange(value);
+                }
+              }}
               className={cn(
-                "grid gap-2 sm:grid-cols-3",
+                "grid w-full items-stretch gap-2 rounded-none md:grid-cols-3",
                 authenticated && "gap-3 lg:gap-6",
               )}
             >
@@ -731,18 +796,16 @@ function QuestionBlock({
                   typeof answer === "string" && answer === option.stableValue;
 
                 return (
-                  <button
+                  <ToggleGroupItem
                     key={option.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => onChange(option.stableValue)}
+                    value={option.stableValue}
                     className={cn(
-                      "flex min-h-11 items-center justify-between gap-3 rounded-md border px-4 py-2 text-left text-sm transition-colors",
+                      "flex h-auto min-h-11 w-full shrink items-center justify-between gap-3 whitespace-normal rounded-md border px-4 py-2 text-left text-sm shadow-none transition-colors data-[state=on]:border-primary data-[state=on]:bg-primary/15 data-[state=on]:text-foreground",
                       selected
                         ? "border-primary bg-primary/15 text-foreground"
                         : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                       authenticated &&
-                        "h-12 rounded-xl border-[1.5px] border-[#3D4149] bg-white/5 text-base font-semibold text-white hover:border-zinc-500 hover:bg-white/10",
+                        "min-h-12 rounded-xl border-[1.5px] border-[#3D4149] bg-white/5 py-3 text-base font-semibold text-white hover:border-zinc-500 hover:bg-white/10 data-[state=on]:text-white",
                       authenticated &&
                         selected &&
                         "border-primary bg-primary/15 text-white",
@@ -772,14 +835,15 @@ function QuestionBlock({
                     {!authenticated && selected ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                     ) : null}
-                  </button>
+                  </ToggleGroupItem>
                 );
               })}
-            </div>
+            </ToggleGroup>
           )}
         </div>
-      </div>
-    </article>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -828,7 +892,7 @@ function SearchableMultiSelect({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       {answer.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {answer.map((stableValue) => {
@@ -840,21 +904,25 @@ function SearchableMultiSelect({
             }
 
             return (
-              <button
+              <Button
                 key={stableValue}
                 type="button"
+                variant="outline"
+                size="xs"
                 onClick={() =>
                   toggle(stableValue, getOptionMetadata(option.metadata).exclusive)
                 }
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border bg-primary/10 px-3 py-1 text-xs font-medium",
+                  "h-auto max-w-full whitespace-normal rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-medium text-foreground shadow-none hover:bg-primary/10 hover:text-foreground dark:border-border dark:bg-primary/10 dark:hover:bg-primary/10",
                   presentation === "authenticated-stepper" &&
-                    "border-primary/50 text-blue-100",
+                    "border-primary/50 text-blue-100 hover:text-blue-100 dark:border-primary/50",
                 )}
               >
-                {option.label}
+                <span className="min-w-0 break-words text-left">
+                  {option.label}
+                </span>
                 <X className="h-3 w-3" />
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -888,18 +956,19 @@ function SearchableMultiSelect({
               const metadata = getOptionMetadata(option.metadata);
               const selected = answer.includes(option.stableValue);
               return (
-                <button
+                <Toggle
                   key={option.id}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => toggle(option.stableValue, metadata.exclusive)}
+                  pressed={selected}
+                  onPressedChange={() =>
+                    toggle(option.stableValue, metadata.exclusive)
+                  }
                   className={cn(
-                    "flex w-full items-start justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-accent",
+                    "flex h-auto min-h-0 w-full items-start justify-between gap-4 whitespace-normal rounded-none px-4 py-3 text-left font-normal transition-colors hover:bg-accent data-[state=on]:bg-primary/10 data-[state=on]:text-foreground",
                     selected && "bg-primary/10",
                   )}
                 >
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium">
+                    <span className="block break-words text-sm font-medium">
                       {option.label}
                     </span>
                     {metadata.sectorLabel ? (
@@ -917,7 +986,7 @@ function SearchableMultiSelect({
                   {selected ? (
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   ) : null}
-                </button>
+                </Toggle>
               );
             })}
           </div>
