@@ -4,7 +4,7 @@ Status: proposed implementation plan; product and architecture decisions
 confirmed on 2026-07-25.
 
 Source questionnaire:
-[`../product/1. Gap-Analyse-Fragebogen.xlsx - Gap-Analyse.csv`](../product/1.%20Gap-Analyse-Fragebogen.xlsx%20-%20Gap-Analyse.csv)
+[`../product/1. Gap-Analyse-Fragebogen.xlsx - Gap-Analyse.csv`](../../product/1.%20Gap-Analyse-Fragebogen.xlsx%20-%20Gap-Analyse.csv)
 
 ## Outcome
 
@@ -935,7 +935,7 @@ npm.cmd run db:verify:gap-requirements
 ```
 
 Follow
-[`../database/development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md)
+[`../database/development-database-reset-and-bootstrap.md`](../../database/development-database-reset-and-bootstrap.md)
 for the destructive development reset. Update that existing runbook and the
 existing seed/operator implementations in place. Preserve these package-script
 entry points:
@@ -1081,12 +1081,12 @@ schema diff.
 
 ## Related documents
 
-- [`../product/gap-analysis-current-workflow.md`](../product/gap-analysis-current-workflow.md)
+- [`../product/gap-analysis-current-workflow.md`](../../product/gap-analysis-current-workflow.md)
 - [`./gap-analysis-guided-ux-and-status-corrections.md`](gap-analysis-guided-ux-and-status-corrections.md)
 - [`./gap-analysis-single-lifecycle-and-action-plan-lock.md`](gap-analysis-single-lifecycle-and-action-plan-lock.md)
 - [`./gap-requirement-dictionary-normalization.md`](gap-requirement-dictionary-normalization.md)
 - [`./authoritative-legal-corpus-and-grounded-ai.md`](authoritative-legal-corpus-and-grounded-ai.md)
 - [`./immutable-compliance-release-architecture.md`](immutable-compliance-release-architecture.md)
-- [`../database/development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md)
-- [`../architecture/database-structure.md`](../architecture/database-structure.md)
-- [`../../CONTEXT.md`](../../CONTEXT.md)
+- [`../database/development-database-reset-and-bootstrap.md`](../../database/development-database-reset-and-bootstrap.md)
+- [`../architecture/database-structure.md`](../../architecture/database-structure.md)
+- [`../../CONTEXT.md`](../../../CONTEXT.md)

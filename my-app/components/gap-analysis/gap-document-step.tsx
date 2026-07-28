@@ -19,15 +19,10 @@ export function GapDocumentStep({
   labels: GapLabels;
   selected: string[];
   busy: boolean;
-  onToggle: (versionId: string, checked: boolean) => void;
+  onToggle: (documentId: string, checked: boolean) => void;
   onContinue: () => void;
 }) {
-  const documents = workflow.documentLibrary.documents.flatMap((entry) => {
-    const current = entry.versions.find(
-      (item) => item.version.id === entry.document.currentVersionId,
-    );
-    return current ? [{ entry, current }] : [];
-  });
+  const documents = workflow.documentLibrary.documents;
   return (
     <section aria-labelledby="gap-step-heading" className="grid gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -51,11 +46,11 @@ export function GapDocumentStep({
       </div>
       <div className="grid gap-3">
         {documents.length ? (
-          documents.map(({ entry, current }) => {
-            const eligible = current.eligibleForReassessment;
+          documents.map((document) => {
+            const eligible = document.eligibleForAnalysis;
             return (
               <label
-                key={entry.document.id}
+                key={document.id}
                 className={`flex items-start gap-3 rounded-lg border p-4 ${
                   eligible ? "cursor-pointer" : "opacity-65"
                 }`}
@@ -63,19 +58,19 @@ export function GapDocumentStep({
                 <input
                   className="mt-1"
                   type="checkbox"
-                  checked={selected.includes(current.version.id)}
+                  checked={selected.includes(document.id)}
                   disabled={!workflow.canContribute || !eligible}
                   onChange={(event) =>
-                    onToggle(current.version.id, event.target.checked)
+                    onToggle(document.id, event.target.checked)
                   }
                 />
                 <FileText className="mt-0.5 h-4 w-4 shrink-0" />
                 <span className="min-w-0">
                   <span className="block font-medium">
-                    {entry.document.title}
+                    {document.title}
                   </span>
                   <span className="block truncate text-sm text-muted-foreground">
-                    {current.version.fileName}
+                    {document.mimeType}
                   </span>
                   {!eligible ? (
                     <span className="mt-1 block text-xs text-muted-foreground">

@@ -22,9 +22,11 @@ export const uploadSessionDtoSchema = z.object({
 
 export type UploadSessionDto = z.infer<typeof uploadSessionDtoSchema>;
 
-export const createUploadSessionRequestSchema = z.object({
-  fileName: z.string().trim().min(1),
-  mimeType: z.string().trim().min(1),
-  size: z.number().int().positive(),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
-});
+export const createUploadSessionRequestSchema = z
+  .object({
+    fileName: z.string().trim().min(1),
+    mimeType: z.string().trim().min(1),
+    size: z.number().int().positive(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+  })
+  .strict();

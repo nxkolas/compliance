@@ -160,28 +160,14 @@ export async function getGapAnalysisWorkflow(
   const candidateFindings = workflow.candidateFindings.map((row) =>
     enrich(row, candidateCorrectedIds, candidateMetadata?.findingDiagnostics ?? [], candidateCatalogue),
   );
-  const selectedDocumentVersionIds =
+  const selectedDocumentIds = new Set(
     workflow.reassessment?.selected.map(
-      (selection) => selection.documentVersionId,
-    ) ?? [];
-  const selectedDocuments = workflow.documentLibrary.documents.flatMap(
-    (entry) => {
-      const selected = entry.versions.find((item) =>
-        selectedDocumentVersionIds.includes(item.version.id),
-      );
-      return selected
-        ? [
-            {
-              documentId: entry.document.id,
-              title: entry.document.title,
-              documentVersionId: selected.version.id,
-              fileName: selected.version.fileName,
-              eligibleForAnalysis: selected.eligibleForReassessment,
-            },
-          ]
-        : [];
-    },
+      (selection) => selection.documentId,
+    ) ?? [],
   );
+  const selectedDocuments = projectDocumentLibrary(
+    workflow.documentLibrary,
+  ).documents.filter((document) => selectedDocumentIds.has(document.id));
   const answerSummary = workflow.release
     ? workflow.release.questions.map((question) => {
         const option = question.options.find(
@@ -259,7 +245,6 @@ export async function getGapAnalysisWorkflow(
           },
           selected: workflow.reassessment.selected.map((selection) => ({
             documentId: selection.documentId,
-            documentVersionId: selection.documentVersionId,
           })),
           summary: {
             baseAcceptedGapRevisionNumber:
@@ -500,9 +485,7 @@ function projectRevisionIdentity<
 
 function projectDocumentLibrary<
   T extends {
-    role: unknown;
     canContribute: boolean;
-    nextCursor?: string;
     documents: Array<{
       document: {
         id: string;
@@ -513,38 +496,41 @@ function projectDocumentLibrary<
       versions: Array<{
         version: {
           id: string;
-          versionNumber: number;
-          fileName: string;
           mimeType: string;
-          archivedAt: Date | null;
         };
-        usage: unknown;
+        extraction: { status: string } | null;
+        embedding: { status: string } | null;
         eligibleForReassessment: boolean;
       }>;
     }>;
   },
 >(library: T) {
   return {
-    role: library.role,
     canContribute: library.canContribute,
-    nextCursor: library.nextCursor,
-    documents: library.documents.map((entry) => ({
-      document: {
-        id: entry.document.id,
-        title: entry.document.title,
-        status: entry.document.status,
-        currentVersionId: entry.document.currentVersionId,
-      },
-      versions: entry.versions.map((item) => ({
-        version: {
-          id: item.version.id,
-          versionNumber: item.version.versionNumber,
-          fileName: item.version.fileName,
-          mimeType: item.version.mimeType,
-          archivedAt: item.version.archivedAt,
+    documents: library.documents.flatMap((entry) => {
+      const current = entry.versions.find(
+        (item) => item.version.id === entry.document.currentVersionId,
+      );
+      if (!current) return [];
+      const indexStatus =
+        current.extraction?.status === "failed" ||
+        current.embedding?.status === "failed"
+          ? ("failed" as const)
+          : current.extraction?.status === "succeeded" &&
+              current.embedding?.status === "succeeded"
+            ? ("indexed" as const)
+            : ("processing" as const);
+      return [
+        {
+          id: entry.document.id,
+          title: entry.document.title,
+          mimeType: current.version.mimeType,
+          indexStatus,
+          eligibleForAnalysis:
+            entry.document.status === "active" &&
+            current.eligibleForReassessment,
         },
-        eligibleForReassessment: item.eligibleForReassessment,
-      })),
-    })),
+      ];
+    }),
   };
 }

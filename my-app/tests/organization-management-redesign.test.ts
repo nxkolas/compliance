@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { User } from "@supabase/supabase-js";
 import {
@@ -45,6 +47,23 @@ describe("organization management permission invariants", () => {
 });
 
 describe("organization management shared UI contracts", () => {
+  it("keeps the OpenAI usage control in the organization edit dialog", () => {
+    const source = readFileSync(
+      resolve(
+        process.cwd(),
+        "components/organizations/organization-management-list.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain('id="edit-openai-policy"');
+    expect(source).toContain('htmlFor="edit-openai-policy"');
+    expect(source).toContain('id="edit-reason"');
+    expect(source).toContain(
+      "openAiDisclosureApproved: form.openAiDisclosureApproved",
+    );
+  });
+
   it("contains every ISO alpha-2 country exactly once and localizes it", () => {
     expect(isoCountryCodes).toHaveLength(249);
     expect(new Set(isoCountryCodes).size).toBe(249);

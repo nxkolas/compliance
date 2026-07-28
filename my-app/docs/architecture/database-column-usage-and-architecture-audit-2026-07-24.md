@@ -4,7 +4,7 @@ Date: 2026-07-24
 Status: Current-state audit and recommendation  
 Scope: PostgreSQL schema, runtime usage, operational scripts, tests, and persistence architecture
 Implementation response:
-[Database Column and Persistence Architecture Remediation](../plans/database-column-and-persistence-architecture-remediation.md)
+[Database Column and Persistence Architecture Remediation](../plans/done/database-column-and-persistence-architecture-remediation.md)
 
 > Remediation status (2026-07-24): the linked response is implemented. This
 > file remains the pre-remediation audit snapshot; table/column names and

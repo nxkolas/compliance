@@ -6,7 +6,7 @@ Status: product decisions confirmed and application implementation completed on
 
 This is the historical design and implementation plan. For the deployed user
 sequence and known runtime limitations, use
-[Current Gap-Analysis Workflow](../product/gap-analysis-current-workflow.md).
+[Current Gap-Analysis Workflow](../../product/gap-analysis-current-workflow.md).
 
 ## Outcome
 
@@ -32,7 +32,7 @@ reassessment lifecycle that:
 This plan extends the implemented evidence and action-plan foundation described
 in [Gap Analysis, Evidence, and Action Plan](./gap-analysis-evidence-and-action-plan.md).
 The current runtime behavior is documented in
-[Current Gap-Analysis Workflow](../product/gap-analysis-current-workflow.md).
+[Current Gap-Analysis Workflow](../../product/gap-analysis-current-workflow.md).
 
 ## Confirmed Product Decisions
 
@@ -740,12 +740,12 @@ and database smoke tests using the existing operational sequence.
 
 ## Implementation References
 
-- [Current document module](../../src/server/documents/service.ts)
-- [Current gap generation module](../../src/server/gap-analysis/generation-service.ts)
-- [Current gap read model](../../src/server/gap-analysis/workflow-reader.ts)
-- [Current staleness calculation](../../src/server/gap-analysis/staleness.ts)
-- [Current review and approval module](../../src/server/gap-analysis/review-service.ts)
-- [Current action-plan module](../../src/server/action-plans/service.ts)
-- [Current database schema](../../src/db/schema.ts)
-- [Current Gap-Analyse UI](../../components/gap-analysis/gap-analysis-workflow.tsx)
-- [Current Maßnahmenplan UI](../../components/action-plans/action-plan-workflow.tsx)
+- [Current document module](../../../src/server/documents/service.ts)
+- [Current gap generation module](../../../src/server/gap-analysis/generation-service.ts)
+- [Current gap read model](../../../src/server/gap-analysis/workflow-reader.ts)
+- [Current staleness calculation](../../../src/server/gap-analysis/staleness.ts)
+- [Current review and approval module](../../../src/server/gap-analysis/review-service.ts)
+- [Current action-plan module](../../../src/server/action-plans/service.ts)
+- [Current database schema](../../../src/db/schema.ts)
+- [Current Gap-Analyse UI](../../../components/gap-analysis/gap-analysis-workflow.tsx)
+- [Current Maßnahmenplan UI](../../../components/action-plans/action-plan-workflow.tsx)

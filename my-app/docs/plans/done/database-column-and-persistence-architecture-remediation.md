@@ -3,16 +3,16 @@
 Status: implemented and acceptance-verified on 2026-07-24.
 
 This plan responds to the
-[Database Column Usage and Architecture Audit](../architecture/database-column-usage-and-architecture-audit-2026-07-24.md).
+[Database Column Usage and Architecture Audit](../../architecture/database-column-usage-and-architecture-audit-2026-07-24.md).
 It covers database-column cleanup, relational integrity, Gap-result
 authority, live-reference typing, persistence-module boundaries, and measured
 index work.
 
 Related decisions:
 
-- [Make normalized Gap Findings authoritative](../adr/0034-make-normalized-gap-findings-authoritative.md)
-- [Use typed references for live workflow dependencies](../adr/0035-use-typed-references-for-live-workflow-dependencies.md)
-- [Encapsulate persistence behind use-case modules](../adr/0036-encapsulate-persistence-behind-use-case-modules.md)
+- [Make normalized Gap Findings authoritative](../../adr/0034-make-normalized-gap-findings-authoritative.md)
+- [Use typed references for live workflow dependencies](../../adr/0035-use-typed-references-for-live-workflow-dependencies.md)
+- [Encapsulate persistence behind use-case modules](../../adr/0036-encapsulate-persistence-behind-use-case-modules.md)
 
 ## Goal
 
@@ -941,9 +941,9 @@ Exit criteria:
 ## Disposable database rollout
 
 Follow
-[Development database reset and bootstrap](../database/development-database-reset-and-bootstrap.md)
+[Development database reset and bootstrap](../../database/development-database-reset-and-bootstrap.md)
 and the
-[2026-07-24 postmortem](../database/reset-and-reseed-postmortem-2026-07-24.md).
+[2026-07-24 postmortem](../../database/reset-and-reseed-postmortem-2026-07-24.md).
 The sequence below is a plan-level checklist; the runbook remains authoritative
 for exact command arguments and recovery details.
 

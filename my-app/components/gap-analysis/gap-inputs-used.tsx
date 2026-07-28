@@ -47,9 +47,9 @@ export function GapInputsUsed({
         <h3 className="font-semibold">{labels.reviewDocuments}</h3>
         {snapshot.documents.length ? (
           <div className="mt-3 grid gap-3">
-            {snapshot.documents.map((document) => (
+            {snapshot.documents.map((document, index) => (
               <div
-                key={document.documentVersionId}
+                key={document.documentId ?? `unavailable-${index}`}
                 className="flex items-start gap-3 rounded-md border p-4"
               >
                 {document.unavailable ? (
@@ -60,12 +60,6 @@ export function GapInputsUsed({
                 <div>
                   <p className="font-medium">
                     {document.title ?? labels.unavailableDocument}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {document.fileName ?? document.documentVersionId}
-                    {document.versionNumber
-                      ? ` · ${labels.version} ${document.versionNumber}`
-                      : ""}
                   </p>
                   {document.archived ? (
                     <p className="mt-1 text-xs text-muted-foreground">

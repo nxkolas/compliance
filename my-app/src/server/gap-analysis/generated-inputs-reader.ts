@@ -209,20 +209,14 @@ export function createGeneratedGapInputsReader(
         const row = documentByVersionId.get(versionId);
         return row
           ? {
-              documentVersionId: row.versionId,
               documentId: row.documentId,
               title: row.title,
-              fileName: row.fileName,
-              versionNumber: row.versionNumber,
               archived: row.status === "archived" || Boolean(row.archivedAt),
               unavailable: false,
             }
           : {
-              documentVersionId: versionId,
               documentId: null,
               title: null,
-              fileName: null,
-              versionNumber: null,
               archived: false,
               unavailable: true,
             };

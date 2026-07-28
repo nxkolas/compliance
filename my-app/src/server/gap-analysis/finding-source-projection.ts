@@ -37,6 +37,7 @@ export type GapFindingSourceEvidence = {
   sectionLabel: string | null;
   documentSource?: {
     versionId: string | null;
+    documentId: string | null;
     title: string | null;
     mimeType: string | null;
     chunkPageNumber: number | null;
@@ -87,10 +88,10 @@ export function projectGapFindingSources(input: {
 
     if (
       evidence.sourceType === "document_chunk" &&
-      evidence.documentSource?.versionId &&
+      evidence.documentSource?.documentId &&
       evidence.documentSource.title
     ) {
-      const key = `document:${evidence.documentSource.versionId}`;
+      const key = `document:${evidence.documentSource.documentId}`;
       const source =
         grouped.get(key) ??
         createMutableSource({
@@ -99,7 +100,7 @@ export function projectGapFindingSources(input: {
           label: evidence.documentSource.title,
           hrefBase: documentSourceAccessPath(
             input.organizationId,
-            evidence.documentSource.versionId,
+            evidence.documentSource.documentId,
           ),
           mimeType: evidence.documentSource.mimeType,
         });
@@ -213,7 +214,7 @@ function finalizeSource(source: MutableSource): GapFindingSource {
 
   if (source.kind === "document") {
     const href = firstPdfPage
-      ? `${source.hrefBase}&page=${firstPdfPage}`
+      ? `${source.hrefBase}?page=${firstPdfPage}`
       : source.hrefBase!;
     return {
       kind: "document",
@@ -243,13 +244,11 @@ function finalizeSource(source: MutableSource): GapFindingSource {
 
 function documentSourceAccessPath(
   organizationId: string,
-  documentVersionId: string,
+  documentId: string,
 ) {
   return `/api/organizations/${encodeURIComponent(
     organizationId,
-  )}/document-versions/${encodeURIComponent(
-    documentVersionId,
-  )}/source-access?mode=inline`;
+  )}/documents/${encodeURIComponent(documentId)}/source-access`;
 }
 
 function sanitizeOfficialUrl(value: string | null) {

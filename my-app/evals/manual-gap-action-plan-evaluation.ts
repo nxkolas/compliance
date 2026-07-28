@@ -543,8 +543,8 @@ async function executeCase(testCase: EvaluationCase) {
     userId: USER_ID,
     organizationId: organization.id,
     assessmentId: assessment.id,
-    selectedDocumentVersionIds: uploadedDocument
-      ? [uploadedDocument.documentVersionId]
+    selectedDocumentIds: uploadedDocument
+      ? [uploadedDocument.documentId]
       : [],
     locale: testCase.locale,
   });

@@ -4,7 +4,7 @@ Status: implemented and environment-verified on 2026-07-25. The disposable
 development database was cleared, reseeded, republished, and smoke-tested.
 
 This plan fixes the country-support dead end documented in
-[`country-support-current-behavior.md`](../product/country-support-current-behavior.md).
+[`country-support-current-behavior.md`](../../product/country-support-current-behavior.md).
 The current release remains explicitly Germany-only, unsupported-country
 Betroffenheitscheck results remain valid deterministic artifacts, and only
 positive applicability results may enter Gap Analysis.
@@ -135,21 +135,21 @@ FR + EU activity
 
 The important implementation gaps are:
 
-- [`loadGapPrerequisiteState`](../../src/server/gap-analysis/postgres-page-data.ts)
+- [`loadGapPrerequisiteState`](../../../src/server/gap-analysis/postgres-page-data.ts)
   checks only compatible release and approved status;
-- [`requireApprovedApplicabilityArtifact`](../../src/server/gap-analysis/assessment-service.ts)
+- [`requireApprovedApplicabilityArtifact`](../../../src/server/gap-analysis/assessment-service.ts)
   applies the same incomplete test;
 - `createOrOpenGapAssessment` returns an existing assessment before evaluating
   the current applicability candidate;
-- [`generateGapAnalysis`](../../src/server/gap-analysis/generation-service.ts)
+- [`generateGapAnalysis`](../../../src/server/gap-analysis/generation-service.ts)
   filters requirements by the pinned outcome but does not reject an ineligible
   outcome before building the grounded schema;
-- [`enqueueDraftGeneration`](../../src/server/gap-analysis/reassessment-service.ts)
+- [`enqueueDraftGeneration`](../../../src/server/gap-analysis/reassessment-service.ts)
   creates a background job before the worker reaches the generation service;
-- [`getApplicabilityRecalculationLock`](../../src/server/applicability-check/service.ts)
+- [`getApplicabilityRecalculationLock`](../../../src/server/applicability-check/service.ts)
   locks on any historical Gap assessment, regardless of assessment status or
   pinned outcome; and
-- [`buildGapModelResponseSchema`](../../src/server/gap-analysis/generation-schema.ts)
+- [`buildGapModelResponseSchemaV7`](../../../src/server/gap-analysis/generation-schema-v7.ts)
   is the first current empty-set guard, so a product prerequisite problem
   becomes a generic generation failure.
 
@@ -612,7 +612,7 @@ npm.cmd run build
 ### Destructive development reset and reseed
 
 After every code-level gate is green, follow
-[`development-database-reset-and-bootstrap.md`](../database/development-database-reset-and-bootstrap.md)
+[`development-database-reset-and-bootstrap.md`](../../database/development-database-reset-and-bootstrap.md)
 exactly.
 
 Operational requirements:
