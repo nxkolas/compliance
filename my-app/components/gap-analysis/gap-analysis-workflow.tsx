@@ -75,14 +75,8 @@ export function GapAnalysisWorkflow({
   const questionnaireSaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const questionnaireSaveFailedRef = useRef(false);
   const initialDocuments =
-    workflow.reassessment?.selected.flatMap((selection) => {
-      const entry = workflow.documentLibrary.documents.find(
-        (candidate) => candidate.document.id === selection.documentId,
-      );
-      return entry?.document.currentVersionId
-        ? [entry.document.currentVersionId]
-        : [];
-    }) ?? [];
+    workflow.reassessment?.selected.map((selection) => selection.documentId) ??
+    [];
   const [selectedDocuments, setSelectedDocuments] =
     useState<string[]>(initialDocuments);
   const [savedDocuments, setSavedDocuments] =
@@ -306,12 +300,12 @@ export function GapAnalysisWorkflow({
         await gapAnalysisClient.updateReassessmentEvidence(organizationId, {
           draftId: workflow.reassessment.draft.id,
           expectedLockVersion: workflow.reassessment.draft.lockVersion,
-          selectedDocumentVersionIds: selectedDocuments,
+          selectedDocumentIds: selectedDocuments,
         });
       } else {
         await gapAnalysisClient.prepareReassessment(organizationId, {
           assessmentId: workflow.assessment.id,
-          selectedDocumentVersionIds: selectedDocuments,
+          selectedDocumentIds: selectedDocuments,
         });
       }
       setSavedDocuments([...selectedDocuments]);

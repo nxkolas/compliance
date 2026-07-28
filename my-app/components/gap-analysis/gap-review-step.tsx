@@ -35,15 +35,8 @@ export function GapReviewStep({
   onCancel: () => void;
 }) {
   const release = workflow.release!;
-  const selectedDocuments = workflow.documentLibrary.documents.flatMap(
-    (entry) => {
-      const version = entry.versions.find((item) =>
-        selected.includes(item.version.id),
-      );
-      return version
-        ? [{ title: entry.document.title, fileName: version.version.fileName }]
-        : [];
-    },
+  const selectedDocuments = workflow.documentLibrary.documents.filter(
+    (document) => selected.includes(document.id),
   );
   const failed =
     workflow.reassessment?.draft.status === "failed" ||
@@ -121,11 +114,11 @@ export function GapReviewStep({
         {selectedDocuments.length ? (
           <ul className="grid gap-2 text-sm">
             {selectedDocuments.map((document) => (
-              <li key={document.fileName}>
+              <li key={document.id}>
                 <span className="font-medium">{document.title}</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · {document.fileName}
+                  · {document.mimeType}
                 </span>
               </li>
             ))}

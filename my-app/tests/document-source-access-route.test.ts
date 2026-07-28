@@ -13,18 +13,16 @@ vi.mock("@/src/server/documents", () => ({
   createDocumentSourceAccess: mocks.createDocumentSourceAccess,
 }));
 
-import {
-  GET,
-  POST,
-} from "@/app/api/organizations/[organizationId]/document-versions/[versionId]/source-access/route";
+import { GET as getInlineSource } from "@/app/api/organizations/[organizationId]/documents/[documentId]/source-access/route";
+import { GET as downloadDocument } from "@/app/api/organizations/[organizationId]/documents/[documentId]/download/route";
 
 const organizationId = "00000000-0000-4000-8000-000000000001";
-const versionId = "00000000-0000-4000-8000-000000000002";
+const documentId = "00000000-0000-4000-8000-000000000002";
 const context = {
-  params: Promise.resolve({ organizationId, versionId }),
+  params: Promise.resolve({ organizationId, documentId }),
 };
 
-describe("document source access route", () => {
+describe("document source access routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireApiUser.mockResolvedValue({
@@ -37,9 +35,9 @@ describe("document source access route", () => {
   });
 
   it("redirects an inline PDF request without caching it", async () => {
-    const response = await GET(
+    const response = await getInlineSource(
       new Request(
-        `http://localhost/api/organizations/${organizationId}/document-versions/${versionId}/source-access?mode=inline&page=8`,
+        `http://localhost/api/organizations/${organizationId}/documents/${documentId}/source-access?page=8`,
       ),
       context,
     );
@@ -52,15 +50,15 @@ describe("document source access route", () => {
     expect(mocks.createDocumentSourceAccess).toHaveBeenCalledWith(
       "00000000-0000-4000-8000-000000000003",
       organizationId,
-      versionId,
+      documentId,
       { mode: "inline", page: 8 },
     );
   });
 
   it("ignores an invalid page number", async () => {
-    await GET(
+    await getInlineSource(
       new Request(
-        `http://localhost/api/organizations/${organizationId}/document-versions/${versionId}/source-access?page=-2`,
+        `http://localhost/api/organizations/${organizationId}/documents/${documentId}/source-access?page=-2`,
       ),
       context,
     );
@@ -68,26 +66,26 @@ describe("document source access route", () => {
     expect(mocks.createDocumentSourceAccess).toHaveBeenCalledWith(
       expect.any(String),
       organizationId,
-      versionId,
+      documentId,
       { mode: "inline", page: undefined },
     );
   });
 
-  it("keeps the existing forced-download POST contract", async () => {
-    const response = await POST(
+  it("redirects downloads without caching them", async () => {
+    const response = await downloadDocument(
       new Request(
-        `http://localhost/api/organizations/${organizationId}/document-versions/${versionId}/source-access`,
-        { method: "POST" },
+        `http://localhost/api/organizations/${organizationId}/documents/${documentId}/download`,
       ),
       context,
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(307);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mocks.createDocumentSourceAccess).toHaveBeenCalledWith(
       "00000000-0000-4000-8000-000000000003",
       organizationId,
-      versionId,
+      documentId,
+      { mode: "download" },
     );
   });
 
@@ -102,9 +100,9 @@ describe("document source access route", () => {
       ),
     );
 
-    const response = await GET(
+    const response = await getInlineSource(
       new Request(
-        `http://localhost/api/organizations/${organizationId}/document-versions/${versionId}/source-access`,
+        `http://localhost/api/organizations/${organizationId}/documents/${documentId}/source-access`,
       ),
       context,
     );

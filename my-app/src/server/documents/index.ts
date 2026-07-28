@@ -23,10 +23,8 @@ export {
   getOrganizationDocumentDetail,
   getOrganizationDocumentLibrary,
   getOrganizationDocumentLibraryPreauthorized,
-  getOrganizationDocumentVersion,
-  listOrganizationDocumentVersionsPage,
+  listOrganizationDocumentDtos,
+  retryOrganizationDocumentIndexing,
   restoreOrganizationDocument,
-  updateOrganizationDocument,
   uploadOrganizationDocument,
-  uploadOrganizationDocumentVersion,
 } from "./service";

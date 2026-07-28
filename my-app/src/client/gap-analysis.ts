@@ -23,13 +23,13 @@ function reassessmentBase(organizationId: string) {
 }
 
 export const gapAnalysisClient = {
-  prepareReassessment(organizationId: string, input: { assessmentId: string; selectedDocumentVersionIds: string[] }) {
+  prepareReassessment(organizationId: string, input: { assessmentId: string; selectedDocumentIds: string[] }) {
     return request(reassessmentBase(organizationId), {
       method: "POST", input, idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ reassessment: z.unknown() }),
     });
   },
 
-  updateReassessmentEvidence(organizationId: string, input: { draftId: string; expectedLockVersion: number; selectedDocumentVersionIds: string[] }) {
+  updateReassessmentEvidence(organizationId: string, input: { draftId: string; expectedLockVersion: number; selectedDocumentIds: string[] }) {
     return request(`${reassessmentBase(organizationId)}/evidence`, {
       method: "PATCH", input, ifMatch: input.expectedLockVersion, outputSchema: z.object({ draft: z.object({ id: z.uuid() }).loose() }),
     });

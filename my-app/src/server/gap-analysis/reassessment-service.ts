@@ -22,7 +22,7 @@ export async function prepareGapReassessment(input: {
   userId: string;
   organizationId: string;
   assessmentId: string;
-  selectedDocumentVersionIds: string[];
+  selectedDocumentIds: string[];
   locale: Locale;
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
@@ -43,7 +43,7 @@ export async function prepareGapReassessment(input: {
       organizationId: input.organizationId,
       draftId: existing.id,
       expectedLockVersion: existing.lockVersion,
-      selectedDocumentVersionIds: input.selectedDocumentVersionIds,
+      selectedDocumentIds: input.selectedDocumentIds,
     });
     return getGapReassessmentDraft({
       userId: input.userId,
@@ -57,13 +57,13 @@ export async function prepareGapReassessment(input: {
   const selection = await resolveEvidenceSelection({
     organizationId: input.organizationId,
     accepted: baseDocuments,
-    explicitAdditions: input.selectedDocumentVersionIds,
+    explicitDocumentIds: input.selectedDocumentIds,
   });
   if (selection.blocked.length) {
     throw new ApiError(
       409,
       "Current versions of all selected evidence must be indexed before reassessment",
-      { documentVersionIds: selection.blocked },
+      { documentIds: selection.blocked },
       "GAP_DOCUMENT_NOT_READY",
     );
   }
@@ -148,7 +148,7 @@ export async function updateGapReassessmentEvidence(input: {
   organizationId: string;
   draftId: string;
   expectedLockVersion: number;
-  selectedDocumentVersionIds: string[];
+  selectedDocumentIds: string[];
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
   const draft = await db.query.gapReassessmentDrafts.findFirst({ columns: { id: true, organizationId: true, assessmentId: true, gapAnalysisReleaseId: true, baseAcceptedGapRevisionId: true, assessmentRevisionId: true, status: true, outputLocale: true, lockVersion: true, aiProcessingRunId: true, generationJobId: true, outputGapRevisionId: true, createdBy: true, createdAt: true, updatedAt: true, lockedAt: true, completedAt: true },
@@ -180,13 +180,13 @@ export async function updateGapReassessmentEvidence(input: {
   const selection = await resolveEvidenceSelection({
     organizationId: input.organizationId,
     accepted: baseDocuments,
-    explicitAdditions: input.selectedDocumentVersionIds,
+    explicitDocumentIds: input.selectedDocumentIds,
   });
   if (selection.blocked.length) {
     throw new ApiError(
       409,
       "Selected documents must have a current indexed version",
-      { documentVersionIds: selection.blocked },
+      { documentIds: selection.blocked },
       "GAP_DOCUMENT_NOT_READY",
     );
   }
@@ -1097,15 +1097,13 @@ async function loadAcceptedEvidence(acceptedRevisionId: string | null | undefine
 async function resolveEvidenceSelection(input: {
   organizationId: string;
   accepted: Array<{ versionId: string; documentId: string }>;
-  explicitAdditions: string[];
+  explicitDocumentIds: string[];
 }) {
-  const documentIds = new Set(input.accepted.map((item) => item.documentId));
-  const explicitVersions = input.explicitAdditions.length
-    ? await db.query.documentVersions.findMany({ columns: { id: true, documentId: true, versionNumber: true, fileName: true, mimeType: true, byteSize: true, storageBucket: true, storagePath: true, contentHash: true, uploadedBy: true, createdAt: true, archivedAt: true },
-        where: { RAW: (table, operators) => (inArray(table.id, [...new Set(input.explicitAdditions)])) ?? operators.sql`true` },
-      })
-    : [];
-  explicitVersions.forEach((version) => documentIds.add(version.documentId));
+  const requestedDocumentIds = [...new Set(input.explicitDocumentIds)];
+  const documentIds = new Set([
+    ...input.accepted.map((item) => item.documentId),
+    ...requestedDocumentIds,
+  ]);
   const documentRows = documentIds.size
     ? await db.query.documents.findMany({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true },
         where: { RAW: (table, operators) => (and(
@@ -1114,9 +1112,21 @@ async function resolveEvidenceSelection(input: {
         )) ?? operators.sql`true` },
       })
     : [];
+  const requestedDocuments = new Map(
+    documentRows
+      .filter((document) => requestedDocumentIds.includes(document.id))
+      .map((document) => [document.id, document]),
+  );
+  const blockedDocumentIds = requestedDocumentIds.filter((documentId) => {
+    const document = requestedDocuments.get(documentId);
+    return (
+      !document ||
+      document.status !== "active" ||
+      !document.currentVersionId
+    );
+  });
   const candidateIds = new Set([
     ...input.accepted.map((item) => item.versionId),
-    ...input.explicitAdditions,
     ...documentRows.flatMap((document) =>
       document.currentVersionId ? [document.currentVersionId] : [],
     ),
@@ -1159,12 +1169,27 @@ async function resolveEvidenceSelection(input: {
       ),
     }),
   );
-  if (explicitVersions.length !== new Set(input.explicitAdditions).size) {
-    return { selection: [], removed: [], blocked: input.explicitAdditions };
-  }
-  return buildReassessmentEvidenceSelection({
+  const explicitVersionIds = requestedDocumentIds.flatMap((documentId) => {
+    const versionId = requestedDocuments.get(documentId)?.currentVersionId;
+    return versionId ? [versionId] : [];
+  });
+  const result = buildReassessmentEvidenceSelection({
     accepted: input.accepted,
     candidates,
-    explicitAdditions: input.explicitAdditions,
+    explicitAdditions: explicitVersionIds,
   });
+  const documentIdByVersionId = new Map(
+    candidates.map((candidate) => [candidate.versionId, candidate.documentId]),
+  );
+  return {
+    ...result,
+    blocked: [
+      ...new Set([
+        ...blockedDocumentIds,
+        ...result.blocked.map(
+          (versionId) => documentIdByVersionId.get(versionId) ?? versionId,
+        ),
+      ]),
+    ],
+  };
 }

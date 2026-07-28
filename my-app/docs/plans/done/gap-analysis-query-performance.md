@@ -227,7 +227,7 @@ flaky CI assertions.
   - expose the dormant query observer used only by the benchmark.
 - `package.json`
   - expose the `db:benchmark:gap` command.
-- `docs/plans/gap-analysis-query-performance.md`
+- `docs/plans/done/gap-analysis-query-performance.md`
   - record the accepted scope, baseline, and verification results.
 
 No data or public API changes are expected.

@@ -12,6 +12,7 @@ import {
 import { Loader2, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -608,7 +609,13 @@ function OrganizationEditDialog({
   onSaved: (item: SerializedItem) => void;
 }) {
   const [settings, setSettings] = useState<Awaited<ReturnType<typeof organizationsClient.getSettings>>["data"]["settings"] | null>(null);
-  const [form, setForm] = useState({ name: "", legalName: "", country: "DE" });
+  const [form, setForm] = useState({
+    name: "",
+    legalName: "",
+    country: "DE",
+    openAiDisclosureApproved: false,
+    reason: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fieldDescriptions =
@@ -641,6 +648,10 @@ function OrganizationEditDialog({
         name: data.settings.organization.name,
         legalName: data.settings.organization.legalName ?? "",
         country: data.settings.organization.country,
+        openAiDisclosureApproved:
+          data.settings.policy.externalDisclosureAllowed &&
+          data.settings.policy.allowedProviderModes.includes("openai"),
+        reason: "",
       });
     }).catch((caught) => {
       if (!controller.signal.aborted) setError(localizeUiError(caught, { fallback: labels.loadError }));
@@ -657,8 +668,8 @@ function OrganizationEditDialog({
       const result = await organizationsClient.updateSettings(item.id, {
         organization: { name: form.name, legalName: form.legalName || null, country: form.country },
         policy: {
-          openAiDisclosureApproved: settings.policy.externalDisclosureAllowed,
-          reason: "",
+          openAiDisclosureApproved: form.openAiDisclosureApproved,
+          reason: form.reason,
         },
       }, settings.concurrencyToken);
       onSaved({
@@ -674,6 +685,10 @@ function OrganizationEditDialog({
       setSaving(false);
     }
   }
+
+  const policyChanged =
+    settings !== null &&
+    form.openAiDisclosureApproved !== settings.policy.externalDisclosureAllowed;
 
   return (
     <Dialog open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>
@@ -811,6 +826,36 @@ function OrganizationEditDialog({
                     openDownward
                   />
                 </div>
+              </div>
+              <div className={fieldBlockClassName}>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="edit-openai-policy"
+                    checked={form.openAiDisclosureApproved}
+                    disabled={saving}
+                    onCheckedChange={(value) => setForm({
+                      ...form,
+                      openAiDisclosureApproved: value === true,
+                    })}
+                  />
+                  <Label htmlFor="edit-openai-policy" className={fieldLabelClassName}>
+                    {labels.aiPolicy}
+                  </Label>
+                </div>
+                <p className="max-w-2xl text-xs font-normal leading-5 text-gray-400">
+                  {labels.aiPolicyDescription}
+                </p>
+              </div>
+              <div className={fieldBlockClassName}>
+                <Label htmlFor="edit-reason" className={fieldLabelClassName}>{labels.reason}</Label>
+                <Input
+                  id="edit-reason"
+                  value={form.reason}
+                  onChange={(event) => setForm({ ...form, reason: event.target.value })}
+                  required={policyChanged}
+                  disabled={saving}
+                  className={`${inputClassName} w-full`}
+                />
               </div>
             </div>
 

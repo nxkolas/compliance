@@ -52,15 +52,19 @@ export const gapGuidanceRegenerationInputSchema = z.object({
   retryNonce: z.string().trim().min(1).max(100).optional(),
 }).strict();
 export const gapReassessmentQuerySchema = z.object({ assessmentId: z.uuid() });
-export const gapReassessmentPrepareSchema = z.object({
-  assessmentId: z.uuid(),
-  selectedDocumentVersionIds: z.array(z.uuid()),
-});
-export const gapReassessmentEvidenceSchema = z.object({
-  draftId: z.uuid(),
-  expectedLockVersion: z.number().int().positive(),
-  selectedDocumentVersionIds: z.array(z.uuid()),
-});
+export const gapReassessmentPrepareSchema = z
+  .object({
+    assessmentId: z.uuid(),
+    selectedDocumentIds: z.array(z.uuid()),
+  })
+  .strict();
+export const gapReassessmentEvidenceSchema = z
+  .object({
+    draftId: z.uuid(),
+    expectedLockVersion: z.number().int().positive(),
+    selectedDocumentIds: z.array(z.uuid()),
+  })
+  .strict();
 export const gapReassessmentGenerateSchema = z.object({
   draftId: z.uuid(),
   expectedLockVersion: z.number().int().positive(),
@@ -111,6 +115,31 @@ export const gapWorkflowReadSchema = z.object({
       }),
     ]),
   }).loose(),
+}).superRefine((value, context) => {
+  const forbidden = new Set([
+    "selectedDocumentVersionIds",
+    "documentVersionId",
+    "versionNumber",
+    "currentVersionId",
+  ]);
+  const visit = (candidate: unknown, path: PropertyKey[]) => {
+    if (!candidate || typeof candidate !== "object") return;
+    if (Array.isArray(candidate)) {
+      candidate.forEach((item, index) => visit(item, [...path, index]));
+      return;
+    }
+    for (const [key, item] of Object.entries(candidate)) {
+      if (forbidden.has(key)) {
+        context.addIssue({
+          code: "custom",
+          message: `Browser workflow contains forbidden document version field: ${key}`,
+          path: [...path, key] as Array<string | number>,
+        });
+      }
+      visit(item, [...path, key]);
+    }
+  };
+  visit(value.workflow, ["workflow"]);
 });
 
 export const gapRevisionReadSchema = z.object({

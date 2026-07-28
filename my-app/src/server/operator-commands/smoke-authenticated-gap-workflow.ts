@@ -184,7 +184,7 @@ async function main() {
       userId,
       organizationId: organization.id,
       assessmentId: assessment.id,
-      selectedDocumentVersionIds: [],
+      selectedDocumentIds: [],
       locale: "de",
     });
     if (!prepared) throw new Error("Gap generation draft was not prepared");

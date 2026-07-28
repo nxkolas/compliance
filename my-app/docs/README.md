@@ -29,14 +29,15 @@ Compliance Checker app.
 
 ## Implementation Plans
 
-- [Localized compliance-definition metadata](./plans/localized-compliance-definition-metadata.md)
-- [Guided gap analysis UX and status corrections](./plans/gap-analysis-guided-ux-and-status-corrections.md)
-- [Authoritative legal corpus and grounded AI](./plans/authoritative-legal-corpus-and-grounded-ai.md)
-- [Internal API and client/server service completion](./plans/internal-api-and-service-completion.md)
-- [Gap analysis, evidence, and action plan](./plans/gap-analysis-evidence-and-action-plan.md)
-- [Document management, gap reassessment, and plan reconciliation](./plans/document-management-reassessment-and-plan-reconciliation.md)
-- [Immutable compliance-release architecture](./plans/immutable-compliance-release-architecture.md)
-- [Compliance runtime query performance](./plans/compliance-runtime-query-performance.md)
+- [Asynchronous organization document processing](./plans/pending/organization-document-processing-worker.md)
+- [Localized compliance-definition metadata](./plans/done/localized-compliance-definition-metadata.md)
+- [Guided gap analysis UX and status corrections](./plans/done/gap-analysis-guided-ux-and-status-corrections.md)
+- [Authoritative legal corpus and grounded AI](./plans/done/authoritative-legal-corpus-and-grounded-ai.md)
+- [Internal API and client/server service completion](./plans/pending/internal-api-and-service-completion.md)
+- [Gap analysis, evidence, and action plan](./plans/done/gap-analysis-evidence-and-action-plan.md)
+- [Document management, gap reassessment, and plan reconciliation](./plans/done/document-management-reassessment-and-plan-reconciliation.md)
+- [Immutable compliance-release architecture](./plans/done/immutable-compliance-release-architecture.md)
+- [Compliance runtime query performance](./plans/done/compliance-runtime-query-performance.md)
 
 ## AI References
 

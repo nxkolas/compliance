@@ -1,59 +1,238 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { Archive, FilePlus2, FileText, Loader2, Upload } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Archive,
+  Download,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { Dictionary } from "@/lib/i18n";
-import type { getOrganizationDocumentLibrary } from "@/src/server/documents/service";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  documentTypeLabel,
+  formatDocumentBytes,
+} from "@/lib/documents/format";
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { formatDate } from "@/lib/i18n/format";
+import type {
+  DocumentDto,
+  DocumentListQuery,
+} from "@/src/contracts/documents";
 import { documentsClient } from "@/src/client/documents";
 
-type Library = Awaited<ReturnType<typeof getOrganizationDocumentLibrary>>;
 type Labels = Dictionary["modules"]["documents"]["workflow"];
+type Permissions = {
+  canUpload: boolean;
+  canArchive: boolean;
+  canRestore: boolean;
+  canRetryIndexing: boolean;
+};
+type Counts = { all: number; active: number; archived: number };
 
 const ACCEPTED_FILES =
   ".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown";
 
 export function OrganizationDocumentManager({
   organizationId,
-  library,
+  initialDocuments,
+  initialPermissions,
+  initialCounts,
+  initialNextCursor,
+  status,
+  search,
+  locale,
   labels,
 }: {
   organizationId: string;
-  library: Library;
+  initialDocuments: DocumentDto[];
+  initialPermissions: Permissions;
+  initialCounts: Counts;
+  initialNextCursor?: string;
+  status: DocumentListQuery["status"];
+  search: string;
+  locale: Locale;
   labels: Labels;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [documents, setDocuments] = useState(initialDocuments);
+  const [permissions, setPermissions] = useState(initialPermissions);
+  const [counts, setCounts] = useState(initialCounts);
+  const [nextCursor, setNextCursor] = useState(initialNextCursor);
+  const [searchInput, setSearchInput] = useState(search);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
-  const visibleDocuments = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return library.documents.filter((entry) => {
-      if (!showArchived && entry.document.status === "archived") return false;
-      if (!normalized) return true;
-      return (
-        entry.document.title.toLocaleLowerCase().includes(normalized) ||
-        entry.versions.some((item) =>
-          item.version.fileName.toLocaleLowerCase().includes(normalized),
-        )
-      );
-    });
-  }, [library.documents, query, showArchived]);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const searchIsEditing = useRef(false);
+  const listScope = useRef(`${status}|${search}`);
+  const navigate = useCallback(
+    (
+      nextStatus: DocumentListQuery["status"],
+      nextSearch: string,
+    ) => {
+      const params = new URLSearchParams();
+      params.set("status", nextStatus);
+      if (nextSearch) params.set("search", nextSearch);
+      router.replace(`${pathname}?${params.toString()}`, {
+        scroll: false,
+      });
+    },
+    [pathname, router],
+  );
 
-  async function mutate(key: string, action: () => Promise<unknown>) {
+  useEffect(() => {
+    setDocuments(initialDocuments);
+    setPermissions(initialPermissions);
+    setCounts(initialCounts);
+    setNextCursor(initialNextCursor);
+    setSearchInput(search);
+    searchIsEditing.current = false;
+    listScope.current = `${status}|${search}`;
+  }, [
+    initialCounts,
+    initialDocuments,
+    initialNextCursor,
+    initialPermissions,
+    search,
+    status,
+  ]);
+
+  useEffect(() => {
+    if (!searchIsEditing.current) return;
+    const timer = window.setTimeout(() => {
+      const normalized = searchInput.trim();
+      if (normalized === search) return;
+      navigate(status, normalized);
+      searchIsEditing.current = false;
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [navigate, search, searchInput, status]);
+
+  async function runAction(
+    key: string,
+    action: () => Promise<{ data: { document: DocumentDto } }>,
+    onSuccess: (document: DocumentDto) => void,
+    successMessage: string,
+  ) {
     setBusy(key);
     setError(null);
+    setNotice(null);
     try {
-      const body = await action();
-      router.refresh();
-      return body;
+      const result = await action();
+      onSuccess(result.data.document);
+      setNotice(successMessage);
     } catch {
       setError(labels.error);
-      return null;
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function replaceOrRemove(document: DocumentDto) {
+    setDocuments((current) => {
+      const belongs =
+        status === "all" || status === document.status;
+      if (!belongs) {
+        return current.filter((item) => item.id !== document.id);
+      }
+      return current.map((item) =>
+        item.id === document.id ? document : item,
+      );
+    });
+  }
+
+  async function submitUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const file = form.get("file");
+    const title = form.get("title");
+    if (!(file instanceof File) || typeof title !== "string") return;
+
+    setBusy("upload");
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await documentsClient.uploadNew(
+        organizationId,
+        title,
+        file,
+      );
+      const document = result.data.document;
+      setCounts((current) => ({
+        all: current.all + 1,
+        active: current.active + 1,
+        archived: current.archived,
+      }));
+      if (status === "active" || status === "all") {
+        setDocuments((current) => [
+          document,
+          ...current.filter((item) => item.id !== document.id),
+        ]);
+      }
+      setNotice(labels.uploadSuccess);
+      setUploadOpen(false);
+      formElement.reset();
+    } catch {
+      setError(labels.error);
+      setUploadOpen(false);
+      router.refresh();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function loadMore() {
+    if (!nextCursor) return;
+    const requestedScope = `${status}|${search}`;
+    setBusy("load-more");
+    setError(null);
+    try {
+      const result = await documentsClient.list(organizationId, {
+        status,
+        search: search || undefined,
+        limit: 25,
+        cursor: nextCursor,
+      });
+      if (listScope.current !== requestedScope) return;
+      setDocuments((current) => {
+        const ids = new Set(current.map((document) => document.id));
+        return [
+          ...current,
+          ...result.data.documents.filter((document) => !ids.has(document.id)),
+        ];
+      });
+      setPermissions(result.data.permissions);
+      setCounts(result.data.counts);
+      setNextCursor(result.meta.nextCursor);
+    } catch {
+      setError(labels.error);
     } finally {
       setBusy(null);
     }
@@ -61,194 +240,321 @@ export function OrganizationDocumentManager({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <CardTitle>{labels.newDocument}</CardTitle>
-            <CardDescription>{labels.search}</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        {error ? (
-          <p className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-            {error}
-          </p>
-        ) : null}
-        {library.canContribute ? (
-          <form
-            className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
-            onSubmit={(event) =>
-              void submitNewDocument(event, organizationId, mutate)
+      <CardHeader className="gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Tabs
+            value={status}
+            onValueChange={(value) =>
+              navigate(value as DocumentListQuery["status"], searchInput.trim())
             }
           >
-            <Input name="title" required placeholder={labels.documentTitle} />
-            <Input
-              name="file"
-              type="file"
-              required
-              accept={ACCEPTED_FILES}
-              aria-label={labels.documentFile}
-            />
-            <Button type="submit" disabled={busy !== null}>
-              {busy === "upload" ? <Loader2 className="animate-spin" /> : <Upload />}
-              {labels.upload}
-            </Button>
-          </form>
-        ) : null}
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={labels.searchPlaceholder}
-              aria-label={labels.search}
-            />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showArchived}
-                onChange={(event) => setShowArchived(event.target.checked)}
-              />
-              {labels.showArchived}
-            </label>
+            <TabsList aria-label={labels.statusColumn}>
+              <TabsTrigger value="active">
+                {labels.activeTab} ({counts.active})
+              </TabsTrigger>
+              <TabsTrigger value="all">
+                {labels.allTab} ({counts.all})
+              </TabsTrigger>
+              <TabsTrigger value="archived">
+                {labels.archivedTab} ({counts.archived})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {permissions.canUpload ? (
+            <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Upload />
+                  {labels.uploadDocument}
+                </Button>
+              </DialogTrigger>
+              <DialogContent closeLabel={labels.cancel}>
+                <form className="grid gap-5" onSubmit={submitUpload}>
+                  <DialogHeader>
+                    <DialogTitle>{labels.uploadDocument}</DialogTitle>
+                    <DialogDescription>
+                      {labels.uploadDescription}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <label className="grid gap-2 text-sm font-medium">
+                    {labels.documentTitle}
+                    <Input name="title" required maxLength={255} />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium">
+                    {labels.documentFile}
+                    <Input
+                      name="file"
+                      type="file"
+                      required
+                      accept={ACCEPTED_FILES}
+                    />
+                  </label>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setUploadOpen(false)}
+                      disabled={busy === "upload"}
+                    >
+                      {labels.cancel}
+                    </Button>
+                    <Button type="submit" disabled={busy === "upload"}>
+                      {busy === "upload" ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Upload />
+                      )}
+                      {labels.upload}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          ) : null}
         </div>
-        <div className="grid gap-3">
-          {visibleDocuments.length ? (
-            visibleDocuments.map((entry) => {
-              const current = entry.versions.find(
-                (item) => item.version.id === entry.document.currentVersionId,
-              );
-              return (
-                <article key={entry.document.id} className="rounded-md border p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <FileText className="mt-1 h-4 w-4 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium">{entry.document.title}</p>
-                        {current ? (
-                          <p className="text-xs text-muted-foreground">
-                            {current.version.fileName} · {labels.version} {current.version.versionNumber}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {library.canContribute && entry.document.status === "active" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={busy !== null}
-                          onClick={() =>
-                            void mutate(`archive-${entry.document.id}`, () =>
-                              documentsClient.archive(organizationId, entry.document.id, entry.document.version))
-                          }
-                        >
-                          <Archive /> {labels.archive}
+        <Input
+          className="max-w-md"
+          value={searchInput}
+          onChange={(event) => {
+            searchIsEditing.current = true;
+            setSearchInput(event.target.value);
+          }}
+          placeholder={labels.searchPlaceholder}
+          aria-label={labels.search}
+          maxLength={200}
+        />
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div aria-live="polite">
+          {error ? (
+            <p className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+              {error}
+            </p>
+          ) : notice ? (
+            <p className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-900">
+              {notice}
+            </p>
+          ) : null}
+        </div>
+        {documents.length ? (
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[850px] text-sm">
+              <thead className="bg-muted/60 text-left">
+                <tr>
+                  <th className="px-4 py-3 font-medium">
+                    {labels.titleColumn}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {labels.datatypeColumn}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {labels.sizeColumn}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {labels.uploadedAtColumn}
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    {labels.statusColumn}
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">
+                    {labels.actionsColumn}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {documents.map((document) => (
+                  <tr
+                    key={document.id}
+                    className="border-t align-top"
+                  >
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{document.title}</p>
+                      <IndexStatusBadge
+                        status={document.indexStatus}
+                        labels={labels}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      {documentTypeLabel(document.mimeType)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatDocumentBytes(document.byteSize, locale)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {formatDate(document.uploadedAt, locale)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                        {document.status === "active"
+                          ? labels.active
+                          : labels.archived}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <a
+                            href={documentsClient.downloadUrl(
+                              organizationId,
+                              document.id,
+                            )}
+                            aria-label={`${labels.download}: ${document.title}`}
+                          >
+                            <Download />
+                            {labels.download}
+                          </a>
                         </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                  {current ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <ProcessingBadge item={current} labels={labels} />
-                    </div>
-                  ) : null}
-                  <details className="mt-4">
-                      <summary className="cursor-pointer text-sm font-medium">
-                        {labels.version} ({entry.versions.length})
-                      </summary>
-                      <div className="mt-3 grid gap-2">
-                        {entry.versions.map((item) => (
-                          <div key={item.version.id} className="rounded-md bg-muted/40 p-3 text-sm">
-                            <div className="flex flex-wrap justify-between gap-2">
-                              <span>
-                                {labels.version} {item.version.versionNumber} · {item.version.fileName}
-                              </span>
-                              {item.version.id === entry.document.currentVersionId ? (
-                                <span className="font-medium">{labels.current}</span>
-                              ) : null}
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <ProcessingBadge item={item} labels={labels} />
-                            </div>
-                          </div>
-                        ))}
-                        {library.canContribute && entry.document.status === "active" ? (
-                          <form
-                            className="flex flex-wrap items-center gap-2"
-                            onSubmit={(event) =>
-                              void submitVersion(
-                                event,
-                                organizationId,
-                                entry.document.id,
-                                mutate,
+                        {document.status === "active" &&
+                        document.indexStatus === "failed" &&
+                        permissions.canRetryIndexing ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy === `retry-${document.id}`}
+                            onClick={() =>
+                              void runAction(
+                                `retry-${document.id}`,
+                                () =>
+                                  documentsClient.retryIndexing(
+                                    organizationId,
+                                    document.id,
+                                  ),
+                                replaceOrRemove,
+                                labels.retrySuccess,
                               )
                             }
                           >
-                            <Input
-                              className="max-w-sm"
-                              name="file"
-                              type="file"
-                              required
-                              accept={ACCEPTED_FILES}
-                              aria-label={labels.documentFile}
-                            />
-                            <Button type="submit" variant="outline" disabled={busy !== null}>
-                              <FilePlus2 /> {labels.uploadVersion}
-                            </Button>
-                          </form>
+                            {busy === `retry-${document.id}` ? (
+                              <Loader2 className="animate-spin" />
+                            ) : (
+                              <RefreshCw />
+                            )}
+                            {labels.retry}
+                          </Button>
+                        ) : null}
+                        {document.status === "active" &&
+                        permissions.canArchive ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy === `archive-${document.id}`}
+                            onClick={() => {
+                              if (!window.confirm(labels.archiveConfirm)) return;
+                              void runAction(
+                                `archive-${document.id}`,
+                                () =>
+                                  documentsClient.archive(
+                                    organizationId,
+                                    document.id,
+                                  ),
+                                (updated) => {
+                                  replaceOrRemove(updated);
+                                  setCounts((current) => ({
+                                    all: current.all,
+                                    active: Math.max(0, current.active - 1),
+                                    archived: current.archived + 1,
+                                  }));
+                                },
+                                labels.archiveSuccess,
+                              );
+                            }}
+                          >
+                            {busy === `archive-${document.id}` ? (
+                              <Loader2 className="animate-spin" />
+                            ) : (
+                              <Archive />
+                            )}
+                            {labels.archive}
+                          </Button>
+                        ) : null}
+                        {document.status === "archived" &&
+                        permissions.canRestore ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busy === `restore-${document.id}`}
+                            onClick={() =>
+                              void runAction(
+                                `restore-${document.id}`,
+                                () =>
+                                  documentsClient.restore(
+                                    organizationId,
+                                    document.id,
+                                  ),
+                                (updated) => {
+                                  replaceOrRemove(updated);
+                                  setCounts((current) => ({
+                                    all: current.all,
+                                    active: current.active + 1,
+                                    archived: Math.max(
+                                      0,
+                                      current.archived - 1,
+                                    ),
+                                  }));
+                                },
+                                labels.restoreSuccess,
+                              )
+                            }
+                          >
+                            {busy === `restore-${document.id}` ? (
+                              <Loader2 className="animate-spin" />
+                            ) : (
+                              <RotateCcw />
+                            )}
+                            {labels.restore}
+                          </Button>
                         ) : null}
                       </div>
-                  </details>
-                </article>
-              );
-            })
-          ) : (
-            <p className="text-sm text-muted-foreground">{labels.noDocuments}</p>
-          )}
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {search ? labels.noMatches : labels.noDocuments}
+          </p>
+        )}
+        {nextCursor ? (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              disabled={busy === "load-more"}
+              onClick={() => void loadMore()}
+            >
+              {busy === "load-more" ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  {labels.loadingMore}
+                </>
+              ) : (
+                labels.loadMore
+              )}
+            </Button>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
 }
 
-function ProcessingBadge({
-  item,
+function IndexStatusBadge({
+  status,
   labels,
 }: {
-  item: Library["documents"][number]["versions"][number];
+  status: DocumentDto["indexStatus"];
   labels: Labels;
 }) {
   const text =
-    item.embedding?.status === "succeeded"
+    status === "indexed"
       ? labels.indexed
-      : item.embedding?.status === "failed" || item.extraction?.status === "failed"
+      : status === "failed"
         ? labels.failed
         : labels.processing;
-  return <span className="rounded-full bg-muted px-2 py-1 text-xs">{text}</span>;
-}
-
-async function submitNewDocument(
-  event: FormEvent<HTMLFormElement>,
-  organizationId: string,
-  mutate: (key: string, action: () => Promise<unknown>) => Promise<unknown>,
-) {
-  event.preventDefault();
-  const form = new FormData(event.currentTarget);
-  const file = form.get("file");
-  const title = form.get("title");
-  if (!(file instanceof File) || typeof title !== "string") return;
-  await mutate("upload", () => documentsClient.uploadNew(organizationId, title, file));
-}
-
-async function submitVersion(
-  event: FormEvent<HTMLFormElement>,
-  organizationId: string,
-  documentId: string,
-  mutate: (key: string, action: () => Promise<unknown>) => Promise<unknown>,
-) {
-  event.preventDefault();
-  const file = new FormData(event.currentTarget).get("file");
-  if (!(file instanceof File)) return;
-  await mutate(`version-${documentId}`, () => documentsClient.uploadVersion(organizationId, documentId, file));
+  return (
+    <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+      {text}
+    </span>
+  );
 }

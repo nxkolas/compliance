@@ -634,7 +634,7 @@ Do not weaken freshness or authorization to compensate for network placement.
   - approved index definitions and column order.
 - `scripts/benchmark-gap-workflow.ts`
   - page-specific operations and dependency-layer reporting.
-- `docs/plans/gap-analysis-query-performance-second-pass.md`
+- `docs/plans/done/gap-analysis-query-performance-second-pass.md`
   - implementation and final verification results.
 
 The exact test filename for schema indexes should follow the existing schema

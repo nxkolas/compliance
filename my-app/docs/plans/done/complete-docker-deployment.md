@@ -160,7 +160,7 @@ Production models:
 - stored vector dimension: 1,536.
 
 The exact model analysis and fallback order are recorded in
-[Self-hosted production model selection](../research/self-hosted-production-model-selection-2026-07-27.md).
+[Self-hosted production model selection](../../research/self-hosted-production-model-selection-2026-07-27.md).
 
 Production inference has no routine Internet access. A controlled provisioning
 job downloads exact model revisions, records per-file SHA-256 hashes, scans the
