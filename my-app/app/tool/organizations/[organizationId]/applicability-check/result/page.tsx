@@ -8,8 +8,6 @@ import {
   getApplicabilityResultForUser,
 } from "@/src/server/applicability-check";
 import {
-  ArrowLeft,
-  ClipboardList,
   LockKeyhole,
   RefreshCw,
 } from "lucide-react";
@@ -46,13 +44,24 @@ export default async function ApplicabilityResultPage({
     locale === "en"
       ? result.result.labelEn ?? result.result.label
       : result.result.label;
+  const pageTitle =
+    locale === "en"
+      ? "Applicability check result"
+      : "Betroffenheitscheck-Ergebnis";
+  const pageSubtitle =
+    locale === "en"
+      ? `Your result: ${resultTitle}`
+      : `Ihr Ergebnis: ${resultTitle}`;
+  const recalculateLabel =
+    locale === "en"
+      ? "Recalculate applicability check"
+      : "Betroffenheitscheck neu berechnen";
+  const recalculateButtonClassName =
+    "h-12 w-full max-w-full gap-1 rounded-lg bg-[#002BFF] px-2 text-sm outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] sm:w-[21rem] sm:gap-2 sm:px-4 sm:text-base";
 
   return (
-    <section className="flex w-full flex-col gap-8">
-      <PageHeader
-        title={labels.title}
-        subtitle={dictionary.modules.applicabilityCheck.description}
-      />
+    <section className="mx-auto flex w-full max-w-[1278.5px] flex-col gap-8">
+      <PageHeader title={pageTitle} subtitle={pageSubtitle} />
 
       {recalculationLock.locked ? (
         <div className="flex items-start gap-2 rounded-md border border-primary/35 bg-primary/10 px-4 py-3 text-sm">
@@ -61,32 +70,47 @@ export default async function ApplicabilityResultPage({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline">
-          <Link href={baseHref}>
-            <ArrowLeft />
+      <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between min-[1440px]:mt-0 min-[1440px]:mb-[34px]">
+        <nav
+          aria-label={locale === "en" ? "Result views" : "Ergebnisansichten"}
+          className="flex h-12 items-stretch"
+        >
+          <Link
+            href={`${baseHref}/result`}
+            aria-current="page"
+            className="inline-flex items-center border-b-2 border-white px-5 text-base font-medium text-white"
+          >
             {labels.overview}
           </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href={`${baseHref}/answers`}>
-            <ClipboardList />
+          <Link
+            href={`${baseHref}/answers`}
+            className="inline-flex items-center border-b-[1.5px] border-gray-800 px-5 text-base font-medium text-zinc-600 transition-colors hover:text-zinc-300"
+          >
             {labels.answers}
           </Link>
-        </Button>
-        {recalculationLock.locked ? (
-          <Button disabled variant="secondary">
-            <LockKeyhole />
-            {labels.recalculate}
-          </Button>
-        ) : (
-          <Button asChild variant="secondary">
-            <Link href={`${baseHref}/new`}>
-              <RefreshCw />
-              {labels.recalculate}
-            </Link>
-          </Button>
-        )}
+        </nav>
+
+        <div className="flex justify-end sm:ml-auto sm:translate-y-12 min-[1440px]:translate-y-[17px]">
+          {recalculationLock.locked ? (
+            <Button
+              disabled
+              className={recalculateButtonClassName}
+            >
+              <LockKeyhole />
+              {recalculateLabel}
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className={`${recalculateButtonClassName} hover:bg-[#002BFF]/90`}
+            >
+              <Link href={`${baseHref}/new`}>
+                <RefreshCw />
+                {recalculateLabel}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <ApplicabilityResultCard
@@ -95,6 +119,7 @@ export default async function ApplicabilityResultPage({
         labels={labels}
         title={resultTitle}
         startCurrentHref={`${baseHref}/new`}
+        gapAnalysisHref={`/tool/organizations/${organizationId}/gap-analysis`}
         recalculationLocked={recalculationLock.locked}
       />
     </section>

@@ -14,7 +14,7 @@ export function PageHeader({
 }: PageHeaderProps) {
   return (
     <header className={cn("flex flex-col gap-3", className)} {...props}>
-      <h1 className="font-sans text-[40px] leading-[36px] font-bold tracking-[0.396px] text-[#FFFFFF]">
+      <h1 className="break-words font-sans text-[28px] leading-8 font-bold tracking-normal text-[#FFFFFF] sm:text-[40px] sm:leading-[36px] sm:tracking-[0.396px]">
         {title}
       </h1>
       <p className="font-sans text-[18px] leading-[28px] font-normal tracking-[-0.439px] text-[#ADCDFB]">

@@ -111,7 +111,7 @@ export function AppSidebarNav({
 
   return (
     <div className="h-svh w-full overflow-hidden bg-transparent font-['Space_Grotesk']">
-      <div className="flex h-full min-h-0 w-full flex-col bg-transparent px-[54px] py-[52px] [@media(max-height:950px)]:py-5">
+      <div className="flex h-full min-h-0 w-full flex-col bg-transparent px-[54px] py-[52px] [@media(max-height:950px)]:py-5 [@media(max-height:760px)]:py-3">
         {/* Logo */}
         <SidebarHeader className="w-72 shrink-0 bg-transparent p-0">
           <Link
@@ -161,6 +161,7 @@ export function AppSidebarNav({
             min-w-0
             shrink-0
             [@media(max-height:950px)]:mt-5
+            [@media(max-height:760px)]:mt-3
 
             [&>*]:h-12
             [&>*]:w-full
@@ -198,13 +199,16 @@ export function AppSidebarNav({
               overflow-x-hidden
               overflow-y-auto
               overscroll-contain
+              [scrollbar-width:none]
+              [&::-webkit-scrollbar]:hidden
               bg-transparent
               p-0
               [@media(max-height:950px)]:mt-5
+              [@media(max-height:760px)]:mt-3
             "
           >
             <SidebarGroup className="w-72 p-0">
-              <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2">
+              <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2 [@media(max-height:760px)]:gap-1">
                 {mainLinks.map((link) => (
                   <SidebarLink
                     key={link.href}
@@ -228,7 +232,7 @@ export function AppSidebarNav({
           "
         >
           <SidebarGroup className="w-72 p-0">
-            <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2">
+            <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2 [@media(max-height:760px)]:gap-1">
               {settingsLink ? (
                 <SidebarLink
                   currentPath={pathname}

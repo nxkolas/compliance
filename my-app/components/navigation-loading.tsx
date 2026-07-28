@@ -9,7 +9,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 type AppShellSkeletonProps = {
   children?: ReactNode;
@@ -17,10 +17,23 @@ type AppShellSkeletonProps = {
 
 export function AppShellSkeleton({ children }: AppShellSkeletonProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      className="max-xl:[&>[data-slot=sidebar]]:hidden"
+      style={
+        {
+          "--sidebar-width": "24rem",
+        } as CSSProperties
+      }
+    >
       <AppSidebarSkeleton />
-      <SidebarInset className="bg-transparent">
-        <div className="flex-1 px-[53px] pt-[54px] pb-8">
+      <SidebarInset className="min-w-0 bg-transparent">
+        <div
+          aria-hidden="true"
+          className="flex h-14 shrink-0 items-center border-b border-white/10 bg-background/95 px-4 xl:hidden"
+        >
+          <Skeleton className="size-9 rounded-lg bg-white/15" />
+        </div>
+        <div className="min-w-0 flex-1 px-4 pt-5 pb-8 sm:px-6 sm:pt-7 md:px-8 md:pt-9 xl:px-[53px] xl:pt-[54px]">
           {children ?? <ProductModuleContentSkeleton />}
         </div>
       </SidebarInset>
@@ -32,7 +45,7 @@ export function AppSidebarSkeleton() {
   return (
     <Sidebar
       collapsible="none"
-      className="sticky top-0 h-svh max-h-svh w-[401px] shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
+      className="h-svh max-h-svh w-96 shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
     >
       <AppSidebarContentSkeleton />
     </Sidebar>
@@ -42,7 +55,7 @@ export function AppSidebarSkeleton() {
 export function AppSidebarContentSkeleton() {
   return (
     <>
-      <SidebarHeader className="gap-8 px-[55px] pb-8 pt-10">
+      <SidebarHeader className="gap-8 px-5 pt-10 pb-8 xl:px-[55px]">
         <div className="flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <Skeleton className="size-10 shrink-0 rounded-lg bg-white/20" />
@@ -56,8 +69,8 @@ export function AppSidebarContentSkeleton() {
         <Skeleton className="h-10 w-full rounded-lg bg-white/15" />
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup className="px-[55px]">
+      <SidebarContent className="overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <SidebarGroup className="px-5 xl:px-[55px]">
           <div className="flex flex-col gap-4">
             {Array.from({ length: 7 }).map((_, index) => (
               <SidebarSkeletonRow
@@ -70,7 +83,7 @@ export function AppSidebarContentSkeleton() {
       </SidebarContent>
 
       <SidebarFooter className="p-0 pb-8">
-        <SidebarGroup className="px-[55px]">
+        <SidebarGroup className="px-5 xl:px-[55px]">
           <div className="flex flex-col gap-4">
             {Array.from({ length: 3 }).map((_, index) => (
               <SidebarSkeletonRow

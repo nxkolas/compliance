@@ -42,7 +42,10 @@ export default async function NewOrganizationPage({
 
   return (
     <AppShell dictionary={dictionary}>
-      <main id="organization-create-page" className="w-full overflow-x-auto">
+      <main
+        id="organization-create-page"
+        className="w-full min-w-0 overflow-x-hidden"
+      >
         <style>
           {`
             #organization-create-page form {
@@ -54,37 +57,20 @@ export default async function NewOrganizationPage({
             }
           `}
         </style>
-        <div className="w-max min-w-full pb-[364px] pl-[54px] pr-[53px] pt-0">
+        <div className="w-full max-w-[1205px] pt-0 xl:w-[calc(100%+21px)] xl:max-w-[1259px] xl:pl-[54px]">
           {/* Überschrift */}
-          <header className="h-[112px] w-[1205px] min-w-[1205px]">
-            <h1 className="font-['Space_Grotesk'] text-4xl font-bold leading-9 tracking-tight text-white">
+          <header className="min-h-[112px] w-full max-w-[1205px]">
+            <h1 className="break-words font-['Space_Grotesk'] text-3xl leading-9 font-bold tracking-tight text-white sm:text-4xl">
               {dictionary.organizations.newPageTitle}
             </h1>
 
-            <p className="mt-3 font-['Space_Grotesk'] text-lg font-normal leading-7 text-blue-200">
+            <p className="mt-3 max-w-4xl font-['Space_Grotesk'] text-base leading-7 font-normal text-blue-200 sm:text-lg">
               {dictionary.organizations.newPageDescription}
             </p>
           </header>
 
           {/* Formular, ohne dessen Komponente zu verändern */}
-          <div
-            className="
-              mt-[65px]
-              w-[1205px]
-              min-w-[1205px]
-              max-w-none
-              shrink-0
-
-              [&>div]:w-[1205px]
-              [&>div]:min-w-[1205px]
-              [&>div]:max-w-none
-
-              [&_form]:w-[1205px]
-              [&_form]:min-w-[1205px]
-              [&_form]:max-w-none
-              [&_form]:shrink-0
-            "
-          >
+          <div className="mt-10 w-full min-w-0 sm:mt-[65px]">
             <OrganizationCreateForm
               labels={dictionary.organizationForm}
               locale={locale}

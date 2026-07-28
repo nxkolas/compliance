@@ -522,9 +522,9 @@ function QuestionStepper({
                 >
                   <span
                     className={cn(
-                      "grid size-8 shrink-0 place-items-center rounded-full bg-zinc-600/25 text-center font-['Space_Grotesk'] text-base leading-none font-normal tabular-nums text-white/60 outline outline-1 outline-offset-[-1px] outline-white/0 transition-colors",
+                      "grid size-8 shrink-0 place-items-center rounded-full bg-zinc-600/25 text-center font-['Space_Grotesk'] text-sm leading-none font-normal tabular-nums text-white/60 outline outline-1 outline-offset-[-1px] outline-white/0 transition-colors",
                       active &&
-                        "size-10 bg-primary font-semibold text-white ring-4 ring-primary/20",
+                        "size-10 bg-primary text-base font-semibold text-white ring-4 ring-primary/20",
                     )}
                   >
                     <span

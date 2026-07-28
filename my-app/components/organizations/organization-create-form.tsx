@@ -62,9 +62,9 @@ export function OrganizationCreateForm({
   const fieldClassName =
     "h-12 w-full rounded-lg border-[1.5px] border-[#3D4049] !bg-white/[0.06] px-5 font-['Space_Grotesk'] text-base font-normal leading-5 text-white shadow-sm placeholder:text-zinc-500 focus-visible:border-blue-700 focus-visible:ring-blue-700/40";
   const labelClassName =
-    "flex h-5 w-56 items-start font-['Space_Grotesk'] text-base font-semibold leading-5 text-white";
+    "flex min-h-5 w-full items-start font-['Space_Grotesk'] text-base leading-5 font-semibold text-white";
   const descriptionClassName =
-    "flex h-9 w-96 items-start font-['Space_Grotesk'] text-xs font-normal leading-5 text-gray-400";
+    "flex min-h-9 w-full max-w-96 items-start break-words font-['Space_Grotesk'] text-xs leading-5 font-normal text-gray-400";
 
   async function handleCreateOrganization(
     event: FormEvent<HTMLFormElement>,
@@ -119,12 +119,12 @@ export function OrganizationCreateForm({
   }
 
   return (
-    <div className="w-[1225px] min-w-[1225px] max-w-none shrink-0">
+    <div className="w-full min-w-0 max-w-[1205px]">
       {notice.message && (
         <div
           role="alert"
           className={cn(
-            "mb-6 rounded-lg border px-4 py-3 text-sm",
+            "mb-6 break-words rounded-lg border px-4 py-3 text-sm",
             notice.tone === "success" &&
               "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
             notice.tone === "error" &&
@@ -141,10 +141,11 @@ export function OrganizationCreateForm({
         onSubmit={handleCreateOrganization}
         className="
           box-border
-          w-[1225px]
-          min-w-[1225px]
-          max-w-none
-          p-8
+          w-full
+          min-w-0
+          max-w-[1205px]
+          p-5
+          sm:p-8
           rounded-xl
           border-[1.5px]
           border-[#3D4049]
@@ -219,6 +220,7 @@ export function OrganizationCreateForm({
           className="
             flex
             w-full
+            min-w-0
             max-w-[506px]
             flex-col
             items-start
@@ -240,10 +242,12 @@ export function OrganizationCreateForm({
             className="
               h-12
               w-full
+              min-w-0
 
               [&_[data-slot=select-trigger]]:inline-flex
               [&_[data-slot=select-trigger]]:h-12
               [&_[data-slot=select-trigger]]:w-full
+              [&_[data-slot=select-trigger]]:min-w-0
               [&_[data-slot=select-trigger]]:items-center
               [&_[data-slot=select-trigger]]:justify-between
               [&_[data-slot=select-trigger]]:rounded-lg
@@ -284,8 +288,8 @@ export function OrganizationCreateForm({
           disabled={isCreatingOrganization}
           className="
             inline-flex
-            h-12
-            w-72
+            min-h-12
+            w-full
             items-center
             justify-center
             gap-2
@@ -293,11 +297,13 @@ export function OrganizationCreateForm({
             self-end
             rounded-lg
             bg-[#002BFF]
-            px-6
+            px-4
+            py-3
             font-['Space_Grotesk']
-            text-base
+            text-sm
             font-medium
             text-white
+            whitespace-normal
             hover:bg-[#002BFF]/90
             focus-visible:ring-2
             focus-visible:ring-blue-400
@@ -305,6 +311,12 @@ export function OrganizationCreateForm({
             focus-visible:ring-offset-gray-900
             disabled:cursor-not-allowed
             disabled:opacity-50
+            sm:h-12
+            sm:w-72
+            sm:px-6
+            sm:py-0
+            sm:text-base
+            sm:whitespace-nowrap
           "
         >
           {isCreatingOrganization ? (
@@ -313,12 +325,16 @@ export function OrganizationCreateForm({
                 className="size-4 animate-spin"
                 aria-hidden="true"
               />
-              <span>{labels.createPending}</span>
+              <span className="min-w-0 text-center">
+                {labels.createPending}
+              </span>
             </>
           ) : (
             <>
               <Building2 className="size-4" aria-hidden="true" />
-              <span>{labels.createButton}</span>
+              <span className="min-w-0 text-center">
+                {labels.createButton}
+              </span>
             </>
           )}
         </Button>

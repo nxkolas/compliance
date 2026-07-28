@@ -75,13 +75,13 @@ export function CountrySelector({
         align={openDownward ? "start" : undefined}
         sideOffset={openDownward ? 4 : undefined}
         avoidCollisions={!openDownward}
-        className="max-h-72 border-[#3D4049] bg-[#1B1E27] text-white"
+        className="max-h-72 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] border-[#3D4049] bg-[#1B1E27] text-white"
       >
         {countries.map((country) => (
           <SelectItem
             key={country.code}
             value={country.code}
-            className="focus:bg-[#18275D] focus:text-white"
+            className="break-words whitespace-normal focus:bg-[#18275D] focus:text-white"
           >
             {country.name} ({country.code})
           </SelectItem>

@@ -31,10 +31,10 @@ export function AppSidebar({
 }: AppSidebarProps) {
   return (
     <Sidebar
-      collapsible="none"
+      collapsible="offcanvas"
+      mobileLabel={dictionary.sidebar.productName}
+      mobileDescription={dictionary.sidebar.productTagline}
       className="
-        sticky
-        top-0
         h-svh
         max-h-svh
         min-h-0
@@ -47,52 +47,54 @@ export function AppSidebar({
         [&_[data-sidebar=sidebar]]:!bg-transparent
       "
     >
-      <Suspense fallback={<AppSidebarContentSkeleton />}>
-        <AppSidebarNav
-          organizationId={organizationId}
-          labels={dictionary.sidebar}
-          organizationSwitcher={
-            <Suspense
-              fallback={
-                <OrganizationSwitcherFallback
-                  label={dictionary.sidebar.organizations}
-                />
-              }
-            >
-              <OrganizationSwitcherLoader
-                organizationId={organizationId}
-                placeholder={
-                  dictionary.organizations.switcherPlaceholder
-                }
-                createLabel={
-                  dictionary.organizations.switcherCreate
-                }
-                manageLabel={
-                  dictionary.organizations.switcherManage
-                }
-              />
-            </Suspense>
-          }
-          profileMenu={
-            hasEnvVars ? (
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[rgba(255,255,255,0.10)] max-xl:[&>div>div]:!px-5 max-xl:[&_.w-72]:!w-full xl:bg-transparent">
+        <Suspense fallback={<AppSidebarContentSkeleton />}>
+          <AppSidebarNav
+            organizationId={organizationId}
+            labels={dictionary.sidebar}
+            organizationSwitcher={
               <Suspense
                 fallback={
-                  <ProfileMenuFallback
-                    label={dictionary.common.loadingProfile}
-                    variant="sidebar"
+                  <OrganizationSwitcherFallback
+                    label={dictionary.sidebar.organizations}
                   />
                 }
               >
-                <ProfileMenuLoader />
+                <OrganizationSwitcherLoader
+                  organizationId={organizationId}
+                  placeholder={
+                    dictionary.organizations.switcherPlaceholder
+                  }
+                  createLabel={
+                    dictionary.organizations.switcherCreate
+                  }
+                  manageLabel={
+                    dictionary.organizations.switcherManage
+                  }
+                />
               </Suspense>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {dictionary.common.supabaseMissing}
-              </p>
-            )
-          }
-        />
-      </Suspense>
+            }
+            profileMenu={
+              hasEnvVars ? (
+                <Suspense
+                  fallback={
+                    <ProfileMenuFallback
+                      label={dictionary.common.loadingProfile}
+                      variant="sidebar"
+                    />
+                  }
+                >
+                  <ProfileMenuLoader />
+                </Suspense>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {dictionary.common.supabaseMissing}
+                </p>
+              )
+            }
+          />
+        </Suspense>
+      </div>
     </Sidebar>
   );
 }
