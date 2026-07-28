@@ -29,6 +29,7 @@ Compliance Checker app.
 
 ## Implementation Plans
 
+- [Asynchronous organization document processing](./plans/organization-document-processing-worker.md)
 - [Localized compliance-definition metadata](./plans/localized-compliance-definition-metadata.md)
 - [Guided gap analysis UX and status corrections](./plans/gap-analysis-guided-ux-and-status-corrections.md)
 - [Authoritative legal corpus and grounded AI](./plans/authoritative-legal-corpus-and-grounded-ai.md)
