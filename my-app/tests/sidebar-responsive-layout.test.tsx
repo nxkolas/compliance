@@ -52,5 +52,9 @@ describe("responsive app sidebar", () => {
     );
     expect(html).toContain("flex h-12 w-full items-center");
     expect(html).not.toContain("w-72");
+    expect(html).not.toContain("Einstellungen");
+    expect(html).not.toContain(
+      "/tool/organizations/example/settings",
+    );
   });
 });

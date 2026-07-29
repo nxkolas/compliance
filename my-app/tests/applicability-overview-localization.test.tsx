@@ -1,102 +1,65 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getLocale: vi.fn(),
   getApplicabilityOverviewForUser: vi.fn(),
-  getApplicabilityRecalculationLockForUser: vi.fn(),
+  redirect: vi.fn(),
 }));
 
 vi.mock("next/server", () => ({
   connection: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({
+  redirect: mocks.redirect,
+}));
+
 vi.mock("@/lib/supabase/require-auth", () => ({
   requireAuth: vi.fn().mockResolvedValue({ id: "user-1" }),
 }));
 
-vi.mock("@/lib/i18n", () => ({
-  getLocale: mocks.getLocale,
-  getDictionary: vi.fn().mockResolvedValue({
-    modules: {
-      applicabilityCheck: {
-        title: "Applicability check",
-        description: "Check whether NIS2 applies.",
-        recalculationLocked: "Recalculation locked",
-        overview: {
-          resultMetric: "Result",
-          revisionMetric: "Revision",
-          statusMetric: "Status",
-          pending: "Pending",
-          currentTitle: "Current applicability check",
-          lastCalculation: "Last calculation",
-          noDate: "No date",
-          noResult: "No result",
-          viewResult: "View result",
-          viewAnswers: "View answers",
-          recalculate: "Recalculate",
-          outcomes: {
-            essentialEntity: "Essential entity",
-            importantEntity: "Important entity",
-            notDirectlyInScope: "Not directly in scope",
-            clarificationRequired: "Clarification required",
-          },
-        },
-      },
-    },
-  }),
-}));
-
-vi.mock("@/lib/i18n/format", () => ({
-  formatDateTime: vi.fn().mockReturnValue("24 July 2026"),
-}));
-
 vi.mock("@/src/server/applicability-check", () => ({
   getApplicabilityOverviewForUser: mocks.getApplicabilityOverviewForUser,
-  getApplicabilityRecalculationLockForUser:
-    mocks.getApplicabilityRecalculationLockForUser,
 }));
 
-describe("applicability overview localization", () => {
+describe("applicability check entry route", () => {
   beforeEach(() => {
-    mocks.getLocale.mockResolvedValue("en");
+    vi.clearAllMocks();
+  });
+
+  it("redirects directly to the saved result", async () => {
     mocks.getApplicabilityOverviewForUser.mockResolvedValue({
       assessmentRevisionNumber: 1,
-      submittedAt: "2026-07-24T10:00:00.000Z",
       result: {
         result: {
           outcome: "important_entity",
-          label: "Wichtige Einrichtung",
-          labelEn: "Important entity",
-          reasons: [
-            "Deutsche Anlage-1-Identität mit mittlerer Unternehmensgröße.",
-          ],
-          reasonsEn: [
-            "German Annex-1 identity with medium enterprise size.",
-          ],
         },
       },
     });
-    mocks.getApplicabilityRecalculationLockForUser.mockResolvedValue({
-      locked: false,
-    });
-  });
 
-  it("renders the compact current-result card in English", async () => {
     const { default: ApplicabilityCheckPage } = await import(
       "@/app/tool/organizations/[organizationId]/applicability-check/page"
     );
-    const page = await ApplicabilityCheckPage({
+    await ApplicabilityCheckPage({
       params: Promise.resolve({ organizationId: "organization-1" }),
     });
-    const markup = renderToStaticMarkup(page);
 
-    expect(markup).toContain(
-      "German Annex-1 identity with medium enterprise size.",
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/tool/organizations/organization-1/applicability-check/result",
     );
-    expect(markup).not.toContain(
-      "Deutsche Anlage-1-Identität mit mittlerer Unternehmensgröße.",
+  });
+
+  it("redirects to the questionnaire when no result exists", async () => {
+    mocks.getApplicabilityOverviewForUser.mockResolvedValue(null);
+
+    const { default: ApplicabilityCheckPage } = await import(
+      "@/app/tool/organizations/[organizationId]/applicability-check/page"
     );
-    expect(markup).not.toContain("max-w-[1278.5px]");
+    await ApplicabilityCheckPage({
+      params: Promise.resolve({ organizationId: "organization-1" }),
+    });
+
+    expect(mocks.redirect).toHaveBeenCalledWith(
+      "/tool/organizations/organization-1/applicability-check/new",
+    );
   });
 });
