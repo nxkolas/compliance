@@ -10,21 +10,25 @@ Ship a new immutable Gap generation contract, `v9`, in an inactive
 
 1. accept correct German and English wording without weakening the immutable
    missing, partial, or uncertain Gap kind;
-2. repair a rejected category at most once with explicit semantic context;
-3. abort and settle every active sibling category before a failed job is
+2. keep Gap and Action Plan prose style in their prompts and qualification
+   suites rather than rejecting natural wording at runtime;
+3. repair a rejected category at most once and only for objective structured,
+   identity, coverage, citation, provenance, or safety failures;
+4. abort and settle every active sibling category before a failed job is
    finalized;
-4. prevent an AI processing run from being created beneath a parent job that is
+5. prevent an AI processing run from being created beneath a parent job that is
    no longer live;
-5. atomically finalize the job, its AI runs, its reassessment draft, and its
+6. atomically finalize the job, its AI runs, its reassessment draft, and its
    audit event;
-6. reconcile any terminal job that still owns a `processing` AI run;
-7. expose privacy-safe invariant metrics and diagnostics; and
-8. pass the existing five end-to-end qualification scenarios in both German
+7. reconcile any terminal job that still owns a `processing` AI run;
+8. expose privacy-safe invariant metrics and diagnostics; and
+9. pass the existing five end-to-end qualification scenarios in both German
    and English before activation.
 
-Action Plan contract v2 remains unchanged. Existing Gap v8 assessments,
+Ship a new immutable Action Plan contract, `v3`, with the same objective
+runtime-validation boundary. Existing Gap v8 and Action Plan v2 assessments,
 reassessment drafts, generated revisions, and audit history remain pinned to
-v8 and are not migrated or retried under v9.
+their existing contracts and are not migrated or retried under v9/v3.
 
 ## Incident Evidence
 
@@ -63,10 +67,15 @@ The same incident also proved a job-lifecycle race:
 
 - Implement the complete reliability fix, not a regex-only patch.
 - Introduce immutable Gap contract v9 rather than changing v8 behavior.
+- Introduce immutable Action Plan contract v3 rather than changing v2
+  behavior.
 - Publish `reliability-v2` inactive, qualify it, and activate it only after all
   gates pass.
-- Keep one targeted repair attempt per category.
-- Pass question and answer semantics into v9 validation.
+- Keep one targeted repair attempt per category, limited to objective
+  validation failures.
+- Pass question and answer semantics into the v9 prompt, while keeping the
+  expected Gap kind server-owned and out of natural-language runtime
+  validation.
 - Preserve the first terminal category error as the job's primary error.
 - Record internally aborted siblings as cancelled diagnostics without allowing
   them to replace the primary error.
@@ -79,7 +88,8 @@ The same incident also proved a job-lifecycle race:
   existing orphaned runs.
 - Use the connected disposable database for database-backed integration tests.
 - Leave existing v8 assessments and failed drafts pinned to v8.
-- Keep Action Plan v2 unless qualification proves an incompatibility.
+- Pin Action Plan v3 in `reliability-v2`; keep v2 immutable for releases
+  already using it.
 - Run the existing five qualification scenarios in both locales, including a
   German translation of the contradictory organization-evidence fixture.
 
@@ -87,7 +97,8 @@ The same incident also proved a job-lifecycle race:
 
 ### Included
 
-- Gap prompt, response, validation, and repair contract v9;
+- Gap prompt, response, objective validation, and repair contract v9;
+- Action Plan prompt, response, objective validation, and repair contract v3;
 - a new `gap-generation-v9` durable job kind;
 - structured category cancellation and settlement;
 - parent-job gating for AI processing-run creation;
@@ -105,7 +116,6 @@ The same incident also proved a job-lifecycle race:
 - mutation of Gap v8 prompt hashes, schemas, or validation behavior;
 - migration, repinning, or automatic retry of existing v8 assessments;
 - a second category repair attempt;
-- Action Plan v3 unless v2 compatibility fails;
 - storing rejected generated prose in diagnostics or audit history;
 - weakening grounding, language, citation, cardinality, or review invariants;
 - changing historical generated revisions; and
@@ -116,9 +126,12 @@ The same incident also proved a job-lifecycle race:
 The implementation is complete only if these invariants hold:
 
 1. A direct negative answer to a localized question can be expressed naturally
-   without being mistaken for epistemic uncertainty.
-2. An uncertain answer cannot be rendered as confirmed absence.
-3. A missing or partial answer cannot be rendered as uncertainty.
+   without runtime code reclassifying its wording as epistemic uncertainty.
+2. Generated prose cannot change the server-owned Gap kind or Action Plan
+   mode.
+3. Bilingual qualification demonstrates correct missing, partial, uncertain,
+   remediation, and verification wording before activation without making
+   those semantic checks live-job rejection gates.
 4. Successful categories are never regenerated because a sibling category
    fails.
 5. No queued category starts after the first terminal category failure.
@@ -131,33 +144,44 @@ The implementation is complete only if these invariants hold:
 11. Job, run, draft, and audit terminal state either commit together or roll
     back together.
 12. Reconciliation and one-time repair are idempotent.
-13. Existing v7/v8 artifacts and v8 release hashes remain unchanged.
-14. Successful Gap v9 findings remain compatible with Action Plan v2.
+13. Existing v7/v8 and Action Plan v2 artifacts and release hashes remain
+    unchanged.
+14. Successful Gap v9 findings remain compatible with Action Plan v3.
+15. Natural Gap or Action Plan wording never invokes runtime repair merely
+    because it omits an approved synonym, keyword, sentence shape, or style
+    phrase.
 
 ## Target Design
 
-### 1. Preserve v8 and add a separate v9 contract
+### 1. Preserve v8/v2 and add separate v9/v3 contracts
 
 Do not route v8 through changed semantic logic.
 
 Add v9-specific modules beside the current v8 modules:
 
 - `src/server/gap-analysis/generation-schema-v9.ts`;
-- `src/server/gap-analysis/prompt-contract-v9.ts`; and
-- either `src/server/gap-analysis/gap-style-v9.ts` or a versioned semantic
-  policy passed into a shared style engine.
+- `src/server/gap-analysis/prompt-contract-v9.ts`.
+
+Add v3-specific modules beside the current Action Plan v2 modules:
+
+- `src/server/action-plans/generation-schema-v3.ts`;
+- `src/server/ai/generation/action-plan-v3-contract.ts`; and
+- `src/server/action-plans/prompt-contract-v3.ts` as the public re-export.
 
 The v9 response JSON shape may remain structurally identical to v8. Its
-response-schema version must still be `9` because validation semantics and
-repair instructions are part of the immutable output contract.
+response-schema version must still be `9` because the objective validation and
+repair boundary is part of the immutable output contract. Action Plan v3 may
+retain v2's structured modes and fields while versioning its prompt, response
+schema, normalization, and validation boundary.
 
 Keep the v8 constants, hashes, schema builder, normalizer, and validator
-unchanged. Add compatibility tests that snapshot the v8 prompt and schema
-hashes before any refactoring.
+unchanged. Keep the Action Plan v2 constants, hashes, schema builder,
+normalizer, and validator unchanged. Add compatibility tests that snapshot the
+v8 and v2 prompt and schema hashes before any refactoring.
 
-### 2. Make v9 kind validation context-aware
+### 2. Keep decisions structured and prose validation objective
 
-Introduce an explicit semantic context:
+Pass an explicit semantic context to the v9 prompt:
 
 ```ts
 type GapStatementSemanticContext = {
@@ -174,67 +198,72 @@ type GapStatementSemanticContext = {
 ```
 
 The caller derives `expectedKind` deterministically from the pinned answer. The
-model never selects or changes it.
+model never selects or changes it. The Action Plan caller likewise owns
+category, priority, final ordering, Gap coverage, `remediation` versus
+`verification` eligibility, mandatory citations, and conditional-remediation
+assembly. Models write prose around those facts.
 
-V9 validation should separate two concepts that the v8 regex conflates:
+Hard runtime validation for v9 and v3 may enforce:
 
-- epistemic framing, such as `Es ist unklar, ob ...` or
-  `Es ist nicht bekannt, ob ...`; and
-- a direct negative predicate that answers the supplied question, such as
-  `Die kritischen Abhängigkeiten sind nicht bekannt`.
+- valid structured output with no extra fields;
+- exact supplied Gap keys, action modes, coverage, and cardinality;
+- known, allowlisted citation IDs and server-assigned mandatory citations;
+- nonblank customer-visible fields with generous character ceilings;
+- no URLs, raw internal IDs, or invented citation IDs in prose;
+- the pinned output locale; and
+- grounding, authorization, cancellation, and persistence invariants.
 
-For `not_implemented`/`missing`, accept a direct confirmed-negative rendering
-that is congruent with the supplied question. Continue rejecting clauses that
-hedge whether the control state is known.
+Hard runtime validation must not reject or repair prose because it:
 
-For `partially_implemented`/`partial`, require localized incompleteness wording
-without inventing an absent sub-control.
+- omits an approved missing, partial, uncertainty, verification, or
+  completed-state keyword;
+- uses an unlisted but correct synonym or sentence construction;
+- exceeds a preferred word count or sentence count while remaining within the
+  generous character ceiling;
+- contains a verb caught by a broad recommendation, action-content,
+  legal-language, example-leakage, or verification-first regex; or
+- is judged by a second AI call to semantically agree or disagree with the
+  server-owned kind or mode.
 
-For `unsure`/`uncertain`, require an explicit epistemic frame and reject
-confirmed absence.
+Do not add `gap-style-v9.ts` or reuse `gap-style.ts` to infer Gap kind from
+prose. Do not route Action Plan v3 through the lexical gates in
+`action-style.ts`. Preserve the existing deterministic trigger-policy behavior
+for `fully_implemented` and `not_applicable`; test both all-not-applicable and
+mixed-category policy contexts.
 
-Preserve the existing trigger-policy behavior for `fully_implemented` and
-`not_applicable`. Those options do not become model-owned decisions. Test
-`not_applicable` in both its all-not-applicable and mixed-category policy
-contexts.
+Concise one-sentence Gap statements, imperative Action Plan titles, preferred
+word counts, verification-first phrasing, absence of legal exposition, and
+not copying prompt examples remain explicit prompt instructions. Score these
+properties in bilingual release qualification and monitor them after
+activation. They do not reject an individual live generation.
 
-Keep non-semantic rules unchanged:
+### 3. Repair objective contract failures only
 
-- one line;
-- one sentence;
-- at most 20 words and 240 characters;
-- no URL, citation ID, heading, recommendation, action content, or legal
-  analysis; and
-- the pinned output locale.
-
-### 3. Make repair feedback explicit
-
-Keep one repair attempt. Enrich v9 repair input for every rejected path:
+Keep one repair attempt. Use prose-free issues for every objectively rejected
+path:
 
 ```ts
-type GapRepairIssueV9 = {
+type GenerationRepairIssueV9 = {
   code: GenerationIssueCode;
   path: Array<string | number>;
-  expectedKind?: "missing" | "partial" | "uncertain";
-  questionStableKey?: string;
-  questionText?: string;
-  selectedAnswer?: GapAnswerValue;
-  localizedCorrectionHint?: string;
 };
 ```
 
-The repair prompt must state:
+The repair prompt must provide only stable objective issue codes and field
+paths, request the complete corrected category object, and tell the model not
+to alter valid structured facts. Eligible issues include invalid schema,
+unknown or missing keys, incomplete coverage, invalid mode, wrong cardinality,
+unknown citations, raw IDs, URLs, blank fields, and character-ceiling
+violations.
 
-- the immutable expected kind;
-- the triggering localized question;
-- the pinned answer semantics;
-- why the previous clause conflicted; and
-- one localized example of a valid clause shape.
+Never invoke repair for word choice, synonyms, semantic-kind wording,
+sentence count, word count, imperative style, legal exposition,
+verification-first phrasing, or example resemblance.
 
 The rejected category candidate may remain provider-visible during repair, as
 it is today. Persisted diagnostics must continue to contain only allowlisted
-issue codes and sanitized paths. They must not persist question text,
-generated prose, source excerpts, or correction examples.
+issue codes and sanitized paths. They must not persist generated prose,
+question text, source excerpts, or correction examples.
 
 ### 4. Give the coordinator structured concurrency
 
@@ -412,6 +441,33 @@ Logs and metrics may include job ID, run ID, category code, phase, safe issue
 code, state, and duration. They must not include generated prose, prompts,
 questionnaire excerpts, organization evidence, or signed URLs.
 
+## Prompt, Validation, and Audit Locations
+
+Prompt text remains immutable, code-defined source rather than mutable database
+content:
+
+- Gap v8 currently lives in
+  `src/server/gap-analysis/prompt-contract-v8.ts`; add v9 beside it;
+- Gap v8 response validation currently lives in
+  `src/server/gap-analysis/generation-schema-v8.ts` and lexical wording checks
+  in `src/server/gap-analysis/gap-style.ts`; v9 must use its new objective
+  schema and must not call the lexical kind validator;
+- Action Plan v2 currently lives in
+  `src/server/ai/generation/action-plan-v2-contract.ts`,
+  `src/server/action-plans/generation-schema-v2.ts`, and
+  `src/server/action-plans/action-style.ts`; add v3 beside those modules and do
+  not route it through the lexical style validator; and
+- shared objective repair orchestration remains in
+  `src/server/ai/generation/category-coordinator.ts`.
+
+`gap_analysis_releases` pins the Gap and Action Plan prompt names, versions,
+template hashes, and response-schema versions. `ai_processing_runs` stores the
+selected provider/model, prompt metadata, rendered-input hash, response-schema
+version, validated structured output, lifecycle state, token accounting, and
+provenance metadata. `ai_processing_run_context` stores the exact admitted
+questionnaire, legal, and organization-evidence excerpts linked to each run.
+Do not store a second mutable copy of the prompt in the database.
+
 ## Contract and Persistence Changes
 
 ### Job kind
@@ -437,8 +493,8 @@ releaseCode: nis2-gap
 versionLabel: reliability-v2
 gapPromptVersion: 9
 gapResponseSchemaVersion: 9
-actionPlanPromptVersion: 2
-actionPlanResponseSchemaVersion: 2
+actionPlanPromptVersion: 3
+actionPlanResponseSchemaVersion: 3
 ```
 
 The aggregate hash must differ from `reliability-v1`. Publication must not
@@ -465,7 +521,7 @@ needs an additional partial index. If needed, add a narrow index supporting
 1. Add a regression fixture for the exact German question, answer, and
    statement from the incident.
 2. Demonstrate that the v8 validator rejects it.
-3. Snapshot v8 prompt, response-schema, and template hashes.
+3. Snapshot v8 and Action Plan v2 prompt, response-schema, and template hashes.
 4. Add a failing v9 expectation that accepts the direct confirmed-negative
    wording.
 5. Keep the incident database trace query as an operator diagnostic, not as a
@@ -477,27 +533,33 @@ Exit gate:
 - v8 compatibility snapshots are green; and
 - no production or connected development data is mutated.
 
-### Phase 1: Implement Gap v9 semantic validation
+### Phase 1: Implement Gap v9 and Action Plan v3 contracts
 
-1. Add v9 prompt, schema, normalizer, and context-aware style policy.
-2. Pass localized question text and pinned answer semantics into v9
-   validation.
-3. Add structured repair issue context and localized correction hints.
-4. Keep persisted diagnostics allowlisted and prose-free.
-5. Route only v9 releases through the new validator.
+1. Add the v9 prompt, schema, normalizer, and objective validator.
+2. Add the v3 prompt, schema, normalizer, and objective validator.
+3. Pass localized question text, pinned answer semantics, and immutable Gap
+   kind into the v9 prompt rather than a post-generation wording validator.
+4. Keep Gap kinds and Action Plan modes, coverage, priority, ordering, and
+   mandatory citations server-owned.
+5. Add one focused repair path for objective issue codes and field paths.
+6. Keep persisted diagnostics allowlisted and prose-free.
+7. Route only v9/v3 releases through the new validators.
 
 Focused tests:
 
 - German direct `nicht bekannt` response for a `not_implemented` known-state
   question is accepted as missing;
-- German `Es ist nicht bekannt, ob ...` is accepted only as uncertain;
-- equivalent English direct-negative and uncertainty wording;
-- partial wording in both locales;
-- confirmed absence cannot satisfy uncertain;
-- uncertainty cannot satisfy missing or partial;
-- one repair receives expected kind, question, answer semantics, and a
-  localized hint; and
-- v8 behavior and hashes remain unchanged.
+- equivalent natural German and English Gap wording succeeds without matching
+  an approved missing, partial, or uncertainty keyword list;
+- natural Action Plan verification and remediation wording succeeds without
+  matching approved completed-state or verification-first verbs;
+- preferred sentence count, word count, imperative style, legal-exposition
+  avoidance, and example resemblance do not trigger runtime repair;
+- unknown IDs, missing coverage, invalid modes, wrong cardinality, invented
+  citations, URLs, raw IDs, blanks, and excessive character lengths fail;
+- one repair receives only objective issue codes and field paths;
+- prose wording never invokes a second semantic-validation model call; and
+- v8/v2 behavior and hashes remain unchanged.
 
 ### Phase 2: Add structured category concurrency
 
@@ -567,20 +629,22 @@ Database-backed tests:
 - privacy-sensitive fields never appear in command output; and
 - the invariant query returns zero after repair.
 
-### Phase 5: Add v9 job and release support
+### Phase 5: Add v9/v3 job and release support
 
 1. Add `gap-generation-v9` to application and worker job-kind handling.
 2. Update database integrity SQL and schema-contract tests.
-3. Add v9 prompt/response metadata to the release compiler and publisher.
-4. Add release-loader routing for v9 while retaining v7/v8 reads.
+3. Add v9 and v3 prompt/response metadata to the release compiler and
+   publisher.
+4. Add release-loader routing for v9/v3 while retaining v7/v8 and Action Plan
+   v2 reads.
 5. Publish `nis2-gap/reliability-v2` without activation.
 6. Verify aggregate hashes, question mappings, legal mappings, localization,
-   and Action Plan v2 compatibility metadata.
+   and Action Plan v3 compatibility metadata.
 
 Exit gate:
 
 - v7/v8 historical loading passes;
-- v8 immutable hashes are unchanged;
+- v8 and Action Plan v2 immutable hashes are unchanged;
 - v9 jobs enqueue and dispatch correctly;
 - database integrity checks accept v9 and reject unknown job kinds; and
 - the active release pointer still identifies `reliability-v1`.
@@ -609,11 +673,18 @@ Requirements:
 - provide equivalent English and German synthetic backup evidence;
 - preserve the same contradiction and review behavior;
 - continue through Gap review/correction where the scenario requires it;
-- generate and activate Action Plan v2;
+- generate and activate Action Plan v3;
 - assert pinned output locale on Gap and Action Plan artifacts;
 - assert no stale job errors;
 - assert no terminal parent owns a processing run; and
 - record category first-pass, repair, latency, and token summaries by locale.
+
+Add natural German and English phrasing outside the old Gap and Action Plan
+runtime keyword lists. Review concision, sentence count, imperative style,
+verification-first language, legal exposition, example copying, and semantic
+consistency as offline qualification dimensions. These findings can block
+release activation at the reviewed fixture or aggregate level, but they must
+not reject or repair an individual live generation.
 
 Do not replace these scenarios with a 155-question-option matrix. Existing unit
 tests may remain, but this ten-run bilingual matrix is the live activation
@@ -626,7 +697,7 @@ qualification.
    connected disposable database.
 3. Run the ten live bilingual workflows against inactive `reliability-v2`.
 4. Review all German and English customer-visible output.
-5. Confirm Action Plan v2 compatibility.
+5. Confirm Action Plan v3 structured compatibility and prose qualification.
 6. Run the orphan repair command in dry-run mode.
 7. Confirm the four known incident runs are the expected targets.
 8. Apply the repair and verify zero remaining violations.
@@ -678,12 +749,15 @@ case artifacts plus one summary.
 ### Semantic correctness
 
 - The exact German incident wording succeeds under v9.
-- Epistemic uncertainty remains distinguishable from direct confirmed
-  negation in both locales.
 - Missing, partial, uncertain, fully implemented, and not-applicable policy
-  behavior remains deterministic.
-- Repair receives sufficient semantic context and remains limited to one
-  attempt.
+  behavior remains deterministic and server-owned.
+- Natural Gap and Action Plan wording does not require an approved synonym,
+  keyword, sentence shape, or style phrase.
+- Repair receives only objective structured issue codes and remains limited to
+  one attempt.
+- Word choice, sentence count, word count, imperative style, legal exposition,
+  example resemblance, and AI-judged semantic consistency never invoke
+  runtime repair.
 - No grounding, citation, language, cardinality, or review rule is weakened.
 
 ### Job lifecycle
@@ -708,9 +782,9 @@ case artifacts plus one summary.
 ### Compatibility
 
 - Gap v7/v8 historical artifacts remain readable.
-- V8 hashes and validation behavior remain unchanged.
-- New work pins v9 only through `reliability-v2`.
-- Action Plan v2 consumes v9 Gap findings without schema or provenance loss.
+- Gap v8 and Action Plan v2 hashes and validation behavior remain unchanged.
+- New work pins v9/v3 only through `reliability-v2`.
+- Action Plan v3 consumes v9 Gap findings without schema or provenance loss.
 - All ten bilingual end-to-end workflows pass.
 
 ### Observability and privacy
@@ -729,14 +803,14 @@ case artifacts plus one summary.
 - Activation occurs only after automated, database, bilingual live, content,
   and orphan-repair gates pass.
 - A newly created post-activation assessment completes Gap v9 and Action Plan
-  v2 successfully.
+  v3 successfully.
 
 ## Commit Plan
 
 Keep commits independently reviewable and green whenever possible:
 
 1. `test: lock gap v8 hashes and reproduce German kind mismatch`
-2. `feat: add context-aware immutable gap contract v9`
+2. `feat: add objective gap v9 and action plan v3 contracts`
 3. `fix: settle and abort sibling category generation`
 4. `fix: gate ai runs and atomically finalize generation jobs`
 5. `feat: reconcile and repair orphan ai processing runs`
@@ -754,9 +828,9 @@ into one opaque commit or operator step.
 If post-activation metrics or content review fails:
 
 1. repoint the active release to `reliability-v1`;
-2. allow already-running v9 jobs to settle or cancel them through the normal
-   job lifecycle;
-3. retain every v9 run, diagnostic, audit event, and generated revision;
+2. allow already-running v9/v3 generation jobs to settle or cancel them
+   through the normal job lifecycle;
+3. retain every v9/v3 run, diagnostic, audit event, and generated revision;
 4. do not delete the published `reliability-v2` release;
 5. keep structured concurrency, atomic finalization, reconciliation, and the
    repaired orphan state—they are runtime safety improvements independent of
@@ -776,7 +850,7 @@ Update:
 
 The final QA report must include:
 
-- v9 and v2 contract metadata;
+- v9 and v3 contract metadata plus v8/v2 compatibility hashes;
 - ten bilingual scenario outcomes;
 - first-pass and repair rates by locale;
 - workflow and provider latency;
