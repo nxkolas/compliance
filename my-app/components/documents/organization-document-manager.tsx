@@ -95,6 +95,7 @@ export function OrganizationDocumentManager({
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<DocumentDto | null>(null);
   const searchIsEditing = useRef(false);
   const listScope = useRef(`${status}|${search}`);
   const navigate = useCallback(
@@ -255,7 +256,7 @@ export function OrganizationDocumentManager({
   }
 
   function archiveDocument(document: DocumentDto) {
-    void runAction(
+    return runAction(
       `archive-${document.id}`,
       () => documentsClient.archive(organizationId, document.id),
       (updated) => {
@@ -329,7 +330,7 @@ export function OrganizationDocumentManager({
             }}
           >
             <DialogTrigger asChild>
-              <Button className="h-12 w-full gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none hover:bg-[#002BFF] lg:w-64">
+              <Button className="h-12 w-64 cursor-pointer gap-2 overflow-hidden rounded-lg bg-blue-700 px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none hover:bg-blue-700">
                 <Upload className="size-5" strokeWidth={1.5} />
                 {labels.uploadDocument}
               </Button>
@@ -617,13 +618,7 @@ export function OrganizationDocumentManager({
                                 <DropdownMenuSeparator className="mx-3 my-1 h-px bg-zinc-700/60" />
                                 <DropdownMenuItem
                                   disabled={busy === `archive-${document.id}`}
-                                  onSelect={() => {
-                                    if (
-                                      window.confirm(labels.archiveConfirm)
-                                    ) {
-                                      archiveDocument(document);
-                                    }
-                                  }}
+                                  onSelect={() => setArchiveTarget(document)}
                                   className="h-12 gap-2 rounded-lg bg-transparent px-3 py-3 text-sm leading-5 font-medium text-zinc-200 hover:bg-[#2F2A24] focus:bg-[#2F2A24] focus:text-zinc-200 data-[highlighted]:bg-[#2F2A24] data-[highlighted]:text-zinc-200 [&_svg]:text-zinc-400 [&:hover_svg]:text-[#EAB446] [&[data-highlighted]_svg]:text-[#EAB446]"
                                 >
                                   {busy === `archive-${document.id}` ? (
@@ -674,6 +669,70 @@ export function OrganizationDocumentManager({
             </table>
           </div>
       </Card>
+
+      <Dialog
+        open={archiveTarget !== null}
+        onOpenChange={(open) => {
+          if (
+            !open &&
+            (!archiveTarget ||
+              busy !== `archive-${archiveTarget.id}`)
+          ) {
+            setArchiveTarget(null);
+          }
+        }}
+      >
+        <DialogContent
+          closeLabel={labels.cancel}
+          overlayClassName="border border-black bg-black/75 backdrop-blur-[3px]"
+          className="block h-72 w-[min(649px,calc(100vw-32px))] max-w-none overflow-hidden rounded-xl border-0 bg-[#1B1E27] p-0 font-['Space_Grotesk'] text-white shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-zinc-700 sm:max-w-none [&>[data-slot=dialog-close]]:top-[15px] [&>[data-slot=dialog-close]]:right-4 [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-[10px] [&>[data-slot=dialog-close]]:text-zinc-400 [&>[data-slot=dialog-close]]:opacity-100 [&>[data-slot=dialog-close]]:ring-offset-0 [&>[data-slot=dialog-close]]:hover:bg-white/5 [&>[data-slot=dialog-close]]:focus:ring-0 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent"
+        >
+          <DialogTitle className="absolute top-[38px] left-[49px] h-10 w-80 text-lg leading-5 font-normal text-white">
+            {labels.archiveDialogTitle}
+          </DialogTitle>
+          <DialogDescription className="absolute top-20 left-[49px] h-24 w-[min(564px,calc(100%-98px))] text-lg leading-8 font-normal text-gray-400">
+            {labels.archiveDialogDescription}
+          </DialogDescription>
+
+          <div className="absolute right-[27px] bottom-[34px] flex items-center gap-3">
+            <Button
+              type="button"
+              disabled={
+                !archiveTarget ||
+                busy === `archive-${archiveTarget.id}`
+              }
+              onClick={() => {
+                if (!archiveTarget) return;
+                const document = archiveTarget;
+                void archiveDocument(document).finally(() =>
+                  setArchiveTarget(null),
+                );
+              }}
+              className="h-12 w-32 cursor-pointer gap-1.5 overflow-hidden rounded-lg bg-yellow-600/75 px-4 text-base font-medium text-white shadow-none hover:bg-yellow-600/85 disabled:cursor-not-allowed disabled:bg-yellow-600/50 disabled:text-white/50 disabled:opacity-100"
+            >
+              {archiveTarget &&
+              busy === `archive-${archiveTarget.id}` ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Archive className="size-3.5" />
+              )}
+              {labels.archive}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={
+                !!archiveTarget &&
+                busy === `archive-${archiveTarget.id}`
+              }
+              onClick={() => setArchiveTarget(null)}
+              className="h-12 w-28 cursor-pointer overflow-hidden rounded-lg border-[1.5px] border-zinc-700 bg-transparent px-4 text-base font-medium text-zinc-300 shadow-none hover:bg-white/5 hover:text-zinc-300 disabled:cursor-not-allowed"
+            >
+              {labels.cancel}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {nextCursor ? (
         <div className="flex justify-center">

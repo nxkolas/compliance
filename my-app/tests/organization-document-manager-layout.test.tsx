@@ -82,9 +82,8 @@ describe("OrganizationDocumentManager layout", () => {
     expect(html).toContain(">Datum<");
     expect(html).toContain(">Status<");
     expect(html).toContain("Dokumente hochladen");
-    expect(html).toContain("bg-[#002BFF]");
-    expect(html).toContain("lg:w-64");
-    expect(html).toContain('class="lucide lucide-upload');
+    expect(html).toContain("h-12 w-64");
+    expect(html).toContain("bg-blue-700");
     expect(html).toContain("border-b border-white/[0.04] pt-3.5 pb-1.5");
     expect(html).toContain('aria-live="polite" class="hidden"');
     expect(html).toContain("Dokumente durchsuchen");
