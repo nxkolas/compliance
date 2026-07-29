@@ -25,7 +25,7 @@ export function AppShell({
       className="max-xl:[&>[data-slot=sidebar]]:hidden"
       style={
         {
-          "--sidebar-width": "24rem",
+          "--sidebar-width": "clamp(18rem, 24vw, 24rem)",
         } as CSSProperties
       }
     >

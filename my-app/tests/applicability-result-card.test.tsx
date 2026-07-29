@@ -284,6 +284,56 @@ describe("applicability result outcomes", () => {
   );
 
   it.each(outcomeCases)(
+    "shows the recalculation CTA only for clarification-required in $locale",
+    ({ locale, outcome }) => {
+      const html = renderOutcome(outcome, locale);
+      const recalculateLabel =
+        locale === "en"
+          ? "Recalculate applicability check"
+          : "Betroffenheitscheck neu berechnen";
+
+      if (outcome === "clarification_required") {
+        expect(html).toContain('href="/new"');
+        expect(html).toContain(recalculateLabel);
+        const recalculateButtonClass = classNameOfOpeningTagBefore(
+          html,
+          recalculateLabel,
+          "a",
+        );
+        expect(recalculateButtonClass).toContain("justify-center");
+        expect(recalculateButtonClass).toContain("gap-2");
+        expect(recalculateButtonClass).toContain("px-5");
+      } else {
+        expect(html).not.toContain('href="/new"');
+        expect(html).not.toContain(recalculateLabel);
+      }
+    },
+  );
+
+  it.each(outcomeCases)(
+    "keeps all three metric cards equally sized for $outcome in $locale",
+    ({ locale, outcome }) => {
+      const html = renderOutcome(outcome, locale);
+
+      expect(html).toContain(
+        "auto-rows-fr grid-cols-1 gap-4 @3xl/result-card:grid-cols-3",
+      );
+
+      const metricCardClasses = Array.from(
+        html.matchAll(
+          /<div data-slot="card" class="([^"]*\bh-full\b[^"]*\bmin-h-24\b[^"]*)"/g,
+        ),
+        (match) => match[1],
+      );
+
+      expect(metricCardClasses).toHaveLength(3);
+      expect(metricCardClasses.every((classes) => classes.includes("h-full"))).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each(outcomeCases)(
     "allows long result content to wrap for $outcome in $locale",
     ({ locale, outcome }) => {
       const html = renderOutcome(outcome, locale);

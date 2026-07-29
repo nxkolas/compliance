@@ -41,7 +41,6 @@ export function AppSidebar({
         h-svh
         max-h-svh
         min-h-0
-        w-96
         shrink-0
         overflow-hidden
         border-r
@@ -50,7 +49,7 @@ export function AppSidebar({
         [&_[data-sidebar=sidebar]]:!bg-transparent
       "
     >
-      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[rgba(255,255,255,0.10)] max-xl:[&>div>div]:!px-5 max-xl:[&_.w-72]:!w-full xl:bg-transparent">
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[rgba(255,255,255,0.10)] max-xl:[&>div>div]:!px-5 xl:bg-transparent">
         <Suspense fallback={<AppSidebarContentSkeleton />}>
           <AppSidebarNav
             organizationId={organizationId}

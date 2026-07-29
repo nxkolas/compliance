@@ -310,7 +310,7 @@ export function OrganizationCreateForm({
             self-end
             rounded-lg
             bg-[#002BFF]
-            px-4
+            px-5
             py-3
             font-['Space_Grotesk']
             text-sm
@@ -326,7 +326,6 @@ export function OrganizationCreateForm({
             disabled:opacity-50
             sm:h-12
             sm:w-72
-            sm:px-6
             sm:py-0
             sm:text-base
             sm:whitespace-nowrap

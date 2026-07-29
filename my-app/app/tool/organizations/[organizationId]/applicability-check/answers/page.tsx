@@ -1,3 +1,4 @@
+import { ApplicabilityResultTabs } from "@/components/applicability-check/applicability-result-tabs";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import {
   getApplicabilityAnswersForUser,
   getApplicabilityRecalculationLockForUser,
 } from "@/src/server/applicability-check";
-import { ArrowLeft, LockKeyhole, RefreshCw } from "lucide-react";
+import { LockKeyhole, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -45,11 +46,11 @@ export default async function ApplicabilityAnswersPage({
 
   const baseHref = `/tool/organizations/${organizationId}/applicability-check`;
   const labels = dictionary.modules.applicabilityCheck.answers;
-  const actionButtonClassName =
-    "h-auto min-h-9 w-full min-w-0 whitespace-normal py-2 text-center sm:w-auto";
+  const recalculateButtonClassName =
+    "h-12 w-full max-w-full justify-center gap-2 rounded-lg bg-[#002BFF] px-5 text-base outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] sm:w-[21rem]";
 
   return (
-    <section className="flex w-full min-w-0 flex-col gap-8">
+    <section className="@container/result-page flex w-full min-w-0 flex-col gap-8">
       <PageHeader
         title={labels.title}
         subtitle={dictionary.modules.applicabilityCheck.description}
@@ -64,38 +65,36 @@ export default async function ApplicabilityAnswersPage({
         </Alert>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button
-          asChild
-          variant="outline"
-          className={actionButtonClassName}
-        >
-          <Link href={baseHref}>
-            <ArrowLeft />
-            {labels.overview}
-          </Link>
-        </Button>
-        {recalculationLock.locked ? (
-          <Button
-            disabled
-            variant="secondary"
-            className={actionButtonClassName}
-          >
-            <LockKeyhole />
-            {labels.recalculate}
-          </Button>
-        ) : (
-          <Button
-            asChild
-            variant="secondary"
-            className={actionButtonClassName}
-          >
-            <Link href={`${baseHref}/new`}>
-              <RefreshCw />
+      <div className="mb-12 flex flex-col gap-4 sm:mb-0 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between @5xl/result-page:mb-[17px]">
+        <ApplicabilityResultTabs
+          activeView="answers"
+          answersLabel={dictionary.modules.applicabilityCheck.result.answers}
+          baseHref={baseHref}
+          locale={locale}
+          overviewLabel={labels.overview}
+        />
+
+        <div className="flex justify-end sm:mt-12 sm:ml-auto @5xl/result-page:mt-[17px]">
+          {recalculationLock.locked ? (
+            <Button
+              disabled
+              className={recalculateButtonClassName}
+            >
+              <LockKeyhole />
               {labels.recalculate}
-            </Link>
-          </Button>
-        )}
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className={`${recalculateButtonClassName} hover:bg-[#002BFF]/90`}
+            >
+              <Link href={`${baseHref}/new`}>
+                <RefreshCw />
+                {labels.recalculate}
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="min-w-0 overflow-hidden rounded-lg shadow-sm">

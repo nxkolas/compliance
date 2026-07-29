@@ -1,8 +1,8 @@
 import { ApplicabilityResultCard } from "@/components/applicability-check/applicability-result-card";
+import { ApplicabilityResultTabs } from "@/components/applicability-check/applicability-result-tabs";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
@@ -59,7 +59,7 @@ export default async function ApplicabilityResultPage({
       ? "Recalculate applicability check"
       : "Betroffenheitscheck neu berechnen";
   const recalculateButtonClassName =
-    "h-12 w-full max-w-full gap-1 rounded-lg bg-[#002BFF] px-2 text-sm outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] sm:w-[21rem] sm:gap-2 sm:px-4 sm:text-base";
+    "h-12 w-full max-w-full justify-center gap-2 rounded-lg bg-[#002BFF] px-5 text-base outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] sm:w-[21rem]";
 
   return (
     <section className="@container/result-page flex w-full min-w-0 flex-col gap-8">
@@ -75,33 +75,13 @@ export default async function ApplicabilityResultPage({
       ) : null}
 
       <div className="mb-12 flex flex-col gap-4 sm:mb-0 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between @5xl/result-page:mb-[17px]">
-        <nav
-          aria-label={locale === "en" ? "Result views" : "Ergebnisansichten"}
-        >
-          <Tabs value={`${baseHref}/result`} className="gap-0">
-            <TabsList
-              variant="line"
-              className="h-12 gap-0 rounded-none p-0"
-            >
-              <TabsTrigger
-                value={`${baseHref}/result`}
-                asChild
-                className="h-12 flex-none rounded-none border-x-0 border-t-0 border-b-2 border-white bg-transparent px-5 py-0 text-base font-medium text-white shadow-none after:hidden hover:text-white data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none dark:text-white dark:hover:text-white dark:data-[state=active]:border-white dark:data-[state=active]:bg-transparent"
-              >
-                <Link href={`${baseHref}/result`} aria-current="page">
-                  {labels.overview}
-                </Link>
-              </TabsTrigger>
-              <TabsTrigger
-                value={`${baseHref}/answers`}
-                asChild
-                className="h-12 flex-none rounded-none border-x-0 border-t-0 border-b-[1.5px] border-gray-800 bg-transparent px-5 py-0 text-base font-medium text-zinc-600 shadow-none after:hidden hover:text-zinc-300 data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:text-zinc-600 dark:hover:text-zinc-300 dark:data-[state=active]:bg-transparent"
-              >
-                <Link href={`${baseHref}/answers`}>{labels.answers}</Link>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </nav>
+        <ApplicabilityResultTabs
+          activeView="overview"
+          answersLabel={labels.answers}
+          baseHref={baseHref}
+          locale={locale}
+          overviewLabel={labels.overview}
+        />
 
         <div className="flex justify-end sm:mt-12 sm:ml-auto @5xl/result-page:mt-[17px]">
           {recalculationLock.locked ? (

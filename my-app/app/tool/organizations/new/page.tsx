@@ -46,7 +46,7 @@ export default async function NewOrganizationPage({
         id="organization-create-page"
         className="w-full min-w-0 overflow-x-hidden"
       >
-        <div className="w-full min-w-0 pt-0 xl:pl-[54px]">
+        <div className="w-full min-w-0 pt-0">
           {/* Überschrift */}
           <header className="min-h-[112px] w-full min-w-0">
             <h1 className="break-words font-['Space_Grotesk'] text-3xl leading-9 font-bold tracking-tight text-white sm:text-4xl">

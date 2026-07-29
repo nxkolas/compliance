@@ -220,7 +220,7 @@ export function OrganizationManagementList({
         {createHref && createLabel && (
           <Button
             asChild
-            className="h-12 w-full justify-start gap-2 rounded-lg bg-[#002BFF] py-2.5 pl-5 pr-4 text-sm font-semibold leading-5 text-white shadow-none hover:bg-[#002BFF]/90 sm:w-64"
+            className="h-12 w-full justify-center gap-2 rounded-lg bg-[#002BFF] px-5 py-2.5 text-sm font-semibold leading-5 text-white shadow-none hover:bg-[#002BFF]/90 sm:w-64"
           >
             <Link href={createHref}>
               <Plus className="size-4 shrink-0" />
@@ -316,8 +316,8 @@ export function OrganizationManagementList({
               onClick={archiveOrRestore}
               className={
                 confirming?.archivedAt
-                  ? "h-12 w-full rounded-lg text-base font-medium sm:w-56"
-                  : "inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-lg border-0 bg-red-900 font-['Space_Grotesk'] text-base font-medium text-white shadow-none outline-none hover:bg-red-900/90 focus-visible:border-0 focus-visible:ring-0 sm:w-56"
+                  ? "h-12 w-full gap-2 rounded-lg px-5 text-base font-medium sm:w-56"
+                  : "inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-lg border-0 bg-red-900 px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none outline-none hover:bg-red-900/90 focus-visible:border-0 focus-visible:ring-0 sm:w-56"
               }
             >
               {!confirming?.archivedAt && <Trash2 className="size-5" />}
@@ -326,7 +326,7 @@ export function OrganizationManagementList({
             <Button
               variant="outline"
               onClick={() => setConfirming(null)}
-              className="h-12 w-full overflow-hidden rounded-lg border-[1.5px] border-[#3D4049] bg-[#3F3F47]/0 font-['Space_Grotesk'] text-base font-medium text-[#D9D9D9] hover:bg-[#3F3F47]/0 hover:text-[#D9D9D9] sm:w-28"
+              className="h-12 w-full overflow-hidden rounded-lg border-[1.5px] border-[#3D4049] bg-[#3F3F47]/0 px-5 font-['Space_Grotesk'] text-base font-medium text-[#D9D9D9] hover:bg-[#3F3F47]/0 hover:text-[#D9D9D9] sm:w-28"
             >
               {labels.cancel}
             </Button>
@@ -631,11 +631,11 @@ function OrganizationEditDialog({
         };
   const inputClassName =
     "h-12 rounded-lg border-[1.5px] border-[#3D4049] !bg-white/[0.06] px-5 text-base font-normal leading-5 text-white shadow-sm placeholder:text-zinc-500 focus-visible:border-blue-700 focus-visible:ring-blue-700/40";
-  const fieldBlockClassName = "grid w-full max-w-[737px] gap-0";
+  const fieldBlockClassName = "flex w-full flex-col";
   const fieldLabelClassName =
-    "flex h-8 w-56 items-center text-base font-semibold leading-5 text-white";
+    "flex min-h-5 w-full items-center text-base font-semibold leading-5 text-white";
   const fieldDescriptionClassName =
-    "flex h-8 w-96 items-start text-xs font-normal leading-5 text-gray-400";
+    "mt-[5px] flex min-h-5 w-full max-w-96 items-start text-xs font-normal leading-5 text-gray-400";
   useEffect(() => {
     if (!item) return;
     const controller = new AbortController();
@@ -715,9 +715,10 @@ function OrganizationEditDialog({
             />
           </svg>
         }
+        overlayClassName="bg-black/75 backdrop-blur-[3px]"
         className="
           max-h-[calc(100svh-32px)]
-          !w-[810px]
+          !w-[790px]
           !max-w-[calc(100vw-24px)]
           gap-0
           overflow-hidden
@@ -729,13 +730,13 @@ function OrganizationEditDialog({
           font-['Space_Grotesk']
           text-white
           shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_24px_80px_-24px_rgba(0,0,0,0.75)]
-          sm:!max-w-[810px]
+          sm:!max-w-[790px]
           [&_[data-slot=dialog-close]]:flex
           [&_[data-slot=dialog-close]]:size-8
           [&_[data-slot=dialog-close]]:items-center
           [&_[data-slot=dialog-close]]:justify-center
-          [&_[data-slot=dialog-close]]:right-[30px]
-          [&_[data-slot=dialog-close]]:top-[30px]
+          [&_[data-slot=dialog-close]]:right-4
+          [&_[data-slot=dialog-close]]:top-5
           [&_[data-slot=dialog-close]]:border-0
           [&_[data-slot=dialog-close]]:rounded-[10px]
           [&_[data-slot=dialog-close]]:bg-transparent
@@ -748,10 +749,12 @@ function OrganizationEditDialog({
           [&_[data-slot=dialog-close]]:focus:ring-0
           [&_[data-slot=dialog-close]]:focus:ring-offset-0
           [&_[data-slot=dialog-close]]:focus:outline-none
+          sm:[&_[data-slot=dialog-close]]:right-[30px]
+          sm:[&_[data-slot=dialog-close]]:top-[30px]
         "
       >
         <DialogHeader className="relative h-[88px] min-h-[88px] gap-0 px-0 text-left">
-          <div className="absolute left-[38px] top-[38px] flex items-center gap-[15px]">
+          <div className="absolute left-5 top-6 flex items-center gap-[15px] sm:left-[38px] sm:top-[38px]">
             {item && (
               <span
                 aria-hidden="true"
@@ -767,30 +770,31 @@ function OrganizationEditDialog({
           <DialogDescription className="sr-only">
             {labels.editDescription}
           </DialogDescription>
-          <div aria-hidden="true" className="absolute bottom-0 left-[37px] right-[38px] border-t-[1.5px] border-[#3D4049] opacity-50" />
+          <div aria-hidden="true" className="absolute right-5 bottom-0 left-5 border-t-[1.5px] border-[#3D4049] opacity-50 sm:right-[38px] sm:left-[37px]" />
         </DialogHeader>
 
-        <div className="max-h-[calc(100svh-120px)] overflow-y-auto pb-[30px] pl-[38px] pr-[23px] pt-[35px]">
+        <div className="max-h-[calc(100svh-120px)] overflow-y-auto px-5 pt-[35px] pb-[30px] sm:pr-8 sm:pl-[38px]">
         {!settings && !error && <div className="flex items-center gap-2 py-10 text-sm text-zinc-400"><Loader2 className="size-4 animate-spin" />{labels.loading}</div>}
         {error && <p role="alert" className="mb-5 rounded-lg border border-red-400/30 bg-red-950/30 p-3 text-sm text-red-300">{error}</p>}
         {settings && (
-          <form onSubmit={save} className="w-full max-w-[737px]">
+          <form onSubmit={save} className="w-full">
             <div className="grid gap-[31px]">
               <div className={fieldBlockClassName}>
                 <Label htmlFor="edit-name" className={fieldLabelClassName}>{labels.organizationName}</Label>
                 <p className={fieldDescriptionClassName}>{fieldDescriptions.organizationName}</p>
-                <Input id="edit-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required className={`${inputClassName} w-full`} />
+                <Input id="edit-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required className={`${inputClassName} mt-3 w-full`} />
               </div>
               <div className={fieldBlockClassName}>
                 <Label htmlFor="edit-legal-name" className={fieldLabelClassName}>{labels.legalName}</Label>
                 <p className={fieldDescriptionClassName}>{fieldDescriptions.legalName}</p>
-                <Input id="edit-legal-name" value={form.legalName} onChange={(event) => setForm({ ...form, legalName: event.target.value })} className={`${inputClassName} w-full`} />
+                <Input id="edit-legal-name" value={form.legalName} onChange={(event) => setForm({ ...form, legalName: event.target.value })} className={`${inputClassName} mt-3 w-full`} />
               </div>
               <div className={fieldBlockClassName}>
                 <Label htmlFor="edit-country" className={fieldLabelClassName}>{labels.country}</Label>
                 <p className={fieldDescriptionClassName}>{fieldDescriptions.country}</p>
                 <div
                   className="
+                    mt-3
                     w-full
                     sm:w-72
                     [&_[data-slot=select-trigger]]:h-12
@@ -821,7 +825,7 @@ function OrganizationEditDialog({
                 </div>
               </div>
               <div className={fieldBlockClassName}>
-                <div className="flex items-center gap-3">
+                <div className="flex min-h-5 items-center gap-3">
                   <Checkbox
                     id="edit-openai-policy"
                     checked={form.openAiDisclosureApproved}
@@ -835,7 +839,7 @@ function OrganizationEditDialog({
                     {labels.aiPolicy}
                   </Label>
                 </div>
-                <p className="max-w-2xl text-xs font-normal leading-5 text-gray-400">
+                <p className="mt-[5px] max-w-2xl text-xs font-normal leading-5 text-gray-400">
                   {labels.aiPolicyDescription}
                 </p>
               </div>
@@ -864,7 +868,7 @@ function OrganizationEditDialog({
               <Button
                 type="submit"
                 disabled={saving}
-                className="h-12 w-full rounded-lg bg-[#002BFF] text-base font-medium text-white shadow-none hover:bg-[#002BFF]/90 sm:w-64"
+                className="h-12 w-full gap-2 rounded-lg bg-[#002BFF] px-5 text-base font-medium text-white shadow-none hover:bg-[#002BFF]/90 sm:w-64"
               >
                 {saving ? (
                   <Loader2 className="size-5 animate-spin" />

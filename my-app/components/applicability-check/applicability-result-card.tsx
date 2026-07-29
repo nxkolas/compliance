@@ -22,6 +22,7 @@ import {
   ChevronDown,
   CircleHelp,
   FileText,
+  RefreshCw,
   ShieldAlert,
   Target,
   TrendingUp,
@@ -98,6 +99,8 @@ export function ApplicabilityResultCard({
   const isImportantEntity = evaluation.outcome === "important_entity";
   const isNotDirectlyInScope =
     evaluation.outcome === "not_directly_in_scope";
+  const isClarificationRequired =
+    evaluation.outcome === "clarification_required";
   const isShieldEntity = isEssentialEntity || isImportantEntity;
   const copy = getOutcomeCopy(evaluation.outcome, locale);
   const speechBubbleMeaning = copy.meaning;
@@ -254,7 +257,7 @@ export function ApplicabilityResultCard({
           </p>
 
           <div
-            className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,11.5rem),1fr))] gap-4 @5xl/result-card:gap-6 @7xl/result-card:gap-10"
+            className="mt-6 grid auto-rows-fr grid-cols-1 gap-4 @3xl/result-card:grid-cols-3 @5xl/result-card:gap-6 @7xl/result-card:gap-10"
           >
             <Metric
               icon={Building2}
@@ -324,18 +327,33 @@ export function ApplicabilityResultCard({
           {canStartGapAnalysis && gapAnalysisHref ? (
             <Button
               asChild
-              className="relative z-10 mt-6 h-12 w-full max-w-64 overflow-hidden rounded-lg bg-[#002BFF] px-6 font-['Space_Grotesk'] text-base font-medium text-white outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] hover:bg-[#002BFF]"
+              className="relative z-10 mt-6 h-12 w-full max-w-64 gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] hover:bg-[#002BFF]"
             >
               <Link href={gapAnalysisHref}>
                 <TrendingUp
-                  className="absolute left-5 size-5"
+                  className="size-5 shrink-0"
                   strokeWidth={1.5}
                 />
-                <span className="translate-x-2">
+                <span>
                   {labels.startGap ??
                     (locale === "en"
                       ? "Start Gap Analysis"
                       : "Gap-Analyse starten")}
+                </span>
+              </Link>
+            </Button>
+          ) : null}
+          {isClarificationRequired ? (
+            <Button
+              asChild
+              className="relative z-10 mt-6 h-12 w-full max-w-[336px] gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] hover:bg-[#002BFF]/90"
+            >
+              <Link href={startCurrentHref}>
+                <RefreshCw className="size-5 shrink-0" strokeWidth={1.5} />
+                <span>
+                  {locale === "en"
+                    ? "Recalculate applicability check"
+                    : "Betroffenheitscheck neu berechnen"}
                 </span>
               </Link>
             </Button>
@@ -448,7 +466,7 @@ function Metric({
   return (
     <Card
       className={cn(
-        "min-h-24 min-w-0 gap-0 justify-center rounded-xl border-[1.5px] px-5 py-4 shadow-none sm:px-6",
+        "h-full min-h-24 min-w-0 justify-center gap-0 rounded-xl border-[1.5px] px-5 py-4 shadow-none sm:px-6",
         presentation.metricBackgroundClass,
         presentation.metricBorderClass,
       )}
@@ -548,7 +566,7 @@ function ResultDetails({
           type="button"
           variant="ghost"
           onClick={toggleAll}
-          className="h-auto shrink-0 self-end rounded-none px-0 py-0 text-sm font-medium text-white has-[>svg]:px-0 hover:bg-transparent hover:text-blue-200 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-transparent sm:self-auto sm:text-base"
+          className="h-auto shrink-0 self-end rounded-none px-0 py-0 text-sm font-medium text-white hover:bg-transparent hover:text-blue-200 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-transparent sm:self-auto sm:text-base"
         >
           {allExpanded ? collapseAllLabel : expandAllLabel}
           <ChevronDown
@@ -578,7 +596,7 @@ function ResultDetails({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-auto min-h-12 w-full justify-between gap-4 rounded-none bg-[#1B1E27] px-5 py-3.5 text-left whitespace-normal font-['Space_Grotesk'] text-[#9F9FA9] has-[>svg]:px-5 hover:bg-white/[0.025] hover:text-[#9F9FA9] focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-white/[0.025] dark:hover:text-[#9F9FA9]"
+                  className="h-auto min-h-12 w-full justify-between gap-4 rounded-none bg-[#1B1E27] px-5 py-3.5 text-left whitespace-normal font-['Space_Grotesk'] text-[#9F9FA9] hover:bg-white/[0.025] hover:text-[#9F9FA9] focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-white/[0.025] dark:hover:text-[#9F9FA9]"
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <Icon className="size-4 shrink-0" strokeWidth={1.5} />

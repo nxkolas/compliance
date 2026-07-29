@@ -240,7 +240,7 @@ export function OrganizationInvitePanel({
             <Button
               type="submit"
               disabled={isCreatingInvitation}
-              className="h-12 w-full rounded-lg bg-[#002BFF] px-4 text-sm font-semibold text-white hover:bg-[#002BFF]/90"
+              className="h-12 w-full justify-center gap-2 rounded-lg bg-[#002BFF] px-5 text-sm font-semibold text-white hover:bg-[#002BFF]/90"
             >
               {isCreatingInvitation ? (
                 <Loader2 className="size-4 animate-spin" />

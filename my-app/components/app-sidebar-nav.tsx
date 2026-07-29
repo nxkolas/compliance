@@ -111,14 +111,14 @@ export function AppSidebarNav({
 
   return (
     <div className="h-svh w-full overflow-hidden bg-transparent font-['Space_Grotesk']">
-      <div className="flex h-full min-h-0 w-full flex-col bg-transparent px-[54px] py-[52px] [@media(max-height:950px)]:py-5 [@media(max-height:760px)]:py-3">
+      <div className="flex h-full min-h-0 w-full flex-col bg-transparent px-[clamp(1.25rem,2.5vw,3rem)] py-[52px] [@media(max-height:950px)]:py-5 [@media(max-height:760px)]:py-3">
         {/* Logo */}
-        <SidebarHeader className="w-72 shrink-0 bg-transparent p-0">
+        <SidebarHeader className="w-full shrink-0 bg-transparent p-0">
           <Link
             href="/tool/organizations"
-            className="inline-flex w-72 flex-col items-start gap-4"
+            className="inline-flex w-full flex-col items-start gap-4"
           >
-            <div className="relative h-11 w-72">
+            <div className="relative h-11 w-full">
               <Image
                 src="/images/robot.svg"
                 alt=""
@@ -144,7 +144,7 @@ export function AppSidebarNav({
               </div>
             </div>
 
-            <div className="w-72 text-sm font-normal leading-5 text-indigo-50">
+            <div className="w-full text-sm font-normal leading-5 text-indigo-50">
               {labels.brandTaglineFirst}
               <br />
               {labels.brandTaglineSecond}
@@ -157,7 +157,7 @@ export function AppSidebarNav({
           className="
             mt-[79px]
             h-12
-            w-72
+            w-full
             min-w-0
             shrink-0
             [@media(max-height:950px)]:mt-5
@@ -168,7 +168,7 @@ export function AppSidebarNav({
             [&_[data-sidebar=menu]]:gap-0
 
             [&_[data-sidebar=menu-button]]:h-12
-            [&_[data-sidebar=menu-button]]:w-72
+            [&_[data-sidebar=menu-button]]:w-full
             [&_[data-sidebar=menu-button]]:justify-start
             [&_[data-sidebar=menu-button]]:gap-[11px]
             [&_[data-sidebar=menu-button]]:rounded-lg
@@ -194,7 +194,7 @@ export function AppSidebarNav({
             className="
               mt-[52px]
               min-h-0
-              w-72
+              w-full
               flex-1
               overflow-x-hidden
               overflow-y-auto
@@ -207,8 +207,8 @@ export function AppSidebarNav({
               [@media(max-height:760px)]:mt-3
             "
           >
-            <SidebarGroup className="w-72 p-0">
-              <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2 [@media(max-height:760px)]:gap-1">
+            <SidebarGroup className="w-full p-0">
+              <SidebarMenu className="w-full gap-4 [@media(max-height:950px)]:gap-2 [@media(max-height:760px)]:gap-1">
                 {mainLinks.map((link) => (
                   <SidebarLink
                     key={link.href}
@@ -225,14 +225,14 @@ export function AppSidebarNav({
         <SidebarFooter
           className="
             mt-auto
-            w-72
+            w-full
             shrink-0
             bg-transparent
             p-0
           "
         >
-          <SidebarGroup className="w-72 p-0">
-            <SidebarMenu className="w-72 gap-4 [@media(max-height:950px)]:gap-2 [@media(max-height:760px)]:gap-1">
+          <SidebarGroup className="w-full p-0">
+            <SidebarMenu className="w-full gap-4 [@media(max-height:950px)]:gap-2 [@media(max-height:760px)]:gap-1">
               {settingsLink ? (
                 <SidebarLink
                   currentPath={pathname}
@@ -251,18 +251,18 @@ export function AppSidebarNav({
                 {...tutorialLink}
               />
 
-              <SidebarMenuItem className="h-12 w-72">
+              <SidebarMenuItem className="h-12 w-full">
                 <div
                   className="
                     h-12
-                    w-72
+                    w-full
                     min-w-0
 
                     [&>*]:h-12
                     [&>*]:w-full
 
                     [&_[data-sidebar=menu-button]]:h-12
-                    [&_[data-sidebar=menu-button]]:w-72
+                    [&_[data-sidebar=menu-button]]:w-full
                     [&_[data-sidebar=menu-button]]:justify-start
                     [&_[data-sidebar=menu-button]]:gap-[14px]
                     [&_[data-sidebar=menu-button]]:rounded-lg
@@ -305,14 +305,14 @@ function SidebarLink({
     (match === "prefix" && currentPath.startsWith(`${href}/`));
 
   return (
-    <SidebarMenuItem className="h-12 w-72">
+    <SidebarMenuItem className="h-12 w-full">
       <SidebarMenuButton
         asChild
         isActive={isActive}
         className="
           relative
           h-12
-          w-72
+          w-full
           rounded-lg
           p-0
           text-neutral-50
@@ -331,7 +331,7 @@ function SidebarLink({
         <Link
           href={href}
           aria-current={isActive ? "page" : undefined}
-          className="flex h-12 w-72 items-center gap-[14px] px-[18px]"
+          className="flex h-12 w-full items-center gap-[14px] px-[18px]"
         >
           <span
             data-sidebar-icon
@@ -367,12 +367,12 @@ function SidebarStaticItem({
   iconClassName?: string;
 }) {
   return (
-    <SidebarMenuItem className="h-12 w-72">
+    <SidebarMenuItem className="h-12 w-full">
       <SidebarMenuButton
         type="button"
         size="lg"
         disabled
-        className="h-12 w-72 cursor-not-allowed items-center gap-[14px] rounded-lg px-[18px] text-neutral-50 disabled:opacity-100"
+        className="h-12 w-full cursor-not-allowed items-center gap-[14px] rounded-lg px-[18px] text-neutral-50 disabled:opacity-100"
       >
         <span className="flex size-[24px] shrink-0 items-center justify-center">
           <Icon className={iconClassName} />

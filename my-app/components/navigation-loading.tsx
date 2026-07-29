@@ -21,7 +21,7 @@ export function AppShellSkeleton({ children }: AppShellSkeletonProps) {
       className="max-xl:[&>[data-slot=sidebar]]:hidden"
       style={
         {
-          "--sidebar-width": "24rem",
+          "--sidebar-width": "clamp(18rem, 24vw, 24rem)",
         } as CSSProperties
       }
     >
@@ -45,7 +45,7 @@ export function AppSidebarSkeleton() {
   return (
     <Sidebar
       collapsible="none"
-      className="h-svh max-h-svh w-96 shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
+      className="h-svh max-h-svh shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
     >
       <AppSidebarContentSkeleton />
     </Sidebar>
@@ -55,7 +55,7 @@ export function AppSidebarSkeleton() {
 export function AppSidebarContentSkeleton() {
   return (
     <>
-      <SidebarHeader className="gap-8 px-5 pt-10 pb-8 xl:px-[55px]">
+      <SidebarHeader className="gap-8 px-[clamp(1.25rem,2.5vw,3rem)] pt-10 pb-8">
         <div className="flex flex-col gap-3">
           <div className="flex items-start gap-3">
             <Skeleton className="size-10 shrink-0 rounded-lg bg-white/20" />
@@ -70,7 +70,7 @@ export function AppSidebarContentSkeleton() {
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <SidebarGroup className="px-5 xl:px-[55px]">
+        <SidebarGroup className="px-[clamp(1.25rem,2.5vw,3rem)]">
           <div className="flex flex-col gap-4">
             {Array.from({ length: 7 }).map((_, index) => (
               <SidebarSkeletonRow
@@ -83,7 +83,7 @@ export function AppSidebarContentSkeleton() {
       </SidebarContent>
 
       <SidebarFooter className="p-0 pb-8">
-        <SidebarGroup className="px-5 xl:px-[55px]">
+        <SidebarGroup className="px-[clamp(1.25rem,2.5vw,3rem)]">
           <div className="flex flex-col gap-4">
             {Array.from({ length: 3 }).map((_, index) => (
               <SidebarSkeletonRow
