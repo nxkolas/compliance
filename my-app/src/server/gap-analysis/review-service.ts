@@ -132,14 +132,6 @@ export function assertGapRevisionApprovable(input: {
     );
   }
   for (const finding of input.findings) {
-    if (finding.requiresReview) {
-      throw new ApiError(
-        409,
-        "Resolve all review blockers before confirmation",
-        { findingId: finding.id },
-        "GAP_REVIEW_UNRESOLVED",
-      );
-    }
     const citations = input.evidence.filter(
       (evidence) => evidence.findingId === finding.id,
     );
@@ -398,7 +390,8 @@ export async function regenerateAndCorrectGapFinding(input: {
       release.prompt.responseSchemaVersion !== "8" &&
       release.prompt.responseSchemaVersion !== "9" &&
       release.prompt.responseSchemaVersion !== "10" &&
-      release.prompt.responseSchemaVersion !== "11")
+      release.prompt.responseSchemaVersion !== "11" &&
+      release.prompt.responseSchemaVersion !== "12")
   ) {
     throw new ApiError(
       409,

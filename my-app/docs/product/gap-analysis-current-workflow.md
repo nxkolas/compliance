@@ -1,7 +1,7 @@
 # Gap Analysis and Action Plan workflow
 
-Status: `reliability-v1` is active; objective-contract successors are being
-qualified without changing existing assessments.
+Status: `reliability-v8` is active with the immutable Gap v12
+contradiction-only review policy.
 
 ## Domain model
 
@@ -39,8 +39,10 @@ historical anomaly.
 
 ## Review and lifecycle
 
-Contradictory evidence produces a separate review notice and blocks Action Plan
-generation. Before a plan exists, a structured reviewer correction regenerates
+Contradictory evidence produces a separate, non-blocking review notice. Missing,
+irrelevant, insufficient, or uncited Organization Evidence is represented by
+the normal document/evidence indicators and does not create a review notice.
+Before a plan exists, an optional structured reviewer correction regenerates
 the affected category and copies unchanged category children into a new
 immutable revision. Queued or running Action Plan generation reserves the Gap
 revision; an active plan locks it permanently.
@@ -54,24 +56,25 @@ They do not reject prose for missing a keyword, preferred synonym, imperative
 style, sentence shape, legal-language regex, or verification-first verb.
 Those writing goals are prompt and offline-qualification concerns.
 
-Published releases are immutable. Gap v8 and Action Plan v2 remain the active
-historical contract. The inactive successor chain records qualification
-findings rather than rewriting published metadata:
+Published releases are immutable. Gap v12 and Action Plan v6 are the active
+contracts. Earlier releases remain historical records of their qualification
+and activation state rather than having their published metadata rewritten:
 
 - `reliability-v2`: Gap v9 / Action Plan v3;
 - `reliability-v3`: Gap v10 / Action Plan v3;
-- `reliability-v4`: Gap v10 / Action Plan v4; and
+- `reliability-v4`: Gap v10 / Action Plan v4;
 - `reliability-v5`: Gap v11 / Action Plan v4;
-- `reliability-v6`: Gap v11 / Action Plan v5; and
-- `reliability-v7`: Gap v11 / Action Plan v6.
+- `reliability-v6`: Gap v11 / Action Plan v5;
+- `reliability-v7`: Gap v11 / Action Plan v6; and
+- `reliability-v8`: Gap v12 / Action Plan v6.
 
 ## Release and verification
 
 Publish and qualify a repository release without activating it:
 
 ```powershell
-npm.cmd run db:publish:gap -- --release nis2-gap/reliability-v7
-npm.cmd run eval:gap-action-plan-manual -- --gap-release-version reliability-v7
+npm.cmd run db:publish:gap -- --release nis2-gap/reliability-v8
+npm.cmd run eval:gap-action-plan-manual -- --gap-release-version reliability-v8
 ```
 
 Run the manual evaluator before activation and inspect its timestamped JSON and

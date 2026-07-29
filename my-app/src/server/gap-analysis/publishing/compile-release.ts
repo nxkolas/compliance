@@ -12,6 +12,7 @@ import { GAP_PROMPT_V8_TEMPLATE_HASH } from "../prompt-contract-v8";
 import { GAP_PROMPT_V9_TEMPLATE_HASH } from "../prompt-contract-v9";
 import { GAP_PROMPT_V10_TEMPLATE_HASH } from "../prompt-contract-v10";
 import { GAP_PROMPT_V11_TEMPLATE_HASH } from "../prompt-contract-v11";
+import { GAP_PROMPT_V12_TEMPLATE_HASH } from "../prompt-contract-v12";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -33,7 +34,8 @@ export function compileGapAnalysisRelease(
     release.prompt.templateHash !== GAP_PROMPT_V8_TEMPLATE_HASH &&
     release.prompt.templateHash !== GAP_PROMPT_V9_TEMPLATE_HASH &&
     release.prompt.templateHash !== GAP_PROMPT_V10_TEMPLATE_HASH &&
-    release.prompt.templateHash !== GAP_PROMPT_V11_TEMPLATE_HASH
+    release.prompt.templateHash !== GAP_PROMPT_V11_TEMPLATE_HASH &&
+    release.prompt.templateHash !== GAP_PROMPT_V12_TEMPLATE_HASH
   ) {
     errors.push("Prompt template hash does not match the code-defined prompt");
   }

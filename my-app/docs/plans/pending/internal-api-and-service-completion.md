@@ -410,14 +410,14 @@ restores a locked input to editable state without an explicit domain command.
 | POST | /api/organizations/:organizationId/action-plan | Create first plan idempotently |
 | GET | /api/organizations/:organizationId/action-plans | Paginated plan history |
 | GET | /api/organizations/:organizationId/action-plans/:planId | Plan revision/detail |
-| PATCH | /api/organizations/:organizationId/action-plan/items/:itemId | Update operational fields with If-Match |
+| PATCH | /api/organizations/:organizationId/action-plan/items/:itemId | Update status with If-Match |
 | GET | /api/organizations/:organizationId/action-plan/reconciliation | Read current reconciliation |
 | POST | /api/organizations/:organizationId/action-plan/reconciliation | Prepare successor plan/reconciliation |
 | PATCH | /api/organizations/:organizationId/action-plan/reconciliation/items/:itemId | Record decision with If-Match |
 | POST | /api/organizations/:organizationId/action-plan/reconciliation/activate | Atomically activate reconciled plan |
 
-Assignee IDs must resolve through active organization membership. Preserve
-predecessor lineage and historical read-only plans.
+Action-plan item status is the only user-editable field. Preserve predecessor
+lineage and historical read-only plans.
 
 ### PDF reports
 

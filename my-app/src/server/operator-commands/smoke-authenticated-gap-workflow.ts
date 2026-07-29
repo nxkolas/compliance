@@ -408,8 +408,6 @@ async function enableOpenAiForFixture(organizationId: string) {
     userId,
     organizationId,
     openAiDisclosureApproved: true,
-    reason:
-      "Database remediation acceptance smoke uses synthetic questionnaire data and controlled legal corpus only.",
     expectedVersion: policy.version,
     requestId: `remediation-smoke-${randomUUID()}`,
   });

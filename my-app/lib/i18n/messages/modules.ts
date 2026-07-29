@@ -427,7 +427,7 @@ export const modulesMessages = defineFeatureMessages({
               supportHasDocument: "Dokument hinterlegt",
               supportNoDocument: "Kein Dokument hinterlegt",
               questionnaireDisagreement: "Die generierte Bewertung weicht von Ihrer Fragebogenantwort ab.",
-              reviewRequired: "Prüfung erforderlich",
+              reviewRequired: "Widersprüchliche Angaben",
               changeAssessment: "Bewertung ändern",
               correctionRegenerates:
                 "Beim Speichern werden die betroffenen Lücken automatisch neu erstellt.",
@@ -1058,7 +1058,7 @@ export const modulesMessages = defineFeatureMessages({
               supportHasDocument: "Document provided",
               supportNoDocument: "No document provided",
               questionnaireDisagreement: "The generated assessment differs from your questionnaire answer.",
-              reviewRequired: "Review required",
+              reviewRequired: "Conflicting information",
               changeAssessment: "Change assessment",
               correctionRegenerates:
                 "Saving automatically regenerates the affected gaps.",

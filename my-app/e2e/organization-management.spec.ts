@@ -109,7 +109,6 @@ test.describe("organization management redesign", () => {
       await page.getByText("Organisation bearbeiten", { exact: true }).click();
       await page.locator("#edit-legal-name").fill(`${organizationName} AG`);
       await page.getByText("OpenAI erlauben", { exact: true }).click();
-      await page.locator("#edit-reason").fill("E2E Richtlinienprüfung");
       await page.getByRole("button", { name: "Änderungen speichern" }).click();
       await expect(page.getByText("Änderungen wurden gespeichert.")).toBeVisible();
       await expect(page.getByText(`${organizationName} AG`, { exact: false }).first()).toBeVisible();

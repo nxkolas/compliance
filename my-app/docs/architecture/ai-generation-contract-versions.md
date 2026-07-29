@@ -6,13 +6,14 @@ their original hashes and continue to load historically.
 
 | Release          | Gap contract | Action contract | Qualification state                            |
 | ---------------- | ------------ | --------------- | ---------------------------------------------- |
-| `reliability-v1` | v8           | v2              | Active                                         |
+| `reliability-v1` | v8           | v2              | Historical; previously active                  |
 | `reliability-v2` | v9           | v3              | Inactive; qualification failed                 |
 | `reliability-v3` | v10          | v3              | Inactive; qualification failed                 |
 | `reliability-v4` | v10          | v4              | Inactive; offline content qualification failed |
 | `reliability-v5` | v11          | v4              | Inactive; offline content qualification failed |
 | `reliability-v6` | v11          | v5              | Inactive; offline content qualification failed |
-| `reliability-v7` | v11          | v6              | Inactive; qualification in progress            |
+| `reliability-v7` | v11          | v6              | Historical; previously active                  |
+| `reliability-v8` | v12          | v6              | Active; contradiction-only review policy       |
 
 Gap v9 removed lexical Gap-kind inference from live validation. Gap v10 is its
 immutable successor and adds targeted URL and raw-identifier issue codes and
@@ -27,6 +28,12 @@ standalone sentence of at most 20 words, state the control fact directly, and
 omit law, directive, article, section, obligation, citation, and source-framing
 prose. These remain offline writing constraints rather than live lexical
 rejection gates.
+
+Gap v12 is the immutable successor to v11. It explicitly excludes missing,
+insufficient, irrelevant, or uncited Organization Evidence from contradiction
+review. Its normalizer clears `requiresReview` and `reviewNotice` whenever the
+structured contradiction list is empty. Actual contradictions retain their
+warning, but they no longer block Action Plan generation.
 
 Action Plan v5 is the immutable prompt-only successor to v4. It retains v4's
 objective validator and explicitly limits titles to 12 words, results to one

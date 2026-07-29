@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,8 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import type { getCurrentActionPlan } from "@/src/server/action-plans/service";
@@ -27,16 +24,11 @@ export function ActionPlanWorkflow({
   current,
   canContribute,
   labels,
-  members,
 }: {
   organizationId: string;
   current: CurrentPlan;
   canContribute: boolean;
   labels: Labels;
-  members: Array<{
-    userId: string;
-    status: "active" | "removed" | "left";
-  }>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -44,25 +36,23 @@ export function ActionPlanWorkflow({
 
   async function updateItem(
     item: NonNullable<CurrentPlan>["categories"][number]["actions"][number],
-    changes: {
-      status: typeof item.status;
-      ownerUserId: string | null;
-      dueDate: string | null;
-      executionNotes: string;
-    },
+    status: typeof item.status,
+    expectedVersion: number,
   ) {
     setBusy(item.id);
     setError(null);
     try {
-      await actionPlansClient.updateItem(
+      const result = await actionPlansClient.updateItem(
         organizationId,
         item.id,
-        changes,
-        item.version,
+        { status },
+        expectedVersion,
       );
-      router.refresh();
+      return result.data.item.version;
     } catch (caught) {
       setError(localizeUiError(caught, { fallback: labels.error }));
+      router.refresh();
+      return null;
     } finally {
       setBusy(null);
     }
@@ -119,13 +109,14 @@ export function ActionPlanWorkflow({
               <h2 className="text-lg font-semibold">{category.title}</h2>
               {category.actions.map((item) => (
                 <ActionItem
-                  key={item.id}
+                  key={`${item.id}:${item.version}`}
                   item={item}
                   labels={labels}
                   canContribute={canContribute}
                   busy={busy === item.id}
-                  members={members}
-                  save={(changes) => updateItem(item, changes)}
+                  save={(status, expectedVersion) =>
+                    updateItem(item, status, expectedVersion)
+                  }
                 />
               ))}
             </section>
@@ -142,29 +133,18 @@ function ActionItem({
   canContribute,
   busy,
   save,
-  members,
 }: {
   item: NonNullable<CurrentPlan>["categories"][number]["actions"][number];
   labels: Labels;
   canContribute: boolean;
   busy: boolean;
-  members: Array<{
-    userId: string;
-    status: "active" | "removed" | "left";
-  }>;
-  save: (changes: {
-    status: typeof item.status;
-    ownerUserId: string | null;
-    dueDate: string | null;
-    executionNotes: string;
-  }) => Promise<void>;
+  save: (
+    status: typeof item.status,
+    expectedVersion: number,
+  ) => Promise<number | null>;
 }) {
   const [status, setStatus] = useState(item.status);
-  const [ownerUserId, setOwnerUserId] = useState(item.ownerUserId ?? "");
-  const [dueDate, setDueDate] = useState(item.dueDate ?? "");
-  const [executionNotes, setExecutionNotes] = useState(
-    item.executionNotes,
-  );
+  const versionRef = useRef(item.version);
   const suggestedEvidence = stringArray(item.suggestedEvidence);
   return (
     <Card>
@@ -195,16 +175,27 @@ function ActionItem({
           title={labels.recommendedEvidence}
           items={suggestedEvidence}
         />
-        <div className="grid gap-3 md:grid-cols-3">
-        <label className="grid gap-1 text-sm">
+        <label className="grid max-w-xs gap-1 text-sm">
           {labels.status}
           <select
             className="h-10 rounded-md border bg-background px-3"
             value={status}
-            onChange={(event) =>
-              setStatus(event.target.value as typeof status)
-            }
-            disabled={!canContribute}
+            onChange={(event) => {
+              if (busy) return;
+              const previousStatus = status;
+              const nextStatus = event.target.value as typeof status;
+              setStatus(nextStatus);
+              void save(nextStatus, versionRef.current).then(
+                (updatedVersion) => {
+                  if (updatedVersion === null) {
+                    setStatus(previousStatus);
+                    return;
+                  }
+                  versionRef.current = updatedVersion;
+                },
+              );
+            }}
+            disabled={!canContribute || busy}
           >
             {Object.entries(labels.statuses).map(([value, label]) => (
               <option key={value} value={value}>
@@ -212,63 +203,8 @@ function ActionItem({
               </option>
             ))}
           </select>
+
         </label>
-        <label className="grid gap-1 text-sm">
-          {labels.owner}
-          <select
-            className="h-10 rounded-md border bg-background px-3"
-            value={ownerUserId}
-            onChange={(event) => setOwnerUserId(event.target.value)}
-            disabled={!canContribute}
-          >
-            <option value="">—</option>
-            {members
-              .filter((member) => member.status === "active")
-              .map((member) => (
-                <option key={member.userId} value={member.userId}>
-                  {member.userId}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          {labels.dueDate}
-          <Input
-            type="date"
-            value={dueDate}
-            onChange={(event) => setDueDate(event.target.value)}
-            disabled={!canContribute}
-          />
-        </label>
-        </div>
-        <label className="grid gap-1 text-sm">
-          {labels.executionNotes}
-          <Textarea
-            value={executionNotes}
-            onChange={(event) =>
-              setExecutionNotes(event.target.value)
-            }
-            disabled={!canContribute}
-            maxLength={20_000}
-          />
-        </label>
-        {canContribute ? (
-          <Button
-            className="justify-self-start"
-            disabled={busy}
-            onClick={() =>
-              save({
-                status,
-                ownerUserId: ownerUserId || null,
-                dueDate: dueDate || null,
-                executionNotes,
-              })
-            }
-          >
-            {busy ? <Loader2 className="animate-spin" /> : <Save />}
-            {busy ? labels.saving : labels.save}
-          </Button>
-        ) : null}
       </CardContent>
     </Card>
   );

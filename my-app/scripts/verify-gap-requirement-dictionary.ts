@@ -2,7 +2,10 @@ import "dotenv/config";
 
 import postgres from "postgres";
 import { closeDatabaseConnection } from "@/src/server/database-lifecycle";
-import { getActiveGapAnalysisRelease } from "@/src/server/gap-analysis";
+import {
+  getActiveGapAnalysisRelease,
+  getRepositoryGapRelease,
+} from "@/src/server/gap-analysis";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -167,13 +170,18 @@ async function main() {
     getActiveGapAnalysisRelease("nis2-gap", "en"),
   ]);
   assert(german && english, "The active Gap release did not load bilingually");
+  const activeDefinition = getRepositoryGapRelease(
+    `${german.releaseCode}/${german.versionLabel}`,
+  );
   assert(
-    german.versionLabel === "guided-v6" &&
-      german.prompt.version === "7" &&
-      german.prompt.responseSchemaVersion === "7" &&
-      german.actionPlanPrompt.version === "1" &&
-      german.actionPlanPrompt.responseSchemaVersion === "1",
-    "The active Gap release is not guided-v6 contracts 7/1",
+    german.prompt.version === activeDefinition.prompt.version &&
+      german.prompt.responseSchemaVersion ===
+        activeDefinition.prompt.responseSchemaVersion &&
+      german.actionPlanPrompt.version ===
+        activeDefinition.actionPlanPrompt?.version &&
+      german.actionPlanPrompt.responseSchemaVersion ===
+        activeDefinition.actionPlanPrompt?.responseSchemaVersion,
+    `The active Gap release does not match repository contract ${german.versionLabel}`,
   );
   const germanById = new Map(
     german.requirements.map((requirement) => [requirement.id, requirement]),
@@ -212,7 +220,6 @@ async function main() {
       join gap_analysis_releases release
         on release.id = active.gap_analysis_release_id
       where active.release_code = 'nis2-gap'
-        and release.version_label = 'guided-v6'
     ),
     mapped as (
       select question.stable_key as question_stable_key,
@@ -318,15 +325,19 @@ async function verifyPublishedMappedAuthority(releaseReference: string) {
   `;
   const release = releases[0];
   assert(release, `Published Gap release ${releaseReference} is missing`);
+  const definition = getRepositoryGapRelease(releaseReference);
   assert(
     release.status === "published" &&
-      release.prompt_version === "7" &&
-      release.response_schema_version === "7" &&
-      release.action_plan_prompt_version === "1" &&
-      release.action_plan_response_schema_version === "1" &&
+      release.prompt_version === definition.prompt.version &&
+      release.response_schema_version ===
+        definition.prompt.responseSchemaVersion &&
+      release.action_plan_prompt_version ===
+        definition.actionPlanPrompt?.version &&
+      release.action_plan_response_schema_version ===
+        definition.actionPlanPrompt?.responseSchemaVersion &&
       release.question_count === 31 &&
       release.requirement_count === 10,
-    `Published Gap release ${releaseReference} does not match guided-v6 contract 7`,
+    `Published Gap release ${releaseReference} does not match its repository contract`,
   );
   const missing = await sql<
     { question_stable_key: string; provision_key: string }[]

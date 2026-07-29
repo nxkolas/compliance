@@ -109,8 +109,7 @@ workflow use remain unchanged.
   - organization display name;
   - legal name;
   - localized country selector; and
-  - AI-provider/external-disclosure policy, including the required reason when
-    the policy changes.
+  - AI-provider/external-disclosure policy.
 - Remove the organization-facts view and current-framework card from the UI.
 - Save master data and AI policy atomically through one server command and one
   “Änderungen speichern” action.
@@ -308,7 +307,7 @@ Implement the command in one database transaction:
 1. require `organizations:update`;
 2. lock/read organization and policy versions;
 3. reject a stale composite token with `412 PRECONDITION_FAILED`;
-4. validate organization fields and the conditional policy-change reason;
+4. validate organization fields and the policy selection;
 5. update only changed rows;
 6. increment only changed resource versions;
 7. append distinct audit events; and

@@ -733,7 +733,7 @@ begin
     join public.generated_artifacts artifact on artifact.id = revision.artifact_id
     where revision.id = result_row.generated_artifact_revision_id
       and artifact.organization_id = job_row.organization_id
-      and job_row.kind in ('gap-generation', 'gap-generation-v8', 'gap-generation-v9', 'gap-generation-v10', 'gap-generation-v11')
+      and job_row.kind in ('gap-generation', 'gap-generation-v8', 'gap-generation-v9', 'gap-generation-v10', 'gap-generation-v11', 'gap-generation-v12')
   ) then
     raise exception using errcode = '23514',
       message = 'Job Artifact result has the wrong tenant or kind';

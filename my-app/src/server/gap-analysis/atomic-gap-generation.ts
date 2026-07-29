@@ -74,6 +74,18 @@ import {
   gapRepairPromptV11,
 } from "./prompt-contract-v11";
 import {
+  buildGapCategoryResponseSchemaV12,
+  normalizeGapCategoryResponseV12,
+} from "./generation-schema-v12";
+import {
+  GAP_PROMPT_V12_TEMPLATE_HASH,
+  GAP_PROMPT_V12_NAME,
+  GAP_PROMPT_V12_VERSION,
+  GAP_RESPONSE_SCHEMA_V12_VERSION,
+  gapPromptV12,
+  gapRepairPromptV12,
+} from "./prompt-contract-v12";
+import {
   coordinateCategoryGeneration,
   safeGenerationIssues,
 } from "../ai/generation";
@@ -124,6 +136,14 @@ export async function generateAtomicGapBatch(input: {
   findings: ValidatedCategoryGapResult[];
   runIdsByCategory?: Record<string, string>;
 }> {
+  if (
+    input.release.prompt.version === GAP_PROMPT_V12_VERSION &&
+    input.release.prompt.responseSchemaVersion ===
+      GAP_RESPONSE_SCHEMA_V12_VERSION &&
+    input.release.prompt.templateHash === GAP_PROMPT_V12_TEMPLATE_HASH
+  ) {
+    return generateAtomicGapCategoriesVersioned(input, "12");
+  }
   if (
     input.release.prompt.version === GAP_PROMPT_V11_VERSION &&
     input.release.prompt.responseSchemaVersion ===
@@ -273,7 +293,7 @@ export async function generateAtomicGapBatch(input: {
 
 async function generateAtomicGapCategoriesVersioned(
   input: Parameters<typeof generateAtomicGapBatch>[0],
-  contractVersion: "8" | "9" | "10" | "11",
+  contractVersion: "8" | "9" | "10" | "11" | "12",
 ): Promise<{
   runId: string;
   outputLocale: Locale;
@@ -298,8 +318,10 @@ async function generateAtomicGapCategoriesVersioned(
         revisionId: input.assessmentRevisionId,
         releaseId: input.release.id,
         contract:
-          contractVersion === "11"
-            ? GAP_RESPONSE_SCHEMA_V11_VERSION
+          contractVersion === "12"
+            ? GAP_RESPONSE_SCHEMA_V12_VERSION
+            : contractVersion === "11"
+              ? GAP_RESPONSE_SCHEMA_V11_VERSION
             : contractVersion === "10"
               ? GAP_RESPONSE_SCHEMA_V10_VERSION
               : GAP_RESPONSE_SCHEMA_V8_VERSION,
@@ -350,8 +372,10 @@ async function generateAtomicGapCategoriesVersioned(
                 input.outputLocale,
               );
               responsePolicy = policy;
-              return contractVersion === "11"
-                ? buildGapCategoryResponseSchemaV11(policy)
+              return contractVersion === "12"
+                ? buildGapCategoryResponseSchemaV12(policy)
+                : contractVersion === "11"
+                  ? buildGapCategoryResponseSchemaV11(policy)
                 : contractVersion === "10"
                   ? buildGapCategoryResponseSchemaV10(policy)
                   : buildGapCategoryResponseSchemaV9(policy);
@@ -440,8 +464,8 @@ async function generateAtomicGapCategoriesVersioned(
     validate(candidate, task) {
       try {
         const normalized =
-          contractVersion === "11"
-            ? normalizeGapCategoryResponseV11({
+          contractVersion === "12"
+            ? normalizeGapCategoryResponseV12({
                 value: candidate,
                 policy: gapV9ResponsePolicy(
                   task.input,
@@ -449,7 +473,16 @@ async function generateAtomicGapCategoriesVersioned(
                   input.outputLocale,
                 ),
               })
-            : contractVersion === "10"
+            : contractVersion === "11"
+              ? normalizeGapCategoryResponseV11({
+                  value: candidate,
+                  policy: gapV9ResponsePolicy(
+                    task.input,
+                    contextByCategory.get(task.categoryCode) ?? [],
+                    input.outputLocale,
+                  ),
+                })
+              : contractVersion === "10"
               ? normalizeGapCategoryResponseV10({
                   value: candidate,
                   policy: gapV9ResponsePolicy(
@@ -674,13 +707,26 @@ function gapV8GeneratedProse(value: GapCategoryResponseV8) {
 }
 
 function gapVersionedInstruction(input: {
-  contractVersion: "8" | "9" | "10" | "11";
+  contractVersion: "8" | "9" | "10" | "11" | "12";
   locale: Locale;
   categoryCode: string;
   semanticContexts: ReturnType<typeof gapV9SemanticContexts>;
   phase: "initial" | "repair";
   issues: Parameters<typeof gapRepairPromptV10>[0]["issues"];
 }) {
+  if (input.contractVersion === "12") {
+    return input.phase === "initial"
+      ? gapPromptV12({
+          locale: input.locale,
+          semanticContexts: input.semanticContexts,
+        })
+      : gapRepairPromptV12({
+          locale: input.locale,
+          categoryCode: input.categoryCode,
+          semanticContexts: input.semanticContexts,
+          issues: input.issues,
+        });
+  }
   if (input.contractVersion === "11") {
     return input.phase === "initial"
       ? gapPromptV11({
@@ -729,7 +775,17 @@ function gapVersionedInstruction(input: {
       });
 }
 
-function gapVersionedMetadata(contractVersion: "8" | "9" | "10" | "11") {
+function gapVersionedMetadata(
+  contractVersion: "8" | "9" | "10" | "11" | "12",
+) {
+  if (contractVersion === "12") {
+    return {
+      name: GAP_PROMPT_V12_NAME,
+      version: GAP_PROMPT_V12_VERSION,
+      templateHash: GAP_PROMPT_V12_TEMPLATE_HASH,
+      responseSchemaVersion: GAP_RESPONSE_SCHEMA_V12_VERSION,
+    };
+  }
   if (contractVersion === "11") {
     return {
       name: GAP_PROMPT_V11_NAME,

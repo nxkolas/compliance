@@ -19,6 +19,10 @@ import {
 import {
   organizationInitials,
 } from "@/components/organizations/organization-avatar";
+import {
+  organizationAiProviderPolicyUpdateSchema,
+  organizationSettingsUpdateSchema,
+} from "@/src/contracts/organizations";
 
 describe("organization management permission invariants", () => {
   it("keeps archive and owner governance owner-only", () => {
@@ -47,7 +51,27 @@ describe("organization management permission invariants", () => {
 });
 
 describe("organization management shared UI contracts", () => {
-  it("keeps the OpenAI usage control in the organization edit dialog", () => {
+  it("keeps the selected organization independent from paginated switcher results", () => {
+    const sidebarSource = readFileSync(
+      resolve(process.cwd(), "components/app-sidebar.tsx"),
+      "utf8",
+    );
+    const switcherSource = readFileSync(
+      resolve(process.cwd(), "components/organization-switcher.tsx"),
+      "utf8",
+    );
+
+    expect(sidebarSource).toContain("listOrganizationsForUserPage({");
+    expect(sidebarSource).toContain("getOrganizationForUser(user.id, organizationId)");
+    expect(sidebarSource).toContain("nextCursor={organizationPage.nextCursor}");
+    expect(switcherSource).toContain("selectedOrganization?: SwitcherOrganization");
+    expect(switcherSource).toContain("organizationsClient.list({");
+    expect(switcherSource).toContain('query: query || undefined');
+    expect(switcherSource).toContain('new IntersectionObserver');
+    expect(switcherSource).toContain('className="shrink-0 border-t p-1"');
+  });
+
+  it("keeps the OpenAI usage control without a reason field", () => {
     const source = readFileSync(
       resolve(
         process.cwd(),
@@ -55,13 +79,51 @@ describe("organization management shared UI contracts", () => {
       ),
       "utf8",
     );
+    const dedicatedFormSource = readFileSync(
+      resolve(
+        process.cwd(),
+        "components/organizations/organization-ai-provider-policy-form.tsx",
+      ),
+      "utf8",
+    );
+    const settingsServiceSource = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/server/organizations/settings-service.ts",
+      ),
+      "utf8",
+    );
+    const policyServiceSource = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/server/organizations/ai-provider-policy-service.ts",
+      ),
+      "utf8",
+    );
 
     expect(source).toContain('id="edit-openai-policy"');
     expect(source).toContain('htmlFor="edit-openai-policy"');
-    expect(source).toContain('id="edit-reason"');
+    expect(source).not.toContain('id="edit-reason"');
+    expect(dedicatedFormSource).not.toContain('id="ai-policy-reason"');
+    expect(settingsServiceSource).not.toContain("AI_POLICY_REASON_REQUIRED");
+    expect(policyServiceSource).not.toContain("AI_POLICY_REASON_REQUIRED");
     expect(source).toContain(
       "openAiDisclosureApproved: form.openAiDisclosureApproved",
     );
+
+    expect(organizationAiProviderPolicyUpdateSchema.parse({
+      openAiDisclosureApproved: true,
+    })).toEqual({ openAiDisclosureApproved: true });
+    expect(organizationSettingsUpdateSchema.parse({
+      organization: {
+        name: "Example GmbH",
+        legalName: null,
+        country: "DE",
+      },
+      policy: { openAiDisclosureApproved: true },
+    })).toMatchObject({
+      policy: { openAiDisclosureApproved: true },
+    });
   });
 
   it("contains every ISO alpha-2 country exactly once and localizes it", () => {

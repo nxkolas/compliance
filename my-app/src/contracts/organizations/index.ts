@@ -70,7 +70,6 @@ export const organizationAiProviderPolicySchema = z.object({
 
 export const organizationAiProviderPolicyUpdateSchema = z.object({
   openAiDisclosureApproved: z.boolean(),
-  reason: z.string().trim().min(1).max(1000),
 });
 
 export const organizationSettingsSchema = z.object({
@@ -84,6 +83,5 @@ export const organizationSettingsUpdateSchema = z.object({
   organization: organizationInputSchema,
   policy: z.object({
     openAiDisclosureApproved: z.boolean(),
-    reason: z.string().trim().max(1000).default(""),
   }),
 });

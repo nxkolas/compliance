@@ -20,13 +20,10 @@ export async function updateOrganizationAiProviderPolicy(input: {
   userId: string;
   organizationId: string;
   openAiDisclosureApproved: boolean;
-  reason: string;
   expectedVersion: number;
   requestId?: string;
 }) {
   await requireOrganizationCapability(input.userId, input.organizationId, "organizations:update");
-  const reason = input.reason.trim();
-  if (!reason) throw new ApiError(400, "An approval-change reason is required", undefined, "AI_POLICY_REASON_REQUIRED");
   const allowedProviderModes = input.openAiDisclosureApproved
     ? ["openai", ...defaultOrganizationAiProviderPolicy.allowedProviderModes]
     : [...defaultOrganizationAiProviderPolicy.allowedProviderModes];
@@ -56,7 +53,6 @@ export async function updateOrganizationAiProviderPolicy(input: {
       entityType: "organization_ai_provider_policy",
       entityId: input.organizationId,
       metadata: {
-        reason,
         externalDisclosureAllowed: policy.externalDisclosureAllowed,
         allowedProviderModes: policy.allowedProviderModes,
         retentionClassification: policy.retentionClassification,

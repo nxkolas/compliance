@@ -521,7 +521,6 @@ export function GapAnalysisWorkflow({
               busy={busy === "questionnaire"}
               saveState={answerSaveState}
               onAnswer={saveQuestionnaireAnswer}
-              onFlush={() => questionnaireSaveChainRef.current}
               onContinue={() => void saveQuestionnaire()}
             />
           ) : renderedStep === "documents" ? (

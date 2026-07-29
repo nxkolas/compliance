@@ -48,6 +48,7 @@ const handlers = {
   "gap-generation-v9": handleGapGeneration,
   "gap-generation-v10": handleGapGeneration,
   "gap-generation-v11": handleGapGeneration,
+  "gap-generation-v12": handleGapGeneration,
   "action-plan-generation": handleActionPlanGeneration,
   "action-plan-generation-v2": handleActionPlanGeneration,
   "action-plan-generation-v3": handleActionPlanGeneration,

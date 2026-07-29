@@ -7,7 +7,7 @@ vi.hoisted(() => {
 });
 
 describe("gap review and approval", () => {
-  it("allows insufficient evidence but blocks unresolved conflicts", () => {
+  it("allows insufficient evidence and unresolved conflicts", () => {
     expect(() =>
       assertGapRevisionApprovable({
         expectedRequirementVersionIds: ["r1"],
@@ -23,7 +23,7 @@ describe("gap review and approval", () => {
         evidence: [],
         gaps: [atomicGap("f1")],
       }),
-    ).toThrow(/review blockers/i);
+    ).not.toThrow();
   });
 
   it("requires exact requirement coverage but allows fulfilled without a document", () => {

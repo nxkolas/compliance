@@ -644,8 +644,9 @@ A correction does not update the generated revision in place. It:
 
 AI questionnaire-disagreement metadata is informational. A manual correction
 suppresses stale disagreement metadata for the corrected requirement.
-Contradictions are blocking: every `requiresReview` flag must be resolved
-before finalization.
+Contradictions remain visible through `requiresReview` and `reviewNotice`, but
+they do not block finalization. Reviewers may optionally resolve them before
+creating the Action Plan.
 
 Primary implementation:
 
@@ -673,7 +674,7 @@ Inside one database transaction, the service:
 4. reconstructs and validates the pinned assessment and applicability chain;
 5. recomputes the exact applicable requirement set;
 6. requires exactly one finding for every applicable requirement;
-7. rejects unresolved review blockers or malformed citations;
+7. rejects malformed citations;
 8. changes the Gap revision from `generated`/`reviewed` to `approved`;
 9. sets `generated_artifacts.accepted_revision_id`;
 10. creates one active `action_plans` row;
@@ -884,7 +885,7 @@ therefore broader than the chat-provider policy alone suggests.
 | Generation | Provider/retrieval/validation failure | Job/draft become failed; explicit retry is available |
 | Generation | Output omits/duplicates a requirement or uses invalid citations | No result revision is persisted |
 | Generation | Successful Gap revision already exists | Further generation/input mutation rejected with `GAP_ALREADY_GENERATED` |
-| Review | Contradiction remains unresolved | Finalization blocked with `GAP_REVIEW_UNRESOLVED` |
+| Review | Contradiction remains unresolved | Warning remains visible; finalization is allowed |
 | Correction | Missing correction/resolution reason | Correction rejected |
 | Correction | Concurrent newer revision or existing plan | Correction rejected |
 | Finalization | Pinned assessment/document/applicability source changed or archived | Rejected with `GAP_SOURCES_STALE` |
