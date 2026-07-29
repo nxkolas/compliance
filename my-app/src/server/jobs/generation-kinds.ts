@@ -4,6 +4,7 @@ export const GAP_GENERATION_JOB_KINDS = [
   "gap-generation-v9",
   "gap-generation-v10",
   "gap-generation-v11",
+  "gap-generation-v12",
 ] as const;
 
 export const ACTION_PLAN_GENERATION_JOB_KINDS = [
@@ -16,6 +17,7 @@ export const ACTION_PLAN_GENERATION_JOB_KINDS = [
 ] as const;
 
 export function gapGenerationJobKind(responseSchemaVersion: string) {
+  if (responseSchemaVersion === "12") return GAP_GENERATION_JOB_KINDS[5];
   if (responseSchemaVersion === "11") return GAP_GENERATION_JOB_KINDS[4];
   if (responseSchemaVersion === "10") return GAP_GENERATION_JOB_KINDS[3];
   if (responseSchemaVersion === "9") return GAP_GENERATION_JOB_KINDS[2];

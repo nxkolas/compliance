@@ -53,10 +53,12 @@ finally {
 Expected output is `Cleared Drizzle-managed app tables.`
 
 The schema and operator-owned infrastructure remain installed. Confirm that
-the schema still has zero drift:
+the schema still has zero drift and reconcile the idempotent generation-job
+integrity function before publishing a new contract:
 
 ```powershell
 npm.cmd run db:push -- --explain
+npm.cmd run db:apply-operator-sql -- scripts/sql/database-integrity-triggers.sql
 npm.cmd run db:verify:server-only
 npm.cmd run db:verify:integrity
 ```
@@ -186,13 +188,13 @@ Publish the compatible Gap release and identify its audit actor:
 ```powershell
 $env:GAP_RELEASE_ACTOR_ID = $platformAdminUserId
 try {
-  npm.cmd run db:publish:gap -- --release nis2-gap/guided-v6
+  npm.cmd run db:publish:gap -- --release nis2-gap/reliability-v8
   if ($LASTEXITCODE -ne 0) { throw 'Gap publication failed' }
 
-  npm.cmd run db:verify:gap-requirements -- --release nis2-gap/guided-v6
+  npm.cmd run db:verify:gap-requirements -- --release nis2-gap/reliability-v8
   if ($LASTEXITCODE -ne 0) { throw 'Gap mapped-authority verification failed' }
 
-  npm.cmd run db:activate:gap -- --release nis2-gap/guided-v6
+  npm.cmd run db:activate:gap -- --release nis2-gap/reliability-v8
   if ($LASTEXITCODE -ne 0) { throw 'Gap activation failed' }
 }
 finally {

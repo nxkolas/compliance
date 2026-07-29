@@ -165,7 +165,9 @@ export async function generateGapAnalysis(input: {
     requirements: release.requirements,
   });
   if (
-    !["7", "8", "9", "10", "11"].includes(release.prompt.responseSchemaVersion)
+    !["7", "8", "9", "10", "11", "12"].includes(
+      release.prompt.responseSchemaVersion,
+    )
   ) {
     throw new ApiError(
       409,
@@ -434,7 +436,7 @@ async function generateGroundedGapResult(input: {
   }>;
 }) {
   if (
-    !["7", "8", "9", "10", "11"].includes(
+    !["7", "8", "9", "10", "11", "12"].includes(
       input.release.prompt.responseSchemaVersion,
     )
   ) {

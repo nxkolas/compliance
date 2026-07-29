@@ -16,6 +16,7 @@ async function main() {
       "reliability-v5": { gap: "11", actionPlan: "4" },
       "reliability-v6": { gap: "11", actionPlan: "5" },
       "reliability-v7": { gap: "11", actionPlan: "6" },
+      "reliability-v8": { gap: "12", actionPlan: "6" },
     };
   const expectedContract = expectedContracts[expectedVersion ?? ""];
   if (expectedCode !== "nis2-gap" || !expectedVersion || !expectedContract) {

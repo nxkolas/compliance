@@ -235,9 +235,7 @@ export function GapResultsStep({
           {workflow.canManage ? (
             <Button
               className="justify-self-start"
-              disabled={
-                Boolean(busy) || workflow.reviewBlockers.length > 0
-              }
+              disabled={Boolean(busy)}
               onClick={() => setShowFinalization(true)}
             >
               {busy === "finalize" ? (

@@ -143,6 +143,72 @@ describe("generated output language indicators", () => {
     expect(html).not.toContain("Nachweise und Details anzeigen");
   });
 
+  it("shows contradiction details without disabling action-plan creation", () => {
+    const labels = modulesMessages.de.modules.gapAnalysis.workflow;
+    const html = renderToStaticMarkup(
+      <GapResultsStep
+        organizationId="organization-1"
+        locale="de"
+        labels={labels}
+        onError={() => undefined}
+        workflow={{
+          revision: {
+            id: "revision-1",
+            outputLocale: "de",
+          },
+          findings: [
+            {
+              finding: {
+                id: "finding-1",
+                status: "not_fulfilled",
+                severity: "high",
+                requiresReview: true,
+                reviewNotice:
+                  "Fragebogen und Organisationsdokument widersprechen sich.",
+                gaps: [
+                  {
+                    id: "gap-1",
+                    statement: "Die Kontrolle ist nicht umgesetzt.",
+                  },
+                ],
+              },
+              requirement: {
+                code: "R1",
+                title: {
+                  de: "Deutsche Anforderung",
+                  en: "English requirement",
+                },
+              },
+              sources: [],
+              hasQuestionnaireDisagreement: false,
+              hasOrganizationDocument: true,
+              manuallyChanged: false,
+            },
+          ],
+          lifecycle: {
+            locked: false,
+            canFinalize: true,
+          },
+          canManage: true,
+          reviewBlockers: ["finding-1"],
+          staleness: null,
+          lastWorkflowChange: null,
+        } as never}
+      />,
+    );
+
+    expect(html).toContain("Widersprüchliche Angaben");
+    expect(html).toContain(
+      "Fragebogen und Organisationsdokument widersprechen sich.",
+    );
+    expect(html).toMatch(
+      /<button[^>]*>[\s\S]*Maßnahmenplan erstellen[\s\S]*<\/button>/u,
+    );
+    expect(html).not.toMatch(
+      /<button[^>]*disabled=""[^>]*>[\s\S]*Maßnahmenplan erstellen/u,
+    );
+  });
+
   it.each([
     [
       "de",

@@ -2,9 +2,11 @@ import "dotenv/config";
 
 import { closeDbConnection, db } from "@/src/db";
 import { activeLegalCorpusReleases, legalCorpusFamilies, legalCorpusReleases } from "@/src/db/schema";
+import { getRepositoryGapRelease } from "@/src/server/gap-analysis";
 import { and, eq, inArray, lte, or } from "drizzle-orm";
 
 const expectedFamilies = ["nis2-eu-primary", "nis2-de-primary"];
+const expectedGapRelease = getRepositoryGapRelease("nis2-gap/reliability-v8");
 
 async function main() {
   const corpusRows = await db
@@ -65,12 +67,15 @@ async function main() {
   });
   assert(
     gapRelease?.status === "published" &&
-      gapRelease.versionLabel === "guided-v6" &&
-      gapRelease.promptVersion === "7" &&
-      gapRelease.responseSchemaVersion === "7" &&
-      gapRelease.actionPlanPromptVersion === "1" &&
-      gapRelease.actionPlanResponseSchemaVersion === "1",
-    "The active NIS2 Gap release must be published guided-v6 contracts 7/1",
+      gapRelease.versionLabel === expectedGapRelease.versionLabel &&
+      gapRelease.promptName === expectedGapRelease.prompt.name &&
+      gapRelease.promptVersion === expectedGapRelease.prompt.version &&
+      gapRelease.responseSchemaVersion === expectedGapRelease.prompt.responseSchemaVersion &&
+      gapRelease.actionPlanPromptName === expectedGapRelease.actionPlanPrompt?.name &&
+      gapRelease.actionPlanPromptVersion === expectedGapRelease.actionPlanPrompt?.version &&
+      gapRelease.actionPlanResponseSchemaVersion ===
+        expectedGapRelease.actionPlanPrompt?.responseSchemaVersion,
+    `The active NIS2 Gap release must be published ${expectedGapRelease.versionLabel} contracts ${expectedGapRelease.prompt.version}/${expectedGapRelease.actionPlanPrompt?.version}`,
   );
   assert(
     gapRelease.compatibleCheckReleaseId === complianceRelease.id,

@@ -57,6 +57,7 @@ export const generationIssueCodes = [
   "normalized_line_wrap",
   "normalized_duplicate",
   "normalized_period",
+  "normalized_review_without_contradiction",
 ] as const;
 
 export type GenerationIssueCode = (typeof generationIssueCodes)[number];

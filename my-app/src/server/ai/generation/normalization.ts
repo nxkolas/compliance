@@ -2,7 +2,8 @@ export type NormalizationCode =
   | "normalized_whitespace"
   | "normalized_line_wrap"
   | "normalized_duplicate"
-  | "normalized_period";
+  | "normalized_period"
+  | "normalized_review_without_contradiction";
 
 export type NormalizedValue<T> = {
   value: T;

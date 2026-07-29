@@ -1009,7 +1009,7 @@ async function enqueueDraftGeneration(input: {
         },
         cancellable: true,
         cancellationCapability: "gap:contribute",
-        maxAttempts: ["8", "9", "10", "11"].includes(
+        maxAttempts: ["8", "9", "10", "11", "12"].includes(
           pinnedRelease.prompt.responseSchemaVersion,
         )
           ? 3

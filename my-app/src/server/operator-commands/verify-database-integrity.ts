@@ -100,13 +100,14 @@ async function main() {
     !jobResultFunction?.definition.includes("gap-generation-v9") ||
     !jobResultFunction.definition.includes("gap-generation-v10") ||
     !jobResultFunction.definition.includes("gap-generation-v11") ||
+    !jobResultFunction.definition.includes("gap-generation-v12") ||
     !jobResultFunction.definition.includes("action-plan-generation-v3") ||
     !jobResultFunction.definition.includes("action-plan-generation-v4") ||
     !jobResultFunction.definition.includes("action-plan-generation-v5") ||
     !jobResultFunction.definition.includes("action-plan-generation-v6")
   ) {
     throw new Error(
-      "Background-job result integrity does not recognize v9/v10/v11/v3/v4/v5/v6 generation jobs",
+      "Background-job result integrity does not recognize v9/v10/v11/v12/v3/v4/v5/v6 generation jobs",
     );
   }
   const [actionPlanIndex] = await sql<{ definition: string }[]>`
