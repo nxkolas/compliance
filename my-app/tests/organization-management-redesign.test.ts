@@ -47,6 +47,26 @@ describe("organization management permission invariants", () => {
 });
 
 describe("organization management shared UI contracts", () => {
+  it("keeps the selected organization independent from paginated switcher results", () => {
+    const sidebarSource = readFileSync(
+      resolve(process.cwd(), "components/app-sidebar.tsx"),
+      "utf8",
+    );
+    const switcherSource = readFileSync(
+      resolve(process.cwd(), "components/organization-switcher.tsx"),
+      "utf8",
+    );
+
+    expect(sidebarSource).toContain("listOrganizationsForUserPage({");
+    expect(sidebarSource).toContain("getOrganizationForUser(user.id, organizationId)");
+    expect(sidebarSource).toContain("nextCursor={organizationPage.nextCursor}");
+    expect(switcherSource).toContain("selectedOrganization?: SwitcherOrganization");
+    expect(switcherSource).toContain("organizationsClient.list({");
+    expect(switcherSource).toContain('query: query || undefined');
+    expect(switcherSource).toContain('new IntersectionObserver');
+    expect(switcherSource).toContain('className="shrink-0 border-t p-1"');
+  });
+
   it("keeps the OpenAI usage control in the organization edit dialog", () => {
     const source = readFileSync(
       resolve(

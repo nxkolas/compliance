@@ -17,7 +17,10 @@ import {
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { createClient } from "@/lib/supabase/server";
 import { hasEnvVars } from "@/lib/utils";
-import { listOrganizationsForUser } from "@/src/server/organizations/service";
+import {
+  getOrganizationForUser,
+  listOrganizationsForUserPage,
+} from "@/src/server/organizations/service";
 import { Suspense } from "react";
 
 type AppSidebarProps = {
@@ -71,6 +74,13 @@ export function AppSidebar({
                   manageLabel={
                     dictionary.organizations.switcherManage
                   }
+                  searchLabel={dictionary.organizations.switcherSearchLabel}
+                  searchPlaceholder={
+                    dictionary.organizations.switcherSearchPlaceholder
+                  }
+                  loadingLabel={dictionary.organizations.switcherLoading}
+                  noResultsLabel={dictionary.organizations.switcherNoResults}
+                  loadErrorLabel={dictionary.organizations.switcherLoadError}
                 />
               </Suspense>
             }
@@ -104,27 +114,53 @@ async function OrganizationSwitcherLoader({
   placeholder,
   createLabel,
   manageLabel,
+  searchLabel,
+  searchPlaceholder,
+  loadingLabel,
+  noResultsLabel,
+  loadErrorLabel,
 }: {
   organizationId?: string;
   placeholder: string;
   createLabel: string;
   manageLabel: string;
+  searchLabel: string;
+  searchPlaceholder: string;
+  loadingLabel: string;
+  noResultsLabel: string;
+  loadErrorLabel: string;
 }) {
   const user = await requireAuth();
-  const organizations = await listOrganizationsForUser(
-    user.id,
-  );
+  const [organizationPage, selectedOrganization] = await Promise.all([
+    listOrganizationsForUserPage({
+      userId: user.id,
+      status: "active",
+      limit: 25,
+    }),
+    organizationId
+      ? getOrganizationForUser(user.id, organizationId)
+      : Promise.resolve(null),
+  ]);
 
   return (
     <OrganizationSwitcher
-      organizations={organizations.map((organization) => ({
+      organizations={organizationPage.organizations.map((organization) => ({
         id: organization.id,
         name: organization.name,
       }))}
+      nextCursor={organizationPage.nextCursor}
+      selectedOrganization={selectedOrganization
+        ? { id: selectedOrganization.id, name: selectedOrganization.name }
+        : undefined}
       organizationId={organizationId}
       placeholder={placeholder}
       createLabel={createLabel}
       manageLabel={manageLabel}
+      searchLabel={searchLabel}
+      searchPlaceholder={searchPlaceholder}
+      loadingLabel={loadingLabel}
+      noResultsLabel={noResultsLabel}
+      loadErrorLabel={loadErrorLabel}
     />
   );
 }

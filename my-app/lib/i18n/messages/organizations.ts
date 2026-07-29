@@ -20,6 +20,11 @@ export const organizationsMessages = defineFeatureMessages({
           switcherCreate: "Neue Organisation erstellen",
           switcherManage: "Organisationen verwalten",
           switcherPlaceholder: "Organisation auswählen",
+          switcherSearchLabel: "Organisationen durchsuchen",
+          switcherSearchPlaceholder: "Suchen...",
+          switcherLoading: "Organisationen werden geladen…",
+          switcherNoResults: "Keine Organisationen gefunden.",
+          switcherLoadError: "Organisationen konnten nicht geladen werden.",
           pageDescription:
             "Prüfe alle Organisationen, zu denen du gehörst, und öffne einen Arbeitsbereich, um NIS2-Bewertungen zu verwalten.",
           newDescription:
@@ -263,6 +268,11 @@ export const organizationsMessages = defineFeatureMessages({
           switcherCreate: "Create new organization",
           switcherManage: "Manage organizations",
           switcherPlaceholder: "Select organization",
+          switcherSearchLabel: "Search organizations",
+          switcherSearchPlaceholder: "Search...",
+          switcherLoading: "Loading organizations…",
+          switcherNoResults: "No organizations found.",
+          switcherLoadError: "Organizations could not be loaded.",
           pageDescription:
             "Review every organization you belong to and open a workspace to manage NIS2 assessments.",
           newDescription:
