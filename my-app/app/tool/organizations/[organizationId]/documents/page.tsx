@@ -26,7 +26,7 @@ export default async function DocumentsPage({
     status:
       typeof rawSearchParams.status === "string"
         ? rawSearchParams.status
-        : undefined,
+        : "all",
     search:
       typeof rawSearchParams.search === "string"
         ? rawSearchParams.search
