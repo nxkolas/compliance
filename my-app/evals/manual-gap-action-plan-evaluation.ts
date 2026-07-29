@@ -1945,8 +1945,6 @@ async function enableOpenAi(organizationId: string) {
     userId: USER_ID,
     organizationId,
     openAiDisclosureApproved: true,
-    reason:
-      "Manual QA uses synthetic questionnaire and document data to evaluate the real gap-analysis workflow.",
     expectedVersion: policy.version,
     requestId: `manual-gap-eval-${RUN_ID}-${randomUUID()}`,
   });

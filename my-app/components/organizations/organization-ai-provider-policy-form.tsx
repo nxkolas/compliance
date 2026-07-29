@@ -6,7 +6,6 @@ import { ShieldCheck, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
@@ -30,7 +29,6 @@ export function OrganizationAiProviderPolicyForm({
 }) {
   const router = useRouter();
   const [approved, setApproved] = useState(policy.externalDisclosureAllowed && policy.allowedProviderModes.includes("openai"));
-  const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; message: string } | null>(null);
 
@@ -40,9 +38,7 @@ export function OrganizationAiProviderPolicyForm({
     try {
       await organizationsClient.updateAiProviderPolicy(organizationId, {
         openAiDisclosureApproved: approved,
-        reason,
       }, policy.version);
-      setReason("");
       setNotice({ tone: "success", message: labels.aiPolicySaveSuccess });
       router.refresh();
     } catch (error) {
@@ -77,12 +73,8 @@ export function OrganizationAiProviderPolicyForm({
             <p className="text-sm text-muted-foreground">{labels.aiPolicyOpenAiWarning}</p>
           </div>
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="ai-policy-reason">{labels.aiPolicyReasonLabel}</Label>
-          <Input id="ai-policy-reason" value={reason} disabled={!canManage || saving} onChange={(event) => setReason(event.target.value)} placeholder={labels.aiPolicyReasonPlaceholder} />
-        </div>
         {!canManage ? <p className="text-sm text-muted-foreground">{labels.aiPolicyReadOnly}</p> : null}
-        <Button className="w-fit" disabled={!canManage || saving || !reason.trim()} onClick={() => void save()}>
+        <Button className="w-fit" disabled={!canManage || saving} onClick={() => void save()}>
           {saving ? <Loader2 className="animate-spin" /> : <Save />}
           {saving ? labels.aiPolicySaving : labels.aiPolicySave}
         </Button>

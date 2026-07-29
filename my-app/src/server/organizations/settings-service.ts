@@ -12,7 +12,7 @@ import { organizationSettingsToken } from "./settings-concurrency";
 
 type SettingsInput = {
   organization: { name: string; legalName?: string | null; country: string };
-  policy: { openAiDisclosureApproved: boolean; reason: string };
+  policy: { openAiDisclosureApproved: boolean };
 };
 
 export async function getOrganizationSettings(
@@ -113,10 +113,6 @@ export async function updateOrganizationSettings(input: {
     const policyChanged =
       policy.externalDisclosureAllowed !==
       input.values.policy.openAiDisclosureApproved;
-    const reason = input.values.policy.reason.trim();
-    if (policyChanged && !reason) {
-      throw new ApiError(400, "A policy-change reason is required", undefined, "AI_POLICY_REASON_REQUIRED");
-    }
 
     let savedOrganization = organization;
     let savedPolicy = policy;
@@ -170,7 +166,7 @@ export async function updateOrganizationSettings(input: {
           : "organization.ai_provider_policy.openai_revoked",
         entityType: "organization_ai_provider_policy",
         entityId: organization.id,
-        metadata: { reason, version: savedPolicy.version, requestId: input.requestId },
+        metadata: { version: savedPolicy.version, requestId: input.requestId },
       });
     }
 

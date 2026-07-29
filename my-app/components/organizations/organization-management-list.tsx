@@ -614,7 +614,6 @@ function OrganizationEditDialog({
     legalName: "",
     country: "DE",
     openAiDisclosureApproved: false,
-    reason: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -651,7 +650,6 @@ function OrganizationEditDialog({
         openAiDisclosureApproved:
           data.settings.policy.externalDisclosureAllowed &&
           data.settings.policy.allowedProviderModes.includes("openai"),
-        reason: "",
       });
     }).catch((caught) => {
       if (!controller.signal.aborted) setError(localizeUiError(caught, { fallback: labels.loadError }));
@@ -669,7 +667,6 @@ function OrganizationEditDialog({
         organization: { name: form.name, legalName: form.legalName || null, country: form.country },
         policy: {
           openAiDisclosureApproved: form.openAiDisclosureApproved,
-          reason: form.reason,
         },
       }, settings.concurrencyToken);
       onSaved({
@@ -685,10 +682,6 @@ function OrganizationEditDialog({
       setSaving(false);
     }
   }
-
-  const policyChanged =
-    settings !== null &&
-    form.openAiDisclosureApproved !== settings.policy.externalDisclosureAllowed;
 
   return (
     <Dialog open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>
@@ -845,17 +838,6 @@ function OrganizationEditDialog({
                 <p className="max-w-2xl text-xs font-normal leading-5 text-gray-400">
                   {labels.aiPolicyDescription}
                 </p>
-              </div>
-              <div className={fieldBlockClassName}>
-                <Label htmlFor="edit-reason" className={fieldLabelClassName}>{labels.reason}</Label>
-                <Input
-                  id="edit-reason"
-                  value={form.reason}
-                  onChange={(event) => setForm({ ...form, reason: event.target.value })}
-                  required={policyChanged}
-                  disabled={saving}
-                  className={`${inputClassName} w-full`}
-                />
               </div>
             </div>
 
