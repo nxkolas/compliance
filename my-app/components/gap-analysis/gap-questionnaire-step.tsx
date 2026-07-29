@@ -12,7 +12,6 @@ export function GapQuestionnaireStep({
   busy,
   saveState,
   onAnswer,
-  onFlush,
   onContinue,
 }: {
   workflow: GapWorkflow;
@@ -21,7 +20,6 @@ export function GapQuestionnaireStep({
   busy: boolean;
   saveState: "idle" | "saving" | "saved" | "error" | "conflict";
   onAnswer: (questionId: string, optionId: string) => Promise<void>;
-  onFlush: () => Promise<void>;
   onContinue: () => void;
 }) {
   const release = workflow.release!;
@@ -48,8 +46,7 @@ export function GapQuestionnaireStep({
   ).length;
   const isLast = categoryIndex === categories.length - 1;
 
-  async function move(nextIndex: number) {
-    await onFlush();
+  function move(nextIndex: number) {
     setCategoryIndex(nextIndex);
   }
 
@@ -78,11 +75,7 @@ export function GapQuestionnaireStep({
         aria-live="polite"
         className="min-h-5 text-sm text-muted-foreground"
       >
-        {saveState === "saving" ? (
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> {labels.saving}
-          </span>
-        ) : saveState === "saved" ? (
+        {saveState === "saved" ? (
           labels.saved
         ) : saveState === "conflict" ? (
           <span className="text-destructive">{labels.draftConflict}</span>
@@ -138,8 +131,8 @@ export function GapQuestionnaireStep({
           <Button
             type="button"
             variant="outline"
-            disabled={categoryIndex === 0 || saveState === "saving"}
-            onClick={() => void move(categoryIndex - 1)}
+            disabled={categoryIndex === 0}
+            onClick={() => move(categoryIndex - 1)}
           >
             <ChevronLeft />
             {labels.previousCategory}
@@ -148,7 +141,6 @@ export function GapQuestionnaireStep({
             <Button
               disabled={
                 busy ||
-                saveState === "saving" ||
                 saveState === "error" ||
                 saveState === "conflict" ||
                 missing.length > 0
