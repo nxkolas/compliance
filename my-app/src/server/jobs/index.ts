@@ -23,3 +23,12 @@ export {
   recordWorkerDomainCancellation,
   recordWorkerDomainFailure,
 } from "./domain-state";
+export {
+  finalizeGenerationJobCancellation,
+  finalizeGenerationJobFailure,
+} from "./generation-finalization";
+export {
+  listTerminalParentProcessingRuns,
+  readGenerationLifecycleInvariants,
+  reconcileTerminalParentProcessingRuns,
+} from "./generation-reconciliation";

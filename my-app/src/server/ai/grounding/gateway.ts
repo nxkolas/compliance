@@ -39,66 +39,137 @@ import {
   GAP_GROUNDING_INSTRUCTION,
   gapOutputLocaleInstruction,
 } from "@/src/server/gap-analysis";
+import { createAiProcessingRunWithLiveJobGate } from "../generation/job-run-lifecycle";
 
-export async function runGroundedOperation<T>(input: {
-  operation: "gap_analysis";
-  runOperationKind?:
-    | "gap_analysis"
-    | "gap_guidance_regeneration"
-    | "action_plan_generation";
-  actor: { userId: string };
-  organizationId: string;
-  outputLocale: "de" | "en";
-  workflowReleaseId: string;
-  asOfDate: string;
-  organizationEvidenceVersionIds: string[];
-  questionnaireAssertions?: Array<{
-    answerId: string;
-    queryUnitId: string;
-    excerpt: string;
-  }>;
-  queryUnits: QueryUnit[];
-  systemInstruction?: string;
-  outputContract: GroundedOutputContract<T>;
-  idempotencyKey: string;
-  assessmentRevisionId?: string;
-  jobId?: string;
-  promptMetadata?: {
-    name: string;
-    version: string;
-    templateHash: string;
-    responseSchemaVersion: string;
-  };
-  abortSignal?: AbortSignal;
-}, dependencies: {
-  providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
-  languageDetector?: LanguageDetector;
-} = {}) {
-  const existing = await db.query.aiProcessingRuns.findFirst({ columns: { id: true, organizationId: true, assessmentRevisionId: true, operationKind: true, status: true, outputLocale: true, attemptCount: true, languageValidation: true, inputHash: true, idempotencyKey: true, provider: true, model: true, promptName: true, promptVersion: true, promptTemplateHash: true, renderedInputHash: true, responseSchemaVersion: true, inputTokens: true, outputTokens: true, cachedInputTokens: true, validatedOutput: true, jobId: true, providerPolicyVersion: true, corpusReleaseSetHash: true, provenanceStatus: true, cancellationRequestedAt: true, outputArtifactRevisionId: true, errorCode: true, errorMessage: true, createdBy: true, createdAt: true, startedAt: true, completedAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.organizationId, input.organizationId),
-      eq(
-        table.operationKind,
-        input.runOperationKind ?? "gap_analysis",
-      ),
-      eq(table.idempotencyKey, input.idempotencyKey),
-    )) ?? operators.sql`true` },
+export async function runGroundedOperation<T>(
+  input: {
+    operation: "gap_analysis";
+    runOperationKind?:
+      "gap_analysis" | "gap_guidance_regeneration" | "action_plan_generation";
+    actor: { userId: string };
+    organizationId: string;
+    outputLocale: "de" | "en";
+    workflowReleaseId: string;
+    asOfDate: string;
+    organizationEvidenceVersionIds: string[];
+    questionnaireAssertions?: Array<{
+      answerId: string;
+      queryUnitId: string;
+      excerpt: string;
+    }>;
+    queryUnits: QueryUnit[];
+    systemInstruction?: string;
+    outputContract: GroundedOutputContract<T>;
+    idempotencyKey: string;
+    assessmentRevisionId?: string;
+    jobId?: string;
+    promptMetadata?: {
+      name: string;
+      version: string;
+      templateHash: string;
+      responseSchemaVersion: string;
+    };
+    abortSignal?: AbortSignal;
+  },
+  dependencies: {
+    providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
+    languageDetector?: LanguageDetector;
+  } = {},
+) {
+  const existing = await db.query.aiProcessingRuns.findFirst({
+    columns: {
+      id: true,
+      organizationId: true,
+      assessmentRevisionId: true,
+      operationKind: true,
+      status: true,
+      outputLocale: true,
+      attemptCount: true,
+      languageValidation: true,
+      inputHash: true,
+      idempotencyKey: true,
+      provider: true,
+      model: true,
+      promptName: true,
+      promptVersion: true,
+      promptTemplateHash: true,
+      renderedInputHash: true,
+      responseSchemaVersion: true,
+      inputTokens: true,
+      outputTokens: true,
+      cachedInputTokens: true,
+      validatedOutput: true,
+      jobId: true,
+      providerPolicyVersion: true,
+      corpusReleaseSetHash: true,
+      provenanceStatus: true,
+      cancellationRequestedAt: true,
+      outputArtifactRevisionId: true,
+      errorCode: true,
+      errorMessage: true,
+      createdBy: true,
+      createdAt: true,
+      startedAt: true,
+      completedAt: true,
+    },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.organizationId, input.organizationId),
+          eq(table.operationKind, input.runOperationKind ?? "gap_analysis"),
+          eq(table.idempotencyKey, input.idempotencyKey),
+        ) ?? operators.sql`true`,
+    },
   });
   if (existing) {
-    assertOutputLocaleMatches(
-      existing.outputLocale,
-      input.outputLocale,
-      { runId: existing.id },
-    );
+    assertOutputLocaleMatches(existing.outputLocale, input.outputLocale, {
+      runId: existing.id,
+    });
   }
   if (existing?.status === "processing" && existing.validatedOutput !== null) {
-    const rows = await db.query.aiProcessingRunContext.findMany({ columns: { id: true, runId: true, channel: true, citationId: true, queryUnitId: true, queryHash: true, retrievalRank: true, retrievalScore: true, retrievalPolicyVersion: true, lexicalScore: true, semanticScore: true, combinedScore: true, selectionRole: true, preferredMappedProvision: true, mappedLegalProvisionId: true, retrievalDiagnostics: true, legalChunkId: true, documentChunkId: true, assessmentAnswerId: true, excerptHash: true, excerptSnapshot: true, disclosedExternally: true, promptPosition: true, createdAt: true },
-      where: { RAW: (table, operators) => (eq(table.runId, existing.id)) ?? operators.sql`true` },
+    const rows = await db.query.aiProcessingRunContext.findMany({
+      columns: {
+        id: true,
+        runId: true,
+        channel: true,
+        citationId: true,
+        queryUnitId: true,
+        queryHash: true,
+        retrievalRank: true,
+        retrievalScore: true,
+        retrievalPolicyVersion: true,
+        lexicalScore: true,
+        semanticScore: true,
+        combinedScore: true,
+        selectionRole: true,
+        preferredMappedProvision: true,
+        mappedLegalProvisionId: true,
+        retrievalDiagnostics: true,
+        legalChunkId: true,
+        documentChunkId: true,
+        assessmentAnswerId: true,
+        excerptHash: true,
+        excerptSnapshot: true,
+        disclosedExternally: true,
+        promptPosition: true,
+        createdAt: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.runId, existing.id) ?? operators.sql`true`,
+      },
       orderBy: { promptPosition: "asc" },
     });
     const context = rows.map((row): GroundingContextItem => {
-      const sourceId = row.legalChunkId ?? row.documentChunkId ?? row.assessmentAnswerId;
-      if (!sourceId) throw new ApiError(409, "Grounding recovery context is incomplete", undefined, "GROUNDING_RECOVERY_INCOMPLETE");
+      const sourceId =
+        row.legalChunkId ?? row.documentChunkId ?? row.assessmentAnswerId;
+      if (!sourceId)
+        throw new ApiError(
+          409,
+          "Grounding recovery context is incomplete",
+          undefined,
+          "GROUNDING_RECOVERY_INCOMPLETE",
+        );
       return {
         channel: row.channel,
         citationId: row.citationId,
@@ -113,20 +184,13 @@ export async function runGroundedOperation<T>(input: {
           recovered: true,
           retrievalPolicyVersion: row.retrievalPolicyVersion,
           lexicalScore:
-            row.lexicalScore === null
-              ? undefined
-              : Number(row.lexicalScore),
+            row.lexicalScore === null ? undefined : Number(row.lexicalScore),
           semanticScore:
-            row.semanticScore === null
-              ? undefined
-              : Number(row.semanticScore),
+            row.semanticScore === null ? undefined : Number(row.semanticScore),
           combinedScore:
-            row.combinedScore === null
-              ? undefined
-              : Number(row.combinedScore),
+            row.combinedScore === null ? undefined : Number(row.combinedScore),
           selectionRole: row.selectionRole,
-          preferredMappedProvision:
-            row.preferredMappedProvision,
+          preferredMappedProvision: row.preferredMappedProvision,
           legalProvisionId: row.mappedLegalProvisionId,
           retrievalDiagnostics: row.retrievalDiagnostics,
         },
@@ -144,8 +208,17 @@ export async function runGroundedOperation<T>(input: {
       recovered: true,
     };
   }
-  if (existing) throw new ApiError(409, "Grounded operation already exists", { runId: existing.id }, "GROUNDING_RUN_EXISTS");
-  const policy = await resolveGroundingPolicy({ operation: input.operation, organizationId: input.organizationId });
+  if (existing)
+    throw new ApiError(
+      409,
+      "Grounded operation already exists",
+      { runId: existing.id },
+      "GROUNDING_RUN_EXISTS",
+    );
+  const policy = await resolveGroundingPolicy({
+    operation: input.operation,
+    organizationId: input.organizationId,
+  });
   const providers = dependencies.providers ?? configuredProviders();
   const provider = selectGroundedProvider({
     allowedModes: policy.providerPolicy.allowedProviderModes,
@@ -153,43 +226,57 @@ export async function runGroundedOperation<T>(input: {
     providers,
     preferredMode: process.env.AI_DEFAULT_PROVIDER,
   });
-  const retrievedContext = (await Promise.all(input.queryUnits.map(async (unit) => {
-    const legalRetrievalQuery = resolveGroundingRetrievalQuery(unit, "legal");
-    const organizationRetrievalQuery = resolveGroundingRetrievalQuery(
-      unit,
-      "organization_document",
-    );
-    const legal = await retrievePinnedLegalContext({
-      workflowKind: policy.workflowKind,
-      workflowReleaseId: input.workflowReleaseId,
-      familyCodes: policy.familyCodes,
-      frameworkCode: policy.frameworkCode,
-      jurisdictionCodes: policy.jurisdictionCodes,
-      asOfDate: input.asOfDate,
-      language: "de",
-      queryUnitId: unit.id,
-      query: legalRetrievalQuery,
-      preferredMappedLegalProvisionIds:
-        unit.preferredMappedLegalProvisionIds,
-      preferredMappedLegalProvisionKeys:
-        unit.preferredMappedLegalProvisionKeys,
-      tierLimits: unit.legalTierLimits,
-    });
-    const organization = input.organizationEvidenceVersionIds.length
-      ? await retrieveOrganizationContext({
-          userId: input.actor.userId,
-          organizationId: input.organizationId,
-          documentVersionIds: input.organizationEvidenceVersionIds,
+  const retrievedContext = (
+    await Promise.all(
+      input.queryUnits.map(async (unit) => {
+        const legalRetrievalQuery = resolveGroundingRetrievalQuery(
+          unit,
+          "legal",
+        );
+        const organizationRetrievalQuery = resolveGroundingRetrievalQuery(
+          unit,
+          "organization_document",
+        );
+        const legal = await retrievePinnedLegalContext({
+          workflowKind: policy.workflowKind,
+          workflowReleaseId: input.workflowReleaseId,
+          familyCodes: policy.familyCodes,
+          frameworkCode: policy.frameworkCode,
+          jurisdictionCodes: policy.jurisdictionCodes,
+          asOfDate: input.asOfDate,
+          language: "de",
           queryUnitId: unit.id,
-          query: organizationRetrievalQuery,
-        })
-      : [];
-    return [...legal, ...organization];
-  }))).flat();
+          query: legalRetrievalQuery,
+          preferredMappedLegalProvisionIds:
+            unit.preferredMappedLegalProvisionIds,
+          preferredMappedLegalProvisionKeys:
+            unit.preferredMappedLegalProvisionKeys,
+          tierLimits: unit.legalTierLimits,
+        });
+        const organization = input.organizationEvidenceVersionIds.length
+          ? await retrieveOrganizationContext({
+              userId: input.actor.userId,
+              organizationId: input.organizationId,
+              documentVersionIds: input.organizationEvidenceVersionIds,
+              queryUnitId: unit.id,
+              query: organizationRetrievalQuery,
+            })
+          : [];
+        return [...legal, ...organization];
+      }),
+    )
+  ).flat();
   const queryIds = new Set(input.queryUnits.map((unit) => unit.id));
-  const assertions: GroundingContextItem[] = (input.questionnaireAssertions ?? []).map((assertion, index) => {
+  const assertions: GroundingContextItem[] = (
+    input.questionnaireAssertions ?? []
+  ).map((assertion, index) => {
     if (!queryIds.has(assertion.queryUnitId)) {
-      throw new ApiError(400, "Questionnaire assertion query unit is invalid", undefined, "GROUNDING_ASSERTION_INVALID");
+      throw new ApiError(
+        400,
+        "Questionnaire assertion query unit is invalid",
+        undefined,
+        "GROUNDING_ASSERTION_INVALID",
+      );
     }
     return {
       channel: "questionnaire_assertion" as const,
@@ -201,7 +288,12 @@ export async function runGroundedOperation<T>(input: {
       rank: index + 1,
       score: 1,
       metadata: {
-        queryHash: createHash("sha256").update(input.queryUnits.find((unit) => unit.id === assertion.queryUnitId)!.query).digest("hex"),
+        queryHash: createHash("sha256")
+          .update(
+            input.queryUnits.find((unit) => unit.id === assertion.queryUnitId)!
+              .query,
+          )
+          .digest("hex"),
         selectionRole: "questionnaire_assertion",
       },
     };
@@ -215,9 +307,19 @@ export async function runGroundedOperation<T>(input: {
   if (input.systemInstruction) {
     prompt.system += ` ${input.systemInstruction}`;
   }
-  const promptHash = createHash("sha256").update(`${prompt.system}\n${prompt.prompt}`).digest("hex");
-  const corpusReleaseSetHash = createHash("sha256").update(context.filter((item) => item.channel === "legal").map((item) => item.metadata.corpusReleaseId).sort().join("\n")).digest("hex");
-  const [run] = await db.insert(aiProcessingRuns).values({
+  const promptHash = createHash("sha256")
+    .update(`${prompt.system}\n${prompt.prompt}`)
+    .digest("hex");
+  const corpusReleaseSetHash = createHash("sha256")
+    .update(
+      context
+        .filter((item) => item.channel === "legal")
+        .map((item) => item.metadata.corpusReleaseId)
+        .sort()
+        .join("\n"),
+    )
+    .digest("hex");
+  const run = await createAiProcessingRunWithLiveJobGate({
     organizationId: input.organizationId,
     assessmentRevisionId: input.assessmentRevisionId,
     operationKind: input.runOperationKind ?? "gap_analysis",
@@ -228,14 +330,15 @@ export async function runGroundedOperation<T>(input: {
       input.outputLocale,
       dependencies.languageDetector ?? localAggregateLanguageDetector,
     ),
-    inputHash: createHash("sha256").update(JSON.stringify(input.queryUnits)).digest("hex"),
+    inputHash: createHash("sha256")
+      .update(JSON.stringify(input.queryUnits))
+      .digest("hex"),
     idempotencyKey: input.idempotencyKey,
     provider: provider.provider,
     model: provider.model,
     promptName: input.promptMetadata?.name ?? "grounded-gap-analysis",
     promptVersion: input.promptMetadata?.version ?? "v4",
-    promptTemplateHash:
-      input.promptMetadata?.templateHash ?? promptHash,
+    promptTemplateHash: input.promptMetadata?.templateHash ?? promptHash,
     renderedInputHash: promptHash,
     responseSchemaVersion:
       input.promptMetadata?.responseSchemaVersion ?? "grounding-v4",
@@ -245,7 +348,7 @@ export async function runGroundedOperation<T>(input: {
     jobId: input.jobId,
     createdBy: input.actor.userId,
     startedAt: new Date(),
-  }).returning();
+  });
   try {
     const result =
       input.outputContract.languagePolicy === "localized"
@@ -256,8 +359,7 @@ export async function runGroundedOperation<T>(input: {
             expectedLocale: input.outputLocale,
             generatedProse: input.outputContract.generatedProse,
             detector:
-              dependencies.languageDetector ??
-              localAggregateLanguageDetector,
+              dependencies.languageDetector ?? localAggregateLanguageDetector,
             abortSignal: input.abortSignal,
             async onProviderAttempt(progress) {
               await db
@@ -295,11 +397,20 @@ export async function runGroundedOperation<T>(input: {
       claims: input.outputContract.claims(parsed),
     });
     if (!hasCompleteQueryUnitCoverage(input.queryUnits, claims)) {
-      throw new ApiError(422, "Grounded output omitted a query unit", undefined, "GROUNDING_COVERAGE_INCOMPLETE");
+      throw new ApiError(
+        422,
+        "Grounded output omitted a query unit",
+        undefined,
+        "GROUNDING_COVERAGE_INCOMPLETE",
+      );
     }
-    const invalid = claims.filter((claim) =>
-      claim.validation !== "supported"
-      && !(claim.validation === "conflicting" && input.outputContract.allowConflictingClaim?.(parsed, claim)),
+    const invalid = claims.filter(
+      (claim) =>
+        claim.validation !== "supported" &&
+        !(
+          claim.validation === "conflicting" &&
+          input.outputContract.allowConflictingClaim?.(parsed, claim)
+        ),
     );
     if (invalid.length) {
       throw new ApiError(
@@ -315,9 +426,12 @@ export async function runGroundedOperation<T>(input: {
       claims,
       disclosedExternally: provider.mode === "openai",
     });
-    await db.update(aiProcessingRuns).set({
-      validatedOutput: parsed,
-    }).where(eq(aiProcessingRuns.id, run.id));
+    await db
+      .update(aiProcessingRuns)
+      .set({
+        validatedOutput: parsed,
+      })
+      .where(eq(aiProcessingRuns.id, run.id));
     return {
       runId: run.id,
       output: parsed,
@@ -326,26 +440,29 @@ export async function runGroundedOperation<T>(input: {
       claims,
     };
   } catch (error) {
-    await db.update(aiProcessingRuns).set({
-      status: "failed",
-      errorCode:
-        error instanceof ApiError
-          ? error.code
-          : error instanceof Error && error.name === "AbortError"
-            ? "GENERATION_CANCELLED"
-            : "GROUNDING_FAILED",
-      errorMessage: safeGroundingFailureMessage(error),
-      ...(error instanceof LanguagePolicyError
-        ? {
-            attemptCount: error.attemptCount,
-            languageValidation: error.languageValidation,
-            inputTokens: error.usage.inputTokens,
-            outputTokens: error.usage.outputTokens,
-            cachedInputTokens: error.usage.cachedInputTokens,
-          }
-        : {}),
-      completedAt: new Date(),
-    }).where(eq(aiProcessingRuns.id, run.id));
+    await db
+      .update(aiProcessingRuns)
+      .set({
+        status: "failed",
+        errorCode:
+          error instanceof ApiError
+            ? error.code
+            : error instanceof Error && error.name === "AbortError"
+              ? "GENERATION_CANCELLED"
+              : "GROUNDING_FAILED",
+        errorMessage: safeGroundingFailureMessage(error),
+        ...(error instanceof LanguagePolicyError
+          ? {
+              attemptCount: error.attemptCount,
+              languageValidation: error.languageValidation,
+              inputTokens: error.usage.inputTokens,
+              outputTokens: error.usage.outputTokens,
+              cachedInputTokens: error.usage.cachedInputTokens,
+            }
+          : {}),
+        completedAt: new Date(),
+      })
+      .where(eq(aiProcessingRuns.id, run.id));
     throw error;
   }
 }

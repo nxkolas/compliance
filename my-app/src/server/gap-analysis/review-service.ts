@@ -395,7 +395,10 @@ export async function regenerateAndCorrectGapFinding(input: {
   if (
     !release ||
     (release.prompt.responseSchemaVersion !== "7" &&
-      release.prompt.responseSchemaVersion !== "8")
+      release.prompt.responseSchemaVersion !== "8" &&
+      release.prompt.responseSchemaVersion !== "9" &&
+      release.prompt.responseSchemaVersion !== "10" &&
+      release.prompt.responseSchemaVersion !== "11")
   ) {
     throw new ApiError(
       409,

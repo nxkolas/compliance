@@ -31,10 +31,12 @@ describe("generation reliability runtime", () => {
   });
 
   it("classifies terminal, transient, content, and cancellation failures", () => {
-    expect(classifyGenerationFailure(new ApiError(409, "stale")).failureClass)
-      .toBe("terminal_input");
-    expect(classifyGenerationFailure(new ApiError(422, "invalid")).failureClass)
-      .toBe("repairable_content");
+    expect(
+      classifyGenerationFailure(new ApiError(409, "stale")).failureClass,
+    ).toBe("terminal_input");
+    expect(
+      classifyGenerationFailure(new ApiError(422, "invalid")).failureClass,
+    ).toBe("repairable_content");
     expect(
       classifyGenerationFailure(
         new ApiError(429, "limited", undefined, "RATE_LIMITED", {
@@ -53,10 +55,7 @@ describe("generation reliability runtime", () => {
   it("combines cancellation and timeout signals", () => {
     const cancellation = new AbortController();
     const timeout = new AbortController();
-    const combined = combineAbortSignals([
-      cancellation.signal,
-      timeout.signal,
-    ]);
+    const combined = combineAbortSignals([cancellation.signal, timeout.signal]);
     cancellation.abort("cancelled");
     expect(combined.aborted).toBe(true);
     expect(combined.reason).toBe("cancelled");
@@ -99,7 +98,10 @@ describe("generation reliability runtime", () => {
       })),
       async generate({ task, phase }) {
         calls.push(`${task.categoryCode}:${phase}`);
-        return { code: task.categoryCode, valid: task.categoryCode !== "B" || phase === "repair" };
+        return {
+          code: task.categoryCode,
+          valid: task.categoryCode !== "B" || phase === "repair",
+        };
       },
       validate(candidate) {
         return candidate.valid
@@ -107,29 +109,37 @@ describe("generation reliability runtime", () => {
           : {
               valid: false as const,
               failureClass: "repairable_content" as const,
-              issues: [{ code: "coverage_incomplete" as const, path: ["gaps"] }],
+              issues: [
+                { code: "coverage_incomplete" as const, path: ["gaps"] },
+              ],
             };
       },
     });
     expect(result.categories).toEqual(["A", "B", "C"]);
-    expect(calls.filter((call) => call.startsWith("A:"))).toEqual(["A:initial"]);
+    expect(calls.filter((call) => call.startsWith("A:"))).toEqual([
+      "A:initial",
+    ]);
     expect(calls.filter((call) => call.startsWith("B:"))).toEqual([
       "B:initial",
       "B:repair",
     ]);
-    expect(calls.filter((call) => call.startsWith("C:"))).toEqual(["C:initial"]);
+    expect(calls.filter((call) => call.startsWith("C:"))).toEqual([
+      "C:initial",
+    ]);
   });
 
   it("reuses recovered categories and bounds concurrency", async () => {
     let active = 0;
     let maximum = 0;
-    const generate = vi.fn(async ({ task }: { task: { categoryCode: string } }) => {
-      active += 1;
-      maximum = Math.max(maximum, active);
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      active -= 1;
-      return task.categoryCode;
-    });
+    const generate = vi.fn(
+      async ({ task }: { task: { categoryCode: string } }) => {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+        return task.categoryCode;
+      },
+    );
     const result = await coordinateCategoryGeneration<string, string, string>({
       signal: new AbortController().signal,
       concurrency: 2,
@@ -221,6 +231,63 @@ describe("generation reliability runtime", () => {
       safeCode: "GENERATION_CATEGORY_REPAIR_EXHAUSTED",
     });
     expect(calls).toEqual(["A:initial", "B:initial", "B:repair"]);
+  });
+
+  it("aborts and settles active siblings before preserving the first terminal failure", async () => {
+    let active = 0;
+    const started: string[] = [];
+    const diagnostics: string[] = [];
+    const generation = coordinateCategoryGeneration<string, string, string>({
+      signal: new AbortController().signal,
+      concurrency: 2,
+      tasks: ["A", "B", "C"].map((categoryCode) => ({
+        categoryCode,
+        taskId: categoryCode,
+        input: categoryCode,
+      })),
+      generate: ({ task, phase, signal }) => {
+        started.push(`${task.categoryCode}:${phase}`);
+        if (task.categoryCode === "B") return Promise.resolve("B");
+        active += 1;
+        return new Promise<string>((resolve, reject) => {
+          const timer = setTimeout(() => {
+            active -= 1;
+            resolve(task.categoryCode);
+          }, 250);
+          const abort = () => {
+            clearTimeout(timer);
+            active -= 1;
+            const error = new Error("sibling cancelled");
+            error.name = "AbortError";
+            reject(error);
+          };
+          signal.addEventListener("abort", abort, { once: true });
+          if (signal.aborted) abort();
+        });
+      },
+      validate(candidate) {
+        return candidate === "B"
+          ? {
+              valid: false,
+              failureClass: "repairable_content",
+              issues: [{ code: "content_invalid", path: [] }],
+            }
+          : { valid: true, value: candidate };
+      },
+      onDiagnostic(diagnostic) {
+        diagnostics.push(
+          `${diagnostic.categoryCode}:${diagnostic.disposition}`,
+        );
+      },
+    });
+
+    await expect(generation).rejects.toMatchObject({
+      safeCode: "GENERATION_CATEGORY_REPAIR_EXHAUSTED",
+    });
+    expect(active).toBe(0);
+    expect(started).not.toContain("C:initial");
+    expect(diagnostics).toContain("A:cancelled");
+    expect(diagnostics.at(-1)).toBe("A:cancelled");
   });
 
   it("aborts active categories and stops scheduling queued work", async () => {

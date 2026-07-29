@@ -1,6 +1,8 @@
 import {
   failJob,
   finalizeJobCancellation,
+  finalizeGenerationJobCancellation,
+  finalizeGenerationJobFailure,
   heartbeatJob,
   isActionPlanGenerationJobKind,
   isGapGenerationJobKind,
@@ -28,20 +30,30 @@ import {
 } from "@/src/server/ai/generation";
 
 const handlers = {
-  "legal-source-process": (job: Parameters<typeof handleLegalSourceProcess>[0]) =>
-    handleLegalSourceProcess(job),
+  "legal-source-process": (
+    job: Parameters<typeof handleLegalSourceProcess>[0],
+  ) => handleLegalSourceProcess(job),
   "legal-source-embed": (job: Parameters<typeof handleLegalSourceEmbed>[0]) =>
     handleLegalSourceEmbed(job),
-  "legal-source-monitor": (job: Parameters<typeof handleLegalSourceMonitor>[0]) =>
-    handleLegalSourceMonitor(job),
+  "legal-source-monitor": (
+    job: Parameters<typeof handleLegalSourceMonitor>[0],
+  ) => handleLegalSourceMonitor(job),
   "legal-source-import": (job: Parameters<typeof handleLegalSourceImport>[0]) =>
     handleLegalSourceImport(job),
-  "grounding-evaluation": (job: Parameters<typeof handleGroundingEvaluation>[0]) =>
-    handleGroundingEvaluation(job),
+  "grounding-evaluation": (
+    job: Parameters<typeof handleGroundingEvaluation>[0],
+  ) => handleGroundingEvaluation(job),
   "gap-generation": handleGapGeneration,
   "gap-generation-v8": handleGapGeneration,
+  "gap-generation-v9": handleGapGeneration,
+  "gap-generation-v10": handleGapGeneration,
+  "gap-generation-v11": handleGapGeneration,
   "action-plan-generation": handleActionPlanGeneration,
   "action-plan-generation-v2": handleActionPlanGeneration,
+  "action-plan-generation-v3": handleActionPlanGeneration,
+  "action-plan-generation-v4": handleActionPlanGeneration,
+  "action-plan-generation-v5": handleActionPlanGeneration,
+  "action-plan-generation-v6": handleActionPlanGeneration,
   "report-render": (job: Parameters<typeof handleReportRender>[0]) =>
     handleReportRender(job),
   cleanup: (job: Parameters<typeof handleCleanup>[0]) => handleCleanup(job),
@@ -77,8 +89,18 @@ export async function runOneJob(workerId: string) {
   const cancellationMonitor = monitorJobCancellation(job.id);
   try {
     if (job.state === "cancellation_requested") {
-      await finalizeJobCancellation(job.id, workerId);
-      await recordWorkerDomainCancellation(job);
+      if (
+        isGapGenerationJobKind(job.kind) ||
+        isActionPlanGenerationJobKind(job.kind)
+      ) {
+        await finalizeGenerationJobCancellation({
+          jobId: job.id,
+          workerId,
+        });
+      } else {
+        await finalizeJobCancellation(job.id, workerId);
+        await recordWorkerDomainCancellation(job);
+      }
       outcome = "cancelled";
       return true;
     }
@@ -99,8 +121,18 @@ export async function runOneJob(workerId: string) {
     if (current.state === "succeeded") {
       outcome = "succeeded";
     } else if (current.state === "cancellation_requested") {
-      await finalizeJobCancellation(job.id, workerId);
-      await recordWorkerDomainCancellation(job);
+      if (
+        isGapGenerationJobKind(job.kind) ||
+        isActionPlanGenerationJobKind(job.kind)
+      ) {
+        await finalizeGenerationJobCancellation({
+          jobId: job.id,
+          workerId,
+        });
+      } else {
+        await finalizeJobCancellation(job.id, workerId);
+        await recordWorkerDomainCancellation(job);
+      }
       outcome = "cancelled";
     } else {
       await succeedJob({ jobId: job.id, workerId, result });
@@ -127,41 +159,57 @@ export async function runOneJob(workerId: string) {
         ...(error instanceof ApiError ? { details: error.details } : {}),
       });
     }
-    if (
-      cancellationMonitor.signal.aborted ||
-      isCancellationFailure(error)
-    ) {
-      await finalizeJobCancellation(job.id, workerId);
-      await recordWorkerDomainCancellation(job);
+    if (cancellationMonitor.signal.aborted || isCancellationFailure(error)) {
+      if (
+        isGapGenerationJobKind(job.kind) ||
+        isActionPlanGenerationJobKind(job.kind)
+      ) {
+        await finalizeGenerationJobCancellation({
+          jobId: job.id,
+          workerId,
+        });
+      } else {
+        await finalizeJobCancellation(job.id, workerId);
+        await recordWorkerDomainCancellation(job);
+      }
       outcome = "cancelled";
       return true;
     }
     const generationFailure =
       isGapGenerationJobKind(job.kind) ||
       isActionPlanGenerationJobKind(job.kind)
-      ? classifyGenerationFailure(error)
-      : null;
-    const errorCode = generationFailure?.safeCode ??
+        ? classifyGenerationFailure(error)
+        : null;
+    const errorCode =
+      generationFailure?.safeCode ??
       (error instanceof Error && error.name === "AbortError"
         ? "JOB_TIMEOUT"
         : error instanceof ApiError
           ? error.code
           : "JOB_FAILED");
-    const failed = await failJob({
-      jobId: job.id,
-      workerId,
-      errorCode,
-      safeMessage: "The background operation failed.",
-      retryable:
-        generationFailure === null ||
-        generationFailure.failureClass === "transient_provider",
-      retryDelaySeconds:
-        generationFailure?.failureClass === "transient_provider"
-          ? Math.ceil((generationFailure.retryAfterMs ?? 1_000) / 1_000)
-          : undefined,
-    });
-    if (failed.state === "failed")
+    const failed =
+      generationFailure !== null
+        ? await finalizeGenerationJobFailure({
+            jobId: job.id,
+            workerId,
+            errorCode,
+            safeMessage: "The background operation failed.",
+            retryable: generationFailure.failureClass === "transient_provider",
+            retryDelaySeconds:
+              generationFailure.failureClass === "transient_provider"
+                ? Math.ceil((generationFailure.retryAfterMs ?? 1_000) / 1_000)
+                : undefined,
+          })
+        : await failJob({
+            jobId: job.id,
+            workerId,
+            errorCode,
+            safeMessage: "The background operation failed.",
+            retryable: true,
+          });
+    if (failed.state === "failed" && generationFailure === null) {
       await recordWorkerDomainFailure(job, errorCode);
+    }
     outcome = failed.state;
   } finally {
     clearInterval(heartbeat);

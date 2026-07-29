@@ -1,8 +1,17 @@
 import { contentHash } from "@/src/server/compliance/domain";
-import { ACTION_PLAN_PROMPT_TEMPLATE_HASH } from "@/src/server/action-plans/domain";
+import {
+  ACTION_PLAN_PROMPT_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
+} from "@/src/server/action-plans/domain";
 import { ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH } from "../../ai/generation";
 import { GAP_PROMPT_V7_TEMPLATE_HASH } from "../prompt-contract-v7";
 import { GAP_PROMPT_V8_TEMPLATE_HASH } from "../prompt-contract-v8";
+import { GAP_PROMPT_V9_TEMPLATE_HASH } from "../prompt-contract-v9";
+import { GAP_PROMPT_V10_TEMPLATE_HASH } from "../prompt-contract-v10";
+import { GAP_PROMPT_V11_TEMPLATE_HASH } from "../prompt-contract-v11";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -11,20 +20,37 @@ export function compileGapAnalysisRelease(
   const errors: string[] = [];
   requireNonEmpty(release.releaseCode, "release code", errors);
   requireNonEmpty(release.versionLabel, "version label", errors);
-  requireNonEmpty(release.compatibleCheck.checkCode, "compatible check code", errors);
+  requireNonEmpty(
+    release.compatibleCheck.checkCode,
+    "compatible check code",
+    errors,
+  );
   unique(release.requiredCorpusFamilies, "required corpus family", errors);
-  if (release.requiredCorpusFamilies.length === 0) errors.push("At least one corpus family is required");
+  if (release.requiredCorpusFamilies.length === 0)
+    errors.push("At least one corpus family is required");
   if (
     release.prompt.templateHash !== GAP_PROMPT_V7_TEMPLATE_HASH &&
-    release.prompt.templateHash !== GAP_PROMPT_V8_TEMPLATE_HASH
+    release.prompt.templateHash !== GAP_PROMPT_V8_TEMPLATE_HASH &&
+    release.prompt.templateHash !== GAP_PROMPT_V9_TEMPLATE_HASH &&
+    release.prompt.templateHash !== GAP_PROMPT_V10_TEMPLATE_HASH &&
+    release.prompt.templateHash !== GAP_PROMPT_V11_TEMPLATE_HASH
   ) {
     errors.push("Prompt template hash does not match the code-defined prompt");
   }
   if (
     !release.actionPlanPrompt ||
-    release.actionPlanPrompt.templateHash !== ACTION_PLAN_PROMPT_TEMPLATE_HASH &&
-    release.actionPlanPrompt.templateHash !==
-      ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH
+    (release.actionPlanPrompt.templateHash !==
+      ACTION_PLAN_PROMPT_TEMPLATE_HASH &&
+      release.actionPlanPrompt.templateHash !==
+        ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH &&
+      release.actionPlanPrompt.templateHash !==
+        ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH &&
+      release.actionPlanPrompt.templateHash !==
+        ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH &&
+      release.actionPlanPrompt.templateHash !==
+        ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH &&
+      release.actionPlanPrompt.templateHash !==
+        ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH)
   ) {
     errors.push(
       "Action Plan prompt template hash does not match the code-defined prompt",
@@ -48,7 +74,9 @@ export function compileGapAnalysisRelease(
     errors,
   );
   unique(
-    release.questionnaire.questions.map((question) => String(question.position)),
+    release.questionnaire.questions.map((question) =>
+      String(question.position),
+    ),
     "question position",
     errors,
   );
@@ -56,15 +84,22 @@ export function compileGapAnalysisRelease(
     release.questionnaire.questions.map((question) => question.stableKey),
   );
   for (const question of release.questionnaire.questions) {
-    requireLocalizedText(question.text, `question ${question.stableKey}`, errors);
+    requireLocalizedText(
+      question.text,
+      `question ${question.stableKey}`,
+      errors,
+    );
     requireLocalizedText(
       question.help,
       `question ${question.stableKey} help`,
       errors,
     );
-    if (!question.required) errors.push(`Question ${question.stableKey} must be required`);
+    if (!question.required)
+      errors.push(`Question ${question.stableKey} must be required`);
     if (question.options.length < 2) {
-      errors.push(`Question ${question.stableKey} requires at least two options`);
+      errors.push(
+        `Question ${question.stableKey} requires at least two options`,
+      );
     }
     unique(
       question.options.map((option) => option.stableValue),
@@ -103,7 +138,11 @@ export function compileGapAnalysisRelease(
   }
 
   const requirements = release.requirementSet.requirements;
-  unique(requirements.map((item) => item.code), "requirement code", errors);
+  unique(
+    requirements.map((item) => item.code),
+    "requirement code",
+    errors,
+  );
   unique(
     requirements.map((item) => String(item.position)),
     "requirement position",
@@ -124,14 +163,20 @@ export function compileGapAnalysisRelease(
     );
     for (const reference of requirement.legalReferences ?? []) {
       if (!reference.demoPlaceholder) {
-        errors.push(`Requirement ${requirement.code} legal reference is not labeled demo`);
+        errors.push(
+          `Requirement ${requirement.code} legal reference is not labeled demo`,
+        );
       }
       try {
         if (new URL(reference.url).protocol !== "https:") {
-          errors.push(`Requirement ${requirement.code} legal reference must use HTTPS`);
+          errors.push(
+            `Requirement ${requirement.code} legal reference must use HTTPS`,
+          );
         }
       } catch {
-        errors.push(`Requirement ${requirement.code} has an invalid legal reference URL`);
+        errors.push(
+          `Requirement ${requirement.code} has an invalid legal reference URL`,
+        );
       }
     }
     if (requirement.questionStableKeys.length === 0) {
@@ -139,13 +184,17 @@ export function compileGapAnalysisRelease(
     }
     for (const key of requirement.questionStableKeys) {
       if (!questionKeys.has(key)) {
-        errors.push(`Requirement ${requirement.code} maps unknown question ${key}`);
+        errors.push(
+          `Requirement ${requirement.code} maps unknown question ${key}`,
+        );
       }
       mappedQuestions.add(key);
       mappingCount.set(key, (mappingCount.get(key) ?? 0) + 1);
     }
     if (requirement.applicableOutcomeCodes.length === 0) {
-      errors.push(`Requirement ${requirement.code} has no applicability coverage`);
+      errors.push(
+        `Requirement ${requirement.code} has no applicability coverage`,
+      );
     }
   }
   for (const key of questionKeys) {
@@ -269,15 +318,18 @@ function validateSupportedGuidedRelease(
   const requirements = release.requirementSet.requirements;
   const label = contract.versionLabel;
   if (questions.length !== contract.questionCount) {
-    errors.push(`${label} must have exactly ${contract.questionCount} questions`);
+    errors.push(
+      `${label} must have exactly ${contract.questionCount} questions`,
+    );
   }
   if (requirements.length !== contract.requirementCount) {
-    errors.push(`${label} must have exactly ${contract.requirementCount} requirements`);
+    errors.push(
+      `${label} must have exactly ${contract.requirementCount} requirements`,
+    );
   }
   if (
     release.prompt.version !== contract.promptVersion ||
-    release.prompt.responseSchemaVersion !==
-      contract.responseSchemaVersion ||
+    release.prompt.responseSchemaVersion !== contract.responseSchemaVersion ||
     release.evaluator.kind !== contract.evaluatorKind ||
     release.evaluator.version !== contract.evaluatorVersion
   ) {
@@ -298,9 +350,7 @@ function validateSupportedGuidedRelease(
   const sourceNumbers = questions
     .map((question) => question.sourceNumber)
     .sort((left, right) => (left ?? 0) - (right ?? 0));
-  if (
-    sourceNumbers.some((number, index) => number !== index + 1)
-  ) {
+  if (sourceNumbers.some((number, index) => number !== index + 1)) {
     errors.push(`${label} source numbers must cover 1 through 31 exactly`);
   }
   for (const question of questions) {

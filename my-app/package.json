@@ -49,6 +49,7 @@
     "db:publish:gap": "tsx scripts/publish-gap-release.ts",
     "db:activate:gap": "tsx scripts/activate-gap-release.ts",
     "db:smoke:gap": "tsx scripts/smoke-gap-analysis.ts",
+    "db:repair:orphan-ai-runs": "tsx --env-file=.env.local scripts/repair-orphan-ai-runs.ts",
     "test:ai": "vitest run evals",
     "eval:gap-evidence-calibration": "tsx evals/gap-organization-evidence-calibration.ts",
     "test:ai:watch": "vitest evals",

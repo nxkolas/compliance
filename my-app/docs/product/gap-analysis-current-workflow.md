@@ -1,6 +1,7 @@
 # Gap Analysis and Action Plan workflow
 
-Status: guided-v6 atomic Gap contract with independent Action Plan generation.
+Status: `reliability-v1` is active; objective-contract successors are being
+qualified without changing existing assessments.
 
 ## Domain model
 
@@ -16,10 +17,11 @@ stored on or returned with a Gap finding.
 
 ## Action Plan generation
 
-Selecting **Create action plan** enqueues an `action-plan-generation` background
-job and returns HTTP 202. The worker loads the exact current Gap revision, all
-answers in each category, pinned documents, mapped legal context, and the
-release-pinned locale. It then runs a distinct grounded AI operation.
+Selecting **Create action plan** enqueues a response-schema-versioned
+`action-plan-generation-vN` background job and returns HTTP 202. The worker
+loads the exact current Gap revision, all answers in each category, pinned
+documents, mapped legal context, and the release-pinned locale. It then runs a
+distinct grounded AI operation.
 
 Generated actions stay within one category. An action may cover several gaps,
 and a gap may be covered by several ordered actions. Every gap and every action
@@ -30,7 +32,10 @@ execution notes remain editable.
 Persistence is atomic and exactly once by generation job. A successful job
 approves and accepts the source Gap revision, activates one plan, stores actions
 and their gap links, and publishes the plan ID through the job result. Failure
-or cancellation leaves no partial plan.
+or cancellation leaves no partial plan. A terminal job cannot retain a linked
+AI run in `processing`; success closes superseded repair candidates, failure
+and cancellation close every linked run, and scheduled cleanup reconciles any
+historical anomaly.
 
 ## Review and lifecycle
 
@@ -40,17 +45,36 @@ the affected category and copies unchanged category children into a new
 immutable revision. Queued or running Action Plan generation reserves the Gap
 revision; an active plan locks it permanently.
 
+## Contract boundary
+
+The release owns the expected Gap kind and Action mode. The provider writes
+localized prose around those facts. Current objective contracts reject invalid
+shape, identity, coverage, citation, locale, URL, and raw-identifier output.
+They do not reject prose for missing a keyword, preferred synonym, imperative
+style, sentence shape, legal-language regex, or verification-first verb.
+Those writing goals are prompt and offline-qualification concerns.
+
+Published releases are immutable. Gap v8 and Action Plan v2 remain the active
+historical contract. The inactive successor chain records qualification
+findings rather than rewriting published metadata:
+
+- `reliability-v2`: Gap v9 / Action Plan v3;
+- `reliability-v3`: Gap v10 / Action Plan v3;
+- `reliability-v4`: Gap v10 / Action Plan v4; and
+- `reliability-v5`: Gap v11 / Action Plan v4;
+- `reliability-v6`: Gap v11 / Action Plan v5; and
+- `reliability-v7`: Gap v11 / Action Plan v6.
+
 ## Release and verification
 
-The reset baseline publishes `nis2-gap/guided-v6`, Gap prompt/schema v7, and
-Action Plan prompt/schema v1:
+Publish and qualify a repository release without activating it:
 
 ```powershell
-npm.cmd run db:publish:gap -- --release nis2-gap/guided-v6
-npm.cmd run db:verify:gap-requirements -- --release nis2-gap/guided-v6
-npm.cmd run eval:gap-action-plan-manual
-npm.cmd run db:activate:gap -- --release nis2-gap/guided-v6
+npm.cmd run db:publish:gap -- --release nis2-gap/reliability-v7
+npm.cmd run eval:gap-action-plan-manual -- --gap-release-version reliability-v7
 ```
 
 Run the manual evaluator before activation and inspect its timestamped JSON and
-Markdown artifacts for both German and English generated prose.
+Markdown artifacts for both German and English generated prose. Activation is
+a separate operator decision after automated, database, content, and orphan
+repair gates pass.

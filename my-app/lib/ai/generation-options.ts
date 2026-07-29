@@ -9,9 +9,13 @@ export function getGenerationOptions(
   const thinking = options.thinking ?? false;
 
   return {
-    temperature: thinking
-      ? Math.max(profile.recommendedTemperature, 0.2)
-      : profile.recommendedTemperature,
+    ...(providerMode === "openai"
+      ? {}
+      : {
+          temperature: thinking
+            ? Math.max(profile.recommendedTemperature, 0.2)
+            : profile.recommendedTemperature,
+        }),
     ...(providerMode === "self_hosted"
       ? {
           providerOptions: {

@@ -8,6 +8,7 @@ import {
   aiProcessingRuns,
   assessmentAnswerOptions,
   auditEvents,
+  backgroundJobResults,
   backgroundJobs,
   generatedArtifactRevisions,
   generatedArtifacts,
@@ -61,6 +62,58 @@ import {
   actionPlanPromptV2,
   actionPlanRepairPromptV2,
 } from "./prompt-contract-v2";
+import {
+  buildActionPlanCategoryResponseSchemaV3,
+  normalizeActionPlanCategoryResponseV3,
+  type ActionPlanCategoryPolicyV3,
+} from "./generation-schema-v3";
+import {
+  ACTION_PLAN_PROMPT_V3_NAME,
+  ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V3_VERSION,
+  ACTION_PLAN_RESPONSE_SCHEMA_V3_VERSION,
+  actionPlanPromptV3,
+  actionPlanRepairPromptV3,
+} from "./prompt-contract-v3";
+import {
+  buildActionPlanCategoryResponseSchemaV4,
+  normalizeActionPlanCategoryResponseV4,
+  type ActionPlanCategoryPolicyV4,
+} from "./generation-schema-v4";
+import {
+  ACTION_PLAN_PROMPT_V4_NAME,
+  ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V4_VERSION,
+  ACTION_PLAN_RESPONSE_SCHEMA_V4_VERSION,
+  actionPlanPromptV4,
+  actionPlanRepairPromptV4,
+} from "./prompt-contract-v4";
+import {
+  buildActionPlanCategoryResponseSchemaV5,
+  normalizeActionPlanCategoryResponseV5,
+  type ActionPlanCategoryPolicyV5,
+} from "./generation-schema-v5";
+import {
+  ACTION_PLAN_PROMPT_V5_NAME,
+  ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V5_VERSION,
+  ACTION_PLAN_RESPONSE_SCHEMA_V5_VERSION,
+  actionPlanPromptV5,
+  actionPlanRepairPromptV5,
+} from "./prompt-contract-v5";
+import {
+  buildActionPlanCategoryResponseSchemaV6,
+  normalizeActionPlanCategoryResponseV6,
+  type ActionPlanCategoryPolicyV6,
+} from "./generation-schema-v6";
+import {
+  ACTION_PLAN_PROMPT_V6_NAME,
+  ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V6_VERSION,
+  ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION,
+  actionPlanPromptV6,
+  actionPlanRepairPromptV6,
+} from "./prompt-contract-v6";
 import {
   coordinateCategoryGeneration,
   safeGenerationIssues,
@@ -129,9 +182,7 @@ export async function enqueueActionPlanGeneration(input: {
       RAW: (table, operators) =>
         and(
           eq(table.organizationId, input.organizationId),
-          operators.inArray(table.kind, [
-            ...ACTION_PLAN_GENERATION_JOB_KINDS,
-          ]),
+          operators.inArray(table.kind, [...ACTION_PLAN_GENERATION_JOB_KINDS]),
           operators.inArray(table.state, [...ACTIVE_JOB_STATES]),
         ) ?? operators.sql`true`,
     },
@@ -326,21 +377,108 @@ export async function generateActionPlanContent(input: {
   });
   if (
     snapshot.release.actionPlanPrompt.version ===
+      ACTION_PLAN_PROMPT_V6_VERSION &&
+    snapshot.release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION &&
+    snapshot.release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH
+  ) {
+    return generateActionPlanCategoriesVersioned(
+      {
+        input,
+        snapshot,
+        categoryInputs,
+        questionnaireAssertions,
+        queryUnits,
+        answerRows,
+        selectedOptions,
+      },
+      "6",
+    );
+  }
+  if (
+    snapshot.release.actionPlanPrompt.version ===
+      ACTION_PLAN_PROMPT_V5_VERSION &&
+    snapshot.release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V5_VERSION &&
+    snapshot.release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH
+  ) {
+    return generateActionPlanCategoriesVersioned(
+      {
+        input,
+        snapshot,
+        categoryInputs,
+        questionnaireAssertions,
+        queryUnits,
+        answerRows,
+        selectedOptions,
+      },
+      "5",
+    );
+  }
+  if (
+    snapshot.release.actionPlanPrompt.version ===
+      ACTION_PLAN_PROMPT_V4_VERSION &&
+    snapshot.release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V4_VERSION &&
+    snapshot.release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH
+  ) {
+    return generateActionPlanCategoriesVersioned(
+      {
+        input,
+        snapshot,
+        categoryInputs,
+        questionnaireAssertions,
+        queryUnits,
+        answerRows,
+        selectedOptions,
+      },
+      "4",
+    );
+  }
+  if (
+    snapshot.release.actionPlanPrompt.version ===
+      ACTION_PLAN_PROMPT_V3_VERSION &&
+    snapshot.release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V3_VERSION &&
+    snapshot.release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH
+  ) {
+    return generateActionPlanCategoriesVersioned(
+      {
+        input,
+        snapshot,
+        categoryInputs,
+        questionnaireAssertions,
+        queryUnits,
+        answerRows,
+        selectedOptions,
+      },
+      "3",
+    );
+  }
+  if (
+    snapshot.release.actionPlanPrompt.version ===
       ACTION_PLAN_PROMPT_V2_VERSION &&
     snapshot.release.actionPlanPrompt.responseSchemaVersion ===
       ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION &&
     snapshot.release.actionPlanPrompt.templateHash ===
       ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH
   ) {
-    return generateActionPlanCategoriesV2({
-      input,
-      snapshot,
-      categoryInputs,
-      questionnaireAssertions,
-      queryUnits,
-      answerRows,
-      selectedOptions,
-    });
+    return generateActionPlanCategoriesVersioned(
+      {
+        input,
+        snapshot,
+        categoryInputs,
+        questionnaireAssertions,
+        queryUnits,
+        answerRows,
+        selectedOptions,
+      },
+      "2",
+    );
   }
   let policies: ActionPlanCategoryPolicy[] = [];
   const grounded = await runGroundedOperation<ActionPlanModelResponse>({
@@ -721,6 +859,21 @@ export async function activateGeneratedActionPlan(input: {
           ),
         );
     }
+    await tx
+      .update(aiProcessingRuns)
+      .set({
+        status: "failed",
+        errorCode: "GENERATION_CANDIDATE_REJECTED",
+        errorMessage:
+          "A corrected category candidate replaced this generation attempt.",
+        completedAt: approvedAt,
+      })
+      .where(
+        and(
+          eq(aiProcessingRuns.jobId, input.jobId),
+          eq(aiProcessingRuns.status, "processing"),
+        ),
+      );
     await tx.insert(auditEvents).values([
       {
         organizationId: input.organizationId,
@@ -747,6 +900,43 @@ export async function activateGeneratedActionPlan(input: {
         },
       },
     ]);
+    const processingRun = await tx.query.aiProcessingRuns.findFirst({
+      columns: { id: true },
+      where: {
+        RAW: (table, operators) =>
+          and(eq(table.jobId, input.jobId), eq(table.status, "processing")) ??
+          operators.sql`true`,
+      },
+    });
+    if (processingRun) {
+      throw new Error("Action Plan success cannot leave a processing AI run");
+    }
+    const [completedJob] = await tx
+      .update(backgroundJobs)
+      .set({
+        state: "succeeded",
+        progress: 100,
+        safeErrorCode: null,
+        safeErrorMessage: null,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        finishedAt: approvedAt,
+        updatedAt: approvedAt,
+      })
+      .where(
+        and(
+          eq(backgroundJobs.id, input.jobId),
+          eq(backgroundJobs.state, "running"),
+        ),
+      )
+      .returning({ id: backgroundJobs.id });
+    if (!completedJob) {
+      throw new Error("Action Plan generation job no longer owns persistence");
+    }
+    await tx.insert(backgroundJobResults).values({
+      jobId: completedJob.id,
+      actionPlanId: plan.id,
+    });
     return plan;
   });
 }
@@ -801,45 +991,52 @@ export async function executeActionPlanGenerationJob(input: {
   return { type: "action_plan", id: plan.id };
 }
 
-async function generateActionPlanCategoriesV2(input: {
-  input: Parameters<typeof generateActionPlanContent>[0];
-  snapshot: Awaited<ReturnType<typeof loadSourceSnapshot>>;
-  categoryInputs: Array<{
-    finding: {
+async function generateActionPlanCategoriesVersioned(
+  input: {
+    input: Parameters<typeof generateActionPlanContent>[0];
+    snapshot: Awaited<ReturnType<typeof loadSourceSnapshot>>;
+    categoryInputs: Array<{
+      finding: {
+        id: string;
+        severity: "low" | "medium" | "high" | "critical";
+      };
+      requirement: {
+        code: string;
+      };
+      gaps: Array<{
+        key: string;
+        row: {
+          kind: "missing" | "partial" | "uncertain";
+          sourceAssessmentAnswerId: string;
+        };
+      }>;
+    }>;
+    questionnaireAssertions: Array<{
+      answerId: string;
+      queryUnitId: string;
+      excerpt: string;
+    }>;
+    queryUnits: Array<{
       id: string;
-      severity: "low" | "medium" | "high" | "critical";
-    };
-    requirement: {
-      code: string;
-    };
-    gaps: Array<{
-      key: string;
-      row: {
-        kind: "missing" | "partial" | "uncertain";
-        sourceAssessmentAnswerId: string;
+      query: string;
+      retrievalQuery: string;
+      preferredMappedLegalProvisionIds: string[];
+      preferredMappedLegalProvisionKeys: string[];
+      legalTierLimits: {
+        primary_authority: number;
+        official_guidance: number;
+        curated_secondary: number;
       };
     }>;
-  }>;
-  questionnaireAssertions: Array<{
-    answerId: string;
-    queryUnitId: string;
-    excerpt: string;
-  }>;
-  queryUnits: Array<{
-    id: string;
-    query: string;
-    retrievalQuery: string;
-    preferredMappedLegalProvisionIds: string[];
-    preferredMappedLegalProvisionKeys: string[];
-    legalTierLimits: {
-      primary_authority: number;
-      official_guidance: number;
-      curated_secondary: number;
-    };
-  }>;
-  answerRows: Array<{ id: string; questionId: string; questionStableKey: string }>;
-  selectedOptions: Array<{ answerId: string; stableValue: string }>;
-}): Promise<{
+    answerRows: Array<{
+      id: string;
+      questionId: string;
+      questionStableKey: string;
+    }>;
+    selectedOptions: Array<{ answerId: string; stableValue: string }>;
+  },
+  contractVersion: "2" | "3" | "4" | "5" | "6",
+): Promise<{
   runId: string;
   runIds: string[];
   content: ValidatedActionPlanContent;
@@ -859,7 +1056,14 @@ async function generateActionPlanCategoriesV2(input: {
         operation: "action_plan_generation",
         sourceGapRevisionId: input.input.sourceGapRevisionId,
         releaseId: input.snapshot.release.id,
-        contract: ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION,
+        contract:
+          contractVersion === "6"
+            ? ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION
+            : contractVersion === "5"
+              ? ACTION_PLAN_RESPONSE_SCHEMA_V5_VERSION
+              : contractVersion === "4"
+                ? ACTION_PLAN_RESPONSE_SCHEMA_V4_VERSION
+                : ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION,
         locale: input.input.outputLocale,
         categoryCode: category.requirement.code,
         generationReservation: input.input.jobId,
@@ -878,7 +1082,13 @@ async function generateActionPlanCategoriesV2(input: {
         (candidate) => candidate.id === task.categoryCode,
       );
       if (!queryUnit) throw new Error("Action Plan category query is missing");
-      let responsePolicy: ActionPlanCategoryPolicyV2 | undefined;
+      let responsePolicy:
+        | ActionPlanCategoryPolicyV2
+        | ActionPlanCategoryPolicyV3
+        | ActionPlanCategoryPolicyV4
+        | ActionPlanCategoryPolicyV5
+        | ActionPlanCategoryPolicyV6
+        | undefined;
       const grounded = await runGroundedOperation<ActionPlanCategoryResponseV2>(
         {
           operation: "gap_analysis",
@@ -904,21 +1114,62 @@ async function generateActionPlanCategoriesV2(input: {
               : queryUnit,
           ],
           systemInstruction:
-            phase === "initial"
-              ? actionPlanPromptV2(input.input.outputLocale)
-              : actionPlanRepairPromptV2({
-                  locale: input.input.outputLocale,
-                  categoryCode: task.categoryCode,
-                  issues: issues ?? [],
-                }),
+            contractVersion === "6"
+              ? phase === "initial"
+                ? actionPlanPromptV6(input.input.outputLocale)
+                : actionPlanRepairPromptV6({
+                    locale: input.input.outputLocale,
+                    categoryCode: task.categoryCode,
+                    issues: issues ?? [],
+                  })
+              : contractVersion === "5"
+                ? phase === "initial"
+                  ? actionPlanPromptV5(input.input.outputLocale)
+                  : actionPlanRepairPromptV5({
+                      locale: input.input.outputLocale,
+                      categoryCode: task.categoryCode,
+                      issues: issues ?? [],
+                    })
+                : contractVersion === "4"
+                  ? phase === "initial"
+                    ? actionPlanPromptV4(input.input.outputLocale)
+                    : actionPlanRepairPromptV4({
+                        locale: input.input.outputLocale,
+                        categoryCode: task.categoryCode,
+                        issues: issues ?? [],
+                      })
+                  : contractVersion === "3"
+                    ? phase === "initial"
+                      ? actionPlanPromptV3(input.input.outputLocale)
+                      : actionPlanRepairPromptV3({
+                          locale: input.input.outputLocale,
+                          categoryCode: task.categoryCode,
+                          issues: issues ?? [],
+                        })
+                    : phase === "initial"
+                      ? actionPlanPromptV2(input.input.outputLocale)
+                      : actionPlanRepairPromptV2({
+                          locale: input.input.outputLocale,
+                          categoryCode: task.categoryCode,
+                          issues: issues ?? [],
+                        }),
           outputContract: {
             schema(context) {
-              responsePolicy = actionPlanV2Policy(
+              const policy = actionPlanV2Policy(
                 task.input,
                 context,
                 input.input.outputLocale,
               );
-              return buildActionPlanCategoryResponseSchemaV2(responsePolicy);
+              responsePolicy = policy;
+              return contractVersion === "6"
+                ? buildActionPlanCategoryResponseSchemaV6(policy)
+                : contractVersion === "5"
+                  ? buildActionPlanCategoryResponseSchemaV5(policy)
+                  : contractVersion === "4"
+                    ? buildActionPlanCategoryResponseSchemaV4(policy)
+                    : contractVersion === "3"
+                      ? buildActionPlanCategoryResponseSchemaV3(policy)
+                      : buildActionPlanCategoryResponseSchemaV2(policy);
             },
             languagePolicy: "localized",
             generatedProse(value) {
@@ -951,8 +1202,7 @@ async function generateActionPlanCategoriesV2(input: {
                 citationIds: [
                   ...new Set([
                     ...action.gapKeys.flatMap(
-                      (key) =>
-                        policy.mandatoryCitationIdsByGapKey[key] ?? [],
+                      (key) => policy.mandatoryCitationIdsByGapKey[key] ?? [],
                     ),
                     ...action.supportingOrganizationCitationIds,
                   ]),
@@ -973,10 +1223,46 @@ async function generateActionPlanCategoriesV2(input: {
           jobId: input.input.jobId,
           abortSignal: signal,
           promptMetadata: {
-            name: ACTION_PLAN_PROMPT_V2_NAME,
-            version: ACTION_PLAN_PROMPT_V2_VERSION,
-            templateHash: ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH,
-            responseSchemaVersion: ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION,
+            name:
+              contractVersion === "6"
+                ? ACTION_PLAN_PROMPT_V6_NAME
+                : contractVersion === "5"
+                  ? ACTION_PLAN_PROMPT_V5_NAME
+                  : contractVersion === "4"
+                    ? ACTION_PLAN_PROMPT_V4_NAME
+                    : contractVersion === "3"
+                      ? ACTION_PLAN_PROMPT_V3_NAME
+                      : ACTION_PLAN_PROMPT_V2_NAME,
+            version:
+              contractVersion === "6"
+                ? ACTION_PLAN_PROMPT_V6_VERSION
+                : contractVersion === "5"
+                  ? ACTION_PLAN_PROMPT_V5_VERSION
+                  : contractVersion === "4"
+                    ? ACTION_PLAN_PROMPT_V4_VERSION
+                    : contractVersion === "3"
+                      ? ACTION_PLAN_PROMPT_V3_VERSION
+                      : ACTION_PLAN_PROMPT_V2_VERSION,
+            templateHash:
+              contractVersion === "6"
+                ? ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH
+                : contractVersion === "5"
+                  ? ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH
+                  : contractVersion === "4"
+                    ? ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH
+                    : contractVersion === "3"
+                      ? ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH
+                      : ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH,
+            responseSchemaVersion:
+              contractVersion === "6"
+                ? ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION
+                : contractVersion === "5"
+                  ? ACTION_PLAN_RESPONSE_SCHEMA_V5_VERSION
+                  : contractVersion === "4"
+                    ? ACTION_PLAN_RESPONSE_SCHEMA_V4_VERSION
+                    : contractVersion === "3"
+                      ? ACTION_PLAN_RESPONSE_SCHEMA_V3_VERSION
+                      : ACTION_PLAN_RESPONSE_SCHEMA_V2_VERSION,
           },
         },
       );
@@ -999,14 +1285,36 @@ async function generateActionPlanCategoriesV2(input: {
     },
     validate(candidate, task) {
       try {
-        const normalized = normalizeActionPlanCategoryResponseV2({
-          value: candidate,
-          policy: actionPlanV2Policy(
-            task.input,
-            contextByCategory.get(task.categoryCode) ?? [],
-            input.input.outputLocale,
-          ),
-        });
+        const policy = actionPlanV2Policy(
+          task.input,
+          contextByCategory.get(task.categoryCode) ?? [],
+          input.input.outputLocale,
+        );
+        const normalized =
+          contractVersion === "6"
+            ? normalizeActionPlanCategoryResponseV6({
+                value: candidate,
+                policy,
+              })
+            : contractVersion === "5"
+              ? normalizeActionPlanCategoryResponseV5({
+                  value: candidate,
+                  policy,
+                })
+              : contractVersion === "4"
+                ? normalizeActionPlanCategoryResponseV4({
+                    value: candidate,
+                    policy,
+                  })
+                : contractVersion === "3"
+                  ? normalizeActionPlanCategoryResponseV3({
+                      value: candidate,
+                      policy,
+                    })
+                  : normalizeActionPlanCategoryResponseV2({
+                      value: candidate,
+                      policy,
+                    });
         return {
           valid: true,
           value: normalized.value,
@@ -1017,7 +1325,9 @@ async function generateActionPlanCategoriesV2(input: {
           valid: false,
           failureClass: "repairable_content",
           issues:
-            error && typeof error === "object" && "issues" in error &&
+            error &&
+            typeof error === "object" &&
+            "issues" in error &&
             Array.isArray(error.issues)
               ? safeGenerationIssues(error.issues)
               : [{ code: "content_invalid", path: [] }],
@@ -1422,6 +1732,34 @@ function assertActionPrompt(release: {
     responseSchemaVersion: string;
   };
 }) {
+  const v6 =
+    release.actionPlanPrompt.name === ACTION_PLAN_PROMPT_V6_NAME &&
+    release.actionPlanPrompt.version === ACTION_PLAN_PROMPT_V6_VERSION &&
+    release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH &&
+    release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION;
+  const v5 =
+    release.actionPlanPrompt.name === ACTION_PLAN_PROMPT_V5_NAME &&
+    release.actionPlanPrompt.version === ACTION_PLAN_PROMPT_V5_VERSION &&
+    release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH &&
+    release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V5_VERSION;
+  const v4 =
+    release.actionPlanPrompt.name === ACTION_PLAN_PROMPT_V4_NAME &&
+    release.actionPlanPrompt.version === ACTION_PLAN_PROMPT_V4_VERSION &&
+    release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH &&
+    release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V4_VERSION;
+  const v3 =
+    release.actionPlanPrompt.name === ACTION_PLAN_PROMPT_V3_NAME &&
+    release.actionPlanPrompt.version === ACTION_PLAN_PROMPT_V3_VERSION &&
+    release.actionPlanPrompt.templateHash ===
+      ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH &&
+    release.actionPlanPrompt.responseSchemaVersion ===
+      ACTION_PLAN_RESPONSE_SCHEMA_V3_VERSION;
   const v2 =
     release.actionPlanPrompt.name === ACTION_PLAN_PROMPT_V2_NAME &&
     release.actionPlanPrompt.version === ACTION_PLAN_PROMPT_V2_VERSION &&
@@ -1436,10 +1774,7 @@ function assertActionPrompt(release: {
       ACTION_PLAN_PROMPT_TEMPLATE_HASH &&
     release.actionPlanPrompt.responseSchemaVersion ===
       ACTION_PLAN_RESPONSE_SCHEMA_VERSION;
-  if (
-    !v1 &&
-    !v2
-  ) {
+  if (!v1 && !v2 && !v3 && !v4 && !v5 && !v6) {
     throw new ApiError(
       409,
       "Pinned Action Plan prompt contract is unsupported",

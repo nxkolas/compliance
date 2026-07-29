@@ -91,6 +91,39 @@ async function main() {
       "Background-job typed-result constraint omits Action Plans",
     );
   }
+  const [jobResultFunction] = await sql<{ definition: string }[]>`
+    select pg_get_functiondef(
+      'public.validate_background_job_result(uuid)'::regprocedure
+    ) as definition
+  `;
+  if (
+    !jobResultFunction?.definition.includes("gap-generation-v9") ||
+    !jobResultFunction.definition.includes("gap-generation-v10") ||
+    !jobResultFunction.definition.includes("gap-generation-v11") ||
+    !jobResultFunction.definition.includes("action-plan-generation-v3") ||
+    !jobResultFunction.definition.includes("action-plan-generation-v4") ||
+    !jobResultFunction.definition.includes("action-plan-generation-v5") ||
+    !jobResultFunction.definition.includes("action-plan-generation-v6")
+  ) {
+    throw new Error(
+      "Background-job result integrity does not recognize v9/v10/v11/v3/v4/v5/v6 generation jobs",
+    );
+  }
+  const [actionPlanIndex] = await sql<{ definition: string }[]>`
+    select pg_get_indexdef(
+      'public.background_jobs_action_plan_generation_active_unique'::regclass
+    ) as definition
+  `;
+  if (
+    !actionPlanIndex?.definition.includes("action-plan-generation-v3") ||
+    !actionPlanIndex.definition.includes("action-plan-generation-v4") ||
+    !actionPlanIndex.definition.includes("action-plan-generation-v5") ||
+    !actionPlanIndex.definition.includes("action-plan-generation-v6")
+  ) {
+    throw new Error(
+      "Active Action Plan job uniqueness does not recognize v3/v4/v5/v6",
+    );
+  }
 
   await expectRejectedTransaction(
     "succeeded job without typed result",
