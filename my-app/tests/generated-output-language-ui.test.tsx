@@ -268,7 +268,6 @@ describe("generated output language indicators", () => {
         organizationId="organization-1"
         labels={labels}
         canContribute={false}
-        members={[]}
         current={{
           plan: {
             id: "plan-1",
@@ -282,5 +281,47 @@ describe("generated output language indicators", () => {
 
     expect(html).toContain("Result language");
     expect(html).toContain("German");
+  });
+
+  it("offers status as the only user-editable action-plan field", () => {
+    const labels = modulesMessages.en.modules.actionPlan.workflow;
+    const html = renderToStaticMarkup(
+      <ActionPlanWorkflow
+        organizationId="organization-1"
+        labels={labels}
+        canContribute
+        current={{
+          plan: {
+            id: "plan-1",
+            outputLocale: "en",
+          },
+          categories: [
+            {
+              requirementVersionId: "requirement-1",
+              title: "Governance",
+              position: 1,
+              actions: [
+                {
+                  id: "item-1",
+                  title: "Define responsibilities",
+                  result: "Responsibilities are documented.",
+                  suggestedEvidence: [],
+                  priority: "high",
+                  status: "open",
+                  version: 1,
+                },
+              ],
+            },
+          ],
+          sourceStaleness: { stale: false },
+        } as never}
+      />,
+    );
+
+    expect(html).toContain("Status");
+    expect(html).not.toContain("Save changes");
+    expect(html).not.toContain("Responsible user ID");
+    expect(html).not.toContain("Due date");
+    expect(html).not.toContain("Execution notes");
   });
 });

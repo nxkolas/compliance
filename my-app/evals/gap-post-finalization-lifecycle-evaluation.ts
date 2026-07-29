@@ -57,8 +57,10 @@ async function main() {
     );
   }
 
-  const generatedPatch = actionPlanItemUpdateSchema.safeParse({
-    objective: "Generated content must remain immutable.",
+  const nonStatusPatch = actionPlanItemUpdateSchema.safeParse({
+    ownerUserId: USER_ID,
+    dueDate: "2026-08-31",
+    executionNotes: "Users must not update execution metadata.",
   });
 
   const updated = await updateActionPlanItem({
@@ -66,10 +68,6 @@ async function main() {
     organizationId: result.organization.id,
     itemId: item.id,
     status: "in_progress",
-    ownerUserId: USER_ID,
-    dueDate: "2026-08-31",
-    executionNotes:
-      "Manual QA execution note: owner assigned and implementation started.",
     expectedVersion: item.version,
   });
 
@@ -123,31 +121,23 @@ async function main() {
 
   const checks = [
     {
-      name: "Generated action-plan fields reject patches",
+      name: "Non-status action-plan fields reject patches",
       passed:
-        !generatedPatch.success &&
-        generatedPatch.error.issues.some(
+        !nonStatusPatch.success &&
+        nonStatusPatch.error.issues.some(
           (issue) => issue.code === "unrecognized_keys",
         ),
-      actual: generatedPatch.success
+      actual: nonStatusPatch.success
         ? "accepted"
-        : generatedPatch.error.issues,
+        : nonStatusPatch.error.issues,
     },
     {
-      name: "Execution metadata is editable",
+      name: "Action-plan status is editable",
       passed:
         updated.status === "in_progress" &&
-        updated.ownerUserId === USER_ID &&
-        updated.dueDate === "2026-08-31" &&
-        updated.executionNotes.startsWith(
-          "Manual QA execution note:",
-        ) &&
         updated.version === item.version + 1,
       actual: {
         status: updated.status,
-        ownerUserId: updated.ownerUserId,
-        dueDate: updated.dueDate,
-        executionNotes: updated.executionNotes,
         version: updated.version,
       },
     },

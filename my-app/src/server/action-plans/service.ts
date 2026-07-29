@@ -189,10 +189,7 @@ export async function updateActionPlanItem(input: {
   userId: string;
   organizationId: string;
   itemId: string;
-  status?: "open" | "in_progress" | "done" | "cancelled";
-  ownerUserId?: string | null;
-  dueDate?: string | null;
-  executionNotes?: string;
+  status: "open" | "in_progress" | "done" | "cancelled";
   expectedVersion: number;
 }) {
   await assertCanContributeToOrganization(
@@ -215,47 +212,9 @@ export async function updateActionPlanItem(input: {
     )
     .limit(1);
   if (!current) throw new ApiError(404, "Action-plan item not found");
-  if (input.ownerUserId) {
-    const owner = await db.query.organizationMemberships.findFirst({
-      columns: { id: true },
-      where: {
-        RAW: (table, operators) =>
-          and(
-            eq(table.organizationId, input.organizationId),
-            eq(table.userId, input.ownerUserId!),
-            eq(table.status, "active"),
-          ) ?? operators.sql`true`,
-      },
-    });
-    if (!owner) {
-      throw new ApiError(
-        400,
-        "Item owner must be an active organization member",
-      );
-    }
-  }
-  if (
-    input.dueDate &&
-    !/^\d{4}-\d{2}-\d{2}$/.test(input.dueDate)
-  ) {
-    throw new ApiError(400, "dueDate must use YYYY-MM-DD");
-  }
-  if (
-    input.executionNotes !== undefined &&
-    input.executionNotes.length > 20_000
-  ) {
-    throw new ApiError(400, "executionNotes is too long");
-  }
   const updatedAt = new Date();
   const changes = {
-    ...(input.status !== undefined ? { status: input.status } : {}),
-    ...(input.ownerUserId !== undefined
-      ? { ownerUserId: input.ownerUserId }
-      : {}),
-    ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
-    ...(input.executionNotes !== undefined
-      ? { executionNotes: input.executionNotes }
-      : {}),
+    status: input.status,
     updatedAt,
   };
   return db.transaction(async (tx) => {

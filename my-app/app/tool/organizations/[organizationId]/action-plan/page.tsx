@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getCurrentActionPlan,
 } from "@/src/server/action-plans";
-import { assertCanAccessOrganization, listOrganizationMembers } from "@/src/server/organizations/service";
+import { assertCanAccessOrganization } from "@/src/server/organizations/service";
 import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
 import { connection } from "next/server";
 
@@ -19,10 +19,7 @@ export default async function ActionPlanPage({
   const dictionary = await getDictionary();
   const { organizationId } = await params;
   const membership = await assertCanAccessOrganization(user.id, organizationId);
-  const [current, members] = await Promise.all([
-    getCurrentActionPlan(user.id, organizationId),
-    listOrganizationMembers(user.id, organizationId),
-  ]);
+  const current = await getCurrentActionPlan(user.id, organizationId);
 
   return (
     <section className="flex w-full flex-col gap-8">
@@ -35,7 +32,6 @@ export default async function ActionPlanPage({
         current={current}
         canContribute={hasOrganizationCapability(membership.role, "plans:contribute")}
         labels={dictionary.modules.actionPlan.workflow}
-        members={members.map(({ userId, status }) => ({ userId, status }))}
       />
     </section>
   );

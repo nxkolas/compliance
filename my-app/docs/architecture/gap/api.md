@@ -724,6 +724,29 @@ Source:
 [Action Plan route](<../../../app/api/organizations/[organizationId]/action-plan/route.ts>)
 and [Action Plan reader](../../../src/server/action-plans/service.ts).
 
+### `PATCH /api/organizations/:organizationId/action-plan/items/:itemId`
+
+Headers: `If-Match` is required and must contain the current item version.
+
+Body:
+
+```ts
+{
+  status: "open" | "in_progress" | "done" | "cancelled";
+}
+```
+
+Status is the only user-editable Action Plan item field. The route rejects
+assignee, due-date, execution-note, generated-content, and other additional
+fields. The Action Plan page sends this request automatically when the user
+changes the status. It returns the updated item with `meta.version` and an
+`ETag` header containing the new item version.
+
+Source:
+[Action Plan item route](<../../../app/api/organizations/[organizationId]/action-plan/items/[itemId]/route.ts>),
+[Action Plan request contract](../../../src/contracts/action-plans/index.ts),
+and [Action Plan update service](../../../src/server/action-plans/service.ts).
+
 ### `GET /api/jobs/:jobId`
 
 Returns `200` with `{ data: { job }, meta }`. Polling is limited to 120 requests
