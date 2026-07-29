@@ -13,11 +13,7 @@ export const generationStages = [
 export type GenerationStage = (typeof generationStages)[number];
 export type GenerationPhase = "initial" | "repair";
 export type GenerationDisposition =
-  | "accepted"
-  | "normalized"
-  | "repair_requested"
-  | "rejected"
-  | "cancelled";
+  "accepted" | "normalized" | "repair_requested" | "rejected" | "cancelled";
 
 export const generationIssueCodes = [
   "unexpected_key",
@@ -35,6 +31,8 @@ export const generationIssueCodes = [
   "uncertain_action_invalid",
   "citation_unsupported",
   "content_invalid",
+  "url_forbidden",
+  "raw_identifier",
   "gap_kind_mismatch",
   "gap_statement_style",
   "review_notice_state",

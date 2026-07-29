@@ -4,21 +4,40 @@ import postgres from "postgres";
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
+  const expectedReference =
+    readArgument("--release") ?? "nis2-gap/reliability-v1";
+  const [expectedCode, expectedVersion] = expectedReference.split("/");
+  const expectedContracts: Record<string, { gap: string; actionPlan: string }> =
+    {
+      "reliability-v1": { gap: "8", actionPlan: "2" },
+      "reliability-v2": { gap: "9", actionPlan: "3" },
+      "reliability-v3": { gap: "10", actionPlan: "3" },
+      "reliability-v4": { gap: "10", actionPlan: "4" },
+      "reliability-v5": { gap: "11", actionPlan: "4" },
+      "reliability-v6": { gap: "11", actionPlan: "5" },
+      "reliability-v7": { gap: "11", actionPlan: "6" },
+    };
+  const expectedContract = expectedContracts[expectedVersion ?? ""];
+  if (expectedCode !== "nis2-gap" || !expectedVersion || !expectedContract) {
+    throw new Error("--release must identify a supported nis2-gap release");
+  }
   const sql = postgres(databaseUrl, { prepare: false });
   try {
-    const [release] = await sql<{
-      release_code: string;
-      version_label: string;
-      prompt_version: string;
-      response_schema_version: string;
-      action_plan_prompt_version: string;
-      action_plan_response_schema_version: string;
-      requirement_count: number;
-      question_count: number;
-      requirement_question_mapping_count: number;
-      legal_mapping_count: number;
-      rule_count: number;
-    }[]>`
+    const [release] = await sql<
+      {
+        release_code: string;
+        version_label: string;
+        prompt_version: string;
+        response_schema_version: string;
+        action_plan_prompt_version: string;
+        action_plan_response_schema_version: string;
+        requirement_count: number;
+        question_count: number;
+        requirement_question_mapping_count: number;
+        legal_mapping_count: number;
+        rule_count: number;
+      }[]
+    >`
       select r.release_code, r.version_label,
         r.prompt_version,
         r.response_schema_version,
@@ -42,18 +61,20 @@ async function main() {
     `;
     if (!release) throw new Error("No active nis2-gap release");
     if (
-      release.version_label !== "reliability-v1" ||
-      release.prompt_version !== "8" ||
-      release.response_schema_version !== "8" ||
-      release.action_plan_prompt_version !== "2" ||
-      release.action_plan_response_schema_version !== "2" ||
+      release.release_code !== expectedCode ||
+      release.version_label !== expectedVersion ||
+      release.prompt_version !== expectedContract.gap ||
+      release.response_schema_version !== expectedContract.gap ||
+      release.action_plan_prompt_version !== expectedContract.actionPlan ||
+      release.action_plan_response_schema_version !==
+        expectedContract.actionPlan ||
       release.requirement_count !== 10 ||
       release.question_count !== 31 ||
       release.requirement_question_mapping_count !== 31 ||
       release.legal_mapping_count < 31 ||
       release.rule_count !== 10
     ) {
-      throw new Error("The active reliability-v1 release is incomplete");
+      throw new Error(`The active ${expectedVersion} release is incomplete`);
     }
     const [vector] = await sql<{ installed: boolean }[]>`
       select exists(select 1 from pg_extension where extname = 'vector') as installed
@@ -62,7 +83,8 @@ async function main() {
     const [bucket] = await sql<{ public: boolean }[]>`
       select public from storage.buckets where id = 'organization-evidence'
     `;
-    if (!bucket || bucket.public) throw new Error("Private evidence bucket is unavailable");
+    if (!bucket || bucket.public)
+      throw new Error("Private evidence bucket is unavailable");
     const protectedTables = [
       "gap_analysis_releases",
       "gap_requirement_question_mappings",
@@ -109,12 +131,14 @@ async function main() {
     if (triggerRows.length !== 2) {
       throw new Error("Gap-analysis database triggers are incomplete");
     }
-    const [consistency] = await sql<{
-      missing_stable_requirements: number;
-      invalid_accepted_revisions: number;
-      duplicate_open_drafts: number;
-      duplicate_active_plans: number;
-    }[]>`
+    const [consistency] = await sql<
+      {
+        missing_stable_requirements: number;
+        invalid_accepted_revisions: number;
+        duplicate_open_drafts: number;
+        duplicate_active_plans: number;
+      }[]
+    >`
       select
         (select count(*)::int from gap_requirement_versions
           where requirement_id is null) as missing_stable_requirements,
@@ -138,13 +162,22 @@ async function main() {
     if (!consistency || Object.values(consistency).some((count) => count > 0)) {
       throw new Error("Gap and action-plan workflow consistency checks failed");
     }
-    console.log(`Gap smoke test passed for ${release.release_code}/${release.version_label}.`);
+    console.log(
+      `Gap smoke test passed for ${release.release_code}/${release.version_label}.`,
+    );
   } finally {
     await sql.end();
   }
 }
 
-main().then(() => process.exit(0)).catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+function readArgument(name: string) {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

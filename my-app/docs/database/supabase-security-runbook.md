@@ -130,6 +130,12 @@ For the organization-only evidence workflow, also verify:
 
 ## Cleanup job
 
+Generation-run reconciliation is part of the application cleanup handler. See
+the [generation reconciliation and orphan repair
+runbook](../runbooks/generation-job-reconciliation.md) before applying any
+historical repair. The repair command is dry-run-first and must not be applied
+when its selected set exceeds the reviewed incident scope.
+
 Inspect the optional cron job:
 
 ```sql

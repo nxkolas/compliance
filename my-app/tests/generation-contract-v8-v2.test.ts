@@ -12,6 +12,15 @@ import {
   type ActionPlanCategoryPolicyV2,
 } from "@/src/server/action-plans/generation-schema-v2";
 import { validateAtomicGapStatement } from "@/src/server/gap-analysis/gap-style";
+import {
+  GAP_PROMPT_V8_TEMPLATE,
+  GAP_PROMPT_V8_TEMPLATE_HASH,
+} from "@/src/server/gap-analysis/prompt-contract-v8";
+import {
+  ACTION_PLAN_PROMPT_V2_TEMPLATE,
+  ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH,
+} from "@/src/server/action-plans/prompt-contract-v2";
+import { contentHash } from "@/src/server/compliance/domain";
 
 const gapPolicy: GapResponsePolicyV8 = {
   requirementCode: "CAT-A",
@@ -33,6 +42,29 @@ const gapPolicy: GapResponsePolicyV8 = {
 };
 
 describe("Gap contract v8", () => {
+  it("keeps the immutable v8 and v2 prompt and schema hashes", () => {
+    expect(GAP_PROMPT_V8_TEMPLATE_HASH).toBe(
+      "273b99d88b5ecc2b0ee90d8b95cdc9a7c4289e1192b441a83162d669766812bc",
+    );
+    expect(ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH).toBe(
+      "fd2d934826d92a98f98941e63e9dc038264006e3e5ed507731e300190e1dc184",
+    );
+    expect(contentHash(GAP_PROMPT_V8_TEMPLATE)).toBe(
+      "63a9ef63adac0f667bc4b136600000ca525aab47c1884467cd8ebbe2ad22f859",
+    );
+    expect(contentHash(ACTION_PLAN_PROMPT_V2_TEMPLATE)).toBe(
+      "c87c87dcb38556d53da9507c721920057aad03e042dae2997364e04d105b6b4c",
+    );
+    expect(
+      contentHash(z.toJSONSchema(buildGapCategoryResponseSchemaV8(gapPolicy))),
+    ).toBe("455f8903dfd519d012e3d362281f9c1a5c453ef5c8aea86596aeba7e2806a43f");
+    expect(
+      contentHash(
+        z.toJSONSchema(buildActionPlanCategoryResponseSchemaV2(actionPolicy)),
+      ),
+    ).toBe("8940546a1924dcb6af14cea2cb2a947d99e1d71aacf6f25a11dd4facdc2a15fb");
+  });
+
   it("requires exact trigger keys and one statement by default", () => {
     const schema = buildGapCategoryResponseSchemaV8(gapPolicy);
     const base = {
@@ -61,10 +93,7 @@ describe("Gap contract v8", () => {
       schema.safeParse({
         ...base,
         gaps: {
-          "q.missing": [
-            ...base.gaps["q.missing"],
-            ...base.gaps["q.missing"],
-          ],
+          "q.missing": [...base.gaps["q.missing"], ...base.gaps["q.missing"]],
         },
       }).success,
     ).toBe(false);
@@ -144,9 +173,10 @@ describe("Gap contract v8", () => {
           statementBasis: {
             ...gapPolicy.statementBasis,
             triggeringQuestions:
-              gapPolicy.statementBasis.triggeringQuestions.map(
-                (trigger) => ({ ...trigger, kind: "partial" as const }),
-              ),
+              gapPolicy.statementBasis.triggeringQuestions.map((trigger) => ({
+                ...trigger,
+                kind: "partial" as const,
+              })),
           },
         },
         value: {
@@ -484,10 +514,9 @@ describe("Action Plan contract v2", () => {
   });
 
   it("budgets the rendered verification result after adding the server condition", () => {
-    const repeated = Array.from(
-      { length: 18 },
-      (_, index) => `w${index}`,
-    ).join(" ");
+    const repeated = Array.from({ length: 18 }, (_, index) => `w${index}`).join(
+      " ",
+    );
     expect(() =>
       normalizeActionPlanCategoryResponseV2({
         policy: {

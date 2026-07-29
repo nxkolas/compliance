@@ -1,4 +1,4 @@
-# Reliability-v1 qualification
+# Gap and Action Plan reliability qualification
 
 The repository release reference is `nis2-gap/reliability-v1`. Publication is
 deliberately separate from activation:
@@ -8,6 +8,10 @@ npm run db:publish:gap -- --release nis2-gap/reliability-v1
 ```
 
 Do not run `db:activate:gap` until the live and manual gates below pass.
+
+For the current objective-contract qualification, target the inactive
+`nis2-gap/reliability-v7` successor. `reliability-v2` through
+`reliability-v6` remain immutable failed qualification records.
 
 ## Automated gates
 
@@ -27,14 +31,26 @@ requires at least 98% initial category validation, at least 99% workflow
 completion without intervention, p95 under 60 seconds, no valid-category
 regeneration, and cancellation abort acknowledgement within three seconds.
 
-The existing five-case live runner can target the inactive release without
+The live runner expands the same five scenario identities across English and
+German, producing ten workflows. It can target an inactive release without
 changing the active pointer:
 
 ```sh
 npm run eval:gap-action-plan-manual -- \
-  --gap-release-version reliability-v1 \
-  --run-id reliability-v1-qualification
+  --gap-release-version reliability-v7 \
+  --run-id reliability-v7-bilingual
 ```
+
+For a reviewed supplemental volume set, run individual `--case-number`
+workflows into one output directory, then generate metrics for the available
+artifacts with `--partial-manifest`. Keep the supplemental manifest beside the
+full ten-case manifest and combine their disjoint category counts when
+reporting the 100-category-per-locale gate.
+
+Before activation, also run the connected-database lifecycle tests, integrity
+verification, and the orphan repair dry-run. Activation is blocked if the
+dry-run scope differs from the reviewed target set, if any terminal parent has
+a processing child, or if any workflow/content gate fails.
 
 ## Human gates
 

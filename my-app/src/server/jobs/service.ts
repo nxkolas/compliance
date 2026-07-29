@@ -1,8 +1,21 @@
 import { db } from "@/src/db";
-import { aiProcessingRuns, auditEvents, backgroundJobResults, backgroundJobs, gapReassessmentDrafts, reports } from "@/src/db/schema";
+import {
+  aiProcessingRuns,
+  auditEvents,
+  backgroundJobResults,
+  backgroundJobs,
+  gapReassessmentDrafts,
+  reports,
+} from "@/src/db/schema";
 import type { JobDto } from "@/src/contracts/common/jobs";
-import { requireOrganizationCapability, requirePlatformCapability } from "@/src/server/auth/capability-service";
-import { organizationCapabilities, type OrganizationCapability } from "@/src/server/auth/capabilities";
+import {
+  requireOrganizationCapability,
+  requirePlatformCapability,
+} from "@/src/server/auth/capability-service";
+import {
+  organizationCapabilities,
+  type OrganizationCapability,
+} from "@/src/server/auth/capabilities";
 import { and, asc, eq, inArray, isNotNull, lte, or } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { cancellationTransition, nextFailureState } from "./state-machine";
@@ -25,8 +38,17 @@ export type EnqueueJobInput = {
 export type BackgroundJobRecord = typeof backgroundJobs.$inferSelect;
 
 export async function enqueueJob(input: EnqueueJobInput) {
-  if (input.organizationId && (input.cancellable ?? true) && !input.cancellationCapability) {
-    throw new ApiError(500, "Organization jobs require a cancellation capability", undefined, "JOB_POLICY_INVALID");
+  if (
+    input.organizationId &&
+    (input.cancellable ?? true) &&
+    !input.cancellationCapability
+  ) {
+    throw new ApiError(
+      500,
+      "Organization jobs require a cancellation capability",
+      undefined,
+      "JOB_POLICY_INVALID",
+    );
   }
   const [job] = await db
     .insert(backgroundJobs)
@@ -45,13 +67,44 @@ export async function enqueueJob(input: EnqueueJobInput) {
 }
 
 export async function getAuthorizedJob(userId: string, jobId: string) {
-  const job = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
-    where: { RAW: (table, operators) => (eq(table.id, jobId)) ?? operators.sql`true` },
+  const job = await db.query.backgroundJobs.findFirst({
+    columns: {
+      id: true,
+      organizationId: true,
+      requestedByUserId: true,
+      kind: true,
+      state: true,
+      payload: true,
+      progress: true,
+      attemptCount: true,
+      maxAttempts: true,
+      cancellable: true,
+      cancellationCapability: true,
+      safeErrorCode: true,
+      safeErrorMessage: true,
+      runAfter: true,
+      leaseOwner: true,
+      leaseExpiresAt: true,
+      heartbeatAt: true,
+      cancellationRequestedAt: true,
+      startedAt: true,
+      finishedAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    where: {
+      RAW: (table, operators) => eq(table.id, jobId) ?? operators.sql`true`,
+    },
   });
-  if (!job) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
+  if (!job)
+    throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
 
   if (job.organizationId) {
-    await requireOrganizationCapability(userId, job.organizationId, "organizations:read");
+    await requireOrganizationCapability(
+      userId,
+      job.organizationId,
+      "organizations:read",
+    );
   } else {
     await requirePlatformCapability(userId, "corpus:read");
   }
@@ -67,9 +120,7 @@ export async function getAuthorizedJob(userId: string, jobId: string) {
       : null;
   return toJobDto(
     job,
-    result?.actionPlanId
-      ? { actionPlanId: result.actionPlanId }
-      : null,
+    result?.actionPlanId ? { actionPlanId: result.actionPlanId } : null,
   );
 }
 
@@ -96,9 +147,15 @@ export async function leaseNextJob(input: {
         and(
           inArray(backgroundJobs.kind, input.kinds),
           or(
-            and(eq(backgroundJobs.state, "queued"), lte(backgroundJobs.runAfter, now)),
             and(
-              inArray(backgroundJobs.state, ["running", "cancellation_requested"]),
+              eq(backgroundJobs.state, "queued"),
+              lte(backgroundJobs.runAfter, now),
+            ),
+            and(
+              inArray(backgroundJobs.state, [
+                "running",
+                "cancellation_requested",
+              ]),
               isNotNull(backgroundJobs.leaseExpiresAt),
               lte(backgroundJobs.leaseExpiresAt, now),
             ),
@@ -127,8 +184,14 @@ export async function leaseNextJob(input: {
     const [leased] = await tx
       .update(backgroundJobs)
       .set({
-        state: candidate.state === "cancellation_requested" ? "cancellation_requested" : "running",
-        attemptCount: candidate.state === "cancellation_requested" ? candidate.attemptCount : candidate.attemptCount + 1,
+        state:
+          candidate.state === "cancellation_requested"
+            ? "cancellation_requested"
+            : "running",
+        attemptCount:
+          candidate.state === "cancellation_requested"
+            ? candidate.attemptCount
+            : candidate.attemptCount + 1,
         leaseOwner: input.workerId,
         leaseExpiresAt,
         heartbeatAt: now,
@@ -166,19 +229,71 @@ export async function heartbeatJob(input: {
     )
     .returning();
   if (!job) {
-    const cancellation = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
-      where: { RAW: (table, operators) => (and(
-        eq(table.id, input.jobId),
-        eq(table.leaseOwner, input.workerId),
-        eq(table.state, "cancellation_requested"),
-      )) ?? operators.sql`true` },
+    const cancellation = await db.query.backgroundJobs.findFirst({
+      columns: {
+        id: true,
+        organizationId: true,
+        requestedByUserId: true,
+        kind: true,
+        state: true,
+        payload: true,
+        progress: true,
+        attemptCount: true,
+        maxAttempts: true,
+        cancellable: true,
+        cancellationCapability: true,
+        safeErrorCode: true,
+        safeErrorMessage: true,
+        runAfter: true,
+        leaseOwner: true,
+        leaseExpiresAt: true,
+        heartbeatAt: true,
+        cancellationRequestedAt: true,
+        startedAt: true,
+        finishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          and(
+            eq(table.id, input.jobId),
+            eq(table.leaseOwner, input.workerId),
+            eq(table.state, "cancellation_requested"),
+          ) ?? operators.sql`true`,
+      },
     });
     if (cancellation) return cancellation;
-    const completed = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
-      where: { RAW: (table, operators) => (and(
-        eq(table.id, input.jobId),
-        eq(table.state, "succeeded"),
-      )) ?? operators.sql`true` },
+    const completed = await db.query.backgroundJobs.findFirst({
+      columns: {
+        id: true,
+        organizationId: true,
+        requestedByUserId: true,
+        kind: true,
+        state: true,
+        payload: true,
+        progress: true,
+        attemptCount: true,
+        maxAttempts: true,
+        cancellable: true,
+        cancellationCapability: true,
+        safeErrorCode: true,
+        safeErrorMessage: true,
+        runAfter: true,
+        leaseOwner: true,
+        leaseExpiresAt: true,
+        heartbeatAt: true,
+        cancellationRequestedAt: true,
+        startedAt: true,
+        finishedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          and(eq(table.id, input.jobId), eq(table.state, "succeeded")) ??
+          operators.sql`true`,
+      },
     });
     if (completed) return completed;
     throw leaseLost();
@@ -193,7 +308,9 @@ export async function succeedJob(input: {
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  const resultValues = input.result ? toJobResultValues(input.jobId, input.result) : null;
+  const resultValues = input.result
+    ? toJobResultValues(input.jobId, input.result)
+    : null;
   return db.transaction(async (tx) => {
     const [job] = await tx
       .update(backgroundJobs)
@@ -207,10 +324,17 @@ export async function succeedJob(input: {
         finishedAt: now,
         updatedAt: now,
       })
-      .where(and(eq(backgroundJobs.id, input.jobId), eq(backgroundJobs.leaseOwner, input.workerId), eq(backgroundJobs.state, "running")))
+      .where(
+        and(
+          eq(backgroundJobs.id, input.jobId),
+          eq(backgroundJobs.leaseOwner, input.workerId),
+          eq(backgroundJobs.state, "running"),
+        ),
+      )
       .returning();
     if (!job) throw leaseLost();
-    if (resultValues) await tx.insert(backgroundJobResults).values(resultValues);
+    if (resultValues)
+      await tx.insert(backgroundJobResults).values(resultValues);
     return job;
   });
 }
@@ -234,7 +358,13 @@ export async function failJob(input: {
         runAfter: backgroundJobs.runAfter,
       })
       .from(backgroundJobs)
-      .where(and(eq(backgroundJobs.id, input.jobId), eq(backgroundJobs.leaseOwner, input.workerId), eq(backgroundJobs.state, "running")))
+      .where(
+        and(
+          eq(backgroundJobs.id, input.jobId),
+          eq(backgroundJobs.leaseOwner, input.workerId),
+          eq(backgroundJobs.state, "running"),
+        ),
+      )
       .limit(1)
       .for("update");
     if (!current) throw leaseLost();
@@ -250,9 +380,10 @@ export async function failJob(input: {
         safeErrorMessage: input.safeMessage,
         leaseOwner: null,
         leaseExpiresAt: null,
-        runAfter: state === "queued"
-          ? new Date(now.getTime() + (input.retryDelaySeconds ?? 30) * 1000)
-          : current.runAfter,
+        runAfter:
+          state === "queued"
+            ? new Date(now.getTime() + (input.retryDelaySeconds ?? 30) * 1000)
+            : current.runAfter,
         finishedAt: state === "failed" ? now : null,
         updatedAt: now,
       })
@@ -273,8 +404,7 @@ export function monitorJobCancellation(jobId: string, intervalMs = 1_000) {
       const job = await db.query.backgroundJobs.findFirst({
         columns: { state: true },
         where: {
-          RAW: (table, operators) =>
-            eq(table.id, jobId) ?? operators.sql`true`,
+          RAW: (table, operators) => eq(table.id, jobId) ?? operators.sql`true`,
         },
       });
       if (
@@ -299,21 +429,194 @@ export function monitorJobCancellation(jobId: string, intervalMs = 1_000) {
 }
 
 export async function requestJobCancellation(userId: string, jobId: string) {
-  const current = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, jobId)) ?? operators.sql`true` } });
-  if (!current) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
+  const current = await db.query.backgroundJobs.findFirst({
+    columns: {
+      id: true,
+      organizationId: true,
+      requestedByUserId: true,
+      kind: true,
+      state: true,
+      payload: true,
+      progress: true,
+      attemptCount: true,
+      maxAttempts: true,
+      cancellable: true,
+      cancellationCapability: true,
+      safeErrorCode: true,
+      safeErrorMessage: true,
+      runAfter: true,
+      leaseOwner: true,
+      leaseExpiresAt: true,
+      heartbeatAt: true,
+      cancellationRequestedAt: true,
+      startedAt: true,
+      finishedAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+    where: {
+      RAW: (table, operators) => eq(table.id, jobId) ?? operators.sql`true`,
+    },
+  });
+  if (!current)
+    throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
   if (current.organizationId) {
-    if (!current.cancellationCapability || !isOrganizationCapability(current.cancellationCapability)) {
-      throw new ApiError(409, "The job has no valid cancellation policy", undefined, "JOB_POLICY_INVALID");
+    if (
+      !current.cancellationCapability ||
+      !isOrganizationCapability(current.cancellationCapability)
+    ) {
+      throw new ApiError(
+        409,
+        "The job has no valid cancellation policy",
+        undefined,
+        "JOB_POLICY_INVALID",
+      );
     }
-    await requireOrganizationCapability(userId, current.organizationId, current.cancellationCapability);
+    await requireOrganizationCapability(
+      userId,
+      current.organizationId,
+      current.cancellationCapability,
+    );
   } else {
     await requirePlatformCapability(userId, "corpus:operate");
   }
   if (current.kind === "report-render") {
-    const report = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: { RAW: (table, operators) => (eq(table.jobId, current.id)) ?? operators.sql`true` } });
+    const report = await db.query.reports.findFirst({
+      columns: {
+        id: true,
+        organizationId: true,
+        kind: true,
+        locale: true,
+        state: true,
+        inputSnapshot: true,
+        inputHash: true,
+        jobId: true,
+        storageBucket: true,
+        storagePath: true,
+        outputHash: true,
+        fileSize: true,
+        safeErrorCode: true,
+        createdBy: true,
+        createdAt: true,
+        updatedAt: true,
+        completedAt: true,
+      },
+      where: {
+        RAW: (table, operators) =>
+          eq(table.jobId, current.id) ?? operators.sql`true`,
+      },
+    });
     if (report?.state === "ready") {
-      throw new ApiError(409, "The report is already ready", undefined, "JOB_NOT_CANCELLABLE");
+      throw new ApiError(
+        409,
+        "The report is already ready",
+        undefined,
+        "JOB_NOT_CANCELLABLE",
+      );
     }
+  }
+  if (
+    isGapGenerationJobKind(current.kind) ||
+    isActionPlanGenerationJobKind(current.kind)
+  ) {
+    return db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select({
+          id: backgroundJobs.id,
+          organizationId: backgroundJobs.organizationId,
+          requestedByUserId: backgroundJobs.requestedByUserId,
+          kind: backgroundJobs.kind,
+          state: backgroundJobs.state,
+          payload: backgroundJobs.payload,
+          progress: backgroundJobs.progress,
+          attemptCount: backgroundJobs.attemptCount,
+          maxAttempts: backgroundJobs.maxAttempts,
+          cancellable: backgroundJobs.cancellable,
+          cancellationCapability: backgroundJobs.cancellationCapability,
+          safeErrorCode: backgroundJobs.safeErrorCode,
+          safeErrorMessage: backgroundJobs.safeErrorMessage,
+          runAfter: backgroundJobs.runAfter,
+          leaseOwner: backgroundJobs.leaseOwner,
+          leaseExpiresAt: backgroundJobs.leaseExpiresAt,
+          heartbeatAt: backgroundJobs.heartbeatAt,
+          cancellationRequestedAt: backgroundJobs.cancellationRequestedAt,
+          startedAt: backgroundJobs.startedAt,
+          finishedAt: backgroundJobs.finishedAt,
+          createdAt: backgroundJobs.createdAt,
+          updatedAt: backgroundJobs.updatedAt,
+        })
+        .from(backgroundJobs)
+        .where(eq(backgroundJobs.id, jobId))
+        .limit(1)
+        .for("update");
+      if (!locked) {
+        throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
+      }
+      const state = cancellationTransition(locked.state, locked.cancellable);
+      const now = new Date();
+      const [job] = await tx
+        .update(backgroundJobs)
+        .set({
+          state,
+          cancellationRequestedAt: now,
+          leaseOwner: state === "cancelled" ? null : locked.leaseOwner,
+          leaseExpiresAt: state === "cancelled" ? null : locked.leaseExpiresAt,
+          finishedAt: state === "cancelled" ? now : null,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(backgroundJobs.id, jobId),
+            eq(backgroundJobs.state, locked.state),
+          ),
+        )
+        .returning();
+      if (!job) {
+        throw new ApiError(
+          409,
+          "Job state changed",
+          undefined,
+          "JOB_STATE_CHANGED",
+        );
+      }
+      await tx
+        .update(aiProcessingRuns)
+        .set(
+          state === "cancelled"
+            ? {
+                cancellationRequestedAt: now,
+                status: "failed",
+                errorCode: "GENERATION_CANCELLED",
+                errorMessage: "The background operation was cancelled.",
+                completedAt: now,
+              }
+            : { cancellationRequestedAt: now },
+        )
+        .where(eq(aiProcessingRuns.jobId, job.id));
+      if (isGapGenerationJobKind(job.kind) && state === "cancelled") {
+        await tx
+          .update(gapReassessmentDrafts)
+          .set({
+            status: "cancelled",
+            completedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(gapReassessmentDrafts.generationJobId, job.id));
+      }
+      if (job.organizationId) {
+        await tx.insert(auditEvents).values({
+          organizationId: job.organizationId,
+          actorUserId: userId,
+          eventType: isGapGenerationJobKind(job.kind)
+            ? "gap_reassessment.generation_cancellation_requested"
+            : "action_plan.generation_cancellation_requested",
+          entityType: "background_job",
+          entityId: job.id,
+          metadata: { state: job.state, atomic: true },
+        });
+      }
+      return toJobDto(job);
+    });
   }
   const state = cancellationTransition(current.state, current.cancellable);
   const now = new Date();
@@ -325,24 +628,40 @@ export async function requestJobCancellation(userId: string, jobId: string) {
       finishedAt: state === "cancelled" ? now : null,
       updatedAt: now,
     })
-    .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.state, current.state)))
+    .where(
+      and(
+        eq(backgroundJobs.id, jobId),
+        eq(backgroundJobs.state, current.state),
+      ),
+    )
     .returning();
-  if (!job) throw new ApiError(409, "Job state changed", undefined, "JOB_STATE_CHANGED");
+  if (!job)
+    throw new ApiError(
+      409,
+      "Job state changed",
+      undefined,
+      "JOB_STATE_CHANGED",
+    );
   if (isGapGenerationJobKind(job.kind)) {
-    await db.update(aiProcessingRuns).set({ cancellationRequestedAt: now })
+    await db
+      .update(aiProcessingRuns)
+      .set({ cancellationRequestedAt: now })
       .where(eq(aiProcessingRuns.jobId, job.id));
     if (job.state === "cancelled") {
-      await db.update(gapReassessmentDrafts).set({ status: "cancelled", completedAt: now, updatedAt: now })
+      await db
+        .update(gapReassessmentDrafts)
+        .set({ status: "cancelled", completedAt: now, updatedAt: now })
         .where(eq(gapReassessmentDrafts.generationJobId, job.id));
     }
-    if (job.organizationId) await db.insert(auditEvents).values({
-      organizationId: job.organizationId,
-      actorUserId: userId,
-      eventType: "gap_reassessment.generation_cancellation_requested",
-      entityType: "background_job",
-      entityId: job.id,
-      metadata: { state: job.state },
-    });
+    if (job.organizationId)
+      await db.insert(auditEvents).values({
+        organizationId: job.organizationId,
+        actorUserId: userId,
+        eventType: "gap_reassessment.generation_cancellation_requested",
+        entityType: "background_job",
+        entityId: job.id,
+        metadata: { state: job.state },
+      });
   }
   if (isActionPlanGenerationJobKind(job.kind)) {
     await db
@@ -353,8 +672,7 @@ export async function requestJobCancellation(userId: string, jobId: string) {
       await db.insert(auditEvents).values({
         organizationId: job.organizationId,
         actorUserId: userId,
-        eventType:
-          "action_plan.generation_cancellation_requested",
+        eventType: "action_plan.generation_cancellation_requested",
         entityType: "background_job",
         entityId: job.id,
         metadata: { state: job.state },
@@ -362,7 +680,9 @@ export async function requestJobCancellation(userId: string, jobId: string) {
     }
   }
   if (job.kind === "report-render") {
-    await db.update(reports).set({ state: "cancelled", completedAt: now, updatedAt: now })
+    await db
+      .update(reports)
+      .set({ state: "cancelled", completedAt: now, updatedAt: now })
       .where(eq(reports.jobId, job.id));
   }
   return toJobDto(job);
@@ -372,8 +692,20 @@ export async function finalizeJobCancellation(jobId: string, workerId: string) {
   const now = new Date();
   const [job] = await db
     .update(backgroundJobs)
-    .set({ state: "cancelled", leaseOwner: null, leaseExpiresAt: null, finishedAt: now, updatedAt: now })
-    .where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.leaseOwner, workerId), eq(backgroundJobs.state, "cancellation_requested")))
+    .set({
+      state: "cancelled",
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      finishedAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(backgroundJobs.id, jobId),
+        eq(backgroundJobs.leaseOwner, workerId),
+        eq(backgroundJobs.state, "cancellation_requested"),
+      ),
+    )
     .returning();
   if (!job) throw leaseLost();
   return job;
@@ -391,27 +723,39 @@ export function toJobDto(
     attemptCount: job.attemptCount,
     safeError:
       job.state === "failed" && job.safeErrorCode && job.safeErrorMessage
-      ? { code: job.safeErrorCode, message: job.safeErrorMessage }
-      : null,
+        ? { code: job.safeErrorCode, message: job.safeErrorMessage }
+        : null,
     createdAt: job.createdAt.toISOString(),
     updatedAt: job.updatedAt.toISOString(),
     startedAt: job.startedAt?.toISOString() ?? null,
     finishedAt: job.finishedAt?.toISOString() ?? null,
-    cancellable: job.cancellable && !["succeeded", "failed", "cancelled"].includes(job.state),
+    cancellable:
+      job.cancellable &&
+      !["succeeded", "failed", "cancelled"].includes(job.state),
     resultLink: null,
     result,
   };
 }
 
 function leaseLost() {
-  return new ApiError(409, "The job lease is no longer held", undefined, "JOB_LEASE_LOST");
+  return new ApiError(
+    409,
+    "The job lease is no longer held",
+    undefined,
+    "JOB_LEASE_LOST",
+  );
 }
 
-function isOrganizationCapability(value: string): value is OrganizationCapability {
+function isOrganizationCapability(
+  value: string,
+): value is OrganizationCapability {
   return (organizationCapabilities as readonly string[]).includes(value);
 }
 
-export function toJobResultValues(jobId: string, result: { type: string; id: string }) {
+export function toJobResultValues(
+  jobId: string,
+  result: { type: string; id: string },
+) {
   switch (result.type) {
     case "generated_artifact_revision":
       return { jobId, generatedArtifactRevisionId: result.id };
@@ -428,6 +772,11 @@ export function toJobResultValues(jobId: string, result: { type: string; id: str
     case "action_plan":
       return { jobId, actionPlanId: result.id };
     default:
-      throw new ApiError(500, "Unsupported job result kind", undefined, "JOB_RESULT_KIND_INVALID");
+      throw new ApiError(
+        500,
+        "Unsupported job result kind",
+        undefined,
+        "JOB_RESULT_KIND_INVALID",
+      );
   }
 }

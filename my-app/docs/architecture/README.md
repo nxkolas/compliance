@@ -10,3 +10,5 @@ This folder contains system architecture, data model, and API design notes.
 - [Organization API architecture](./organization-api-architecture.md)
 - [API route inventory](./api-route-inventory.md)
 - [Organization progress and tutorial boundary](./tutorial/organization-progress.md)
+- [AI generation contract versions](./ai-generation-contract-versions.md)
+- [Generation job reconciliation runbook](../runbooks/generation-job-reconciliation.md)

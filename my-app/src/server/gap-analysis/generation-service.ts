@@ -164,7 +164,9 @@ export async function generateGapAnalysis(input: {
     artifact: applicability,
     requirements: release.requirements,
   });
-  if (!["7", "8"].includes(release.prompt.responseSchemaVersion)) {
+  if (
+    !["7", "8", "9", "10", "11"].includes(release.prompt.responseSchemaVersion)
+  ) {
     throw new ApiError(
       409,
       "The pinned Gap release contract is unsupported",
@@ -431,7 +433,11 @@ async function generateGroundedGapResult(input: {
     inputHash: string;
   }>;
 }) {
-  if (!["7", "8"].includes(input.release.prompt.responseSchemaVersion)) {
+  if (
+    !["7", "8", "9", "10", "11"].includes(
+      input.release.prompt.responseSchemaVersion,
+    )
+  ) {
     throw new ApiError(
       409,
       "The pinned Gap release contract is unsupported",
@@ -636,21 +642,25 @@ async function generateGroundedAtomicGapsV7(
   await Promise.all([
     db
       .insert(aiProcessingRunAssessmentInputs)
-      .values(generatedRunIds.map((runId) => ({
-        runId,
-        assessmentRevisionId: input.assessmentRevisionId,
-        sourceHash: contentHash(input.answerRows),
-      })))
+      .values(
+        generatedRunIds.map((runId) => ({
+          runId,
+          assessmentRevisionId: input.assessmentRevisionId,
+          sourceHash: contentHash(input.answerRows),
+        })),
+      )
       .onConflictDoNothing(),
     db
       .insert(aiProcessingRunArtifactInputs)
-      .values(generatedRunIds.map((runId) => ({
-        runId,
-        artifactRevisionId: input.applicability.id,
-        sourceHash:
-          input.applicability.inputHash ??
-          contentHash(input.applicability.result),
-      })))
+      .values(
+        generatedRunIds.map((runId) => ({
+          runId,
+          artifactRevisionId: input.applicability.id,
+          sourceHash:
+            input.applicability.inputHash ??
+            contentHash(input.applicability.result),
+        })),
+      )
       .onConflictDoNothing(),
     input.documentRows.length
       ? db
@@ -676,8 +686,7 @@ async function generateGroundedAtomicGapsV7(
       outputTokens: true,
     },
     where: {
-      RAW: (table, operators) =>
-        operators.inArray(table.id, generatedRunIds),
+      RAW: (table, operators) => operators.inArray(table.id, generatedRunIds),
     },
   });
   const run = runs.find((candidate) => candidate.id === generated.runId);
@@ -1130,6 +1139,23 @@ async function persistGeneratedGapResult(input: {
       .returning();
     const completedRun = completedRuns.find((run) => run.id === input.runId);
     if (!completedRun) throw new Error("Primary Gap generation run is missing");
+    if (input.jobId) {
+      await tx
+        .update(aiProcessingRuns)
+        .set({
+          status: "failed",
+          errorCode: "GENERATION_CANDIDATE_REJECTED",
+          errorMessage:
+            "A corrected category candidate replaced this generation attempt.",
+          completedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(aiProcessingRuns.jobId, input.jobId),
+            eq(aiProcessingRuns.status, "processing"),
+          ),
+        );
+    }
     const events: Array<typeof auditEvents.$inferInsert> = [
       {
         organizationId: input.organizationId,
@@ -1199,6 +1225,19 @@ async function persistGeneratedGapResult(input: {
         .returning({ id: backgroundJobs.id });
       if (!completedJob)
         throw new Error("Gap generation job no longer owns persistence");
+      const processingRun = await tx.query.aiProcessingRuns.findFirst({
+        columns: { id: true },
+        where: {
+          RAW: (table, operators) =>
+            and(
+              eq(table.jobId, input.jobId!),
+              eq(table.status, "processing"),
+            ) ?? operators.sql`true`,
+        },
+      });
+      if (processingRun) {
+        throw new Error("Gap success cannot leave a processing AI run");
+      }
       await tx.insert(backgroundJobResults).values({
         jobId: completedJob.id,
         generatedArtifactRevisionId: revision.id,

@@ -37,6 +37,43 @@ import {
   gapRepairPromptV8,
 } from "./prompt-contract-v8";
 import {
+  buildGapCategoryResponseSchemaV9,
+  normalizeGapCategoryResponseV9,
+  type GapResponsePolicyV9,
+} from "./generation-schema-v9";
+import {
+  GAP_PROMPT_V9_TEMPLATE_HASH,
+  GAP_PROMPT_V9_NAME,
+  GAP_PROMPT_V9_VERSION,
+  GAP_RESPONSE_SCHEMA_V9_VERSION,
+  gapPromptV9,
+  gapRepairPromptV9,
+} from "./prompt-contract-v9";
+import {
+  buildGapCategoryResponseSchemaV10,
+  normalizeGapCategoryResponseV10,
+} from "./generation-schema-v10";
+import {
+  GAP_PROMPT_V10_TEMPLATE_HASH,
+  GAP_PROMPT_V10_NAME,
+  GAP_PROMPT_V10_VERSION,
+  GAP_RESPONSE_SCHEMA_V10_VERSION,
+  gapPromptV10,
+  gapRepairPromptV10,
+} from "./prompt-contract-v10";
+import {
+  buildGapCategoryResponseSchemaV11,
+  normalizeGapCategoryResponseV11,
+} from "./generation-schema-v11";
+import {
+  GAP_PROMPT_V11_TEMPLATE_HASH,
+  GAP_PROMPT_V11_NAME,
+  GAP_PROMPT_V11_VERSION,
+  GAP_RESPONSE_SCHEMA_V11_VERSION,
+  gapPromptV11,
+  gapRepairPromptV11,
+} from "./prompt-contract-v11";
+import {
   coordinateCategoryGeneration,
   safeGenerationIssues,
 } from "../ai/generation";
@@ -88,12 +125,36 @@ export async function generateAtomicGapBatch(input: {
   runIdsByCategory?: Record<string, string>;
 }> {
   if (
+    input.release.prompt.version === GAP_PROMPT_V11_VERSION &&
+    input.release.prompt.responseSchemaVersion ===
+      GAP_RESPONSE_SCHEMA_V11_VERSION &&
+    input.release.prompt.templateHash === GAP_PROMPT_V11_TEMPLATE_HASH
+  ) {
+    return generateAtomicGapCategoriesVersioned(input, "11");
+  }
+  if (
+    input.release.prompt.version === GAP_PROMPT_V10_VERSION &&
+    input.release.prompt.responseSchemaVersion ===
+      GAP_RESPONSE_SCHEMA_V10_VERSION &&
+    input.release.prompt.templateHash === GAP_PROMPT_V10_TEMPLATE_HASH
+  ) {
+    return generateAtomicGapCategoriesVersioned(input, "10");
+  }
+  if (
+    input.release.prompt.version === GAP_PROMPT_V9_VERSION &&
+    input.release.prompt.responseSchemaVersion ===
+      GAP_RESPONSE_SCHEMA_V9_VERSION &&
+    input.release.prompt.templateHash === GAP_PROMPT_V9_TEMPLATE_HASH
+  ) {
+    return generateAtomicGapCategoriesVersioned(input, "9");
+  }
+  if (
     input.release.prompt.version === GAP_PROMPT_V8_VERSION &&
     input.release.prompt.responseSchemaVersion ===
       GAP_RESPONSE_SCHEMA_V8_VERSION &&
     input.release.prompt.templateHash === GAP_PROMPT_V8_TEMPLATE_HASH
   ) {
-    return generateAtomicGapCategoriesV8(input);
+    return generateAtomicGapCategoriesVersioned(input, "8");
   }
   if (
     input.release.prompt.version !== GAP_PROMPT_V7_VERSION ||
@@ -210,8 +271,9 @@ export async function generateAtomicGapBatch(input: {
   };
 }
 
-async function generateAtomicGapCategoriesV8(
+async function generateAtomicGapCategoriesVersioned(
   input: Parameters<typeof generateAtomicGapBatch>[0],
+  contractVersion: "8" | "9" | "10" | "11",
 ): Promise<{
   runId: string;
   outputLocale: Locale;
@@ -219,10 +281,7 @@ async function generateAtomicGapCategoriesV8(
   findings: ValidatedCategoryGapResult[];
   runIdsByCategory: Record<string, string>;
 }> {
-  const controller = new AbortController();
-  const signal = input.abortSignal
-    ? AbortSignal.any([input.abortSignal, controller.signal])
-    : controller.signal;
+  const signal = input.abortSignal ?? new AbortController().signal;
   const contextByCategory = new Map<string, GroundingContextItem[]>();
   const runIdsByCategory: Record<string, string> = {};
   const coordinated = await coordinateCategoryGeneration<
@@ -238,7 +297,12 @@ async function generateAtomicGapCategoriesV8(
         operation: input.runOperationKind ?? "gap_analysis",
         revisionId: input.assessmentRevisionId,
         releaseId: input.release.id,
-        contract: GAP_RESPONSE_SCHEMA_V8_VERSION,
+        contract:
+          contractVersion === "11"
+            ? GAP_RESPONSE_SCHEMA_V11_VERSION
+            : contractVersion === "10"
+              ? GAP_RESPONSE_SCHEMA_V10_VERSION
+              : GAP_RESPONSE_SCHEMA_V8_VERSION,
         locale: input.outputLocale,
         categoryCode: item.requirement.code,
         generationReservation: input.idempotencyKey,
@@ -254,7 +318,7 @@ async function generateAtomicGapCategoriesV8(
       providerAttempt,
     }) {
       const item = task.input;
-      let responsePolicy: GapResponsePolicyV8 | undefined;
+      let responsePolicy: GapResponsePolicyV8 | GapResponsePolicyV9 | undefined;
       const queryUnit = gapV8QueryUnit(input, item, phase, rejectedCandidate);
       const grounded = await runGroundedOperation<GapCategoryResponseV8>({
         operation: "gap_analysis",
@@ -269,33 +333,53 @@ async function generateAtomicGapCategoriesV8(
           (assertion) => assertion.queryUnitId === item.requirement.code,
         ),
         queryUnits: [queryUnit],
-        systemInstruction:
-          phase === "initial"
-            ? gapPromptV8(input.outputLocale)
-            : gapRepairPromptV8({
-                locale: input.outputLocale,
-                categoryCode: item.requirement.code,
-                issues: issues ?? [],
-              }),
+        systemInstruction: gapVersionedInstruction({
+          contractVersion,
+          locale: input.outputLocale,
+          categoryCode: item.requirement.code,
+          semanticContexts: gapV9SemanticContexts(item, input.outputLocale),
+          phase,
+          issues: issues ?? [],
+        }),
         outputContract: {
           schema(context) {
-            responsePolicy = gapV8ResponsePolicy(
+            if (contractVersion !== "8") {
+              const policy = gapV9ResponsePolicy(
+                item,
+                context,
+                input.outputLocale,
+              );
+              responsePolicy = policy;
+              return contractVersion === "11"
+                ? buildGapCategoryResponseSchemaV11(policy)
+                : contractVersion === "10"
+                  ? buildGapCategoryResponseSchemaV10(policy)
+                  : buildGapCategoryResponseSchemaV9(policy);
+            }
+            const policy = gapV8ResponsePolicy(
               item,
               context,
               input.outputLocale,
             );
-            return buildGapCategoryResponseSchemaV8(responsePolicy);
+            responsePolicy = policy;
+            return buildGapCategoryResponseSchemaV8(policy);
           },
           languagePolicy: "localized",
           generatedProse: gapV8GeneratedProse,
           claims(value) {
             const policy =
               responsePolicy ??
-              gapV8ResponsePolicy(
-                item,
-                contextByCategory.get(item.requirement.code) ?? [],
-                input.outputLocale,
-              );
+              (contractVersion !== "8"
+                ? gapV9ResponsePolicy(
+                    item,
+                    contextByCategory.get(item.requirement.code) ?? [],
+                    input.outputLocale,
+                  )
+                : gapV8ResponsePolicy(
+                    item,
+                    contextByCategory.get(item.requirement.code) ?? [],
+                    input.outputLocale,
+                  ));
             const claims = Object.entries(value.gaps).flatMap(([key, gaps]) =>
               gaps.map((gap, index) => ({
                 key: `atomic-gap:${item.requirement.code}:${key}:${index + 1}`,
@@ -317,9 +401,7 @@ async function generateAtomicGapCategoriesV8(
                     queryUnitId: item.requirement.code,
                     kind: "legal" as const,
                     binding: true,
-                    citationIds: [
-                      policy.preferredPrimaryLegalCitationId,
-                    ],
+                    citationIds: [policy.preferredPrimaryLegalCitationId],
                     text: `${item.requirement.code}: no triggering atomic gaps`,
                   },
                 ];
@@ -336,12 +418,7 @@ async function generateAtomicGapCategoriesV8(
         assessmentRevisionId: input.assessmentRevisionId,
         jobId: input.jobId,
         abortSignal: taskSignal,
-        promptMetadata: {
-          name: GAP_PROMPT_V8_NAME,
-          version: GAP_PROMPT_V8_VERSION,
-          templateHash: GAP_PROMPT_V8_TEMPLATE_HASH,
-          responseSchemaVersion: GAP_RESPONSE_SCHEMA_V8_VERSION,
-        },
+        promptMetadata: gapVersionedMetadata(contractVersion),
       });
       contextByCategory.set(item.requirement.code, grounded.context);
       runIdsByCategory[item.requirement.code] = grounded.runId;
@@ -362,15 +439,42 @@ async function generateAtomicGapCategoriesV8(
     },
     validate(candidate, task) {
       try {
-        const policy = gapV8ResponsePolicy(
-          task.input,
-          contextByCategory.get(task.categoryCode) ?? [],
-          input.outputLocale,
-        );
-        const normalized = normalizeGapCategoryResponseV8({
-          value: candidate,
-          policy,
-        });
+        const normalized =
+          contractVersion === "11"
+            ? normalizeGapCategoryResponseV11({
+                value: candidate,
+                policy: gapV9ResponsePolicy(
+                  task.input,
+                  contextByCategory.get(task.categoryCode) ?? [],
+                  input.outputLocale,
+                ),
+              })
+            : contractVersion === "10"
+              ? normalizeGapCategoryResponseV10({
+                  value: candidate,
+                  policy: gapV9ResponsePolicy(
+                    task.input,
+                    contextByCategory.get(task.categoryCode) ?? [],
+                    input.outputLocale,
+                  ),
+                })
+              : contractVersion === "9"
+                ? normalizeGapCategoryResponseV9({
+                    value: candidate,
+                    policy: gapV9ResponsePolicy(
+                      task.input,
+                      contextByCategory.get(task.categoryCode) ?? [],
+                      input.outputLocale,
+                    ),
+                  })
+                : normalizeGapCategoryResponseV8({
+                    value: candidate,
+                    policy: gapV8ResponsePolicy(
+                      task.input,
+                      contextByCategory.get(task.categoryCode) ?? [],
+                      input.outputLocale,
+                    ),
+                  });
         return {
           valid: true,
           value: normalized.value,
@@ -381,7 +485,9 @@ async function generateAtomicGapCategoriesV8(
           valid: false,
           failureClass: "repairable_content",
           issues:
-            error && typeof error === "object" && "issues" in error &&
+            error &&
+            typeof error === "object" &&
+            "issues" in error &&
             Array.isArray(error.issues)
               ? safeGenerationIssues(error.issues)
               : [{ code: "content_invalid", path: [] }],
@@ -483,14 +589,16 @@ function gapV8ResponsePolicy(
   return {
     requirementCode: item.requirement.code,
     outputLocale,
-    statementBasis: provisionalResponsePolicy(item, outputLocale).statementBasis,
+    statementBasis: provisionalResponsePolicy(item, outputLocale)
+      .statementBasis,
     statementMaximumByQuestion: item.statementMaximumByQuestion,
     admittedOrganizationCitationIds: supplied
       .filter((candidate) => candidate.channel === "organization_document")
       .map((candidate) => candidate.citationId),
     questionnaireCitationIdsByQuestion: Object.fromEntries(
       item.policy.triggeringQuestions.map((trigger) => {
-        const answerId = item.sourceAssessmentAnswerIdByQuestion[trigger.stableKey];
+        const answerId =
+          item.sourceAssessmentAnswerIdByQuestion[trigger.stableKey];
         const citation = supplied.find(
           (candidate) =>
             candidate.channel === "questionnaire_assertion" &&
@@ -506,6 +614,54 @@ function gapV8ResponsePolicy(
   };
 }
 
+function gapV9ResponsePolicy(
+  item: AtomicGapRequirementInput,
+  context: GroundingContextItem[],
+  outputLocale: Locale,
+): GapResponsePolicyV9 {
+  return {
+    ...gapV8ResponsePolicy(item, context, outputLocale),
+    semanticContextByQuestion: Object.fromEntries(
+      gapV9SemanticContexts(item, outputLocale).map((semantic) => [
+        semantic.questionStableKey,
+        semantic,
+      ]),
+    ),
+  };
+}
+
+function gapV9SemanticContexts(
+  item: AtomicGapRequirementInput,
+  outputLocale: Locale,
+) {
+  const basis = provisionalResponsePolicy(item, outputLocale).statementBasis;
+  const kindByKey = new Map(
+    basis.triggeringQuestions.map((trigger) => [
+      trigger.stableKey,
+      trigger.kind,
+    ]),
+  );
+  return item.policy.triggeringQuestions.map((trigger) => {
+    if (trigger.stableValue === "fully_implemented") {
+      throw new Error(
+        `Satisfied question ${trigger.stableKey} cannot be a Gap trigger`,
+      );
+    }
+    return {
+      locale: outputLocale,
+      questionStableKey: trigger.stableKey,
+      questionText: trigger.text,
+      selectedAnswer: trigger.stableValue,
+      expectedKind:
+        kindByKey.get(trigger.stableKey) ?? missingGapKind(trigger.stableKey),
+    };
+  });
+}
+
+function missingGapKind(stableKey: string): never {
+  throw new Error(`Server-owned Gap kind is missing for ${stableKey}`);
+}
+
 function gapV8GeneratedProse(value: GapCategoryResponseV8) {
   return [
     ...Object.values(value.gaps).flatMap((gaps) =>
@@ -515,6 +671,95 @@ function gapV8GeneratedProse(value: GapCategoryResponseV8) {
     ...value.assumptions,
     ...value.contradictions,
   ];
+}
+
+function gapVersionedInstruction(input: {
+  contractVersion: "8" | "9" | "10" | "11";
+  locale: Locale;
+  categoryCode: string;
+  semanticContexts: ReturnType<typeof gapV9SemanticContexts>;
+  phase: "initial" | "repair";
+  issues: Parameters<typeof gapRepairPromptV10>[0]["issues"];
+}) {
+  if (input.contractVersion === "11") {
+    return input.phase === "initial"
+      ? gapPromptV11({
+          locale: input.locale,
+          semanticContexts: input.semanticContexts,
+        })
+      : gapRepairPromptV11({
+          locale: input.locale,
+          categoryCode: input.categoryCode,
+          semanticContexts: input.semanticContexts,
+          issues: input.issues,
+        });
+  }
+  if (input.contractVersion === "10") {
+    return input.phase === "initial"
+      ? gapPromptV10({
+          locale: input.locale,
+          semanticContexts: input.semanticContexts,
+        })
+      : gapRepairPromptV10({
+          locale: input.locale,
+          categoryCode: input.categoryCode,
+          semanticContexts: input.semanticContexts,
+          issues: input.issues,
+        });
+  }
+  if (input.contractVersion === "9") {
+    return input.phase === "initial"
+      ? gapPromptV9({
+          locale: input.locale,
+          semanticContexts: input.semanticContexts,
+        })
+      : gapRepairPromptV9({
+          locale: input.locale,
+          categoryCode: input.categoryCode,
+          semanticContexts: input.semanticContexts,
+          issues: input.issues,
+        });
+  }
+  return input.phase === "initial"
+    ? gapPromptV8(input.locale)
+    : gapRepairPromptV8({
+        locale: input.locale,
+        categoryCode: input.categoryCode,
+        issues: input.issues,
+      });
+}
+
+function gapVersionedMetadata(contractVersion: "8" | "9" | "10" | "11") {
+  if (contractVersion === "11") {
+    return {
+      name: GAP_PROMPT_V11_NAME,
+      version: GAP_PROMPT_V11_VERSION,
+      templateHash: GAP_PROMPT_V11_TEMPLATE_HASH,
+      responseSchemaVersion: GAP_RESPONSE_SCHEMA_V11_VERSION,
+    };
+  }
+  if (contractVersion === "10") {
+    return {
+      name: GAP_PROMPT_V10_NAME,
+      version: GAP_PROMPT_V10_VERSION,
+      templateHash: GAP_PROMPT_V10_TEMPLATE_HASH,
+      responseSchemaVersion: GAP_RESPONSE_SCHEMA_V10_VERSION,
+    };
+  }
+  if (contractVersion === "9") {
+    return {
+      name: GAP_PROMPT_V9_NAME,
+      version: GAP_PROMPT_V9_VERSION,
+      templateHash: GAP_PROMPT_V9_TEMPLATE_HASH,
+      responseSchemaVersion: GAP_RESPONSE_SCHEMA_V9_VERSION,
+    };
+  }
+  return {
+    name: GAP_PROMPT_V8_NAME,
+    version: GAP_PROMPT_V8_VERSION,
+    templateHash: GAP_PROMPT_V8_TEMPLATE_HASH,
+    responseSchemaVersion: GAP_RESPONSE_SCHEMA_V8_VERSION,
+  };
 }
 
 function generationConcurrency() {

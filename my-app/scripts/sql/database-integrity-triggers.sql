@@ -733,7 +733,7 @@ begin
     join public.generated_artifacts artifact on artifact.id = revision.artifact_id
     where revision.id = result_row.generated_artifact_revision_id
       and artifact.organization_id = job_row.organization_id
-      and job_row.kind in ('gap-generation', 'gap-generation-v8')
+      and job_row.kind in ('gap-generation', 'gap-generation-v8', 'gap-generation-v9', 'gap-generation-v10', 'gap-generation-v11')
   ) then
     raise exception using errcode = '23514',
       message = 'Job Artifact result has the wrong tenant or kind';
@@ -754,7 +754,11 @@ begin
       and plan.generation_job_id = job_row.id
       and job_row.kind in (
         'action-plan-generation',
-        'action-plan-generation-v2'
+        'action-plan-generation-v2',
+        'action-plan-generation-v3',
+        'action-plan-generation-v4',
+        'action-plan-generation-v5',
+        'action-plan-generation-v6'
       )
   ) then
     raise exception using errcode = '23514',
@@ -793,7 +797,11 @@ create unique index background_jobs_action_plan_generation_active_unique
   on public.background_jobs (organization_id)
   where kind in (
     'action-plan-generation',
-    'action-plan-generation-v2'
+    'action-plan-generation-v2',
+    'action-plan-generation-v3',
+    'action-plan-generation-v4',
+    'action-plan-generation-v5',
+    'action-plan-generation-v6'
   )
   and state in ('queued', 'running', 'cancellation_requested');
 

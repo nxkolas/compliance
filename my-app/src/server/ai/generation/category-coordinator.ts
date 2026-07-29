@@ -3,11 +3,9 @@ import {
   type GenerationDiagnostic,
   type GenerationIssueCode,
 } from "./diagnostics";
-import {
-  classifyGenerationFailure,
-  GenerationFailure,
-} from "./failures";
-import { throwIfGenerationCancelled } from "./abort";
+import { classifyGenerationFailure, GenerationFailure } from "./failures";
+import { combineAbortSignals, throwIfGenerationCancelled } from "./abort";
+import { emitGenerationMetric } from "./metrics";
 
 export type CategoryValidation<T> =
   | { valid: true; value: T; normalizedIssueCodes?: GenerationIssueCode[] }
@@ -61,18 +59,54 @@ export async function coordinateCategoryGeneration<
   const concurrency = Math.max(1, Math.min(10, input.concurrency ?? 3));
   const diagnostics: GenerationDiagnostic[] = [];
   const results = new Array<TOutput>(input.tasks.length);
+  const failureController = new AbortController();
+  const workerSignal = combineAbortSignals([
+    input.signal,
+    failureController.signal,
+  ]);
   let cursor = 0;
-  let terminalFailure: unknown;
+  let primaryFailure: unknown;
+  let primaryFailureAt: number | undefined;
   let recoveredCategoryCount = 0;
 
   const record = async (diagnostic: GenerationDiagnostic) => {
     diagnostics.push(diagnostic);
+    const metricName =
+      diagnostic.phase === "initial" &&
+      (diagnostic.disposition === "accepted" ||
+        diagnostic.disposition === "normalized") &&
+      (diagnostic.stage === "content" || diagnostic.stage === "normalization")
+        ? "category_initial_accepted"
+        : diagnostic.disposition === "repair_requested" &&
+            diagnostic.stage !== "provider"
+          ? "category_repair_requested"
+          : diagnostic.phase === "repair" &&
+              (diagnostic.disposition === "accepted" ||
+                diagnostic.disposition === "normalized") &&
+              (diagnostic.stage === "content" ||
+                diagnostic.stage === "normalization")
+            ? "category_repair_accepted"
+            : diagnostic.phase === "repair" &&
+                diagnostic.disposition === "rejected"
+              ? "category_repair_exhausted"
+              : diagnostic.disposition === "cancelled"
+                ? "sibling_provider_aborted"
+                : null;
+    if (metricName) {
+      emitGenerationMetric({
+        name: metricName,
+        value: 1,
+        categoryCode: diagnostic.categoryCode,
+        phase: diagnostic.phase,
+        safeCode: diagnostic.issues[0]?.code,
+      });
+    }
     await input.onDiagnostic?.(diagnostic);
   };
 
   async function worker() {
-    while (terminalFailure === undefined) {
-      throwIfGenerationCancelled(input.signal);
+    while (primaryFailure === undefined) {
+      throwIfGenerationCancelled(workerSignal);
       const index = cursor;
       cursor += 1;
       if (index >= input.tasks.length) return;
@@ -95,8 +129,19 @@ export async function coordinateCategoryGeneration<
         }
         results[index] = await executeTask(task, record);
       } catch (error) {
-        terminalFailure ??= error;
-        throw error;
+        const failure = classifyGenerationFailure(error);
+        if (
+          failure.failureClass === "cancelled" &&
+          primaryFailure !== undefined
+        ) {
+          return;
+        }
+        if (primaryFailure === undefined) {
+          primaryFailure = error;
+          primaryFailureAt = Date.now();
+          failureController.abort("terminal category failure");
+        }
+        return;
       }
     }
   }
@@ -109,9 +154,7 @@ export async function coordinateCategoryGeneration<
     let repairIssues: GenerationDiagnostic["issues"] | undefined;
     for (const phase of ["initial", "repair"] as const) {
       const startedAt = Date.now();
-      let validation: Awaited<
-        ReturnType<typeof runProviderWithTransientRetry>
-      >;
+      let validation: Awaited<ReturnType<typeof runProviderWithTransientRetry>>;
       try {
         validation = await runProviderWithTransientRetry({
           phase,
@@ -199,8 +242,12 @@ export async function coordinateCategoryGeneration<
   }) {
     const retries = Math.max(0, Math.min(2, input.transientRetries ?? 2));
     let issues = options.issues;
-    for (let providerAttempt = 1; providerAttempt <= retries + 1; providerAttempt += 1) {
-      throwIfGenerationCancelled(input.signal);
+    for (
+      let providerAttempt = 1;
+      providerAttempt <= retries + 1;
+      providerAttempt += 1
+    ) {
+      throwIfGenerationCancelled(workerSignal);
       const providerStartedAt = Date.now();
       try {
         const candidate = await input.generate({
@@ -208,7 +255,7 @@ export async function coordinateCategoryGeneration<
           task: options.task,
           rejectedCandidate: options.rejectedCandidate,
           issues,
-          signal: input.signal,
+          signal: workerSignal,
           providerAttempt,
         });
         await record(
@@ -261,23 +308,24 @@ export async function coordinateCategoryGeneration<
           failure.retryAfterMs ??
           input.backoffMs?.(providerAttempt) ??
           defaultBackoffMs(providerAttempt);
-        await abortableDelay(delay, input.signal);
+        await abortableDelay(delay, workerSignal);
       }
     }
     throw new Error("Provider retry bound was exceeded");
   }
 
-  try {
-    await Promise.all(
-      Array.from(
-        { length: Math.min(concurrency, input.tasks.length) },
-        () => worker(),
-      ),
-    );
-  } catch (error) {
-    if (terminalFailure === undefined) terminalFailure = error;
+  const workerPromises = Array.from(
+    { length: Math.min(concurrency, input.tasks.length) },
+    () => worker(),
+  );
+  await Promise.allSettled(workerPromises);
+  if (primaryFailureAt !== undefined) {
+    emitGenerationMetric({
+      name: "primary_failure_settlement_ms",
+      value: Date.now() - primaryFailureAt,
+    });
   }
-  if (terminalFailure !== undefined) throw terminalFailure;
+  if (primaryFailure !== undefined) throw primaryFailure;
   throwIfGenerationCancelled(input.signal);
   return { categories: results, diagnostics, recoveredCategoryCount };
 }

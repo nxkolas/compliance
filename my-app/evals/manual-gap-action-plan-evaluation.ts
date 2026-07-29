@@ -11,6 +11,9 @@ import {
   actionPlanItemGaps,
   aiProcessingRunClaims,
   aiProcessingRunContext,
+  aiProcessingRuns,
+  auditEvents,
+  backgroundJobs,
   backgroundJobResults,
   gapFindingEvidence,
   gapFindings,
@@ -63,6 +66,7 @@ type ExpectedFinding = {
 
 type EvaluationCase = {
   number: number;
+  scenarioNumber?: number;
   slug: string;
   title: string;
   locale: Locale;
@@ -102,8 +106,7 @@ const OUTPUT_DIR = resolve(
 );
 const QA_GAP_RELEASE = {
   releaseCode: "nis2-gap",
-  versionLabel:
-    readArgument("--gap-release-version") || "guided-v6",
+  versionLabel: readArgument("--gap-release-version") || "guided-v6",
 } as const;
 
 async function loadQaGapRelease(locale: Locale) {
@@ -159,7 +162,7 @@ const highCodes = [
 const mediumCodes = ["NIS2-AWARE-09", "NIS2-PROTECT-10"] as const;
 const allCodes = [...highCodes, ...mediumCodes];
 
-const cases: EvaluationCase[] = [
+const baseCases: EvaluationCase[] = [
   {
     number: 1,
     slug: "mature-baseline-en",
@@ -268,19 +271,138 @@ const cases: EvaluationCase[] = [
   },
 ];
 
+const localizedScenarioTitles: Record<number, Record<Locale, string>> = {
+  1: { en: "Mature baseline", de: "Ausgereifter Ausgangszustand" },
+  2: { en: "Absent controls", de: "Fehlende Kontrollen" },
+  3: { en: "Mixed maturity", de: "Gemischter Reifegrad" },
+  4: { en: "Uncertain evidence", de: "Unsichere Nachweise" },
+  5: {
+    en: "Contradictory backup evidence",
+    de: "Widersprüchlicher Backup-Nachweis",
+  },
+};
+
+const cases: EvaluationCase[] = baseCases.flatMap((base, scenarioIndex) =>
+  (["en", "de"] as const).map((locale, localeIndex) =>
+    localizeEvaluationCase({
+      base,
+      locale,
+      number: scenarioIndex * 2 + localeIndex + 1,
+      scenarioNumber: scenarioIndex + 1,
+    }),
+  ),
+);
+
+function localizeEvaluationCase(input: {
+  base: EvaluationCase;
+  locale: Locale;
+  number: number;
+  scenarioNumber: number;
+}): EvaluationCase {
+  const baseSlug = input.base.slug.replace(/-(?:de|en)$/u, "");
+  const isContradiction = input.scenarioNumber === 5;
+  const document =
+    isContradiction && input.locale === "de"
+      ? {
+          title: "Synthetischer Nachweis zu Backup und Wiederherstellung",
+          fileName: "synthetischer-backup-wiederherstellungsnachweis.txt",
+          mimeType: "text/plain" as const,
+          text: [
+            "SYNTHETISCHER QA-NACHWEIS — STATUS DER BACKUP- UND WIEDERHERSTELLUNGSKONTROLLE",
+            "",
+            "Geltungsbereich: alle Produktivsysteme und wichtigen Geschäftsdaten.",
+            "Prüfdatum: 26.07.2026.",
+            "",
+            "Backups werden regelmäßig erstellt. Für kein Produktivsystem wurde",
+            "jedoch jemals ein Wiederherstellungstest durchgeführt. Es gibt keine",
+            "dokumentierten Testergebnisse, keinen Nachweis der Wiederherstellbarkeit",
+            "und weder Verantwortliche noch einen Zeitplan für solche Tests.",
+            "",
+            "Die Fragebogenangabe, Wiederherstellungen würden regelmäßig getestet,",
+            "ist falsch und darf nicht herangezogen werden. Die Wiederherstellbarkeit",
+            "bleibt ungeklärt, bis ein vollständiger Test durchgeführt und dokumentiert ist.",
+          ].join("\n"),
+        }
+      : input.base.document
+        ? { ...input.base.document }
+        : undefined;
+  const manualCorrection = input.base.manualCorrection
+    ? input.locale === "de"
+      ? {
+          ...input.base.manualCorrection,
+          reason:
+            "Der synthetische QA-Nachweis widerspricht direkt der Angabe eines vollständig umgesetzten Wiederherstellungstests.",
+          resolutionReason:
+            "Die manuelle Prüfung bewertet den spezifischen aktuellen Nachweis als maßgeblich und stuft die Backup-Kontinuität als nicht erfüllt ein.",
+        }
+      : { ...input.base.manualCorrection }
+    : undefined;
+  return {
+    ...input.base,
+    number: input.number,
+    scenarioNumber: input.scenarioNumber,
+    locale: input.locale,
+    slug: `${baseSlug}-${input.locale}`,
+    title: `${localizedScenarioTitles[input.scenarioNumber]![input.locale]} (${input.locale.toUpperCase()})`,
+    document,
+    manualCorrection,
+  };
+}
+
 async function main() {
   requireEnvironment();
   process.env.AI_DEFAULT_PROVIDER = "openai";
   await mkdir(OUTPUT_DIR, { recursive: true });
 
   const runStartedAt = new Date().toISOString();
+  if (process.argv.includes("--manifest-only")) {
+    const allResults = await Promise.all(
+      cases.map(async (testCase) =>
+        JSON.parse(
+          await readFile(
+            resolve(
+              OUTPUT_DIR,
+              `case-${testCase.number}-${testCase.slug}.json`,
+            ),
+            "utf8",
+          ),
+        ),
+      ),
+    );
+    await writeManifest(allResults, runStartedAt);
+    return;
+  }
+  if (process.argv.includes("--partial-manifest")) {
+    const availableResults = (
+      await Promise.all(
+        cases.map(async (testCase) => {
+          const casePath = resolve(
+            OUTPUT_DIR,
+            `case-${testCase.number}-${testCase.slug}.json`,
+          );
+          return (await fileExists(casePath))
+            ? JSON.parse(await readFile(casePath, "utf8"))
+            : null;
+        }),
+      )
+    ).filter((value): value is NonNullable<typeof value> => value !== null);
+    if (availableResults.length === 0) {
+      throw new Error("No case artifacts are available for a partial manifest");
+    }
+    await writeManifest(availableResults, runStartedAt);
+    return;
+  }
   const resumeCaseFiveOrganizationId = readArgument(
     "--resume-case-5-organization-id",
   );
   if (resumeCaseFiveOrganizationId) {
+    const resumedCase = cases.find(
+      (testCase) => testCase.scenarioNumber === 5 && testCase.locale === "en",
+    );
+    if (!resumedCase) throw new Error("English scenario 5 is unavailable");
     const previous = await Promise.all(
       cases
-        .slice(0, 4)
+        .filter((testCase) => testCase.number < resumedCase.number)
         .map(async (testCase) =>
           JSON.parse(
             await readFile(
@@ -295,7 +417,10 @@ async function main() {
     );
     const result = await resumeCaseFive(resumeCaseFiveOrganizationId);
     await writeJson(
-      resolve(OUTPUT_DIR, `case-5-${cases[4]!.slug}.json`),
+      resolve(
+        OUTPUT_DIR,
+        `case-${resumedCase.number}-${resumedCase.slug}.json`,
+      ),
       result,
     );
     await writeManifest([...previous, result], runStartedAt);
@@ -308,7 +433,7 @@ async function main() {
     const testCase = cases.find((candidate) => candidate.number === caseNumber);
     if (!testCase || !Number.isInteger(caseNumber)) {
       throw new Error(
-        "--case-number must identify one of the five evaluation cases",
+        "--case-number must identify one of the ten locale-specific evaluation cases",
       );
     }
     const result = await executeCase(testCase);
@@ -370,6 +495,7 @@ async function writeManifest(results: unknown[], runStartedAt: string) {
     completedAt: new Date().toISOString(),
     outputDirectory: OUTPUT_DIR,
     userId: USER_ID,
+    localeSummaries: await buildLocaleSummaries(results),
     cases: results.map((value) => {
       const result = value as Awaited<ReturnType<typeof executeCase>>;
       return {
@@ -396,13 +522,19 @@ async function writeManifest(results: unknown[], runStartedAt: string) {
     "For each English and German case, record concrete excerpts and mark every item only after inspection:",
     "",
     "- [ ] Atomic gaps are short, standalone, and non-overlapping.",
+    "- [ ] Every Gap statement is one sentence and at most 20 words.",
+    "- [ ] Gap prose states the fact directly without questionnaire or legal-source framing.",
     "- [ ] Missing, partial, and uncertain wording is truthful.",
     "- [ ] Partial answers contain no invented sub-control deficiency.",
     "- [ ] Gap prose contains no recommendation or remediation instruction.",
     "- [ ] Review notices describe contradictions without action advice.",
     "- [ ] Actions combine or split gaps sensibly within one category.",
     "- [ ] Uncertain work verifies first and makes remediation conditional.",
+    "- [ ] Verification results contain at most one server-owned conditional lead-in.",
     "- [ ] Results are clear and recommended evidence names are concrete.",
+    "- [ ] Action titles are imperative and at most 12 words.",
+    "- [ ] Action results use one or two sentences and at most 40 words.",
+    "- [ ] Action prose is operational only and contains no legal exposition.",
     "- [ ] Removed objective/deliverable/acceptance-criteria prose is absent.",
     "- [ ] Both locales are readable and match the pinned result language.",
     "",
@@ -425,6 +557,266 @@ async function writeManifest(results: unknown[], runStartedAt: string) {
     `${reviewLines.join("\n")}\n`,
     "utf8",
   );
+}
+
+async function buildLocaleSummaries(results: unknown[]) {
+  return Object.fromEntries(
+    await Promise.all(
+      (["en", "de"] as const).map(async (locale) => {
+        const localeResults = results
+          .map((value) => value as Awaited<ReturnType<typeof executeCase>>)
+          .filter((result) => result.case.locale === locale);
+        const organizationIds = localeResults.map(
+          (result) => result.organization.id,
+        );
+        const jobs =
+          organizationIds.length > 0
+            ? await db
+                .select({
+                  id: backgroundJobs.id,
+                  kind: backgroundJobs.kind,
+                  state: backgroundJobs.state,
+                  startedAt: backgroundJobs.startedAt,
+                  finishedAt: backgroundJobs.finishedAt,
+                })
+                .from(backgroundJobs)
+                .where(inArray(backgroundJobs.organizationId, organizationIds))
+            : [];
+        const generationJobs = jobs.filter(
+          (job) =>
+            job.kind.startsWith("gap-generation") ||
+            job.kind.startsWith("action-plan-generation"),
+        );
+        const jobIds = generationJobs.map((job) => job.id);
+        const [runs, diagnostics] =
+          jobIds.length > 0
+            ? await Promise.all([
+                db
+                  .select({
+                    inputTokens: aiProcessingRuns.inputTokens,
+                    outputTokens: aiProcessingRuns.outputTokens,
+                    cachedInputTokens: aiProcessingRuns.cachedInputTokens,
+                    startedAt: aiProcessingRuns.startedAt,
+                    completedAt: aiProcessingRuns.completedAt,
+                  })
+                  .from(aiProcessingRuns)
+                  .where(inArray(aiProcessingRuns.jobId, jobIds)),
+                db
+                  .select({ metadata: auditEvents.metadata })
+                  .from(auditEvents)
+                  .where(
+                    and(
+                      eq(
+                        auditEvents.eventType,
+                        "ai_generation.category_diagnostic",
+                      ),
+                      inArray(auditEvents.entityId, jobIds),
+                    ),
+                  ),
+              ])
+            : [[], []];
+        const metadata = diagnostics.map(
+          (row) => row.metadata as Record<string, unknown>,
+        );
+        const initialAccepted = metadata.filter(
+          (item) =>
+            item.phase === "initial" &&
+            (item.stage === "content" || item.stage === "normalization") &&
+            (item.disposition === "accepted" ||
+              item.disposition === "normalized"),
+        ).length;
+        const repairRequested = metadata.filter(
+          (item) =>
+            item.disposition === "repair_requested" &&
+            item.stage !== "provider",
+        ).length;
+        const repairAccepted = metadata.filter(
+          (item) =>
+            item.phase === "repair" &&
+            (item.stage === "content" || item.stage === "normalization") &&
+            (item.disposition === "accepted" ||
+              item.disposition === "normalized"),
+        ).length;
+        const repairExhausted = metadata.filter(
+          (item) => item.phase === "repair" && item.disposition === "rejected",
+        ).length;
+        const categoryCount = initialAccepted + repairRequested;
+        const providerLatencies = runs.flatMap((run) =>
+          run.completedAt && run.startedAt
+            ? [run.completedAt.getTime() - run.startedAt.getTime()]
+            : [],
+        );
+        const workflowLatencies = generationJobs.flatMap((job) =>
+          job.startedAt && job.finishedAt
+            ? [job.finishedAt.getTime() - job.startedAt.getTime()]
+            : [],
+        );
+        return [
+          locale,
+          {
+            workflows: localeResults.length,
+            automaticChecksPassed: localeResults.filter((result) =>
+              result.automaticChecks.every((check) => check.passed),
+            ).length,
+            generationJobs: generationJobs.length,
+            successfulJobs: generationJobs.filter(
+              (job) => job.state === "succeeded",
+            ).length,
+            categoryCount,
+            initialAccepted,
+            firstPassRate:
+              categoryCount > 0 ? initialAccepted / categoryCount : 1,
+            repairRequested,
+            repairAccepted,
+            repairExhausted,
+            providerRuns: runs.length,
+            providerLatencyMs: latencySummary(providerLatencies),
+            workflowLatencyMs: latencySummary(workflowLatencies),
+            tokens: {
+              input: sumNullable(runs.map((run) => run.inputTokens)),
+              output: sumNullable(runs.map((run) => run.outputTokens)),
+              cachedInput: sumNullable(
+                runs.map((run) => run.cachedInputTokens),
+              ),
+            },
+            terminalJobsWithProcessingRuns: localeResults.reduce(
+              (total, result) =>
+                total +
+                result.lifecycleInvariants.terminalJobsWithProcessingRuns,
+              0,
+            ),
+            offlineQuality: summarizeOfflineQuality(localeResults),
+          },
+        ] as const;
+      }),
+    ),
+  );
+}
+
+function summarizeOfflineQuality(
+  results: Array<Awaited<ReturnType<typeof executeCase>>>,
+) {
+  const violations: Array<{
+    caseNumber: number;
+    requirementCode: string;
+    dimension: string;
+  }> = [];
+  const add = (
+    result: (typeof results)[number],
+    requirementCode: string,
+    dimension: string,
+  ) =>
+    violations.push({
+      caseNumber: result.case.number,
+      requirementCode,
+      dimension,
+    });
+  for (const result of results) {
+    for (const finding of result.finalRevision.findings) {
+      for (const gap of finding.gaps) {
+        if (wordCount(gap.statement) > 20)
+          add(result, finding.requirementCode, "gap_word_count");
+        if (sentenceCount(gap.statement) > 1)
+          add(result, finding.requirementCode, "gap_sentence_count");
+        if (containsLegalExposition(gap.statement))
+          add(result, finding.requirementCode, "gap_legal_exposition");
+        if (/\bquestionnaire\b|\bfragebogen\b/iu.test(gap.statement))
+          add(result, finding.requirementCode, "gap_source_framing");
+      }
+    }
+    for (const action of result.actionPlan.items) {
+      if (wordCount(action.title) > 12)
+        add(result, action.requirementCode, "action_title_word_count");
+      if (wordCount(action.result) > 40)
+        add(result, action.requirementCode, "action_result_word_count");
+      const resultSentences = sentenceCount(action.result);
+      if (resultSentences < 1 || resultSentences > 2)
+        add(result, action.requirementCode, "action_result_sentence_count");
+      if (
+        (Array.isArray(action.suggestedEvidence)
+          ? action.suggestedEvidence
+          : []
+        ).some((evidence) => wordCount(String(evidence)) > 12)
+      ) {
+        add(result, action.requirementCode, "action_evidence_word_count");
+      }
+      const actionProse = [
+        action.title,
+        action.result,
+        ...(Array.isArray(action.suggestedEvidence)
+          ? action.suggestedEvidence.map(String)
+          : []),
+      ].join(" ");
+      if (containsLegalExposition(actionProse))
+        add(result, action.requirementCode, "action_legal_exposition");
+      if (
+        action.sourceFindingStatus === "insufficient_evidence" &&
+        countConditionalLeadIns(action.result) > 1
+      ) {
+        add(
+          result,
+          action.requirementCode,
+          "action_duplicate_conditional_lead_in",
+        );
+      }
+      if (
+        action.requirementCode !== "NIS2-BC-05" &&
+        /\bbackup\w*\b|\bdatensicherung\w*\b|\bsicherungskopie\w*\b/iu.test(
+          actionProse,
+        )
+      ) {
+        add(result, action.requirementCode, "action_example_copy");
+      }
+    }
+  }
+  return {
+    passed: violations.length === 0,
+    violationCount: violations.length,
+    violations,
+  };
+}
+
+function wordCount(value: string) {
+  return value.trim() ? value.trim().split(/\s+/u).length : 0;
+}
+
+function sentenceCount(value: string) {
+  return value
+    .split(/[.!?]+(?:\s+|$)/u)
+    .filter((sentence) => sentence.trim().length > 0).length;
+}
+
+function containsLegalExposition(value: string) {
+  return /\b(?:NIS2|directive|statute|law|article|section|obligation|regulator|citation|BSI Act|gesetz|artikel|paragraph|verpflichtung|aufsichtsbehörde|fundstelle)\b/iu.test(
+    value,
+  );
+}
+
+function countConditionalLeadIns(value: string) {
+  return [
+    ...value.matchAll(
+      /\bif verification identifies a deficiency\b|\bfalls die prüfung einen mangel ergibt\b/giu,
+    ),
+  ].length;
+}
+
+function latencySummary(values: number[]) {
+  if (values.length === 0) {
+    return { count: 0, average: null, p95: null, maximum: null };
+  }
+  const ordered = [...values].sort((left, right) => left - right);
+  return {
+    count: ordered.length,
+    average: Math.round(
+      ordered.reduce((total, value) => total + value, 0) / ordered.length,
+    ),
+    p95: ordered[Math.ceil(ordered.length * 0.95) - 1]!,
+    maximum: ordered.at(-1)!,
+  };
+}
+
+function sumNullable(values: Array<number | null>) {
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0);
 }
 
 async function executeCase(testCase: EvaluationCase) {
@@ -543,9 +935,7 @@ async function executeCase(testCase: EvaluationCase) {
     userId: USER_ID,
     organizationId: organization.id,
     assessmentId: assessment.id,
-    selectedDocumentIds: uploadedDocument
-      ? [uploadedDocument.documentId]
-      : [],
+    selectedDocumentIds: uploadedDocument ? [uploadedDocument.documentId] : [],
     locale: testCase.locale,
   });
   if (!prepared) throw new Error("Gap generation draft was not prepared");
@@ -753,6 +1143,15 @@ async function executeCase(testCase: EvaluationCase) {
     actionAiRun,
     expectedFinalizationBlock,
   });
+  const lifecycleInvariants = await readCaseLifecycleInvariants([
+    completedDraft.generationJobId,
+    plan.plan.generationJobId,
+  ]);
+  if (lifecycleInvariants.terminalJobsWithProcessingRuns !== 0) {
+    throw new Error(
+      `Generation lifecycle invariant failed: ${JSON.stringify(lifecycleInvariants)}`,
+    );
+  }
 
   return {
     case: {
@@ -797,12 +1196,35 @@ async function executeCase(testCase: EvaluationCase) {
     aiRun,
     actionAiRun,
     actionPlan: plan,
+    lifecycleInvariants,
     automaticChecks,
   };
 }
 
+async function readCaseLifecycleInvariants(jobIds: Array<string | null>) {
+  const selected = jobIds.filter((jobId): jobId is string => Boolean(jobId));
+  if (selected.length === 0) {
+    return { terminalJobsWithProcessingRuns: 0 };
+  }
+  const rows = await db
+    .select({ runId: aiProcessingRuns.id })
+    .from(aiProcessingRuns)
+    .innerJoin(backgroundJobs, eq(backgroundJobs.id, aiProcessingRuns.jobId))
+    .where(
+      and(
+        inArray(backgroundJobs.id, selected),
+        inArray(backgroundJobs.state, ["failed", "cancelled", "succeeded"]),
+        eq(aiProcessingRuns.status, "processing"),
+      ),
+    );
+  return { terminalJobsWithProcessingRuns: rows.length };
+}
+
 async function resumeCaseFive(organizationId: string) {
-  const testCase = cases[4]!;
+  const testCase = cases.find(
+    (candidate) => candidate.scenarioNumber === 5 && candidate.locale === "en",
+  );
+  if (!testCase) throw new Error("English scenario 5 is unavailable");
   const organization = await db.query.organizations.findFirst({
     where: {
       RAW: (table, operators) =>
