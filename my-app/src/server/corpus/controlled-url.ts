@@ -38,6 +38,7 @@ export async function fetchControlledUrl(input: {
   allowedMimeTypes: ReadonlySet<string>;
   maxRedirects?: number;
   requestHeaders?: Readonly<Record<string, string>>;
+  signal?: AbortSignal;
 }) {
   let url = input.url;
   const redirects = input.maxRedirects ?? 3;
@@ -47,7 +48,13 @@ export async function fetchControlledUrl(input: {
       async (hostname) =>
         (await lookup(hostname, { all: true, verbatim: true })).map((entry) => entry.address),
     );
-    const response = await requestPinnedAddress(validated.url, validated.addresses, input.timeoutMs, input.requestHeaders);
+    const response = await requestPinnedAddress(
+      validated.url,
+      validated.addresses,
+      input.timeoutMs,
+      input.requestHeaders,
+      input.signal,
+    );
     try {
       const status = response.statusCode ?? 0;
       if (status >= 300 && status < 400) {
@@ -83,6 +90,10 @@ export async function fetchControlledUrl(input: {
       const chunks: Uint8Array[] = [];
       let size = 0;
       for await (const value of response) {
+        if (input.signal?.aborted) {
+          response.destroy();
+          throw abortError();
+        }
         const chunk = typeof value === "string" ? Buffer.from(value) : Buffer.from(value);
         size += chunk.byteLength;
         if (size > input.maxBytes) {
@@ -140,6 +151,7 @@ async function requestPinnedAddress(
   addresses: string[],
   timeoutMs: number,
   requestHeaders?: Readonly<Record<string, string>>,
+  signal?: AbortSignal,
 ): Promise<IncomingMessage> {
   let lastError: unknown;
   for (const address of addresses) {
@@ -155,7 +167,9 @@ async function requestPinnedAddress(
           method: "GET",
           headers: { ...requestHeaders, host: url.hostname },
           servername: isIP(stripIpv6Brackets(url.hostname)) ? undefined : stripIpv6Brackets(url.hostname),
-          signal: controller.signal,
+          signal: signal
+            ? AbortSignal.any([controller.signal, signal])
+            : controller.signal,
         }, (response) => {
           clearTimeout(timeout);
           resolve(response);
@@ -167,6 +181,7 @@ async function requestPinnedAddress(
         request.end();
       });
     } catch (error) {
+      if (signal?.aborted) throw abortError();
       lastError = error;
     }
   }
@@ -176,6 +191,12 @@ async function requestPinnedAddress(
     { errorType: lastError instanceof Error ? lastError.name : "unknown" },
     "SOURCE_FETCH_FAILED",
   );
+}
+
+function abortError() {
+  const error = new Error("Controlled URL fetch was interrupted");
+  error.name = "AbortError";
+  return error;
 }
 
 function stripIpv6Brackets(value: string) {

@@ -2,6 +2,7 @@ import { ApiError } from "./errors";
 import { emptyResponse, jsonError, jsonSuccess } from "./response";
 import { entityIdSchema } from "@/src/contracts/common/ids";
 import { resolveRequestId } from "./request-id";
+import { scheduleAfterResponseDrain } from "@/src/server/job-execution/after-response";
 
 export type ApiRouteContext<TContext = unknown> = {
   request: Request;
@@ -40,6 +41,12 @@ export function apiRoute<TContext = unknown, TOutput = unknown>(
 
       if (result instanceof Response) {
         status = result.status;
+        if (status === 202) {
+          scheduleAfterResponseDrain({
+            adapter: "after_response",
+            requestId,
+          });
+        }
         return result;
       }
 
@@ -49,6 +56,12 @@ export function apiRoute<TContext = unknown, TOutput = unknown>(
       }
 
       status = result.status ?? 200;
+      if (status === 202) {
+        scheduleAfterResponseDrain({
+          adapter: "after_response",
+          requestId,
+        });
+      }
       return jsonSuccess(result.data, requestId, {
         status: result.status,
         meta: result.meta,

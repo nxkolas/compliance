@@ -1,6 +1,8 @@
 # Portable PostgreSQL Job Execution
 
-Status: proposed implementation plan; direction confirmed on 2026-07-30.
+Status: implemented and locally qualified on 2026-07-30. External Vercel,
+managed-service, and forced-interruption rollout gates remain environment-owned;
+see `docs/qa/portable-postgres-job-execution-2026-07-30.md`.
 
 ## Problem Statement
 

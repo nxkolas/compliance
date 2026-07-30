@@ -6,10 +6,15 @@ import { backgroundJobs, legalSourceChangeAlerts, legalSourceMonitorChecks, lega
 import { LEGAL_SOURCE_MIME_TYPES, MAX_LEGAL_SOURCE_BYTES } from "../config";
 import { fetchControlledUrl } from "../controlled-url";
 import { nextLegalSourceMonitorCheck } from "@/src/contracts/admin/legal-source-monitor-schedule";
+import { throwIfJobExecutionAborted } from "@/src/server/job-execution/abort";
 
 const payloadSchema = z.object({ monitorId: z.uuid() });
 
-export async function handleLegalSourceMonitor(job: typeof backgroundJobs.$inferSelect) {
+export async function handleLegalSourceMonitor(
+  job: typeof backgroundJobs.$inferSelect,
+  abortSignal?: AbortSignal,
+) {
+  throwIfJobExecutionAborted(abortSignal);
   const { monitorId } = payloadSchema.parse(job.payload);
   const monitor = await db.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, monitorId)) ?? operators.sql`true` } });
   if (!monitor?.active) return { type: "legal_source_monitor", id: monitorId };
@@ -26,7 +31,9 @@ export async function handleLegalSourceMonitor(job: typeof backgroundJobs.$infer
       ...(monitor.etag ? { "if-none-match": monitor.etag } : {}),
       ...(monitor.lastModified ? { "if-modified-since": monitor.lastModified } : {}),
     },
+    signal: abortSignal,
   });
+  throwIfJobExecutionAborted(abortSignal);
   if (fetched.notModified && !previous?.contentHash) {
     throw new Error("Source returned not-modified before an initial content hash was recorded");
   }
@@ -36,6 +43,7 @@ export async function handleLegalSourceMonitor(job: typeof backgroundJobs.$infer
   const changed = !fetched.notModified && Boolean(previous?.contentHash && previous.contentHash !== contentHash);
   const checkedAt = new Date();
   await db.transaction(async (tx) => {
+    throwIfJobExecutionAborted(abortSignal);
     const current = await tx.query.legalSourceMonitors.findFirst({ columns: { id: true, sourceId: true, exactUrl: true, schedule: true, active: true, etag: true, lastModified: true, lastCheckedAt: true, nextCheckAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
       where: { RAW: (table, operators) => (and(
         eq(table.id, monitor.id),
@@ -71,5 +79,6 @@ export async function handleLegalSourceMonitor(job: typeof backgroundJobs.$infer
       eq(legalSourceMonitors.version, monitor.version),
     ));
   });
+  throwIfJobExecutionAborted(abortSignal);
   return { type: "legal_source_monitor", id: monitor.id };
 }

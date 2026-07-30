@@ -7,6 +7,7 @@ import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { REPORT_STORAGE_BUCKET } from "./service";
 import { renderComplianceReport } from "./renderer";
 import { createHash } from "node:crypto";
+import { throwIfJobExecutionAborted } from "@/src/server/job-execution/abort";
 
 const payloadSchema = z.object({ reportId: z.uuid() });
 const snapshotSchema = z.object({
@@ -14,7 +15,11 @@ const snapshotSchema = z.object({
   actionPlanId: z.uuid().nullable(), documentVersionIds: z.array(z.uuid()),
 }).loose();
 
-export async function handleReportRender(job: BackgroundJobRecord) {
+export async function handleReportRender(
+  job: BackgroundJobRecord,
+  abortSignal?: AbortSignal,
+) {
+  throwIfJobExecutionAborted(abortSignal);
   const { reportId } = payloadSchema.parse(job.payload);
   if (!job.organizationId) throw new Error("Report job has no organization scope");
   const [report] = await db.update(reports).set({ state: "rendering", updatedAt: new Date() })
@@ -26,6 +31,7 @@ export async function handleReportRender(job: BackgroundJobRecord) {
   }
   const snapshot = snapshotSchema.parse(report.inputSnapshot);
   const pdf = await renderComplianceReport({ reportId, organizationId: job.organizationId, locale: report.locale as "de" | "en", snapshot, inputHash: report.inputHash });
+  throwIfJobExecutionAborted(abortSignal);
   const outputHash = createHash("sha256").update(pdf).digest("hex");
   const currentJob = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, job.id)) ?? operators.sql`true` } });
   if (currentJob?.state === "cancellation_requested") throw Object.assign(new Error("Report rendering cancelled"), { name: "JobCancellationError" });
@@ -33,6 +39,7 @@ export async function handleReportRender(job: BackgroundJobRecord) {
   const storage = getSupabaseAdminClient().storage.from(REPORT_STORAGE_BUCKET);
   const { error } = await storage.upload(path, pdf, { contentType: "application/pdf", upsert: true });
   if (error) throw new Error(`Could not store report: ${error.message}`);
+  throwIfJobExecutionAborted(abortSignal);
   const afterUpload = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, job.id)) ?? operators.sql`true` } });
   if (afterUpload?.state === "cancellation_requested") {
     await storage.remove([path]);
@@ -40,6 +47,7 @@ export async function handleReportRender(job: BackgroundJobRecord) {
   }
   try {
     await db.transaction(async (tx) => {
+      throwIfJobExecutionAborted(abortSignal);
       const [lockedJob] = await tx.select({ state: jobs.state }).from(jobs)
         .where(eq(jobs.id, job.id)).limit(1).for("update");
       if (lockedJob?.state === "cancellation_requested") {

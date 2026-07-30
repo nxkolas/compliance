@@ -45,6 +45,8 @@
     "db:bind:gap-corpus-provisions": "tsx scripts/bind-gap-corpus-provisions.ts",
     "worker": "tsx src/worker/main.ts",
     "worker:once": "tsx src/worker/main.ts --once",
+    "worker:local": "tsx --env-file=.env.local src/worker/main.ts",
+    "jobs:drain:local": "tsx --env-file=.env.local src/worker/main.ts --once",
     "worker:typecheck": "tsc --noEmit",
     "db:publish:gap": "tsx scripts/publish-gap-release.ts",
     "db:activate:gap": "tsx scripts/activate-gap-release.ts",

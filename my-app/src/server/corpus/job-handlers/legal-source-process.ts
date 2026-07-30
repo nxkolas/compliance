@@ -10,6 +10,7 @@ import type { MalwareScanner } from "../adapters/malware";
 import { noOpDevelopmentMalwareScanner } from "../adapters/malware";
 import { parseWithDocling } from "../adapters/docling";
 import { ApiError } from "@/src/server/api/errors";
+import { throwIfJobExecutionAborted } from "@/src/server/job-execution/abort";
 
 const payloadSchema = z.object({ renditionId: z.uuid(), generationId: z.uuid().optional() });
 const MAX_PAGES = 2_000;
@@ -22,7 +23,9 @@ export async function handleLegalSourceProcess(
     chunker?: ContentChunker;
     malwareScanner?: MalwareScanner;
   } = {},
+  abortSignal?: AbortSignal,
 ) {
+  throwIfJobExecutionAborted(abortSignal);
   const { renditionId, generationId } = payloadSchema.parse(job.payload);
   const rendition = await db.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
     where: { RAW: (table, operators) => (eq(table.id, renditionId)) ?? operators.sql`true` },
@@ -40,6 +43,7 @@ export async function handleLegalSourceProcess(
     .from(rendition.storageBucket)
     .download(rendition.storagePath);
   if (error) throw error;
+  throwIfJobExecutionAborted(abortSignal);
   const bytes = new Uint8Array(await data.arrayBuffer());
   await (dependencies.malwareScanner ?? noOpDevelopmentMalwareScanner).scan({
     bytes,
@@ -56,6 +60,7 @@ export async function handleLegalSourceProcess(
       endpoint,
       timeoutMs: 120_000,
       maxOutputCharacters: MAX_TEXT_CHARACTERS,
+      signal: abortSignal,
     });
     parsed = {
       parserKind: "plain-text" as const,
@@ -69,12 +74,14 @@ export async function handleLegalSourceProcess(
     throw new Error("Legal source extraction exceeded configured limits");
   }
   const chunks = (dependencies.chunker ?? paragraphContentChunker).chunk(parsed.pages);
+  throwIfJobExecutionAborted(abortSignal);
   if (chunks.length === 0) throw new Error("Legal source produced no chunks");
   const reliableAnchors = parsed.metadata.anchorsReliable === false
     ? false
     : chunks.every((chunk) => chunk.pageNumber !== null || chunk.sectionLabel !== null);
 
   await db.transaction(async (tx) => {
+    throwIfJobExecutionAborted(abortSignal);
     await tx.update(legalSourceProcessingGenerations).set({
       state: "running",
       extractionHash: createHash("sha256").update(JSON.stringify(parsed.metadata)).digest("hex"),
@@ -104,5 +111,6 @@ export async function handleLegalSourceProcess(
       updatedAt: new Date(),
     }).where(eq(legalSourceProcessingGenerations.id, generation.id));
   });
+  throwIfJobExecutionAborted(abortSignal);
   return { type: "legal_processing_generation", id: generation.id };
 }

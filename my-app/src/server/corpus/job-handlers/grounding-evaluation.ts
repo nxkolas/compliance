@@ -10,10 +10,15 @@ import {
   legalSourceProcessingGenerations,
 } from "@/src/db/schema";
 import { runGroundingSafetyFixtures } from "../evaluation-fixtures";
+import { throwIfJobExecutionAborted } from "@/src/server/job-execution/abort";
 
 const payloadSchema = z.object({ releaseId: z.uuid() });
 
-export async function handleGroundingEvaluation(job: typeof backgroundJobs.$inferSelect) {
+export async function handleGroundingEvaluation(
+  job: typeof backgroundJobs.$inferSelect,
+  abortSignal?: AbortSignal,
+) {
+  throwIfJobExecutionAborted(abortSignal);
   const existing = await db.query.legalCorpusEvaluations.findFirst({ columns: { id: true, releaseId: true, jobId: true, fixtureSetVersion: true, passed: true, metrics: true, failures: true, evaluatedAt: true },
     where: { RAW: (table, operators) => (eq(table.jobId, job.id)) ?? operators.sql`true` },
   });
@@ -34,6 +39,7 @@ export async function handleGroundingEvaluation(job: typeof backgroundJobs.$infe
     .innerJoin(legalSourceChunks, eq(legalSourceChunks.generationId, legalSourceProcessingGenerations.id))
     .where(eq(legalCorpusReleaseMembers.releaseId, release.id));
   const fixtures = runGroundingSafetyFixtures();
+  throwIfJobExecutionAborted(abortSignal);
   const integrityFailures = [
     ...(integrity.memberCount < 1 ? ["release_has_no_members"] : []),
     ...(integrity.reviewedGenerationCount !== integrity.memberCount ? ["member_generation_not_reviewed"] : []),
@@ -43,6 +49,7 @@ export async function handleGroundingEvaluation(job: typeof backgroundJobs.$infe
   const failures = [...integrityFailures, ...fixtures.failures];
   const passed = failures.length === 0;
   const [evaluation] = await db.transaction(async (tx) => {
+    throwIfJobExecutionAborted(abortSignal);
     const rows = await tx.insert(legalCorpusEvaluations).values({
       releaseId: release.id,
       jobId: job.id,
@@ -63,5 +70,6 @@ export async function handleGroundingEvaluation(job: typeof backgroundJobs.$infe
     }).where(and(eq(legalCorpusReleases.id, release.id), eq(legalCorpusReleases.evaluationJobId, job.id)));
     return rows;
   });
+  throwIfJobExecutionAborted(abortSignal);
   return { type: "legal_corpus_evaluation", id: evaluation.id };
 }

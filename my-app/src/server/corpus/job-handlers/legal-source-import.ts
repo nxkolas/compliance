@@ -7,6 +7,7 @@ import { LEGAL_CORPUS_BUCKET, LEGAL_SOURCE_MIME_TYPES, MAX_LEGAL_SOURCE_BYTES } 
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { fetchControlledUrl } from "../controlled-url";
 import { createDocumentEmbeddingProvider } from "@/src/server/documents";
+import { throwIfJobExecutionAborted } from "@/src/server/job-execution/abort";
 
 const payloadSchema = z.object({
   sourceId: z.uuid(),
@@ -20,7 +21,11 @@ const payloadSchema = z.object({
   language: z.string().trim().min(2).max(16),
 });
 
-export async function handleLegalSourceImport(job: typeof backgroundJobs.$inferSelect) {
+export async function handleLegalSourceImport(
+  job: typeof backgroundJobs.$inferSelect,
+  abortSignal?: AbortSignal,
+) {
+  throwIfJobExecutionAborted(abortSignal);
   const existing = await db.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
     where: { RAW: (table, operators) => (eq(table.importJobId, job.id)) ?? operators.sql`true` },
   });
@@ -35,15 +40,19 @@ export async function handleLegalSourceImport(job: typeof backgroundJobs.$inferS
     maxBytes: MAX_LEGAL_SOURCE_BYTES,
     timeoutMs: 30_000,
     allowedMimeTypes: LEGAL_SOURCE_MIME_TYPES,
+    signal: abortSignal,
   });
+  throwIfJobExecutionAborted(abortSignal);
   const contentHash = createHash("sha256").update(fetched.bytes).digest("hex");
   const objectPath = `url-import/${source.id}/${randomUUID()}`;
   const { error } = await getSupabaseAdminClient().storage
     .from(LEGAL_CORPUS_BUCKET)
     .upload(objectPath, fetched.bytes, { contentType: fetched.mimeType, upsert: false });
   if (error) throw error;
+  throwIfJobExecutionAborted(abortSignal);
 
   return db.transaction(async (tx) => {
+    throwIfJobExecutionAborted(abortSignal);
     const duplicate = await tx.query.legalSourceRenditions.findFirst({ columns: { id: true, sourceVersionId: true, language: true, translationStatus: true, authoritativeRenditionId: true, storageBucket: true, storagePath: true, mimeType: true, byteSize: true, contentHash: true, duplicateAcknowledged: true, uploadSessionId: true, importJobId: true, importedFromUrl: true, createdBy: true, createdAt: true },
       where: { RAW: (table, operators) => (eq(table.importJobId, job.id)) ?? operators.sql`true` },
     });
