@@ -2,6 +2,7 @@
 
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LogoutButton } from "@/components/logout-button";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -194,6 +195,8 @@ function ProfileMenuContent({
             labels.languages,
           )}
         />
+
+        <ThemeSwitcher label={labels.profile.darkMode} />
       </DropdownMenuGroup>
 
       <DropdownMenuSeparator />

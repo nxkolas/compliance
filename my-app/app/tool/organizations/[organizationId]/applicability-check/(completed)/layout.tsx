@@ -58,7 +58,7 @@ export default async function CompletedApplicabilityCheckLayout({
       ? "Recalculate applicability check"
       : "Betroffenheitscheck neu berechnen";
   const recalculateButtonClassName =
-    "h-12 w-full max-w-full justify-center gap-2 rounded-lg bg-primary px-5 text-base outline outline-[1.5px] outline-offset-[-1.5px] outline-primary sm:w-[21rem]";
+    "h-12 w-full max-w-full justify-center gap-2 rounded-lg bg-primary px-5 text-base outline outline-[1.5px] outline-offset-[-1.5px] outline-primary disabled:bg-muted disabled:text-muted-foreground disabled:outline-border-strong disabled:opacity-100 sm:w-[21rem]";
 
   return (
     <section className="@container/result-page flex w-full min-w-0 flex-col gap-8">

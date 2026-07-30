@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { AccountEmailField } from "@/components/auth/account-email-field";
 import { AccountPasswordField } from "@/components/auth/account-password-field";
+import { BrandLogo } from "@/components/brand-logo";
 import { TermsAcceptance } from "@/components/auth/terms-acceptance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,6 @@ import { User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Image from "next/image";
 
 function getNextPath() {
   if (typeof window === "undefined") return parseSafeToolNext(null);
@@ -95,21 +95,10 @@ export function SignUpForm({
   };
 
   return (
-    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-background p-4 md:p-10">
-      <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
-        <Image 
-          src="/images/Startseite.svg"
-          alt={labels.backgroundAlt}
-          fill
-          className="object-cover"
-          priority
-        />
-      </div>
-
+    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-transparent p-4 md:p-10">
       <div className={cn("relative z-10 flex w-full max-w-[476px] flex-col items-start justify-start gap-4 px-4 font-['Space_Grotesk']", className)} {...props}>
         <div className="h-16 flex items-center justify-start">
-          <Image 
-            src="/images/Logo-weiß.svg"
+          <BrandLogo
             alt={labels.logoAlt}
             width={180}
             height={48}

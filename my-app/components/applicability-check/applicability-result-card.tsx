@@ -312,16 +312,16 @@ export function ApplicabilityResultCard({
         <div className="relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center px-6 py-10 sm:px-[54px] @5xl/result-card:justify-start @5xl/result-card:pt-[65px] @5xl/result-card:pb-[30px] @7xl/result-card:max-w-none">
           <div
             aria-hidden="true"
-            className="absolute inset-0 rounded-xl bg-gradient-to-br from-slate-800 to-gray-900 outline outline-[1.5px] outline-offset-[-0.75px] outline-zinc-700 @5xl/result-card:hidden"
+            className="absolute inset-0 rounded-xl bg-gradient-to-br from-[var(--surface)] to-[var(--card)] outline outline-[1.5px] outline-offset-[-0.75px] outline-border-strong @5xl/result-card:hidden"
           />
           <SpeechBubbleBackground />
-          <h2 className="relative z-10 w-full max-w-80 text-lg font-semibold tracking-wide text-foreground uppercase sm:text-xl @5xl/result-card:leading-5">
+          <h2 className="relative z-10 w-full max-w-80 text-lg font-semibold tracking-wide text-card-foreground uppercase sm:text-xl @5xl/result-card:leading-5">
             {labels.meaningTitle ??
               (locale === "en"
                 ? "What does this mean for you?"
                 : "Was bedeutet das für Sie?")}
           </h2>
-          <p className="relative z-10 mt-4 max-w-[639px] text-base leading-7 font-normal text-foreground">
+          <p className="relative z-10 mt-4 max-w-[639px] text-base leading-7 font-normal text-card-foreground">
             {speechBubbleMeaning}
           </p>
           {canStartGapAnalysis && gapAnalysisHref ? (
@@ -518,8 +518,8 @@ function SpeechBubbleBackground() {
           y2="288"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#1E293B" />
-          <stop offset="1" stopColor="#101828" />
+          <stop stopColor="var(--surface)" />
+          <stop offset="1" stopColor="var(--card)" />
         </linearGradient>
       </defs>
     </svg>

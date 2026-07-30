@@ -2,6 +2,7 @@
 
 import { AccountEmailField } from "@/components/auth/account-email-field";
 import { AccountPasswordField } from "@/components/auth/account-password-field";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import {
   DEFAULT_TOOL_DESTINATION,
@@ -11,7 +12,6 @@ import type { Dictionary } from "@/lib/i18n";
 import { classifyExternalError } from "@/lib/i18n/errors";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -128,8 +128,7 @@ export function LoginForm({
       {...props}
     >
       <div className="flex h-16 items-center justify-start">
-        <Image
-          src="/images/Logo-weiß.svg"
+        <BrandLogo
           alt={labels.logoAlt}
           width={180}
           height={48}

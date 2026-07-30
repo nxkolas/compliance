@@ -1,12 +1,12 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/brand-logo";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import { ArrowLeft, Mail } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -44,19 +44,9 @@ export function ForgotPasswordForm({
 
   return (
     <div
-      className="fixed inset-0 flex min-h-svh w-full items-center justify-center overflow-hidden bg-background px-4 py-8 font-['Space_Grotesk'] sm:px-6 lg:px-10"
+      className="fixed inset-0 flex min-h-svh w-full items-center justify-center overflow-hidden bg-transparent px-4 py-8 font-['Space_Grotesk'] sm:px-6 lg:px-10"
       {...props}
     >
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <Image
-          src="/images/Startseite.svg"
-          alt={labels.backgroundAlt}
-          fill
-          className="object-cover"
-          priority
-        />
-      </div>
-
       <div
         className={cn(
           "relative z-10 flex w-full max-w-[476px] flex-col items-start gap-4 overflow-hidden px-4",
@@ -64,8 +54,7 @@ export function ForgotPasswordForm({
         )}
       >
         <div className="inline-flex h-16 w-56 items-center justify-start overflow-hidden bg-transparent py-10">
-          <Image
-            src="/images/Logo-weiß.svg"
+          <BrandLogo
             alt={labels.logoAlt}
             width={227}
             height={74}

@@ -123,7 +123,7 @@ export function AppSidebarNav({
               />
 
               <div className="absolute left-[96px] top-[-2px] h-8 w-48">
-                <span className="absolute left-[-0.4px] top-0 w-36 whitespace-nowrap text-3xl font-normal leading-7 text-foreground">
+                <span className="absolute left-[-0.4px] top-0 w-36 whitespace-nowrap text-3xl font-normal leading-7 text-black dark:text-foreground">
                   {labels.brandPrefix}
                 </span>
 
@@ -133,12 +133,12 @@ export function AppSidebarNav({
                   aria-hidden="true"
                   width={20}
                   height={28}
-                  className="absolute left-[109px] top-[-3px] h-7 w-5 object-contain"
+                  className="absolute left-[109px] top-[-3px] h-7 w-5 object-contain brightness-0 dark:brightness-100"
                 />
               </div>
             </div>
 
-            <div className="w-full text-sm font-normal leading-5 text-foreground">
+            <div className="w-full text-sm font-normal leading-5 text-black dark:text-foreground">
               {labels.brandTaglineFirst}
               <br />
               {labels.brandTaglineSecond}

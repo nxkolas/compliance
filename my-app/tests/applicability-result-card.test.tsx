@@ -307,6 +307,24 @@ describe("applicability result outcomes", () => {
     expect(html).not.toContain("max-w-[1278.5px]");
   });
 
+  it("themes the meaning dialogue with semantic surface and text colors", () => {
+    const html = renderOutcome("important_entity", "de");
+    const meaningTitleClass = classNameOfOpeningTagBefore(
+      html,
+      "Was bedeutet das für Sie?",
+      "h2",
+    );
+
+    expect(html).toContain("from-[var(--surface)]");
+    expect(html).toContain("to-[var(--card)]");
+    expect(html).toContain('stop-color="var(--surface)"');
+    expect(html).toContain('stop-color="var(--card)"');
+    expect(html).not.toContain("from-slate-800");
+    expect(html).not.toContain("#1E293B");
+    expect(html).not.toContain("#101828");
+    expect(meaningTitleClass).toContain("text-card-foreground");
+  });
+
   it.each(outcomeCases)(
     "renders $outcome in $locale with the correct Gap Analysis CTA eligibility",
     ({ locale, outcome, shouldShowGapCta }) => {
