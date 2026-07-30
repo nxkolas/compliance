@@ -93,13 +93,15 @@ export function AppSidebarNav({
       ]
     : [];
 
-  const tutorialLink = {
-    href: "/tool/help",
-    label: labels.startTutorial,
-    icon: TutorialIcon,
-    iconClassName: "size-[21px]",
-    match: "prefix" as const,
-  };
+  const tutorialLink = sidebarOrganizationId
+    ? {
+        href: `/tool/organizations/${sidebarOrganizationId}/help`,
+        label: labels.startTutorial,
+        icon: TutorialIcon,
+        iconClassName: "size-[21px]",
+        match: "prefix" as const,
+      }
+    : null;
 
   return (
     <div className="h-svh w-full overflow-hidden bg-transparent font-['Space_Grotesk']">
@@ -225,10 +227,12 @@ export function AppSidebarNav({
         >
           <SidebarGroup className="w-full p-0">
             <SidebarMenu className="w-full gap-4 [@media(max-height:950px)]:gap-2 [@media(max-height:760px)]:gap-1">
-              <SidebarLink
-                currentPath={pathname}
-                {...tutorialLink}
-              />
+              {tutorialLink ? (
+                <SidebarLink
+                  currentPath={pathname}
+                  {...tutorialLink}
+                />
+              ) : null}
 
               <SidebarMenuItem className="h-12 w-full">
                 <div

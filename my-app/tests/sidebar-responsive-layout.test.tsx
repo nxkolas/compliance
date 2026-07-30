@@ -56,5 +56,9 @@ describe("responsive app sidebar", () => {
     expect(html).not.toContain(
       "/tool/organizations/example/settings",
     );
+    expect(html).toContain(
+      "/tool/organizations/example/help",
+    );
+    expect(html).not.toContain("/tool/help");
   });
 });
