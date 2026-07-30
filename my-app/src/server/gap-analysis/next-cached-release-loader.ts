@@ -6,6 +6,8 @@ import {
 } from "./release-loader";
 import type { Locale } from "@/lib/i18n-config";
 
+const PUBLISHED_GAP_RELEASE_CACHE_VERSION = "v2";
+
 const loadCachedPublishedGapRelease = unstable_cache(
   async (releaseId: string, locale: Locale) => {
     const release = await loadGapAnalysisRelease(releaseId, locale);
@@ -14,7 +16,7 @@ const loadCachedPublishedGapRelease = unstable_cache(
     }
     return release;
   },
-  ["published-gap-analysis-release"],
+  ["published-gap-analysis-release", PUBLISHED_GAP_RELEASE_CACHE_VERSION],
   { revalidate: false },
 );
 

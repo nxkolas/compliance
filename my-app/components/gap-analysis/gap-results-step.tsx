@@ -25,6 +25,7 @@ import {
 import { localizeGapError } from "./gap-error";
 import { GapFindingSources } from "./gap-finding-sources";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
+import { GapCategoryIcon } from "./gap-category-icon";
 import {
   Dialog,
   DialogClose,
@@ -406,7 +407,8 @@ function FindingCard({
     <article className="rounded-lg border p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-semibold">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <GapCategoryIcon name={row.requirement.icon} />
             {localized(row.requirement.title, locale)}
           </h3>
           <div className="mt-2 flex flex-wrap gap-2">

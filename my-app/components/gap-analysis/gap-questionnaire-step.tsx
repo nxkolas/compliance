@@ -4,6 +4,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { GapLabels, GapWorkflow } from "./types";
+import { GapCategoryIcon } from "./gap-category-icon";
 
 export function GapQuestionnaireStep({
   workflow,
@@ -61,8 +62,9 @@ export function GapQuestionnaireStep({
         <h2
           id="gap-step-heading"
           tabIndex={-1}
-          className="mt-1 text-xl font-semibold outline-none"
+          className="mt-1 flex items-center gap-2 text-xl font-semibold outline-none"
         >
+          <GapCategoryIcon name={category.icon} />
           {category.title}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">

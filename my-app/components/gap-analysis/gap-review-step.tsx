@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { GapWorkflowStep } from "@/src/server/gap-analysis/workflow-state";
 import { GapGenerationProgress } from "./gap-generation-progress";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
+import { GapCategoryIcon } from "./gap-category-icon";
 
 export function GapReviewStep({
   workflow,
@@ -76,7 +77,13 @@ export function GapReviewStep({
             .sort((left, right) => left.position - right.position)
             .map((requirement) => (
               <section key={requirement.id}>
-                <h4 className="mb-2 font-medium">{requirement.title}</h4>
+                <h4 className="mb-2 flex items-center gap-2 font-medium">
+                  <GapCategoryIcon
+                    name={requirement.icon}
+                    className="h-4 w-4 shrink-0"
+                  />
+                  {requirement.title}
+                </h4>
                 <dl className="grid gap-3 border-l pl-4">
                   {release.questions
                     .filter((question) =>

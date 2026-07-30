@@ -49,6 +49,7 @@ describe("generated output language indicators", () => {
               },
               requirement: {
                 code: "R1",
+                icon: "KeyRound",
                 title: {
                   de: "Deutsche Anforderung",
                   en: "English requirement",
@@ -75,6 +76,7 @@ describe("generated output language indicators", () => {
     expect(html).toContain("Result language");
     expect(html).toContain("German");
     expect(html).toContain("English requirement");
+    expect(html).toContain("lucide-key-round");
     expect(html).toContain("Die Kontrolle ist nicht umgesetzt.");
     expect(html).toContain("Sources");
     expect(html).toContain("No sources linked");
@@ -240,7 +242,15 @@ describe("generated output language indicators", () => {
           workflow={{
             release: {
               questions: [],
-              requirements: [],
+              requirements: [
+                {
+                  id: "requirement-1",
+                  title: "Incident response",
+                  icon: "Siren",
+                  position: 1,
+                  questionStableKeys: [],
+                },
+              ],
               versionLabel: "guided-v3",
             },
             documentLibrary: { documents: [] },
@@ -258,6 +268,7 @@ describe("generated output language indicators", () => {
         />,
       );
       expect(html).toContain(expected);
+      expect(html).toContain("lucide-siren");
     },
   );
 
