@@ -56,6 +56,7 @@ export type LoadedGapRelease = {
     stableRequirementId: string;
     code: string;
     position: number;
+    icon: string;
     criticality: "low" | "medium" | "high" | "critical";
     title: string;
     requirementText: string;
@@ -159,6 +160,7 @@ export async function loadGapAnalysisRelease(
       id: gapRequirementVersions.id,
       stableRequirementId: gapRequirements.id,
       code: gapRequirements.code,
+      icon: gapRequirementVersions.icon,
       criticality: gapRequirementVersions.criticality,
       titleContentRevisionId: gapRequirementVersions.titleContentRevisionId,
       requirementTextContentRevisionId:
@@ -376,6 +378,7 @@ export async function loadGapAnalysisRelease(
         stableRequirementId: requirement.stableRequirementId,
         code: requirement.code,
         position: requirement.position,
+        icon: requirement.icon,
         criticality: requirement.criticality,
         title: text(requirement.titleContentRevisionId),
         requirementText: text(requirement.requirementTextContentRevisionId),

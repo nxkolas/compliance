@@ -11,6 +11,7 @@ function requirement(
     stableRequirementId: "stable-requirement",
     code: "access-control",
     position: 3,
+    icon: "KeyRound",
     criticality: "high",
     title,
     requirementText,

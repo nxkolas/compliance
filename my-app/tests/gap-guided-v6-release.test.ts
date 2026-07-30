@@ -17,6 +17,25 @@ describe("guided-v6 atomic Gap release", () => {
     });
     expect(guidedV6GapRelease.questionnaire.questions).toHaveLength(31);
     expect(guidedV6GapRelease.requirementSet.requirements).toHaveLength(10);
+    expect(
+      Object.fromEntries(
+        guidedV6GapRelease.requirementSet.requirements.map((requirement) => [
+          requirement.code,
+          requirement.icon,
+        ]),
+      ),
+    ).toEqual({
+      "NIS2-GOV-01": "Building2",
+      "NIS2-RISK-02": "ShieldAlert",
+      "NIS2-IAM-03": "KeyRound",
+      "NIS2-IR-04": "Siren",
+      "NIS2-BC-05": "DatabaseBackup",
+      "NIS2-SC-06": "Link",
+      "NIS2-VM-07": "Bug",
+      "NIS2-ASSURE-08": "ClipboardCheck",
+      "NIS2-AWARE-09": "GraduationCap",
+      "NIS2-PROTECT-10": "LockKeyhole",
+    });
     expect(first.hashes).toEqual(second.hashes);
     expect(first.hashes.aggregate).toMatch(/^[a-f0-9]{64}$/);
   });

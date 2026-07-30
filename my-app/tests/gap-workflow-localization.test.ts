@@ -41,6 +41,7 @@ function release(
         stableRequirementId: "stable-requirement",
         code: "access-control",
         position: 1,
+        icon: "KeyRound",
         criticality: "high",
         title,
         requirementText: `${title} text`,

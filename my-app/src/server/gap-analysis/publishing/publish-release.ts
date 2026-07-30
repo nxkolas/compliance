@@ -308,7 +308,7 @@ export async function publishGapAnalysisRelease(
       if (!stableRequirement) {
         throw new Error(`Could not create stable requirement ${source.code}`);
       }
-      let requirement = await tx.query.gapRequirementVersions.findFirst({ columns: { id: true, requirementId: true, versionLabel: true, criticality: true, titleContentRevisionId: true, requirementTextContentRevisionId: true, contentHash: true, createdAt: true },
+      let requirement = await tx.query.gapRequirementVersions.findFirst({ columns: { id: true, requirementId: true, versionLabel: true, icon: true, criticality: true, titleContentRevisionId: true, requirementTextContentRevisionId: true, contentHash: true, createdAt: true },
         where: { RAW: (table, operators) => (and(
           eq(table.requirementId, stableRequirement.id),
           eq(table.versionLabel, source.versionLabel),
@@ -318,6 +318,11 @@ export async function publishGapAnalysisRelease(
       if (requirement && requirement.contentHash !== requirementHash) {
         throw new Error(
           `Requirement ${source.code}/${source.versionLabel} already exists with different content`,
+        );
+      }
+      if (requirement && requirement.icon !== source.icon) {
+        throw new Error(
+          `Requirement ${source.code}/${source.versionLabel} already exists with a different icon`,
         );
       }
       if (requirement) {
@@ -333,6 +338,7 @@ export async function publishGapAnalysisRelease(
           .values({
             requirementId: stableRequirement.id,
             versionLabel: source.versionLabel,
+            icon: source.icon,
             criticality: source.criticality,
             titleContentRevisionId,
             requirementTextContentRevisionId,

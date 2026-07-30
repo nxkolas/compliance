@@ -2392,6 +2392,7 @@ export const gapRequirementVersions = pgTable.withRLS(
     id: uuid("id").defaultRandom().primaryKey(),
     requirementId: uuid("requirement_id").notNull(),
     versionLabel: text("version_label").notNull(),
+    icon: text("icon").notNull(),
     criticality: gapRequirementCriticalityEnum("criticality").notNull(),
     titleContentRevisionId: uuid("title_content_revision_id").notNull(),
     requirementTextContentRevisionId: uuid(

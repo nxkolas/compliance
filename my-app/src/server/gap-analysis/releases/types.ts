@@ -1,5 +1,17 @@
 export type LocalizedText = { de: string; en: string };
 
+export type GapRequirementIcon =
+  | "Building2"
+  | "ShieldAlert"
+  | "KeyRound"
+  | "Siren"
+  | "DatabaseBackup"
+  | "Link"
+  | "Bug"
+  | "ClipboardCheck"
+  | "GraduationCap"
+  | "LockKeyhole";
+
 export type GapQuestionDefinition = {
   stableKey: string;
   position: number;
@@ -22,6 +34,7 @@ export type GapQuestionDefinition = {
 export type GapRequirementDefinition = {
   code: string;
   versionLabel: string;
+  icon: GapRequirementIcon;
   position: number;
   criticality: "low" | "medium" | "high" | "critical";
   title: LocalizedText;

@@ -153,6 +153,11 @@ export function compileGapAnalysisRelease(
   const mappedQuestions = new Set<string>();
   const mappingCount = new Map<string, number>();
   for (const requirement of requirements) {
+    requireNonEmpty(
+      requirement.icon,
+      `requirement ${requirement.code} icon`,
+      errors,
+    );
     requireLocalizedText(
       requirement.title,
       `requirement ${requirement.code} title`,

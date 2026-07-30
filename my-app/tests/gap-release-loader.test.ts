@@ -130,6 +130,7 @@ describe("Gap release loader", () => {
         id: "requirement-version",
         stableRequirementId: "stable-requirement",
         code: "access-control",
+        icon: "KeyRound",
         criticality: "high",
         titleContentRevisionId: "requirement-title",
         requirementTextContentRevisionId: "requirement-text",

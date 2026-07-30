@@ -149,6 +149,7 @@ describe("customer-safe Gap workflow projection", () => {
           stableRequirementId: "stable-requirement",
           code: "REQUIREMENT_CODE_SENTINEL_CATALOGUE",
           position: 1,
+          icon: "KeyRound",
           criticality: "high",
           title: "Access control",
           requirementText: "REQUIREMENT_TEXT_SENTINEL",
