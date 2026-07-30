@@ -209,6 +209,7 @@ export async function getGapAnalysisWorkflow(
           requirements: workflow.release.requirements.map((requirement) => ({
             id: requirement.id,
             position: requirement.position,
+            icon: requirement.icon,
             title: requirement.title,
             questionStableKeys: requirement.questionStableKeys,
           })),
@@ -446,7 +447,7 @@ function projectCustomerFinding<
       reviewNotice: string | null;
     };
     gaps: Array<{ id: string; statement: string; position: number }>;
-    requirement: { title: unknown; position: number };
+    requirement: { title: unknown; position: number; icon: string };
     hasOrganizationDocument: boolean;
     manuallyChanged: boolean;
     questionnaireDisagreements: string[];
@@ -467,6 +468,7 @@ function projectCustomerFinding<
     requirement: {
       title: row.requirement.title,
       position: row.requirement.position,
+      icon: row.requirement.icon,
     },
     hasOrganizationDocument: row.hasOrganizationDocument,
     manuallyChanged: row.manuallyChanged,

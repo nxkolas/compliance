@@ -264,6 +264,9 @@ describe("customer-safe Gap workflow projection", () => {
       hasQuestionnaireDisagreement: true,
       requirement: { title: "Access control", position: 1 },
     });
+    expect(workflow.release?.requirements[0]?.icon).toBe("KeyRound");
+    expect(workflow.findings[0]?.requirement.icon).toBe("KeyRound");
+    expect(workflow.comparison[0]?.icon).toBe("KeyRound");
     expect("acceptedFindings" in workflow).toBe(false);
     expect("candidateFindings" in workflow).toBe(false);
     for (const sentinel of [

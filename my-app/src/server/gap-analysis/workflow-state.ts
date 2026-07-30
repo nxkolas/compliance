@@ -152,7 +152,12 @@ export function sortGapFindings<
 export function compareGapFindings<
   T extends {
     finding: { status: GapStatus };
-    requirement: { stableRequirementId: string; title: unknown; position: number };
+    requirement: {
+      stableRequirementId: string;
+      title: unknown;
+      position: number;
+      icon: string;
+    };
   },
 >(accepted: T[], current: T[]) {
   const acceptedByRequirement = new Map(
@@ -167,6 +172,7 @@ export function compareGapFindings<
         stableRequirementId: row.requirement.stableRequirementId,
         title: row.requirement.title,
         position: row.requirement.position,
+        icon: row.requirement.icon,
         previousStatus: previous?.finding.status ?? null,
         currentStatus: row.finding.status,
         changed: previous?.finding.status !== row.finding.status,

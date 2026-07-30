@@ -48,6 +48,7 @@ describe("Gap finding localization", () => {
       requirement: {
         stableRequirementId: "stable-requirement",
         position: 3,
+        icon: "KeyRound",
         title,
         requirementText: text,
       },

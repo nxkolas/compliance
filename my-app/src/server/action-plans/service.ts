@@ -173,6 +173,7 @@ async function loadGroupedItems(plan: {
       requirementVersionId: requirement.id,
       title: requirement.title,
       position: requirement.position,
+      icon: requirement.icon,
       actions: items
         .filter(
           (item) =>

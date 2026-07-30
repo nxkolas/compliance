@@ -113,6 +113,7 @@ describe("historical Gap revision projection", () => {
           stableRequirementId: "stable",
           code: "catalogue-code",
           position: 1,
+          icon: "KeyRound",
           criticality: "high",
           title: "Historical requirement",
           requirementText: "Historical text",
@@ -141,7 +142,11 @@ describe("historical Gap revision projection", () => {
       outputLocale: "en",
     });
     expect(result?.findings[0]).toMatchObject({
-      requirement: { title: "Historical requirement", position: 1 },
+      requirement: {
+        title: "Historical requirement",
+        position: 1,
+        icon: "KeyRound",
+      },
       hasQuestionnaireDisagreement: true,
       sources: [{ kind: "assessment", label: "Your information" }],
     });
