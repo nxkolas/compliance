@@ -1,10 +1,4 @@
-import { AppShell } from "@/components/app-shell";
-import { AppSidebar } from "@/components/app-sidebar";
-import {
-  AppSidebarSkeleton,
-  OrganizationModulePageSkeleton,
-} from "@/components/navigation-loading";
-import { getDictionary } from "@/lib/i18n";
+import { OrganizationModulePageSkeleton } from "@/components/navigation-loading";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/organizations/service";
 import { notFound, redirect } from "next/navigation";
@@ -23,33 +17,11 @@ export default function OrganizationLayout({
   params,
 }: OrganizationLayoutProps) {
   return (
-    <AppShell
-      sidebar={
-        <Suspense fallback={<AppSidebarSkeleton />}>
-          <OrganizationSidebar params={params} />
-        </Suspense>
-      }
-    >
-      <Suspense fallback={<OrganizationModulePageSkeleton />}>
-        <OrganizationLayoutContent params={params}>
-          {children}
-        </OrganizationLayoutContent>
-      </Suspense>
-    </AppShell>
-  );
-}
-
-async function OrganizationSidebar({
-  params,
-}: Pick<OrganizationLayoutProps, "params">) {
-  const dictionary = await getDictionary();
-  const { organizationId } = await params;
-
-  return (
-    <AppSidebar
-      organizationId={organizationId}
-      dictionary={dictionary}
-    />
+    <Suspense fallback={<OrganizationModulePageSkeleton />}>
+      <OrganizationLayoutContent params={params}>
+        {children}
+      </OrganizationLayoutContent>
+    </Suspense>
   );
 }
 

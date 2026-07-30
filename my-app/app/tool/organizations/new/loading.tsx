@@ -1,5 +1,5 @@
-import { AppFormPageSkeleton } from "@/components/navigation-loading";
+import { AppFormContentSkeleton } from "@/components/navigation-loading";
 
 export default function Loading() {
-  return <AppFormPageSkeleton />;
+  return <AppFormContentSkeleton />;
 }

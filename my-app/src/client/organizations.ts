@@ -21,6 +21,12 @@ const base = (organizationId?: string) => organizationId
   : "/api/organizations";
 
 export const organizationsClient = {
+  get(organizationId: string, signal?: AbortSignal) {
+    return request(base(organizationId), {
+      outputSchema: z.object({ organization: organizationSchema }),
+      signal,
+    });
+  },
   list(input: z.input<typeof organizationListQuerySchema>, signal?: AbortSignal) {
     const query = organizationListQuerySchema.parse(input);
     const params = new URLSearchParams({

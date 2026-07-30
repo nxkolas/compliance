@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { Dictionary } from "@/lib/i18n";
+import { useSidebarOrganizationId } from "@/components/use-sidebar-organization-id";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -43,46 +44,47 @@ export function AppSidebarNav({
   profileMenu,
 }: AppSidebarNavProps) {
   const pathname = usePathname();
+  const sidebarOrganizationId = useSidebarOrganizationId(organizationId);
 
-  const mainLinks = organizationId
+  const mainLinks = sidebarOrganizationId
     ? [
         {
-          href: `/tool/organizations/${organizationId}`,
+          href: `/tool/organizations/${sidebarOrganizationId}`,
           label: labels.dashboard,
           icon: DashboardIcon,
           iconClassName: "h-[18px] w-[18px]",
           match: "exact" as const,
         },
         {
-          href: `/tool/organizations/${organizationId}/applicability-check`,
+          href: `/tool/organizations/${sidebarOrganizationId}/applicability-check`,
           label: labels.applicabilityCheck,
           icon: ApplicabilityCheckIcon,
           iconClassName: "h-[19px] w-[18px]",
           match: "prefix" as const,
         },
         {
-          href: `/tool/organizations/${organizationId}/gap-analysis`,
+          href: `/tool/organizations/${sidebarOrganizationId}/gap-analysis`,
           label: labels.gapAnalysis,
           icon: GapAnalysisIcon,
           iconClassName: "h-[11px] w-[19px]",
           match: "prefix" as const,
         },
         {
-          href: `/tool/organizations/${organizationId}/documents`,
+          href: `/tool/organizations/${sidebarOrganizationId}/documents`,
           label: labels.documents,
           icon: DocumentsIcon,
           iconClassName: "h-[14px] w-[16px]",
           match: "prefix" as const,
         },
         {
-          href: `/tool/organizations/${organizationId}/action-plan`,
+          href: `/tool/organizations/${sidebarOrganizationId}/action-plan`,
           label: labels.actionPlan,
           icon: ActionPlanIcon,
           iconClassName: "size-[21px]",
           match: "prefix" as const,
         },
         {
-          href: `/tool/organizations/${organizationId}/pdf-export`,
+          href: `/tool/organizations/${sidebarOrganizationId}/pdf-export`,
           label: labels.pdfExport,
           icon: PdfExportIcon,
           iconClassName: "size-[15px]",

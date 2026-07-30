@@ -18,6 +18,7 @@ import { Check, ChevronDown, List, Loader2, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OrganizationAvatar } from "@/components/organizations/organization-avatar";
+import { useSidebarOrganizationId } from "@/components/use-sidebar-organization-id";
 
 type SwitcherOrganization = Pick<OrganizationDto, "id" | "name">;
 
@@ -51,6 +52,7 @@ export function OrganizationSwitcher({
   loadErrorLabel,
 }: OrganizationSwitcherProps) {
   const router = useRouter();
+  const sidebarOrganizationId = useSidebarOrganizationId(organizationId);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -63,6 +65,44 @@ export function OrganizationSwitcher({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const requestGenerationRef = useRef(0);
+  const [loadedSelectedOrganization, setLoadedSelectedOrganization] = useState<
+    SwitcherOrganization | undefined
+  >(selectedOrganization);
+
+  const visibleSelectedOrganization =
+    selectedOrganization?.id === sidebarOrganizationId
+      ? selectedOrganization
+      : items.find(
+          (organization) => organization.id === sidebarOrganizationId,
+        ) ??
+        (loadedSelectedOrganization?.id === sidebarOrganizationId
+          ? loadedSelectedOrganization
+          : undefined);
+
+  useEffect(() => {
+    if (
+      !sidebarOrganizationId ||
+      selectedOrganization?.id === sidebarOrganizationId ||
+      organizations.some(
+        (organization) => organization.id === sidebarOrganizationId,
+      )
+    ) {
+      return;
+    }
+
+    const controller = new AbortController();
+    void organizationsClient
+      .get(sidebarOrganizationId, controller.signal)
+      .then(({ data }) => {
+        setLoadedSelectedOrganization({
+          id: data.organization.id,
+          name: data.organization.name,
+        });
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, [organizations, selectedOrganization, sidebarOrganizationId]);
 
   const resetToInitialPage = useCallback(() => {
     controllerRef.current?.abort();
@@ -197,14 +237,14 @@ export function OrganizationSwitcher({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              {selectedOrganization ? (
-                <OrganizationAvatar id={selectedOrganization.id} name={selectedOrganization.name} className="size-8" />
+              {visibleSelectedOrganization ? (
+                <OrganizationAvatar id={visibleSelectedOrganization.id} name={visibleSelectedOrganization.name} className="size-8" />
               ) : (
                 <span className="size-8 rounded-lg border border-dashed bg-sidebar-accent" aria-hidden />
               )}
               <div className="min-w-0 flex-1 text-left leading-none">
                 <span className="block truncate font-medium">
-                  {selectedOrganization?.name ?? placeholder}
+                  {visibleSelectedOrganization?.name ?? placeholder}
                 </span>
               </div>
               <ChevronDown className="ml-auto" />
@@ -245,7 +285,7 @@ export function OrganizationSwitcher({
                 >
                   <OrganizationAvatar id={organization.id} name={organization.name} className="size-7 rounded-md text-[10px]" />
                   <span className="truncate">{organization.name}</span>
-                  {organization.id === organizationId && (
+                  {organization.id === sidebarOrganizationId && (
                     <Check className="ml-auto" />
                   )}
                 </DropdownMenuItem>
