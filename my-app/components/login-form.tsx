@@ -2,6 +2,7 @@
 
 import { AccountEmailField } from "@/components/auth/account-email-field";
 import { AccountPasswordField } from "@/components/auth/account-password-field";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import {
   DEFAULT_TOOL_DESTINATION,
@@ -11,7 +12,6 @@ import type { Dictionary } from "@/lib/i18n";
 import { classifyExternalError } from "@/lib/i18n/errors";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -128,8 +128,7 @@ export function LoginForm({
       {...props}
     >
       <div className="flex h-16 items-center justify-start">
-        <Image
-          src="/images/Logo-weiß.svg"
+        <BrandLogo
           alt={labels.logoAlt}
           width={180}
           height={48}
@@ -139,15 +138,15 @@ export function LoginForm({
       </div>
 
       <div className="flex self-stretch flex-col items-start gap-2 pb-4">
-        <h1 className="text-4xl font-medium tracking-tight text-neutral-50">
+        <h1 className="text-4xl font-medium tracking-tight text-foreground">
           {labels.welcomeBack}
         </h1>
-        <p className="text-base font-normal text-neutral-50/80">
+        <p className="text-base font-normal text-foreground/80">
           {labels.signInDescription}
         </p>
       </div>
 
-      <div className="flex self-stretch flex-col items-start gap-6 rounded-2xl border-0 bg-[#FAFAFA] p-9 shadow-none">
+      <div className="flex self-stretch flex-col items-start gap-6 rounded-2xl border-0 bg-auth-panel p-9 shadow-none">
         <form onSubmit={handleLogin} className="flex w-full flex-col gap-6">
           {error ? (
             <div
@@ -155,8 +154,8 @@ export function LoginForm({
               className={cn(
                 "flex min-h-16 w-full items-start rounded-lg border-[1.5px] px-4 py-3.5 text-xs font-normal",
                 errorType === "tooManyAttempts"
-                  ? "border-amber-700 bg-amber-50 text-amber-700"
-                  : "border-red-600 bg-red-50 text-red-600",
+                  ? "border-auth-warning bg-auth-warning-background text-auth-warning"
+                  : "border-auth-destructive bg-auth-destructive-background text-auth-destructive",
               )}
             >
               {error}
@@ -181,7 +180,7 @@ export function LoginForm({
             labelAction={
               <Link
                 href="/auth/forgot-password"
-                className="text-sm font-medium text-[#002AFF] hover:underline"
+                className="text-sm font-medium text-auth-primary hover:underline"
               >
                 {labels.forgotPassword}
               </Link>
@@ -196,14 +195,15 @@ export function LoginForm({
               className={cn(
                 "auth-checkbox size-5 cursor-pointer shadow-none",
                 isTooManyAttempts &&
-                  "cursor-not-allowed border-gray-200 bg-gray-100",
+                  "cursor-not-allowed border-auth-border bg-auth-muted",
               )}
             />
             <label
               htmlFor="remember"
               className={cn(
-                "cursor-pointer select-none text-base font-medium text-gray-950",
-                isTooManyAttempts && "cursor-not-allowed text-gray-400",
+                "cursor-pointer select-none text-base font-medium text-auth-foreground",
+                isTooManyAttempts &&
+                  "cursor-not-allowed text-auth-muted-foreground",
               )}
             >
               {labels.keepSignedIn}
@@ -214,9 +214,9 @@ export function LoginForm({
             type="submit"
             disabled={isLoading || isTooManyAttempts}
             className={cn(
-              "h-12 w-full rounded-lg bg-[#002AFF] text-base font-medium text-white shadow-none transition-colors hover:bg-[#0022cc]",
+              "h-12 w-full rounded-lg bg-auth-primary text-base font-medium text-auth-primary-foreground shadow-none transition-colors hover:bg-auth-primary-hover",
               isTooManyAttempts &&
-                "cursor-not-allowed bg-gray-100 text-gray-400 hover:bg-gray-100 disabled:opacity-100",
+                "cursor-not-allowed bg-auth-muted text-auth-muted-foreground hover:bg-auth-muted disabled:opacity-100",
             )}
           >
             {isLoading ? labels.signingIn : labels.login}
@@ -224,7 +224,7 @@ export function LoginForm({
         </form>
       </div>
 
-      <div className="mt-2 flex items-center justify-center gap-1 self-stretch text-base text-white">
+      <div className="mt-2 flex items-center justify-center gap-1 self-stretch text-base text-foreground">
         {isTooManyAttempts ? (
           <Link
             href="/auth/forgot-password"

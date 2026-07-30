@@ -98,6 +98,6 @@ describe("applicability questionnaire stepper", () => {
 
     expect(html).toContain(`aria-label="1: ${labels.current}"`);
     expect(html).toContain("ring-primary/20");
-    expect(html).not.toContain("bg-emerald-500");
+    expect(html).not.toContain("bg-success");
   });
 });

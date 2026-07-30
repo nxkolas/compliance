@@ -65,7 +65,7 @@ describe("OrganizationDocumentManager layout", () => {
     expect(html).toContain("min-w-[1190px]");
     expect(html).toContain("w-full min-w-0");
     expect(html).toContain("pr-[43px] text-right");
-    expect(html).toContain("bg-[#1B1E27]");
+    expect(html).toContain("bg-card");
     expect(html).toContain("left-[38.57%]");
     expect(html).toContain("left-[55.29%]");
     expect(html).toContain("left-[66.22%]");
@@ -83,13 +83,15 @@ describe("OrganizationDocumentManager layout", () => {
     expect(html).toContain(">Status<");
     expect(html).toContain("Dokumente hochladen");
     expect(html).toContain("h-12 w-64");
-    expect(html).toContain("bg-blue-700");
-    expect(html).toContain("border-b border-white/[0.04] pt-3.5 pb-1.5");
+    expect(html).toContain("bg-primary");
+    expect(html).toContain(
+      "border-b border-foreground/[0.04] pt-3.5 pb-1.5",
+    );
     expect(html).toContain('aria-live="polite" class="hidden"');
     expect(html).toContain("Dokumente durchsuchen");
     expect(html).toContain("max-w-[539px]");
-    expect(html).toContain("bg-[#292C34]");
-    expect(html).toContain("border-[#3D4049]");
+    expect(html).toContain("bg-surface");
+    expect(html).toContain("border-border-strong");
     expect(html).toContain("flex h-4 w-full items-start pt-0.5 text-sm");
   });
 

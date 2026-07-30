@@ -65,7 +65,7 @@ export function OrganizationAiProviderPolicyForm({
         </div>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {notice ? <div className={cn("rounded-md border px-4 py-3 text-sm", notice.tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900")}>{notice.message}</div> : null}
+        {notice ? <div className={cn("rounded-md border px-4 py-3 text-sm", notice.tone === "success" ? "border-success/30 bg-success/10 text-success-foreground" : "border-destructive/40 bg-destructive/10 text-destructive-muted-foreground")}>{notice.message}</div> : null}
         <div className="flex items-start gap-3 rounded-md border p-4">
           <Checkbox id="openai-disclosure" checked={approved} disabled={!canManage || saving} onCheckedChange={(value) => setApproved(value === true)} />
           <div className="grid gap-1">

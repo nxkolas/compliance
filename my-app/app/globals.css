@@ -1,6 +1,104 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 :root {
+  color-scheme: light;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.2912 0.0826 252.3935);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2912 0.0826 252.3935);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2912 0.0826 252.3935);
+  --primary: #002aff;
+  --primary-hover: #0022cc;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.8578 0.0557 249.3068);
+  --secondary-foreground: oklch(0.2912 0.0826 252.3935);
+  --muted: oklch(0.9528 0.0179 245.3874);
+  --muted-foreground: oklch(0.4814 0.1311 252.4856);
+  --foreground-subtle: #64748b;
+  --accent: oklch(0.7638 0.092 250.0635);
+  --accent-foreground: oklch(0.2912 0.0826 252.3935);
+  --destructive: oklch(0.6542 0.2321 28.6592);
+  --destructive-foreground: #ffffff;
+  --destructive-muted-foreground: #b91c1c;
+  --success: #16a34a;
+  --success-foreground: #166534;
+  --warning: #d97706;
+  --warning-foreground: #92400e;
+  --info: #2563eb;
+  --info-foreground: #1d4ed8;
+  --surface: #f8fafc;
+  --surface-hover: #f1f5f9;
+  --surface-subtle: #f8fafc;
+  --scrim: #000000;
+  --scrollbar-thumb: rgb(100 116 139 / 40%);
+  --border: oklch(0.9528 0.0179 245.3874);
+  --border-strong: #d7dfeb;
+  --input: oklch(0.9528 0.0179 245.3874);
+  --ring: #002aff;
+  --chart-1: oklch(0.2912 0.0826 252.3935);
+  --chart-2: oklch(0.3853 0.1096 253.1839);
+  --chart-3: oklch(0.4814 0.1311 252.4856);
+  --chart-4: oklch(0.6232 0.1486 251.5031);
+  --chart-5: oklch(0.7638 0.092 250.0635);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.2912 0.0826 252.3935);
+  --sidebar-primary: #002aff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: oklch(0.9528 0.0179 245.3874);
+  --sidebar-accent-foreground: oklch(0.2912 0.0826 252.3935);
+  --sidebar-border: oklch(0.9528 0.0179 245.3874);
+  --sidebar-ring: #002aff;
+  --app-background-image: url("/images/Login%20%E2%80%93%20Standard.svg");
+  --font-sans: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --radius-control: 0.5rem;
+  --radius-card: 1rem;
+  --shadow-2xs: 0 2px 10px 0 rgb(0 0 0 / 3%);
+  --shadow-xs: 0 2px 10px 0 rgb(0 0 0 / 3%);
+  --shadow-sm:
+    0 2px 10px 0 rgb(0 0 0 / 5%), 0 1px 2px -1px rgb(0 0 0 / 5%);
+  --shadow:
+    0 2px 10px 0 rgb(0 0 0 / 5%), 0 1px 2px -1px rgb(0 0 0 / 5%);
+  --shadow-md:
+    0 2px 10px 0 rgb(0 0 0 / 5%), 0 2px 4px -1px rgb(0 0 0 / 5%);
+  --shadow-lg:
+    0 2px 10px 0 rgb(0 0 0 / 5%), 0 4px 6px -1px rgb(0 0 0 / 5%);
+  --shadow-xl:
+    0 2px 10px 0 rgb(0 0 0 / 5%), 0 8px 10px -1px rgb(0 0 0 / 5%);
+  --shadow-2xl: 0 2px 10px 0 rgb(0 0 0 / 13%);
+  --shadow-control:
+    0 1px 2px -1px rgb(0 0 0 / 10%), 0 1px 3px 0 rgb(0 0 0 / 10%);
+  --shadow-auth-panel: 0 8px 32px -4px rgb(0 0 0 / 10%);
+  --shadow-popover: 0 8px 32px 0 rgb(0 0 0 / 50%);
+  --shadow-menu: 0 25px 50px -12px rgb(0 0 0 / 60%);
+  --shadow-dialog: 0 4px 4px 0 rgb(0 0 0 / 25%);
+  --shadow-navigation: 0 4px 4px 0 rgb(0 0 0 / 12%);
+  --shadow-icon-halo: 0 0 0 10px rgb(255 255 255 / 2.5%);
+  --tracking-normal: -0.01em;
+  --spacing: 0.25rem;
+
+  --auth-background: #ffffff;
+  --auth-foreground: #000000;
+  --auth-placeholder: #4a5565;
+  --auth-border: #e5e7eb;
+  --auth-panel: #fafafa;
+  --auth-primary: #002aff;
+  --auth-primary-hover: #0022cc;
+  --auth-primary-foreground: #ffffff;
+  --auth-muted: #f3f4f6;
+  --auth-muted-foreground: #9ca3af;
+  --auth-destructive: #dc2626;
+  --auth-destructive-background: #fef2f2;
+  --auth-warning: #a16207;
+  --auth-warning-background: #fffbeb;
+}
+
+.dark {
   color-scheme: dark;
 
   --background: #02040e;
@@ -16,11 +114,25 @@
   --secondary-foreground: #fafafa;
   --muted: #11172a;
   --muted-foreground: #b6bdcc;
+  --foreground-subtle: #9f9fa9;
   --accent: #18275d;
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
+  --destructive-muted-foreground: #fca5a5;
+  --success: #22c55e;
+  --success-foreground: #86efac;
+  --warning: #f59e0b;
+  --warning-foreground: #fde68a;
+  --info: #3b82f6;
+  --info-foreground: #bfdbfe;
+  --surface: #292c34;
+  --surface-hover: #30333c;
+  --surface-subtle: #161922;
+  --scrim: #000000;
+  --scrollbar-thumb: rgb(161 161 170 / 45%);
   --border: #2b3247;
+  --border-strong: #3d4049;
   --input: #3b4359;
   --ring: #002aff;
   --chart-1: #002aff;
@@ -36,11 +148,7 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #2b3247;
   --sidebar-ring: #002aff;
-  --font-sans: var(--font-space-grotesk), system-ui, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: "JetBrains Mono", monospace;
-  --radius-control: 0.5rem;
-  --radius-card: 1rem;
+  --app-background-image: url("/images/Startseite.svg");
   --shadow-2xs: 0 0 #0000;
   --shadow-xs: 0 0 #0000;
   --shadow-sm: 0 0 #0000;
@@ -49,13 +157,9 @@
   --shadow-lg: 0 0 #0000;
   --shadow-xl: 0 0 #0000;
   --shadow-2xl: 0 0 #0000;
-  --tracking-normal: -0.01em;
-  --spacing: 0.25rem;
-
-  --auth-background: #ffffff;
-  --auth-foreground: #000000;
-  --auth-placeholder: #4a5565;
-  --auth-border: #e5e7eb;
+  --shadow-popover: 0 8px 32px 0 rgb(0 0 0 / 50%);
+  --shadow-menu: 0 25px 50px -12px rgb(0 0 0 / 60%);
+  --shadow-icon-halo: 0 0 0 10px rgb(255 255 255 / 2.5%);
 }
 
 /*
@@ -63,6 +167,24 @@
  * as bg-background and text-muted-foreground remain readable.
  */
 :where(.bg-card, .bg-popover) {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: oklch(0.2912 0.0826 252.3935);
+  --card: #ffffff;
+  --card-foreground: oklch(0.2912 0.0826 252.3935);
+  --popover: #ffffff;
+  --popover-foreground: oklch(0.2912 0.0826 252.3935);
+  --secondary: #e8eef7;
+  --secondary-foreground: oklch(0.2912 0.0826 252.3935);
+  --muted: #f1f5f9;
+  --muted-foreground: oklch(0.4814 0.1311 252.4856);
+  --accent: #dce8ff;
+  --accent-foreground: oklch(0.2912 0.0826 252.3935);
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+}
+
+.dark :where(.bg-card, .bg-popover) {
   color-scheme: dark;
   --background: #242832;
   --foreground: #fafafa;
@@ -94,11 +216,24 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-foreground-subtle: var(--foreground-subtle);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-muted-foreground: var(--destructive-muted-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-scrim: var(--scrim);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -114,6 +249,20 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-auth-background: var(--auth-background);
+  --color-auth-foreground: var(--auth-foreground);
+  --color-auth-placeholder: var(--auth-placeholder);
+  --color-auth-border: var(--auth-border);
+  --color-auth-panel: var(--auth-panel);
+  --color-auth-primary: var(--auth-primary);
+  --color-auth-primary-hover: var(--auth-primary-hover);
+  --color-auth-primary-foreground: var(--auth-primary-foreground);
+  --color-auth-muted: var(--auth-muted);
+  --color-auth-muted-foreground: var(--auth-muted-foreground);
+  --color-auth-destructive: var(--auth-destructive);
+  --color-auth-destructive-background: var(--auth-destructive-background);
+  --color-auth-warning: var(--auth-warning);
+  --color-auth-warning-background: var(--auth-warning-background);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -133,6 +282,13 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+  --shadow-control: var(--shadow-control);
+  --shadow-auth-panel: var(--shadow-auth-panel);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-menu: var(--shadow-menu);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-navigation: var(--shadow-navigation);
+  --shadow-icon-halo: var(--shadow-icon-halo);
 
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
@@ -153,7 +309,7 @@
 
   body {
     @apply min-h-screen bg-background text-foreground;
-    background-image: url("/images/Startseite.svg");
+    background-image: var(--app-background-image);
     background-attachment: fixed;
     background-position: center;
     background-repeat: no-repeat;
@@ -168,9 +324,9 @@
 }
 
 :where(.bg-card, .bg-popover) {
-  border: 1px solid #3d4049;
+  border: 1px solid var(--border-strong);
   border-radius: 12px;
-  background: #1b1e27;
+  background: var(--card);
   box-shadow:
     0 1px 3px 0 rgb(0 0 0 / 10%),
     0 1px 2px -1px rgb(0 0 0 / 10%);
@@ -209,8 +365,8 @@
 }
 
 .auth-checkbox:checked {
-  border-color: #002aff;
-  background-color: #002aff;
+  border-color: var(--auth-primary);
+  background-color: var(--auth-primary);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8l3 3 7-7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
@@ -218,7 +374,7 @@
 }
 
 .auth-checkbox:focus-visible {
-  outline: 2px solid #002aff;
+  outline: 2px solid var(--auth-primary);
   outline-offset: 2px;
 }
 

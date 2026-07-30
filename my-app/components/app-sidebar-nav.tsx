@@ -123,7 +123,7 @@ export function AppSidebarNav({
               />
 
               <div className="absolute left-[96px] top-[-2px] h-8 w-48">
-                <span className="absolute left-[-0.4px] top-0 w-36 whitespace-nowrap text-3xl font-normal leading-7 text-white">
+                <span className="absolute left-[-0.4px] top-0 w-36 whitespace-nowrap text-3xl font-normal leading-7 text-black dark:text-foreground">
                   {labels.brandPrefix}
                 </span>
 
@@ -133,12 +133,12 @@ export function AppSidebarNav({
                   aria-hidden="true"
                   width={20}
                   height={28}
-                  className="absolute left-[109px] top-[-3px] h-7 w-5 object-contain"
+                  className="absolute left-[109px] top-[-3px] h-7 w-5 object-contain brightness-0 dark:brightness-100"
                 />
               </div>
             </div>
 
-            <div className="w-full text-sm font-normal leading-5 text-indigo-50">
+            <div className="w-full text-sm font-normal leading-5 text-black dark:text-foreground">
               {labels.brandTaglineFirst}
               <br />
               {labels.brandTaglineSecond}
@@ -171,11 +171,11 @@ export function AppSidebarNav({
             [&_[data-sidebar=menu-button]]:text-base
             [&_[data-sidebar=menu-button]]:font-semibold
             [&_[data-sidebar=menu-button]]:leading-5
-            [&_[data-sidebar=menu-button]]:text-neutral-50
+            [&_[data-sidebar=menu-button]]:text-foreground
 
-            [&_[data-sidebar=menu-button]]:hover:bg-[#18275D]
-            [&_[data-sidebar=menu-button]]:hover:text-white
-            [&_[data-sidebar=menu-button]>svg]:text-white
+            [&_[data-sidebar=menu-button]]:hover:bg-sidebar-accent
+            [&_[data-sidebar=menu-button]]:hover:text-sidebar-accent-foreground
+            [&_[data-sidebar=menu-button]>svg]:text-sidebar-foreground
             [&_[data-slot=avatar]]:size-7
           "
         >
@@ -254,12 +254,12 @@ export function AppSidebarNav({
                     [&_[data-sidebar=menu-button]]:text-base
                     [&_[data-sidebar=menu-button]]:font-semibold
                     [&_[data-sidebar=menu-button]]:leading-5
-                    [&_[data-sidebar=menu-button]]:text-neutral-50
+                    [&_[data-sidebar=menu-button]]:text-foreground
 
-                    [&_[data-sidebar=menu-button]]:hover:bg-[#18275D]
-                    [&_[data-sidebar=menu-button]]:hover:text-white
+                    [&_[data-sidebar=menu-button]]:hover:bg-sidebar-accent
+                    [&_[data-sidebar=menu-button]]:hover:text-sidebar-accent-foreground
 
-                    [&_[data-sidebar=menu-button]>svg]:text-white
+                    [&_[data-sidebar=menu-button]>svg]:text-sidebar-foreground
                     [&_[data-slot=avatar]]:size-7
                   "
                 >
@@ -298,17 +298,17 @@ function SidebarLink({
           w-full
           rounded-lg
           p-0
-          text-neutral-50
+          text-sidebar-foreground
 
-          hover:bg-[#18275D]
-          hover:text-[#FBFBFB]
-          hover:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)]
-          hover:[&_[data-sidebar-icon]]:text-[#FBFBFB]
+          hover:bg-sidebar-accent
+          hover:text-sidebar-accent-foreground
+          hover:shadow-navigation
+          hover:[&_[data-sidebar-icon]]:text-sidebar-accent-foreground
 
-          data-[active=true]:bg-[#FBFBFB]
-          data-[active=true]:text-[#002BFF]
-          data-[active=true]:shadow-[0_4px_4px_0_rgba(0,0,0,0.12)]
-          data-[active=true]:[&_[data-sidebar-icon]]:text-[#002BFF]
+          data-[active=true]:bg-sidebar-primary-foreground
+          data-[active=true]:text-sidebar-primary
+          data-[active=true]:shadow-navigation
+          data-[active=true]:[&_[data-sidebar-icon]]:text-sidebar-primary
         "
       >
         <Link
@@ -324,7 +324,7 @@ function SidebarLink({
               shrink-0
               items-center
               justify-center
-              text-neutral-50
+              text-sidebar-foreground
               ${iconWrapperClassName}
             `}
           >
@@ -461,7 +461,7 @@ function TutorialIcon({ className }: SidebarIconProps) {
         width="30"
         height="30"
         rx="15"
-        fill="white"
+        fill="currentColor"
         fillOpacity="0.2"
       />
 

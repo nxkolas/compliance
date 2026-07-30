@@ -47,11 +47,11 @@ export default async function NewOrganizationPage({
       <div className="w-full min-w-0 pt-0">
         {/* Überschrift */}
         <header className="min-h-[112px] w-full min-w-0">
-          <h1 className="break-words font-['Space_Grotesk'] text-3xl leading-9 font-bold tracking-tight text-white sm:text-4xl">
+          <h1 className="break-words font-['Space_Grotesk'] text-3xl leading-9 font-bold tracking-tight text-foreground sm:text-4xl">
             {dictionary.organizations.newPageTitle}
           </h1>
 
-          <p className="mt-3 max-w-4xl font-['Space_Grotesk'] text-base leading-7 font-normal text-blue-200 sm:text-lg">
+          <p className="mt-3 max-w-4xl font-['Space_Grotesk'] text-base leading-7 font-normal text-info-foreground sm:text-lg">
             {dictionary.organizations.newPageDescription}
           </p>
         </header>

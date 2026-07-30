@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Card,
   CardContent,
@@ -87,14 +88,16 @@ export function ActionPlanWorkflow({
         </span>
       </div>
       {error ? (
-        <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription className="text-current">{error}</AlertDescription>
+        </Alert>
       ) : null}
       {current.sourceStaleness.stale ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {labels.staleSources}
-        </div>
+        <Alert variant="warning">
+          <AlertDescription className="text-current">
+            {labels.staleSources}
+          </AlertDescription>
+        </Alert>
       ) : null}
       <div className="grid gap-4">
         {current.categories.length === 0 ? (

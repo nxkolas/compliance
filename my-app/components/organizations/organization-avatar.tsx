@@ -30,7 +30,7 @@ export function OrganizationAvatar({
     <span
       aria-hidden="true"
       className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white",
+        "flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-primary-foreground",
         className,
       )}
       style={{ backgroundColor: `hsl(${hue} 55% 42%)` }}
@@ -39,4 +39,3 @@ export function OrganizationAvatar({
     </span>
   );
 }
-

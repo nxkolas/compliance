@@ -131,14 +131,14 @@ export function OrganizationMemberRoster({
         {notice && (
           <div
             role="status"
-            className="mb-3 rounded-lg border border-zinc-700 bg-white/5 px-4 py-3 text-sm text-zinc-200"
+            className="mb-3 rounded-lg border border-border-strong bg-foreground/5 px-4 py-3 text-sm text-muted-foreground"
           >
             {notice}
           </div>
         )}
 
         {activeMembers.length === 0 ? (
-          <p className="border-t border-zinc-700/50 px-3 py-6 text-sm text-gray-500">
+          <p className="border-t border-border-strong/50 px-3 py-6 text-sm text-foreground-subtle">
             {labels.noActiveMembers}
           </p>
         ) : (
@@ -151,7 +151,7 @@ export function OrganizationMemberRoster({
             return (
               <article
                 key={member.id}
-                className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_176px_32px] items-center gap-4 border-t border-zinc-700/50 px-3"
+                className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_176px_32px] items-center gap-4 border-t border-border-strong/50 px-3"
               >
                 <DialogMemberIdentity member={member} labels={labels} />
 
@@ -164,14 +164,14 @@ export function OrganizationMemberRoster({
                     onChange={(role) => updateRole(member, role)}
                   />
                 ) : (
-                  <div className="flex h-12 w-44 items-center rounded-lg border-[1.5px] border-zinc-700 bg-[#292C34] px-5 text-base text-white">
+                  <div className="flex h-12 w-44 items-center rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base text-foreground">
                     {labels.roles[member.role]}
                   </div>
                 )}
 
                 <div className="flex size-8 items-center justify-center">
                   {pending === member.userId ? (
-                    <Loader2 className="size-4 animate-spin text-zinc-400" />
+                    <Loader2 className="size-4 animate-spin text-foreground-subtle" />
                   ) : isSelf ? (
                     <Button
                       type="button"
@@ -180,7 +180,7 @@ export function OrganizationMemberRoster({
                       aria-label={labels.leave}
                       title={labels.leave}
                       onClick={() => leave(member)}
-                      className="size-8 rounded-[10px] text-zinc-400 hover:bg-red-900/20 hover:text-red-400 focus-visible:ring-red-400/30 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                      className="size-8 rounded-[10px] text-foreground-subtle hover:bg-destructive/20 hover:text-destructive-muted-foreground focus-visible:ring-destructive/30 dark:hover:bg-destructive/20 dark:hover:text-destructive-muted-foreground"
                     >
                       <Trash2 className="size-5" />
                     </Button>
@@ -192,7 +192,7 @@ export function OrganizationMemberRoster({
                       aria-label={labels.remove}
                       title={labels.remove}
                       onClick={() => remove(member)}
-                      className="size-8 rounded-[10px] text-zinc-400 hover:bg-red-900/20 hover:text-red-400 focus-visible:ring-red-400/30 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                      className="size-8 rounded-[10px] text-foreground-subtle hover:bg-destructive/20 hover:text-destructive-muted-foreground focus-visible:ring-destructive/30 dark:hover:bg-destructive/20 dark:hover:text-destructive-muted-foreground"
                     >
                       <Trash2 className="size-5" />
                     </Button>
@@ -212,19 +212,19 @@ export function OrganizationMemberRoster({
           return (
             <article
               key={member.id}
-              className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_176px_32px] items-center gap-4 border-t border-zinc-700/50 px-3 opacity-70"
+              className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_176px_32px] items-center gap-4 border-t border-border-strong/50 px-3 opacity-70"
             >
               <DialogMemberIdentity
                 member={member}
                 labels={labels}
                 status={labels.statuses[member.status]}
               />
-              <div className="flex h-12 w-44 items-center rounded-lg border-[1.5px] border-zinc-700 bg-[#292C34] px-5 text-base text-white">
+              <div className="flex h-12 w-44 items-center rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base text-foreground">
                 {labels.roles[member.role]}
               </div>
               <div className="flex size-8 items-center justify-center">
                 {pending === member.userId ? (
-                  <Loader2 className="size-4 animate-spin text-zinc-400" />
+                <Loader2 className="size-4 animate-spin text-foreground-subtle" />
                 ) : canRestore ? (
                   <Button
                     type="button"
@@ -233,7 +233,7 @@ export function OrganizationMemberRoster({
                     aria-label={labels.restore}
                     title={labels.restore}
                     onClick={() => restore(member)}
-                    className="size-8 rounded-[10px] text-zinc-400 hover:bg-white/5 hover:text-white"
+                    className="size-8 rounded-[10px] text-foreground-subtle hover:bg-foreground/5 hover:text-foreground"
                   >
                     <RotateCcw className="size-4" />
                   </Button>
@@ -389,16 +389,16 @@ function MemberRoleSelect({
     >
       <SelectTrigger
         aria-label={labels.role}
-        className="h-12 w-44 rounded-lg border-[1.5px] border-zinc-700 bg-[#292C34] px-5 font-['Space_Grotesk'] text-base font-normal text-white shadow-none focus-visible:border-[#002BFF] focus-visible:ring-0"
+        className="h-12 w-44 rounded-lg border-[1.5px] border-border-strong bg-surface px-5 font-['Space_Grotesk'] text-base font-normal text-foreground shadow-none focus-visible:border-primary focus-visible:ring-0"
       >
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="w-44 rounded-2xl border-[#292C34] bg-[#292C34] p-0 font-['Space_Grotesk'] text-white shadow-[0px_8px_32px_0px_rgba(0,0,0,0.50)]">
+      <SelectContent className="w-44 rounded-2xl border-surface bg-surface p-0 font-['Space_Grotesk'] text-foreground shadow-popover">
         {roles.map((role) => (
           <SelectItem
             key={role}
             value={role}
-            className="h-12 rounded-lg px-5 text-base font-normal focus:bg-[#18275D] focus:text-white data-[state=checked]:bg-[#18275D]"
+            className="h-12 rounded-lg px-5 text-base font-normal focus:bg-accent focus:text-accent-foreground data-[state=checked]:bg-accent"
           >
             {labels.roles[role]}
           </SelectItem>
@@ -430,16 +430,16 @@ function DialogMemberIdentity({
       />
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium leading-5 text-slate-200">
+          <p className="truncate text-sm font-medium leading-5 text-foreground">
             {name}
           </p>
           {status ? (
-            <span className="shrink-0 rounded-sm bg-white/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-4 text-gray-400">
+            <span className="shrink-0 rounded-sm bg-foreground/5 px-1.5 py-0.5 text-[10px] font-semibold leading-4 text-foreground-subtle uppercase">
               {status}
             </span>
           ) : null}
         </div>
-        <p className="truncate pt-0.5 text-xs font-normal leading-4 text-gray-500">
+        <p className="truncate pt-0.5 text-xs font-normal leading-4 text-foreground-subtle">
           {member.email}
         </p>
       </div>
@@ -500,7 +500,7 @@ function MemberCard({
           </p>
         )}
         {!member.identityResolved && (
-          <p className="text-xs text-amber-600">
+          <p className="text-xs text-warning">
             {labels.unresolvedIdentity}
           </p>
         )}

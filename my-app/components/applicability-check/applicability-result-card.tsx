@@ -144,8 +144,8 @@ export function ApplicabilityResultCard({
   return (
     <div className="@container/result-card flex min-w-0 flex-col gap-8">
       {result.release.isOutdated ? (
-        <Alert className="grid grid-cols-1 items-center gap-3 rounded-lg border-amber-300/40 bg-amber-300/10 p-4 text-sm text-amber-100 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <AlertDescription className="col-start-1 text-sm text-amber-100">
+        <Alert variant="warning" className="grid grid-cols-1 items-center gap-3 rounded-lg p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto]">
+          <AlertDescription className="col-start-1 text-sm text-current">
             {labels.outdated}
           </AlertDescription>
           {!recalculationLocked ? (
@@ -161,11 +161,11 @@ export function ApplicabilityResultCard({
       ) : null}
 
       {unsupportedCountry ? (
-        <Alert className="rounded-lg border-amber-300/40 bg-amber-300/10 p-4 text-amber-100">
+        <Alert variant="warning" className="rounded-lg p-4">
           <AlertTitle className="min-h-0 line-clamp-none font-semibold tracking-normal">
             {labels.unsupportedCountryTitle}
           </AlertTitle>
-          <AlertDescription className="mt-2 text-sm leading-6 text-amber-50/75">
+          <AlertDescription className="mt-2 text-sm leading-6 text-current/75">
             {labels.unsupportedCountryBody.replace(
               "{countries}",
               supportedCountries,
@@ -176,7 +176,7 @@ export function ApplicabilityResultCard({
 
       <Card
         className={cn(
-          "relative gap-0 overflow-hidden rounded-xl border-[1.5px] bg-[#1B1E27] px-5 py-5 shadow-[0_4px_4px_rgba(0,0,0,0.25)] sm:px-8 sm:py-6",
+          "relative gap-0 overflow-hidden rounded-xl border-[1.5px] bg-[var(--card)] px-5 py-5 shadow-dialog sm:px-8 sm:py-6",
           presentation.borderClass,
         )}
       >
@@ -205,7 +205,7 @@ export function ApplicabilityResultCard({
           ) : (
             <div
               className={cn(
-                "grid size-16 shrink-0 place-items-center rounded-full border-[1.5px] bg-gray-950 shadow-[0_0_0_10px_rgba(255,255,255,0.025)]",
+                "grid size-16 shrink-0 place-items-center rounded-full border-[1.5px] bg-background shadow-icon-halo",
                 presentation.iconClass,
               )}
             >
@@ -252,7 +252,7 @@ export function ApplicabilityResultCard({
             presentation.purpleIcon && "sm:pl-4",
           )}
         >
-          <p className="max-w-[68rem] text-sm leading-6 text-white sm:text-base sm:leading-7">
+          <p className="max-w-[68rem] text-sm leading-6 text-foreground sm:text-base sm:leading-7">
             {copy.summary}
           </p>
 
@@ -281,14 +281,14 @@ export function ApplicabilityResultCard({
 
           <div className="mt-8">
             <h2
-              className="text-base font-semibold tracking-[0.04em] text-white uppercase sm:text-xl"
+              className="text-base font-semibold tracking-[0.04em] text-foreground uppercase sm:text-xl"
             >
               {labels.whyTitle ??
                 (locale === "en"
                   ? "Why did you receive this result?"
                   : "Warum erhalten Sie dieses Ergebnis?")}
             </h2>
-            <ul className="mt-3 grid gap-2 text-sm leading-6 text-white sm:text-base">
+            <ul className="mt-3 grid gap-2 text-sm leading-6 text-foreground sm:text-base">
               {(reasons.length > 0 ? reasons : [copy.summary]).map((reason) => (
                 <li
                   key={reason}
@@ -312,22 +312,22 @@ export function ApplicabilityResultCard({
         <div className="relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center px-6 py-10 sm:px-[54px] @5xl/result-card:justify-start @5xl/result-card:pt-[65px] @5xl/result-card:pb-[30px] @7xl/result-card:max-w-none">
           <div
             aria-hidden="true"
-            className="absolute inset-0 rounded-xl bg-gradient-to-br from-slate-800 to-gray-900 outline outline-[1.5px] outline-offset-[-0.75px] outline-zinc-700 @5xl/result-card:hidden"
+            className="absolute inset-0 rounded-xl bg-gradient-to-br from-[var(--surface)] to-[var(--card)] outline outline-[1.5px] outline-offset-[-0.75px] outline-border-strong @5xl/result-card:hidden"
           />
           <SpeechBubbleBackground />
-          <h2 className="relative z-10 w-full max-w-80 text-lg font-semibold tracking-wide text-white uppercase sm:text-xl @5xl/result-card:leading-5">
+          <h2 className="relative z-10 w-full max-w-80 text-lg font-semibold tracking-wide text-card-foreground uppercase sm:text-xl @5xl/result-card:leading-5">
             {labels.meaningTitle ??
               (locale === "en"
                 ? "What does this mean for you?"
                 : "Was bedeutet das für Sie?")}
           </h2>
-          <p className="relative z-10 mt-4 max-w-[639px] text-base leading-7 font-normal text-white">
+          <p className="relative z-10 mt-4 max-w-[639px] text-base leading-7 font-normal text-card-foreground">
             {speechBubbleMeaning}
           </p>
           {canStartGapAnalysis && gapAnalysisHref ? (
             <Button
               asChild
-              className="relative z-10 mt-6 h-12 w-full max-w-64 gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] hover:bg-[#002BFF]"
+              className="relative z-10 mt-6 h-12 w-full max-w-64 gap-2 overflow-hidden rounded-lg bg-primary px-5 font-['Space_Grotesk'] text-base font-medium text-primary-foreground outline outline-[1.5px] outline-offset-[-1.5px] outline-primary hover:bg-primary"
             >
               <Link href={gapAnalysisHref}>
                 <TrendingUp
@@ -346,7 +346,7 @@ export function ApplicabilityResultCard({
           {isClarificationRequired ? (
             <Button
               asChild
-              className="relative z-10 mt-6 h-12 w-full max-w-[336px] gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white outline outline-[1.5px] outline-offset-[-1.5px] outline-[#002BFF] hover:bg-[#002BFF]/90"
+              className="relative z-10 mt-6 h-12 w-full max-w-[336px] gap-2 overflow-hidden rounded-lg bg-primary px-5 font-['Space_Grotesk'] text-base font-medium text-primary-foreground outline outline-[1.5px] outline-offset-[-1.5px] outline-primary hover:bg-primary/90"
             >
               <Link href={startCurrentHref}>
                 <RefreshCw className="size-5 shrink-0" strokeWidth={1.5} />
@@ -390,7 +390,7 @@ export function ApplicabilityResultCard({
       />
 
       <footer className="@5xl/result-card:mt-[18px]">
-        <Alert className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-3 gap-y-0 rounded-lg border-[1.5px] border-zinc-700 bg-[#1B1E27] px-5 py-2.5 text-xs leading-5 text-white/35 has-[>svg]:grid-cols-[1rem_minmax(0,1fr)] [&>svg]:translate-y-0">
+        <Alert className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-3 gap-y-0 rounded-lg border-[1.5px] border-border-strong bg-card px-5 py-2.5 text-xs leading-5 text-foreground/35 has-[>svg]:grid-cols-[1rem_minmax(0,1fr)] [&>svg]:translate-y-0">
           <svg
             aria-hidden="true"
             width="16"
@@ -402,32 +402,32 @@ export function ApplicabilityResultCard({
           >
             <path
               d="M2 8C2 8.78793 2.15519 9.56815 2.45672 10.2961C2.75825 11.0241 3.20021 11.6855 3.75736 12.2426C4.31451 12.7998 4.97595 13.2417 5.7039 13.5433C6.43185 13.8448 7.21207 14 8 14C8.78793 14 9.56815 13.8448 10.2961 13.5433C11.0241 13.2417 11.6855 12.7998 12.2426 12.2426C12.7998 11.6855 13.2417 11.0241 13.5433 10.2961C13.8448 9.56815 14 8.78793 14 8C14 6.4087 13.3679 4.88258 12.2426 3.75736C11.1174 2.63214 9.5913 2 8 2C6.4087 2 4.88258 2.63214 3.75736 3.75736C2.63214 4.88258 2 6.4087 2 8Z"
-              stroke="#9F9FA9"
+              stroke="currentColor"
               strokeWidth="1.33"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
             <path
               d="M8 6H8.00667"
-              stroke="#9F9FA9"
+              stroke="currentColor"
               strokeWidth="1.33"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
             <path
               d="M7.33301 8H7.99967V10.6667H8.66634"
-              stroke="#9F9FA9"
+              stroke="currentColor"
               strokeWidth="1.33"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
-          <AlertDescription className="min-w-0 text-xs leading-5 text-white/35">
+          <AlertDescription className="min-w-0 text-xs leading-5 text-current">
             {locale === "en" ? evaluation.disclaimerEn : evaluation.disclaimer}
           </AlertDescription>
         </Alert>
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-zinc-400 @5xl/result-card:mt-5">
+        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-foreground-subtle @5xl/result-card:mt-5">
           <Metadata label={labels.release} value={result.release.versionLabel} />
           <Metadata
             label={
@@ -481,7 +481,7 @@ function Metric({
         <span className="min-w-0 break-words">{label}</span>
       </div>
       <p
-        className="mt-2 break-words whitespace-normal pl-0.5 text-sm text-white sm:text-base"
+        className="mt-2 break-words whitespace-normal pl-0.5 text-sm text-foreground sm:text-base"
         title={value}
       >
         {value}
@@ -503,7 +503,7 @@ function SpeechBubbleBackground() {
       <path
         d="M12 0H746C752.627 0 758 5.37258 758 12V125C758 130 760.8 134.6 765.2 136.8L782 144L765.2 152C760.8 154.2 758 158 758 163V276C758 282.627 752.627 288 746 288H12C5.37258 288 0 282.627 0 276V12C0 5.37258 5.37258 0 12 0Z"
         fill="url(#applicability-speech-bubble-gradient)"
-        stroke="#3D4049"
+        stroke="var(--border-strong)"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -518,8 +518,8 @@ function SpeechBubbleBackground() {
           y2="288"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#1E293B" />
-          <stop offset="1" stopColor="#101828" />
+          <stop stopColor="var(--surface)" />
+          <stop offset="1" stopColor="var(--card)" />
         </linearGradient>
       </defs>
     </svg>
@@ -559,14 +559,14 @@ function ResultDetails({
   return (
     <section className="mt-12 @5xl/result-card:mt-[92px]">
       <div className="mb-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <h2 className="text-base font-medium tracking-[0.04em] text-white uppercase sm:text-lg">
+        <h2 className="text-base font-medium tracking-[0.04em] text-foreground uppercase sm:text-lg">
           {title}
         </h2>
         <Button
           type="button"
           variant="ghost"
           onClick={toggleAll}
-          className="h-auto shrink-0 self-end rounded-none px-0 py-0 text-sm font-medium text-white hover:bg-transparent hover:text-blue-200 focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-transparent sm:self-auto sm:text-base"
+          className="h-auto shrink-0 self-end rounded-none px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent hover:text-info-foreground focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-transparent sm:self-auto sm:text-base"
         >
           {allExpanded ? collapseAllLabel : expandAllLabel}
           <ChevronDown
@@ -590,13 +590,13 @@ function ResultDetails({
               onOpenChange={(open) =>
                 setSectionExpanded(section.id, open)
               }
-              className="overflow-hidden rounded-xl border-[1.5px] border-zinc-700 bg-[#1B1E27]"
+              className="overflow-hidden rounded-xl border-[1.5px] border-border-strong bg-card"
             >
               <CollapsibleTrigger asChild>
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-auto min-h-12 w-full justify-between gap-4 rounded-none bg-[#1B1E27] px-5 py-3.5 text-left whitespace-normal font-['Space_Grotesk'] text-[#9F9FA9] hover:bg-white/[0.025] hover:text-[#9F9FA9] focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-white/[0.025] dark:hover:text-[#9F9FA9]"
+                  className="h-auto min-h-12 w-full justify-between gap-4 rounded-none bg-card px-5 py-3.5 text-left whitespace-normal font-['Space_Grotesk'] text-foreground-subtle hover:bg-foreground/[0.025] hover:text-foreground-subtle focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary focus-visible:ring-0 dark:hover:bg-foreground/[0.025] dark:hover:text-foreground-subtle"
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <Icon className="size-4 shrink-0" strokeWidth={1.5} />
@@ -615,7 +615,7 @@ function ResultDetails({
               <CollapsibleContent
                 forceMount
                 hidden={!isExpanded}
-                className="border-t border-zinc-700 px-5 py-5 text-sm leading-6 text-zinc-300"
+                className="border-t border-border-strong px-5 py-5 text-sm leading-6 text-muted-foreground"
               >
                 {section.content}
               </CollapsibleContent>
@@ -925,7 +925,7 @@ function JurisdictionIcon({
 function Metadata({ label, value }: { label: string; value: string }) {
   return (
     <span>
-      {label} <strong className="font-semibold text-white">{value}</strong>
+      {label} <strong className="font-semibold text-foreground">{value}</strong>
     </span>
   );
 }
@@ -948,10 +948,10 @@ function getDetailSections({
       <div className="grid gap-3">
         {evaluation.matchedEntityTypes.map((entityType) => (
           <div key={entityType.code}>
-            <p className="font-medium text-white">
+            <p className="font-medium text-foreground">
               {locale === "en" ? entityType.labelEn : entityType.label}
             </p>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-foreground-subtle">
               {entityType.legalReference}
             </p>
           </div>
@@ -969,11 +969,11 @@ function getDetailSections({
       <div className="grid gap-3">
         {decisionItems.map((item) => (
           <div key={item.code}>
-            <p className="text-white">
+            <p className="text-foreground">
               {locale === "en" ? item.descriptionEn : item.description}
             </p>
             {item.legalReference ? (
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-foreground-subtle">
                 {item.legalReference}
               </p>
             ) : null}
@@ -1030,7 +1030,7 @@ function BulletList({ values }: { values: string[] }) {
     <ul className="grid gap-2">
       {values.map((value) => (
         <li key={value} className="flex items-start gap-2">
-          <span className="mt-2 size-1.5 shrink-0 rounded-full bg-zinc-500" />
+          <span className="mt-2 size-1.5 shrink-0 rounded-full bg-foreground-subtle" />
           <span>{value}</span>
         </li>
       ))}
@@ -1051,7 +1051,7 @@ function CapturedEntityTypesIcon({ className }: { className?: string }) {
     >
       <path
         d="M3.75 13.25V1.25H11.75V13.25M1.25 13.25V7.5H3.75M11.75 5.625H13.75V13.25M6.25 3.75H8.75M6.25 6.25H8.75M6.25 8.75H8.75M6.25 11.25H8.75"
-        stroke="#9F9FA9"
+        stroke="currentColor"
         strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -1073,7 +1073,8 @@ function DetailChevron({ className }: { className?: string }) {
     >
       <path
         d="M3.25 5.375L7 9.125L10.75 5.375"
-        stroke="rgba(255,255,255,0.3)"
+        stroke="currentColor"
+        strokeOpacity="0.3"
         strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -1095,21 +1096,21 @@ function IndirectExposureIcon({ className }: { className?: string }) {
     >
       <path
         d="M7.5 13.75C10.9518 13.75 13.75 10.9518 13.75 7.5C13.75 4.04822 10.9518 1.25 7.5 1.25C4.04822 1.25 1.25 4.04822 1.25 7.5C1.25 10.9518 4.04822 13.75 7.5 13.75Z"
-        stroke="#9F9FA9"
+        stroke="currentColor"
         strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M7.5 5V7.5"
-        stroke="#9F9FA9"
+        stroke="currentColor"
         strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M7.5 10H7.50625"
-        stroke="#9F9FA9"
+        stroke="currentColor"
         strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -1147,7 +1148,7 @@ function getOutcomePresentation(outcome: string) {
       glowClass: "hidden",
       iconClass: "border-[rgba(234,180,70,0.60)] text-[#EAB446]",
       illustrationClass: "bg-blue-700",
-      metricBackgroundClass: "bg-[#1B1E27]",
+      metricBackgroundClass: "bg-[var(--card)]",
       metricBorderClass: "border-[rgba(234,180,70,0.60)]",
       purpleIcon: false,
       redIcon: false,
@@ -1161,12 +1162,12 @@ function getOutcomePresentation(outcome: string) {
       badgeClass:
         "border-[rgba(217,96,94,0.60)] bg-[rgba(217,96,94,0.08)]",
       borderClass:
-        "border-[rgba(217,96,94,0.70)] bg-[#1B1E27]",
+        "border-[rgba(217,96,94,0.70)] bg-[var(--card)]",
       dotClass: "bg-[#D9605E]",
       glowClass: "hidden",
       iconClass: "border-[#C37878] text-[#C37878]",
       illustrationClass: "bg-[#B63B3B]",
-      metricBackgroundClass: "bg-[#1B1E27]",
+      metricBackgroundClass: "bg-[var(--card)]",
       metricBorderClass: "border-[rgba(217,96,94,0.60)]",
       purpleIcon: false,
       redIcon: true,
@@ -1182,7 +1183,7 @@ function getOutcomePresentation(outcome: string) {
     glowClass: "hidden",
     iconClass: "border-fuchsia-200/60 text-fuchsia-200",
     illustrationClass: "bg-fuchsia-600",
-    metricBackgroundClass: "bg-[#1B1E27]",
+    metricBackgroundClass: "bg-[var(--card)]",
     metricBorderClass: "border-[rgba(178,25,248,0.60)]",
     purpleIcon: true,
     redIcon: false,

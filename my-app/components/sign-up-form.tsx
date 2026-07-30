@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { AccountEmailField } from "@/components/auth/account-email-field";
 import { AccountPasswordField } from "@/components/auth/account-password-field";
+import { BrandLogo } from "@/components/brand-logo";
 import { TermsAcceptance } from "@/components/auth/terms-acceptance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,6 @@ import { User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Image from "next/image";
 
 function getNextPath() {
   if (typeof window === "undefined") return parseSafeToolNext(null);
@@ -95,21 +95,10 @@ export function SignUpForm({
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#02040E] flex items-center justify-center overflow-hidden p-4 md:p-10">
-      <div className="absolute inset-0 w-full h-full pointer-events-none z-0">
-        <Image 
-          src="/images/Startseite.svg"
-          alt={labels.backgroundAlt}
-          fill
-          className="object-cover"
-          priority
-        />
-      </div>
-
+    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-transparent p-4 md:p-10">
       <div className={cn("relative z-10 flex w-full max-w-[476px] flex-col items-start justify-start gap-4 px-4 font-['Space_Grotesk']", className)} {...props}>
         <div className="h-16 flex items-center justify-start">
-          <Image 
-            src="/images/Logo-weiß.svg"
+          <BrandLogo
             alt={labels.logoAlt}
             width={180}
             height={48}
@@ -120,23 +109,23 @@ export function SignUpForm({
         </div>
 
         <div className="self-stretch pb-4 flex flex-col justify-start items-start gap-2">
-          <h1 className="text-white text-4xl font-medium tracking-tight">
+          <h1 className="text-4xl font-medium tracking-tight text-foreground">
             {labels.createAccountTitle}
           </h1>
-          <p className="text-white/80 text-base font-normal">
+          <p className="text-base font-normal text-foreground/80">
             {labels.createAccountSubtitle}
           </p>
         </div>
 
-        <div className="self-stretch p-8 bg-[#FAFAFA] rounded-2xl shadow-none flex flex-col justify-start items-start gap-6">
+        <div className="flex self-stretch flex-col items-start justify-start gap-6 rounded-2xl bg-auth-panel p-8 shadow-none">
           <form onSubmit={handleSignUp} className="w-full flex flex-col gap-5">
             
             <div className="self-stretch flex flex-col justify-start items-start gap-2">
-              <Label htmlFor="name" className="text-black text-base font-medium">
+              <Label htmlFor="name" className="text-base font-medium text-auth-foreground">
                 {labels.name}
               </Label>
               <div className="relative w-full">
-                <User className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#002AFF]" />
+                <User className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-auth-primary" />
                 <Input
                   id="name"
                   type="text"
@@ -144,7 +133,7 @@ export function SignUpForm({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="auth-input w-full h-12 pl-12 pr-4 text-black text-base font-normal shadow-none focus-visible:ring-2 focus-visible:ring-[#002AFF] placeholder:text-[#4A5565]"
+                  className="auth-input h-12 w-full pr-4 pl-12 text-base font-normal text-auth-foreground shadow-none placeholder:text-auth-placeholder focus-visible:ring-2 focus-visible:ring-auth-primary"
                 />
               </div>
             </div>
@@ -181,25 +170,25 @@ export function SignUpForm({
               onChange={setAcceptTerms}
             />
 
-            {error && <p className="text-sm text-destructive font-medium">{error}</p>}
+            {error && <p className="text-sm font-medium text-auth-destructive">{error}</p>}
 
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="w-full h-12 bg-[#002AFF] hover:bg-[#0022cc] text-white text-base shadow-none font-medium rounded-lg transition-colors mt-2"
+              className="mt-2 h-12 w-full rounded-lg bg-auth-primary text-base font-medium text-auth-primary-foreground shadow-none transition-colors hover:bg-auth-primary-hover"
             >
               {isLoading ? labels.creatingAccount : labels.createAccountTitle}
             </Button>
           </form>
         </div>
 
-        <div className="self-stretch flex justify-center items-center gap-1 mt-2 text-white text-base">
+        <div className="mt-2 flex items-center justify-center gap-1 self-stretch text-base text-foreground">
           <span className="font-normal">{labels.alreadyHaveAnAccount}</span>
           <Link
             href={
               `/auth/login?next=${encodeURIComponent(getNextPath())}`
             }
-            className="font-semibold hover:underline decoration-2 text-white"
+            className="font-semibold text-foreground decoration-2 hover:underline"
           >
             {labels.login}
           </Link>

@@ -330,22 +330,22 @@ export function OrganizationDocumentManager({
             }}
           >
             <DialogTrigger asChild>
-              <Button className="h-12 w-64 cursor-pointer gap-2 overflow-hidden rounded-lg bg-blue-700 px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none hover:bg-blue-700">
+              <Button className="h-12 w-64 cursor-pointer gap-2 overflow-hidden rounded-lg bg-primary px-5 font-['Space_Grotesk'] text-base font-medium text-primary-foreground shadow-none hover:bg-primary">
                 <Upload className="size-5" strokeWidth={1.5} />
                 {labels.uploadDocument}
               </Button>
             </DialogTrigger>
             <DialogContent
               closeLabel={labels.cancel}
-              overlayClassName="bg-black/75 backdrop-blur-[3px]"
-              className="h-[464px] max-h-[calc(100svh-32px)] w-[min(687px,calc(100vw-32px))] max-w-none gap-0 overflow-hidden rounded-xl border-0 bg-[#1B1E27] p-0 font-['Space_Grotesk'] text-white shadow-2xl outline-[1.5px] outline-offset-[-1.5px] outline-white/10 sm:max-w-none [&>[data-slot=dialog-close]]:top-4 [&>[data-slot=dialog-close]]:right-6 [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-[10px] [&>[data-slot=dialog-close]]:text-zinc-400 [&>[data-slot=dialog-close]]:opacity-100 [&>[data-slot=dialog-close]]:ring-offset-0 [&>[data-slot=dialog-close]]:hover:bg-white/5 [&>[data-slot=dialog-close]]:focus:ring-0 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent"
+              overlayClassName="bg-scrim/75 backdrop-blur-[3px]"
+              className="h-[464px] max-h-[calc(100svh-32px)] w-[min(687px,calc(100vw-32px))] max-w-none gap-0 overflow-hidden rounded-xl border-0 bg-card p-0 font-['Space_Grotesk'] text-card-foreground shadow-2xl outline-[1.5px] outline-offset-[-1.5px] outline-foreground/10 sm:max-w-none [&>[data-slot=dialog-close]]:top-4 [&>[data-slot=dialog-close]]:right-6 [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-[10px] [&>[data-slot=dialog-close]]:text-foreground-subtle [&>[data-slot=dialog-close]]:opacity-100 [&>[data-slot=dialog-close]]:ring-offset-0 [&>[data-slot=dialog-close]]:hover:bg-foreground/5 [&>[data-slot=dialog-close]]:focus:ring-0 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent"
             >
               <form
                 className="relative h-full w-full"
                 onSubmit={submitUpload}
               >
-                <div className="flex h-16 w-full items-center border-b border-white/5 px-6 py-4">
-                  <DialogTitle className="text-base leading-6 font-semibold text-white">
+                <div className="flex h-16 w-full items-center border-b border-foreground/5 px-6 py-4">
+                  <DialogTitle className="text-base leading-6 font-semibold text-foreground">
                     {labels.uploadDialogTitle}
                   </DialogTitle>
                   <DialogDescription className="sr-only">
@@ -354,12 +354,12 @@ export function OrganizationDocumentManager({
                 </div>
 
                 <div className="px-6 py-5">
-                  <div className="text-base leading-5 font-medium text-white/80">
+                  <div className="text-base leading-5 font-medium text-foreground/80">
                     {labels.titleFieldLabel}
                     <span className="text-sm"> *</span>
                   </div>
 
-                  <label className="mt-4 grid gap-1.5 font-['Space_Grotesk'] text-sm leading-5 font-medium text-white/80">
+                  <label className="mt-4 grid gap-1.5 font-['Space_Grotesk'] text-sm leading-5 font-medium text-foreground/80">
                     {labels.documentTitle}
                     <Input
                       name="title"
@@ -367,14 +367,14 @@ export function OrganizationDocumentManager({
                       onChange={(event) => setUploadTitle(event.target.value)}
                       required
                       maxLength={255}
-                      className="h-10 rounded-lg border border-zinc-700 bg-[#292C34] px-3 text-base text-white shadow-none focus-visible:border-zinc-600 focus-visible:ring-1 focus-visible:ring-white/20 dark:bg-[#292C34]"
+                      className="h-10 rounded-lg border border-border-strong bg-surface px-3 text-base text-foreground shadow-none focus-visible:border-muted-foreground focus-visible:ring-1 focus-visible:ring-ring/20 dark:bg-surface"
                     />
                   </label>
 
-                  <div className="mt-8 grid gap-1.5 font-['Space_Grotesk'] text-sm leading-5 font-medium text-white/80">
+                  <div className="mt-8 grid gap-1.5 font-['Space_Grotesk'] text-sm leading-5 font-medium text-foreground/80">
                     <span>{labels.documentFile}</span>
                     <label
-                      className="flex min-h-[108px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg bg-[#292C34] px-4 py-6 text-center outline-[1.5px] outline-offset-[-1.5px] outline-zinc-700 transition-colors hover:bg-[#30333C] focus-within:outline-blue-700"
+                      className="flex min-h-[108px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg bg-surface px-4 py-6 text-center outline-[1.5px] outline-offset-[-1.5px] outline-border-strong transition-colors hover:bg-surface-hover focus-within:outline-primary"
                       onDragOver={(event) => event.preventDefault()}
                       onDrop={(event) => {
                         event.preventDefault();
@@ -393,13 +393,13 @@ export function OrganizationDocumentManager({
                       />
                       <Upload
                         aria-hidden="true"
-                        className="size-6 text-white"
+                        className="size-6 text-foreground"
                         strokeWidth={1.3}
                       />
-                      <span className="max-w-full truncate text-sm leading-5 font-normal text-white">
+                      <span className="max-w-full truncate text-sm leading-5 font-normal text-foreground">
                         {uploadFile?.name ?? labels.uploadDropzone}
                       </span>
-                      <span className="text-xs leading-4 font-normal text-white">
+                      <span className="text-xs leading-4 font-normal text-foreground">
                         {labels.uploadDescription}
                       </span>
                     </label>
@@ -413,7 +413,7 @@ export function OrganizationDocumentManager({
                     !uploadTitle.trim() ||
                     uploadFile === null
                   }
-                  className="absolute right-6 bottom-5 h-12 w-36 overflow-hidden rounded-lg bg-[#002BFF] px-5 text-base font-medium text-white shadow-none hover:bg-[#002BFF] disabled:bg-[#002BFF]/50 disabled:text-white/50 disabled:opacity-100"
+                  className="absolute right-6 bottom-5 h-12 w-36 overflow-hidden rounded-lg bg-primary px-5 text-base font-medium text-primary-foreground shadow-none hover:bg-primary disabled:bg-primary/50 disabled:text-primary-foreground/50 disabled:opacity-100"
                 >
                   {busy === "upload" ? (
                     <Loader2 className="animate-spin" />
@@ -426,15 +426,15 @@ export function OrganizationDocumentManager({
         ) : null}
       </div>
 
-      <div className="w-full border-b border-white/[0.04] pt-3.5 pb-1.5">
+      <div className="w-full border-b border-foreground/[0.04] pt-3.5 pb-1.5">
         <div className="relative h-12 w-full max-w-[539px]">
           <Search
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#FBFBFB]/55"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-foreground/55"
             strokeWidth={1.5}
           />
           <Input
-            className="h-12 rounded-md border border-[#3D4049] bg-[#292C34] py-3 pr-4 pl-10 font-['Space_Grotesk'] text-base font-normal text-white shadow-none caret-white selection:bg-[#FBFBFB]/55 selection:text-[#292C34] placeholder:text-[#FBFBFB]/55 focus-visible:border-[#3D4049] focus-visible:ring-1 focus-visible:ring-white/20 dark:bg-[#292C34]"
+            className="h-12 rounded-md border border-border-strong bg-surface py-3 pr-4 pl-10 font-['Space_Grotesk'] text-base font-normal text-foreground shadow-none caret-foreground selection:bg-foreground/55 selection:text-surface placeholder:text-foreground/55 focus-visible:border-border-strong focus-visible:ring-1 focus-visible:ring-ring/20 dark:bg-surface"
             value={searchInput}
             onChange={(event) => {
               searchIsEditing.current = true;
@@ -452,35 +452,35 @@ export function OrganizationDocumentManager({
         className={error || notice ? undefined : "hidden"}
       >
         {error ? (
-          <p className="rounded-lg border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive-muted-foreground">
             {error}
           </p>
         ) : notice ? (
-          <p className="rounded-lg border border-emerald-400/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">
+          <p className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success-foreground">
             {notice}
           </p>
         ) : null}
       </div>
 
-      <Card className="w-full min-w-0 gap-0 overflow-hidden rounded-xl border-0 bg-[#1B1E27] py-px shadow-none outline-[1.2px] outline-offset-[-1.2px] outline-zinc-700">
+      <Card className="w-full min-w-0 gap-0 overflow-hidden rounded-xl border-0 bg-card py-px shadow-none outline-[1.2px] outline-offset-[-1.2px] outline-border-strong">
         <div className="overflow-x-auto">
             <div
               aria-hidden="true"
-              className="relative h-12 min-w-[1190px] border-b border-white/10 font-['Space_Grotesk']"
+              className="relative h-12 min-w-[1190px] border-b border-foreground/10 font-['Space_Grotesk']"
             >
-              <div className="absolute top-[17px] left-8 h-7 w-44 text-base leading-4 font-semibold tracking-wide text-white uppercase">
+              <div className="absolute top-[17px] left-8 h-7 w-44 text-base leading-4 font-semibold tracking-wide text-foreground uppercase">
                 {labels.titleColumn}
               </div>
-              <div className="absolute top-[17px] left-[38.57%] h-7 w-48 text-base leading-4 font-semibold tracking-wide text-white uppercase">
+              <div className="absolute top-[17px] left-[38.57%] h-7 w-48 text-base leading-4 font-semibold tracking-wide text-foreground uppercase">
                 {labels.datatypeColumn}
               </div>
-              <div className="absolute top-[18px] left-[55.29%] h-7 w-24 text-base leading-4 font-semibold tracking-wide text-white uppercase">
+              <div className="absolute top-[18px] left-[55.29%] h-7 w-24 text-base leading-4 font-semibold tracking-wide text-foreground uppercase">
                 {labels.sizeColumn}
               </div>
-              <div className="absolute top-[18px] left-[66.22%] h-7 w-20 text-base leading-4 font-semibold tracking-wide text-white uppercase">
+              <div className="absolute top-[18px] left-[66.22%] h-7 w-20 text-base leading-4 font-semibold tracking-wide text-foreground uppercase">
                 {labels.uploadedAtColumn}
               </div>
-              <div className="absolute top-[16.8px] left-[79.16%] h-7 w-[14.54%] text-center text-base leading-4 font-semibold tracking-wide text-white uppercase">
+              <div className="absolute top-[16.8px] left-[79.16%] h-7 w-[14.54%] text-center text-base leading-4 font-semibold tracking-wide text-foreground uppercase">
                 {labels.statusColumn}
               </div>
             </div>
@@ -521,33 +521,33 @@ export function OrganizationDocumentManager({
                   return (
                     <tr
                       key={document.id}
-                      className="h-20 border-b border-white/5 align-middle last:border-b-0"
+                      className="h-20 border-b border-foreground/5 align-middle last:border-b-0"
                     >
                       <td className="px-8 py-[14px]">
                         <div className="flex min-w-0 items-center gap-4">
                           <DocumentFileIcon datatype={datatype} />
                           <div className="w-72 min-w-0">
                             <p
-                              className="h-5 truncate text-base leading-5 font-semibold text-white/90"
+                              className="h-5 truncate text-base leading-5 font-semibold text-foreground/90"
                               title={document.title}
                             >
                               {document.title}
                             </p>
                             <div className="flex h-4 w-full items-start pt-0.5 text-sm leading-4 font-normal uppercase">
-                              <span className="truncate text-white/30">
+                              <span className="truncate text-foreground/30">
                                 {datatype}
                               </span>
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-0 py-3 text-base leading-5 text-white/40">
+                      <td className="px-0 py-3 text-base leading-5 text-foreground/40">
                         <div className="w-52 truncate">{datatype}</div>
                       </td>
-                      <td className="px-0 py-3 text-base leading-5 text-white/30">
+                      <td className="px-0 py-3 text-base leading-5 text-foreground/30">
                         {formatDocumentBytes(document.byteSize, locale)}
                       </td>
-                      <td className="px-0 py-3 text-base leading-5 text-white/30">
+                      <td className="px-0 py-3 text-base leading-5 text-foreground/30">
                         {formatDate(document.uploadedAt, locale)}
                       </td>
                       <td className="px-0 py-3">
@@ -567,18 +567,18 @@ export function OrganizationDocumentManager({
                               variant="ghost"
                               size="icon-sm"
                               aria-label={`${labels.actionsColumn}: ${document.title}`}
-                              className="size-8 rounded-[10px] text-zinc-400 hover:bg-white/5 hover:text-white data-[state=open]:bg-white/5 data-[state=open]:text-white"
+                              className="size-8 rounded-[10px] text-foreground-subtle hover:bg-foreground/5 hover:text-foreground data-[state=open]:bg-foreground/5 data-[state=open]:text-foreground"
                             >
                               <MoreVertical className="size-5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="end"
-                            className="w-44 overflow-hidden rounded-2xl border border-[#3D4149] bg-[#1B1E27] p-1 font-['Space_Grotesk'] text-zinc-200 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.60)]"
+                            className="w-44 overflow-hidden rounded-2xl border border-border-strong bg-card p-1 font-['Space_Grotesk'] text-muted-foreground shadow-menu"
                           >
                             <DropdownMenuItem
                               asChild
-                              className="h-12 gap-2 rounded-lg px-3 py-3 text-sm leading-5 font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200 [&_svg]:text-zinc-400"
+                              className="h-12 gap-2 rounded-lg px-3 py-3 text-sm leading-5 font-medium text-muted-foreground focus:bg-accent focus:text-muted-foreground [&_svg]:text-foreground-subtle"
                             >
                               <a
                                 href={documentsClient.downloadUrl(
@@ -596,11 +596,11 @@ export function OrganizationDocumentManager({
                             document.indexStatus === "failed" &&
                             permissions.canRetryIndexing ? (
                               <>
-                                <DropdownMenuSeparator className="mx-3 my-1 h-px bg-zinc-700/60" />
+                                <DropdownMenuSeparator className="mx-3 my-1 h-px bg-border-strong/60" />
                                 <DropdownMenuItem
                                   disabled={busy === `retry-${document.id}`}
                                   onSelect={() => retryDocument(document)}
-                                  className="h-12 gap-2 rounded-lg px-3 py-3 text-sm leading-5 font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200 [&_svg]:text-zinc-400"
+                                  className="h-12 gap-2 rounded-lg px-3 py-3 text-sm leading-5 font-medium text-muted-foreground focus:bg-accent focus:text-muted-foreground [&_svg]:text-foreground-subtle"
                                 >
                                   {busy === `retry-${document.id}` ? (
                                     <Loader2 className="size-3.5 animate-spin" />
@@ -615,11 +615,11 @@ export function OrganizationDocumentManager({
                             {document.status === "active" &&
                             permissions.canArchive ? (
                               <>
-                                <DropdownMenuSeparator className="mx-3 my-1 h-px bg-zinc-700/60" />
+                                <DropdownMenuSeparator className="mx-3 my-1 h-px bg-border-strong/60" />
                                 <DropdownMenuItem
                                   disabled={busy === `archive-${document.id}`}
                                   onSelect={() => setArchiveTarget(document)}
-                                  className="h-12 gap-2 rounded-lg bg-transparent px-3 py-3 text-sm leading-5 font-medium text-zinc-200 hover:bg-[#2F2A24] focus:bg-[#2F2A24] focus:text-zinc-200 data-[highlighted]:bg-[#2F2A24] data-[highlighted]:text-zinc-200 [&_svg]:text-zinc-400 [&:hover_svg]:text-[#EAB446] [&[data-highlighted]_svg]:text-[#EAB446]"
+                                  className="h-12 gap-2 rounded-lg bg-transparent px-3 py-3 text-sm leading-5 font-medium text-muted-foreground hover:bg-warning/10 focus:bg-warning/10 focus:text-muted-foreground data-[highlighted]:bg-warning/10 data-[highlighted]:text-muted-foreground [&_svg]:text-foreground-subtle [&:hover_svg]:text-warning [&[data-highlighted]_svg]:text-warning"
                                 >
                                   {busy === `archive-${document.id}` ? (
                                     <Loader2 className="size-3.5 animate-spin" />
@@ -634,11 +634,11 @@ export function OrganizationDocumentManager({
                             {document.status === "archived" &&
                             permissions.canRestore ? (
                               <>
-                                <DropdownMenuSeparator className="mx-3 my-1 h-px bg-zinc-700/60" />
+                                <DropdownMenuSeparator className="mx-3 my-1 h-px bg-border-strong/60" />
                                 <DropdownMenuItem
                                   disabled={busy === `restore-${document.id}`}
                                   onSelect={() => restoreDocument(document)}
-                                  className="h-12 gap-2 rounded-lg px-3 py-3 text-sm leading-5 font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200 [&_svg]:text-zinc-400"
+                                  className="h-12 gap-2 rounded-lg px-3 py-3 text-sm leading-5 font-medium text-muted-foreground focus:bg-accent focus:text-muted-foreground [&_svg]:text-foreground-subtle"
                                 >
                                   {busy === `restore-${document.id}` ? (
                                     <Loader2 className="size-3.5 animate-spin" />
@@ -659,7 +659,7 @@ export function OrganizationDocumentManager({
                   <tr className="h-20">
                     <td
                       colSpan={6}
-                      className="px-8 text-center text-sm text-zinc-400"
+                      className="px-8 text-center text-sm text-foreground-subtle"
                     >
                       {search ? labels.noMatches : labels.noDocuments}
                     </td>
@@ -684,13 +684,13 @@ export function OrganizationDocumentManager({
       >
         <DialogContent
           closeLabel={labels.cancel}
-          overlayClassName="border border-black bg-black/75 backdrop-blur-[3px]"
-          className="block h-72 w-[min(649px,calc(100vw-32px))] max-w-none overflow-hidden rounded-xl border-0 bg-[#1B1E27] p-0 font-['Space_Grotesk'] text-white shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-zinc-700 sm:max-w-none [&>[data-slot=dialog-close]]:top-[15px] [&>[data-slot=dialog-close]]:right-4 [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-[10px] [&>[data-slot=dialog-close]]:text-zinc-400 [&>[data-slot=dialog-close]]:opacity-100 [&>[data-slot=dialog-close]]:ring-offset-0 [&>[data-slot=dialog-close]]:hover:bg-white/5 [&>[data-slot=dialog-close]]:focus:ring-0 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent"
+          overlayClassName="border border-scrim bg-scrim/75 backdrop-blur-[3px]"
+          className="block h-72 w-[min(649px,calc(100vw-32px))] max-w-none overflow-hidden rounded-xl border-0 bg-card p-0 font-['Space_Grotesk'] text-card-foreground shadow-control outline-[1.5px] outline-offset-[-1.5px] outline-border-strong sm:max-w-none [&>[data-slot=dialog-close]]:top-[15px] [&>[data-slot=dialog-close]]:right-4 [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-[10px] [&>[data-slot=dialog-close]]:text-foreground-subtle [&>[data-slot=dialog-close]]:opacity-100 [&>[data-slot=dialog-close]]:ring-offset-0 [&>[data-slot=dialog-close]]:hover:bg-foreground/5 [&>[data-slot=dialog-close]]:focus:ring-0 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent"
         >
-          <DialogTitle className="absolute top-[38px] left-[49px] h-10 w-80 text-lg leading-5 font-normal text-white">
+          <DialogTitle className="absolute top-[38px] left-[49px] h-10 w-80 text-lg leading-5 font-normal text-foreground">
             {labels.archiveDialogTitle}
           </DialogTitle>
-          <DialogDescription className="absolute top-20 left-[49px] h-24 w-[min(564px,calc(100%-98px))] text-lg leading-8 font-normal text-gray-400">
+          <DialogDescription className="absolute top-20 left-[49px] h-24 w-[min(564px,calc(100%-98px))] text-lg leading-8 font-normal text-foreground-subtle">
             {labels.archiveDialogDescription}
           </DialogDescription>
 
@@ -708,7 +708,7 @@ export function OrganizationDocumentManager({
                   setArchiveTarget(null),
                 );
               }}
-              className="h-12 w-32 cursor-pointer gap-1.5 overflow-hidden rounded-lg bg-yellow-600/75 px-4 text-base font-medium text-white shadow-none hover:bg-yellow-600/85 disabled:cursor-not-allowed disabled:bg-yellow-600/50 disabled:text-white/50 disabled:opacity-100"
+              className="h-12 w-32 cursor-pointer gap-1.5 overflow-hidden rounded-lg bg-warning/75 px-4 text-base font-medium text-foreground shadow-none hover:bg-warning/85 disabled:cursor-not-allowed disabled:bg-warning/50 disabled:text-foreground/50 disabled:opacity-100"
             >
               {archiveTarget &&
               busy === `archive-${archiveTarget.id}` ? (
@@ -726,7 +726,7 @@ export function OrganizationDocumentManager({
                 busy === `archive-${archiveTarget.id}`
               }
               onClick={() => setArchiveTarget(null)}
-              className="h-12 w-28 cursor-pointer overflow-hidden rounded-lg border-[1.5px] border-zinc-700 bg-transparent px-4 text-base font-medium text-zinc-300 shadow-none hover:bg-white/5 hover:text-zinc-300 disabled:cursor-not-allowed"
+              className="h-12 w-28 cursor-pointer overflow-hidden rounded-lg border-[1.5px] border-border-strong bg-transparent px-4 text-base font-medium text-muted-foreground shadow-none hover:bg-foreground/5 hover:text-muted-foreground disabled:cursor-not-allowed"
             >
               {labels.cancel}
             </Button>
@@ -740,7 +740,7 @@ export function OrganizationDocumentManager({
             variant="outline"
             disabled={busy === "load-more"}
             onClick={() => void loadMore()}
-            className="h-12 rounded-lg border-zinc-700 bg-[#1B1E27] px-5 text-zinc-200 hover:bg-white/5 hover:text-white"
+            className="h-12 rounded-lg border-border-strong bg-card px-5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground"
           >
             {busy === "load-more" ? (
               <>
@@ -782,7 +782,7 @@ function FolderFilter({
       role="tab"
       aria-selected={selected}
       onClick={onSelect}
-      className={`relative h-[114px] w-[145px] flex-none cursor-pointer overflow-hidden border-0 bg-transparent p-0 text-left text-white shadow-none transition-opacity focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
+      className={`relative h-[114px] w-[145px] flex-none cursor-pointer overflow-hidden border-0 bg-transparent p-0 text-left text-foreground shadow-none transition-opacity focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
         selected ? "opacity-100" : "opacity-20 hover:opacity-70"
       }`}
     >
@@ -795,10 +795,10 @@ function FolderFilter({
         height="114"
         unoptimized
       />
-      <span className="absolute top-[57.06px] left-[17.79px] size-5 text-3xl leading-4 font-bold text-white">
+      <span className="absolute top-[57.06px] left-[17.79px] size-5 text-3xl leading-4 font-bold text-foreground">
         {count}
       </span>
-      <span className="absolute top-[82.26px] left-[17.79px] h-5 w-[112px] truncate pt-0.5 text-base leading-4 font-medium text-white drop-shadow-[0_2px_4.4px_rgba(0,0,0,0.37)]">
+      <span className="absolute top-[82.26px] left-[17.79px] h-5 w-[112px] truncate pt-0.5 text-base leading-4 font-medium text-foreground drop-shadow-[0_2px_4.4px_rgba(0,0,0,0.37)]">
         {label}
       </span>
     </button>
@@ -842,14 +842,14 @@ function DocumentStatusBadge({
 }) {
   if (status === "archived") {
     return (
-      <span className="inline-flex h-8 w-32 items-center justify-center rounded-full bg-amber-500/10 px-2 py-0.5 text-base leading-4 font-medium text-amber-300">
+      <span className="inline-flex h-8 w-32 items-center justify-center rounded-full bg-warning/10 px-2 py-0.5 text-base leading-4 font-medium text-warning-foreground">
         {archivedLabel}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex h-8 w-32 items-center justify-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-base leading-4 font-medium text-emerald-500">
+    <span className="inline-flex h-8 w-32 items-center justify-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-base leading-4 font-medium text-success">
       <CircleCheck className="size-3" strokeWidth={1.5} />
       {activeLabel}
     </span>

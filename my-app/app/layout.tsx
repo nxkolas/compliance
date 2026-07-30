@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { serializeBrowserSupabaseEnvironment } from "@/src/config/env/supabase";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const defaultUrl = process.env.APP_PUBLIC_URL ?? "http://localhost:3000";
@@ -30,7 +31,7 @@ export default async function RootLayout({
   const browserConfiguration = serializeBrowserSupabaseEnvironment();
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -39,7 +40,7 @@ export default async function RootLayout({
         />
       </head>
       <body className={`${spaceGrotesk.className} antialiased`}>
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

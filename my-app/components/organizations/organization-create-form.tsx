@@ -63,11 +63,11 @@ export function OrganizationCreateForm({
     tone: "default",
   });
   const fieldClassName =
-    "h-12 w-full rounded-lg border-[1.5px] border-[#3D4049] !bg-white/[0.06] px-5 font-['Space_Grotesk'] text-base font-normal leading-5 text-white shadow-sm placeholder:text-zinc-500 focus-visible:border-blue-700 focus-visible:ring-blue-700/40";
+    "h-12 w-full rounded-lg border-[1.5px] border-border-strong !bg-foreground/[0.06] px-5 font-['Space_Grotesk'] text-base font-normal leading-5 text-foreground shadow-sm placeholder:text-foreground-subtle focus-visible:border-primary focus-visible:ring-primary/40";
   const labelClassName =
-    "flex min-h-5 w-full items-start font-['Space_Grotesk'] text-base leading-5 font-semibold text-white";
+    "flex min-h-5 w-full items-start font-['Space_Grotesk'] text-base leading-5 font-semibold text-foreground";
   const descriptionClassName =
-    "flex min-h-9 w-full max-w-96 items-start break-words font-['Space_Grotesk'] text-xs leading-5 font-normal text-gray-400";
+    "flex min-h-9 w-full max-w-96 items-start break-words font-['Space_Grotesk'] text-xs leading-5 font-normal text-foreground-subtle";
 
   async function handleCreateOrganization(
     event: FormEvent<HTMLFormElement>,
@@ -128,11 +128,11 @@ export function OrganizationCreateForm({
           className={cn(
             "mb-6 break-words rounded-lg border px-4 py-3 text-sm",
             notice.tone === "success" &&
-              "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+              "border-success/40 bg-success/10 text-success-foreground",
             notice.tone === "error" &&
-              "border-red-500/40 bg-red-500/10 text-red-200",
+              "border-destructive/40 bg-destructive/10 text-destructive-muted-foreground",
             notice.tone === "default" &&
-              "border-zinc-700 bg-gray-900 text-gray-200",
+              "border-border-strong bg-card text-card-foreground",
           )}
         >
           <AlertDescription className="break-words text-inherit">
@@ -148,11 +148,11 @@ export function OrganizationCreateForm({
           min-w-0
           rounded-xl
           border-[1.5px]
-          border-[#3D4049]
-          bg-[#1B1E27]
+          border-border-strong
+          bg-card
           py-0
           font-['Space_Grotesk']
-          shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)]
+          shadow-control
           gap-0
         "
       >
@@ -265,20 +265,20 @@ export function OrganizationCreateForm({
               [&_[data-slot=select-trigger]]:justify-between
               [&_[data-slot=select-trigger]]:rounded-lg
               [&_[data-slot=select-trigger]]:border-[1.5px]
-              [&_[data-slot=select-trigger]]:border-[#3D4049]
-              [&_[data-slot=select-trigger]]:!bg-white/[0.06]
+              [&_[data-slot=select-trigger]]:border-border-strong
+              [&_[data-slot=select-trigger]]:!bg-foreground/[0.06]
               [&_[data-slot=select-trigger]]:px-5
               [&_[data-slot=select-trigger]]:py-0
               [&_[data-slot=select-trigger]]:font-['Space_Grotesk']
               [&_[data-slot=select-trigger]]:text-base
               [&_[data-slot=select-trigger]]:font-normal
               [&_[data-slot=select-trigger]]:leading-6
-              [&_[data-slot=select-trigger]]:text-white
+              [&_[data-slot=select-trigger]]:text-foreground
               [&_[data-slot=select-trigger]]:shadow-sm
-              [&_[data-slot=select-trigger]]:focus-visible:border-blue-700
-              [&_[data-slot=select-trigger]]:focus-visible:ring-blue-700/40
+              [&_[data-slot=select-trigger]]:focus-visible:border-primary
+              [&_[data-slot=select-trigger]]:focus-visible:ring-primary/40
               [&_[data-slot=select-trigger]_svg]:size-5
-              [&_[data-slot=select-trigger]_svg]:text-slate-400
+              [&_[data-slot=select-trigger]_svg]:text-foreground-subtle
             "
           >
             <CountrySelector
@@ -309,19 +309,19 @@ export function OrganizationCreateForm({
             overflow-hidden
             self-end
             rounded-lg
-            bg-[#002BFF]
+            bg-primary
             px-5
             py-3
             font-['Space_Grotesk']
             text-sm
             font-medium
-            text-white
+            text-primary-foreground
             whitespace-normal
-            hover:bg-[#002BFF]/90
+            hover:bg-primary/90
             focus-visible:ring-2
-            focus-visible:ring-blue-400
+            focus-visible:ring-ring
             focus-visible:ring-offset-2
-            focus-visible:ring-offset-gray-900
+            focus-visible:ring-offset-background
             disabled:cursor-not-allowed
             disabled:opacity-50
             sm:h-12

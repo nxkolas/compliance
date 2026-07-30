@@ -25,14 +25,14 @@ export function TermsAcceptance({
       />
       <label
         htmlFor={id}
-        className="cursor-pointer select-none text-sm font-normal leading-tight text-[#4A5565]"
+        className="cursor-pointer select-none text-sm font-normal leading-tight text-auth-placeholder"
       >
         {labels.acceptTermsPrefix}{" "}
-        <span className="text-[#002AFF]">
+        <span className="text-auth-primary">
           {labels.terms}
         </span>{" "}
         {labels.termsConnector}{" "}
-        <span className="text-[#002AFF]">
+        <span className="text-auth-primary">
           {labels.privacyPolicy}
         </span>
         .
