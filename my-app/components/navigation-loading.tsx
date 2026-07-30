@@ -310,6 +310,22 @@ export function OrganizationModulePageSkeleton() {
   );
 }
 
+export function ApplicabilityCompletedViewSkeleton() {
+  return (
+    <Card className="min-w-0 rounded-lg shadow-sm">
+      <CardHeader className="gap-3 px-4 sm:px-6">
+        <Skeleton className="h-6 w-52" />
+        <Skeleton className="h-4 w-40" />
+      </CardHeader>
+      <CardContent className="grid gap-4 px-4 sm:px-6">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+      </CardContent>
+    </Card>
+  );
+}
+
 function HeaderSkeleton() {
   return (
     <div className="flex flex-col gap-2">

@@ -1,39 +1,38 @@
-import { ApplicabilityResultCard } from "@/components/applicability-check/applicability-result-card";
-import { ApplicabilityResultTabs } from "@/components/applicability-check/applicability-result-tabs";
+import { ApplicabilityResultNavigation } from "@/components/applicability-check/applicability-result-navigation";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import {
-  getApplicabilityRecalculationLockForUser,
-  getApplicabilityResultForUser,
-} from "@/src/server/applicability-check";
-import {
-  LockKeyhole,
-  RefreshCw,
-} from "lucide-react";
+import { LockKeyhole, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import type { ReactNode } from "react";
+import {
+  getCompletedApplicabilityRecalculationLock,
+  getCompletedApplicabilityResult,
+} from "./data";
 
-type ApplicabilityResultPageProps = {
+type CompletedApplicabilityCheckLayoutProps = {
+  children: ReactNode;
   params: Promise<{
     organizationId: string;
   }>;
 };
 
-export default async function ApplicabilityResultPage({
+export default async function CompletedApplicabilityCheckLayout({
+  children,
   params,
-}: ApplicabilityResultPageProps) {
+}: CompletedApplicabilityCheckLayoutProps) {
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
   const locale = await getLocale();
   const { organizationId } = await params;
   const [result, recalculationLock] = await Promise.all([
-    getApplicabilityResultForUser(user.id, organizationId),
-    getApplicabilityRecalculationLockForUser(user.id, organizationId),
+    getCompletedApplicabilityResult(user.id, organizationId),
+    getCompletedApplicabilityRecalculationLock(user.id, organizationId),
   ]);
 
   if (!result) {
@@ -68,15 +67,14 @@ export default async function ApplicabilityResultPage({
       {recalculationLock.locked ? (
         <Alert className="items-start gap-x-2 gap-y-0 rounded-md border-primary/35 bg-primary/10 px-4 py-3 text-sm has-[>svg]:gap-x-2 [&>svg]:translate-y-0">
           <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <AlertDescription className="text-foreground">
+          <AlertDescription className="min-w-0 break-words text-foreground">
             {dictionary.modules.applicabilityCheck.recalculationLocked}
           </AlertDescription>
         </Alert>
       ) : null}
 
       <div className="mb-12 flex flex-col gap-4 sm:mb-0 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between @5xl/result-page:mb-[17px]">
-        <ApplicabilityResultTabs
-          activeView="overview"
+        <ApplicabilityResultNavigation
           answersLabel={labels.answers}
           baseHref={baseHref}
           locale={locale}
@@ -85,10 +83,7 @@ export default async function ApplicabilityResultPage({
 
         <div className="flex justify-end sm:mt-12 sm:ml-auto @5xl/result-page:mt-[17px]">
           {recalculationLock.locked ? (
-            <Button
-              disabled
-              className={recalculateButtonClassName}
-            >
+            <Button disabled className={recalculateButtonClassName}>
               <LockKeyhole />
               {recalculateLabel}
             </Button>
@@ -106,15 +101,7 @@ export default async function ApplicabilityResultPage({
         </div>
       </div>
 
-      <ApplicabilityResultCard
-        result={result}
-        locale={locale}
-        labels={labels}
-        title={resultTitle}
-        startCurrentHref={`${baseHref}/new`}
-        gapAnalysisHref={`/tool/organizations/${organizationId}/gap-analysis`}
-        recalculationLocked={recalculationLock.locked}
-      />
+      {children}
     </section>
   );
 }
