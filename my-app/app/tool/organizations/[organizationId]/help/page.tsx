@@ -1,15 +1,18 @@
-import { ProductModuleContent } from "@/components/product-module-content";
+import { TutorialWelcome } from "@/components/tutorial/tutorial-welcome";
 import { getDictionary } from "@/lib/i18n";
 
-export default async function OrganizationHelpPage() {
+export default async function TutorialPage({
+  params,
+}: {
+  params: Promise<{ organizationId: string }>;
+}) {
+  const { organizationId } = await params;
   const dictionary = await getDictionary();
 
   return (
-    <ProductModuleContent
-      title={dictionary.modules.helpGlossary.title}
-      description={dictionary.modules.helpGlossary.description}
-      metrics={dictionary.modules.helpGlossary.metrics}
-      cards={dictionary.modules.helpGlossary.cards}
+    <TutorialWelcome
+      organizationId={organizationId}
+      labels={dictionary.tutorial}
     />
   );
 }
