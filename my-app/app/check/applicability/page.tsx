@@ -1,4 +1,6 @@
 import { ApplicabilityQuestionnaireForm } from "@/components/applicability-check/applicability-questionnaire-form";
+import { PageHeader } from "@/components/page-header";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { getApplicabilityQuestionnaireForGuest } from "@/src/server/applicability-check";
@@ -24,7 +26,7 @@ async function GuestApplicabilityCheckPageContent() {
   const questionnaire = await getApplicabilityQuestionnaireForGuest(locale);
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-transparent">
       <PublicLanguageSwitcher />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
         <Button asChild variant="ghost" className="w-fit">
@@ -34,14 +36,7 @@ async function GuestApplicabilityCheckPageContent() {
           </Link>
         </Button>
 
-        <header className="flex flex-col gap-3">
-          <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
-            {labels.title}
-          </h1>
-          <p className="max-w-3xl text-base leading-7 text-muted-foreground">
-            {labels.description}
-          </p>
-        </header>
+        <PageHeader title={labels.title} subtitle={labels.description} />
 
         {questionnaire ? (
           <ApplicabilityQuestionnaireForm
@@ -50,11 +45,14 @@ async function GuestApplicabilityCheckPageContent() {
             navigationMode="document"
             questionnaire={questionnaire}
             labels={dictionary.modules.applicabilityCheck.form}
+            presentation="authenticated-stepper"
           />
         ) : (
-          <div className="rounded-lg border bg-card p-6 text-muted-foreground shadow-sm">
-            {dictionary.modules.applicabilityCheck.questionnaire.notSeeded}
-          </div>
+          <Alert className="p-6 text-muted-foreground shadow-sm">
+            <AlertDescription className="text-muted-foreground">
+              {dictionary.modules.applicabilityCheck.questionnaire.notSeeded}
+            </AlertDescription>
+          </Alert>
         )}
       </div>
     </main>
