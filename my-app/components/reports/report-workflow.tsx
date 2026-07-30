@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, FilePlus2, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Card,
   CardContent,
@@ -88,9 +89,9 @@ export function ReportWorkflow({
   return (
     <div className="grid gap-6">
       {error ? (
-        <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription className="text-current">{error}</AlertDescription>
+        </Alert>
       ) : null}
       {canCreate ? (
         <Button

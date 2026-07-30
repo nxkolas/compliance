@@ -60,7 +60,7 @@ export function CountrySelector({
           >
             <path
               d="M5 7.5L10 12.5L15 7.5"
-              stroke="#9499B0"
+              stroke="currentColor"
               strokeWidth="1.66667"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -75,13 +75,13 @@ export function CountrySelector({
         align={openDownward ? "start" : undefined}
         sideOffset={openDownward ? 4 : undefined}
         avoidCollisions={!openDownward}
-        className="max-h-72 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] border-[#3D4049] bg-[#1B1E27] text-white"
+        className="max-h-72 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] border-border-strong bg-card text-card-foreground"
       >
         {countries.map((country) => (
           <SelectItem
             key={country.code}
             value={country.code}
-            className="break-words whitespace-normal focus:bg-[#18275D] focus:text-white"
+            className="break-words whitespace-normal focus:bg-accent focus:text-accent-foreground"
           >
             {country.name} ({country.code})
           </SelectItem>

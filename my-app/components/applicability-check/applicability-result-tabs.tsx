@@ -62,10 +62,10 @@ function ResultTab({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "inline-flex h-12 shrink-0 flex-col items-center justify-center border-b-[1.5px] border-gray-800 px-5 py-2.5 text-zinc-600 transition-colors hover:text-zinc-300",
+        "inline-flex h-12 shrink-0 flex-col items-center justify-center border-b-[1.5px] border-border px-5 py-2.5 text-foreground-subtle/60 transition-colors hover:text-muted-foreground",
         roundedClassName,
         active &&
-          "border-b-2 border-neutral-50 text-white hover:text-white",
+          "border-b-2 border-foreground text-foreground hover:text-foreground",
         className,
       )}
     >

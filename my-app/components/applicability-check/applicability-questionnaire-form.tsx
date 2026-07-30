@@ -285,13 +285,12 @@ export function ApplicabilityQuestionnaireForm({
     >
       {notice.message ? (
         <Alert
+          variant={notice.tone === "error" ? "destructive" : "default"}
           className={cn(
             "break-words rounded-md border px-4 py-3 text-sm",
-            notice.tone === "error" &&
-              "border-destructive/40 bg-destructive/10 text-foreground",
           )}
         >
-          <AlertDescription className="min-w-0 break-words text-foreground">
+          <AlertDescription className="min-w-0 break-words text-current">
             {notice.message}
           </AlertDescription>
         </Alert>
@@ -432,13 +431,13 @@ function AuthenticatedQuestionnaire({
             <Progress
               aria-label={labels.progress}
               value={progress}
-              className="h-3.5 rounded-[9999px] bg-neutral-50/30"
+              className="h-3.5 rounded-[9999px] bg-foreground/30"
             />
           </div>
-          <span className="min-w-12 text-right text-base font-semibold text-white">
+          <span className="min-w-12 text-right text-base font-semibold text-foreground">
             {progress} %
           </span>
-          <span className="flex min-h-14 w-full max-w-56 items-center justify-self-end text-left font-['Space_Grotesk'] text-base leading-6 font-normal text-white sm:col-span-2">
+          <span className="flex min-h-14 w-full max-w-56 items-center justify-self-end text-left font-['Space_Grotesk'] text-base leading-6 font-normal text-foreground sm:col-span-2">
             {completedQuestions} {labels.of} {questionCount}{" "}
             {labels.questionsAnswered}
           </span>
@@ -465,10 +464,10 @@ function AuthenticatedQuestionnaire({
             variant="ghost"
             size="lg"
             onClick={() => onQuestionSelect(activeQuestionIndex - 1)}
-            className="h-12 w-full overflow-hidden rounded-lg bg-[#002BFF]/50 px-0 hover:bg-[#002BFF]/60 sm:w-28"
+            className="h-12 w-full overflow-hidden rounded-lg bg-primary/50 px-0 hover:bg-primary/60 sm:w-28"
           >
-            <ArrowLeft className="text-white/50" />
-            <span className="font-['Space_Grotesk'] text-base font-medium text-white/50">
+            <ArrowLeft className="text-primary-foreground/50" />
+            <span className="font-['Space_Grotesk'] text-base font-medium text-primary-foreground/50">
               {labels.previous}
             </span>
           </Button>
@@ -490,9 +489,9 @@ function AuthenticatedQuestionnaire({
             size="lg"
             disabled={!canContinue}
             onClick={() => onContinue(activeQuestionIndex + 1)}
-            className="h-12 w-full overflow-hidden rounded-lg bg-[#002BFF] px-8 hover:bg-[#002BFF]/90 sm:w-48"
+            className="h-12 w-full overflow-hidden rounded-lg bg-primary px-8 hover:bg-primary/90 sm:w-48"
           >
-            <span className="font-['Space_Grotesk'] text-base font-medium text-white">
+            <span className="font-['Space_Grotesk'] text-base font-medium text-primary-foreground">
               {labels.next}
             </span>
           </Button>
@@ -560,16 +559,16 @@ function QuestionStepper({
                 >
                   <span
                     className={cn(
-                      "grid size-8 shrink-0 place-items-center rounded-full bg-zinc-600/25 text-center font-['Space_Grotesk'] text-sm leading-none font-normal tabular-nums text-white/60 outline outline-1 outline-offset-[-1px] outline-white/0 transition-colors",
+                      "grid size-8 shrink-0 place-items-center rounded-full bg-foreground-subtle/25 text-center font-['Space_Grotesk'] text-sm leading-none font-normal tabular-nums text-foreground/60 outline outline-1 outline-offset-[-1px] outline-transparent transition-colors",
                       answered &&
-                        "bg-emerald-500 font-semibold text-white outline-emerald-300/70",
+                        "bg-success font-semibold text-foreground outline-success-foreground/70",
                       active && "size-10 text-base font-semibold ring-4",
                       active &&
                         !answered &&
-                        "bg-primary text-white ring-primary/20",
+                        "bg-primary text-primary-foreground ring-primary/20",
                       active &&
                         answered &&
-                        "bg-emerald-500 text-white ring-emerald-500/20",
+                        "bg-success text-foreground ring-success/20",
                     )}
                   >
                     <span
@@ -626,7 +625,7 @@ function QuestionBlock({
       className={cn(
         "min-w-0 gap-0 rounded-lg py-0 shadow-sm",
         authenticated &&
-          "rounded-xl border-[1.5px] border-[#3D4149] bg-[#1B1E27]",
+          "rounded-xl border-[1.5px] border-border-strong bg-card",
       )}
     >
       <CardContent
@@ -640,7 +639,7 @@ function QuestionBlock({
           className={cn(
             "grid size-8 shrink-0 place-items-center rounded-full border bg-background text-center text-sm leading-none font-semibold tabular-nums",
             authenticated &&
-              "rounded-full border-[1.5px] border-zinc-700 bg-gray-800 text-base text-white",
+              "rounded-full border-[1.5px] border-border-strong bg-surface text-base text-foreground",
           )}
         >
           {stepNumber ?? question.position}
@@ -661,7 +660,7 @@ function QuestionBlock({
               <h3
                 className={cn(
                   "min-w-0 break-words text-base font-semibold leading-7",
-                  authenticated && "max-w-4xl text-white",
+                  authenticated && "max-w-4xl text-foreground",
                 )}
               >
                 {question.questionText}
@@ -677,7 +676,7 @@ function QuestionBlock({
                       className={cn(
                         "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                         authenticated &&
-                          "size-6 rounded-full text-zinc-400 hover:bg-white/5 hover:text-white",
+                          "size-6 rounded-full text-foreground-subtle hover:bg-foreground/5 hover:text-foreground",
                       )}
                     >
                       <Info aria-hidden="true" className="h-4 w-4" />
@@ -733,7 +732,7 @@ function QuestionBlock({
                   className={cn(
                     "h-11 max-w-xl",
                     authenticated &&
-                      "h-12 w-full max-w-none rounded-lg border border-[#002BFF] bg-gray-800 px-0 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-none !ring-0 focus-within:!border-[#002BFF] [&_[data-slot=combobox-trigger-icon]]:text-slate-400 [&_[data-slot=input-group-addon]]:pr-5 [&_[data-slot=input-group-control]]:px-5 [&_[data-slot=input-group-control]]:font-['Space_Grotesk'] [&_[data-slot=input-group-control]]:text-base [&_[data-slot=input-group-control]]:leading-6 [&_[data-slot=input-group-control]]:font-normal [&_[data-slot=input-group-control]]:text-white [&_[data-slot=input-group-control]::placeholder]:text-slate-400",
+                      "h-12 w-full max-w-none rounded-lg border border-primary bg-surface px-0 shadow-control outline-none !ring-0 focus-within:!border-primary [&_[data-slot=combobox-trigger-icon]]:text-foreground-subtle [&_[data-slot=input-group-addon]]:pr-5 [&_[data-slot=input-group-control]]:px-5 [&_[data-slot=input-group-control]]:font-['Space_Grotesk'] [&_[data-slot=input-group-control]]:text-base [&_[data-slot=input-group-control]]:leading-6 [&_[data-slot=input-group-control]]:font-normal [&_[data-slot=input-group-control]]:text-foreground [&_[data-slot=input-group-control]::placeholder]:text-foreground-subtle",
                   )}
                   placeholder={labels.selectPlaceholder}
                   showClear={typeof answer === "string" && Boolean(answer)}
@@ -743,13 +742,13 @@ function QuestionBlock({
                 anchor={authenticated ? comboboxAnchor : undefined}
                 className={cn(
                   authenticated &&
-                    "max-h-80 !w-(--anchor-width) !min-w-(--anchor-width) !max-w-(--anchor-width) overflow-hidden rounded-2xl !bg-[#292C34] p-0 font-['Space_Grotesk'] text-white shadow-[0px_8px_32px_0px_rgba(0,0,0,0.50)] ring-1 ring-[#292C34]",
+                    "max-h-80 !w-(--anchor-width) !min-w-(--anchor-width) !max-w-(--anchor-width) overflow-hidden rounded-2xl !bg-surface p-0 font-['Space_Grotesk'] text-foreground shadow-popover ring-1 ring-surface",
                 )}
               >
                 <ComboboxEmpty
                   className={cn(
                     authenticated &&
-                      "h-12 items-center font-['Space_Grotesk'] text-base text-white/60",
+                      "h-12 items-center font-['Space_Grotesk'] text-base text-foreground/60",
                   )}
                 >
                   {labels.noResults}
@@ -766,7 +765,7 @@ function QuestionBlock({
                       value={option}
                       className={cn(
                         authenticated &&
-                          "h-12 shrink-0 rounded-lg px-5 py-3 font-['Space_Grotesk'] text-base leading-6 font-normal text-white data-highlighted:bg-[#18275D] data-highlighted:text-white data-selected:bg-[#18275D] data-selected:text-white [&_[data-slot=combobox-item-indicator]]:right-5 [&_[data-slot=combobox-item-indicator]]:text-white",
+                          "h-12 shrink-0 rounded-lg px-5 py-3 font-['Space_Grotesk'] text-base leading-6 font-normal text-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground data-selected:bg-accent data-selected:text-accent-foreground [&_[data-slot=combobox-item-indicator]]:right-5 [&_[data-slot=combobox-item-indicator]]:text-foreground",
                       )}
                     >
                       {option.label}
@@ -805,29 +804,29 @@ function QuestionBlock({
                         ? "border-primary bg-primary/15 text-foreground"
                         : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                       authenticated &&
-                        "min-h-12 rounded-xl border-[1.5px] border-[#3D4149] bg-white/5 py-3 text-base font-semibold text-white hover:border-zinc-500 hover:bg-white/10 data-[state=on]:text-white",
+                        "min-h-12 rounded-xl border-[1.5px] border-border-strong bg-foreground/5 py-3 text-base font-semibold text-foreground hover:border-foreground-subtle hover:bg-foreground/10 data-[state=on]:text-foreground",
                       authenticated &&
                         selected &&
-                        "border-primary bg-primary/15 text-white",
+                        "border-primary bg-primary/15 text-foreground",
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-3">
                       {authenticated ? (
                         option.stableValue === "yes" ? (
-                          <Check className="size-4 shrink-0 text-green-500" />
+                          <Check className="size-4 shrink-0 text-success" />
                         ) : option.stableValue === "no" ? (
-                          <X className="size-4 shrink-0 text-rose-700" />
+                          <X className="size-4 shrink-0 text-destructive" />
                         ) : option.stableValue === "unsure" ? (
                           <span
                             aria-hidden="true"
-                            className="flex size-4 shrink-0 items-center justify-center text-base font-medium text-amber-400"
+                            className="flex size-4 shrink-0 items-center justify-center text-base font-medium text-warning"
                           >
                             ?
                           </span>
                         ) : selected ? (
                           <CheckCircle2 className="size-4 shrink-0 text-primary" />
                         ) : (
-                          <Circle className="size-4 shrink-0 text-zinc-500" />
+                          <Circle className="size-4 shrink-0 text-foreground-subtle" />
                         )
                       ) : null}
                       <span className="break-words">{option.label}</span>
@@ -915,7 +914,7 @@ function SearchableMultiSelect({
                 className={cn(
                   "h-auto max-w-full whitespace-normal rounded-full border border-border bg-primary/10 px-3 py-1 text-xs font-medium text-foreground shadow-none hover:bg-primary/10 hover:text-foreground dark:border-border dark:bg-primary/10 dark:hover:bg-primary/10",
                   presentation === "authenticated-stepper" &&
-                    "border-primary/50 text-blue-100 hover:text-blue-100 dark:border-primary/50",
+                    "border-primary/50 text-info-foreground hover:text-info-foreground dark:border-primary/50",
                 )}
               >
                 <span className="min-w-0 break-words text-left">
@@ -932,7 +931,7 @@ function SearchableMultiSelect({
         className={cn(
           "max-w-xl",
           presentation === "authenticated-stepper" &&
-            "h-12 max-w-2xl rounded-lg border-[1.5px] border-[#3D4049] bg-white/5",
+            "h-12 max-w-2xl rounded-lg border-[1.5px] border-border-strong bg-foreground/5",
         )}
         value={search}
         onChange={(event) => setSearch(event.target.value)}
@@ -943,7 +942,7 @@ function SearchableMultiSelect({
         className={cn(
           "max-h-96 overflow-y-auto rounded-md border",
           presentation === "authenticated-stepper" &&
-            "rounded-lg border-[1.5px] border-[#3D4149] bg-[#161922]",
+            "rounded-lg border-[1.5px] border-border-strong bg-surface-subtle",
         )}
       >
         {filteredOptions.length === 0 ? (

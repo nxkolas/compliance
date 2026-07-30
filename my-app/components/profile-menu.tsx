@@ -106,13 +106,13 @@ export function ProfileMenu({
                   items-center
                   justify-center
                   rounded-full
-                  bg-neutral-600
+                  bg-foreground-subtle/60
                   font-['Space_Grotesk']
                   text-[9px]
                   font-normal
                   uppercase
                   leading-none
-                  text-white
+                  text-foreground
                 "
                 aria-hidden="true"
               >
@@ -236,8 +236,8 @@ export function ProfileMenuFallback({
           leading-5
         "
       >
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-neutral-600">
-          <UserRound className="size-4 text-white" />
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground-subtle/60">
+          <UserRound className="size-4 text-foreground" />
         </span>
 
         <span className="min-w-0 flex-1 truncate">

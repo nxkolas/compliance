@@ -44,7 +44,7 @@ export function ForgotPasswordForm({
 
   return (
     <div
-      className="fixed inset-0 flex min-h-svh w-full items-center justify-center overflow-hidden bg-[#02040E] px-4 py-8 font-['Space_Grotesk'] sm:px-6 lg:px-10"
+      className="fixed inset-0 flex min-h-svh w-full items-center justify-center overflow-hidden bg-background px-4 py-8 font-['Space_Grotesk'] sm:px-6 lg:px-10"
       {...props}
     >
       <div className="pointer-events-none absolute inset-0 z-0">
@@ -63,7 +63,7 @@ export function ForgotPasswordForm({
           className,
         )}
       >
-        <div className="inline-flex h-16 w-56 items-center justify-start overflow-hidden bg-white/0 py-10">
+        <div className="inline-flex h-16 w-56 items-center justify-start overflow-hidden bg-transparent py-10">
           <Image
             src="/images/Logo-weiß.svg"
             alt={labels.logoAlt}
@@ -74,20 +74,20 @@ export function ForgotPasswordForm({
           />
         </div>
 
-        <div className="inline-flex self-stretch flex-col items-start justify-start gap-6 overflow-hidden bg-white/0 pb-4">
-          <h1 className="h-5 self-stretch text-4xl font-medium leading-none text-white">
+        <div className="inline-flex self-stretch flex-col items-start justify-start gap-6 overflow-hidden bg-transparent pb-4">
+          <h1 className="h-5 self-stretch text-4xl font-medium leading-none text-foreground">
             {success ? labels.checkEmailTitle : labels.forgotPassword}
           </h1>
-          <p className="self-stretch text-base font-normal leading-normal text-white">
+          <p className="self-stretch text-base font-normal leading-normal text-foreground">
             {success
               ? labels.resetInstructionsSent
               : labels.forgotPasswordDescription}
           </p>
         </div>
 
-        <div className="flex self-stretch flex-col items-start gap-6 overflow-hidden rounded-2xl bg-neutral-50 p-8 shadow-[0px_8px_32px_-4px_rgba(0,0,0,0.10)]">
+        <div className="flex self-stretch flex-col items-start gap-6 overflow-hidden rounded-2xl bg-auth-panel p-8 shadow-auth-panel">
           {success ? (
-            <p className="text-base font-normal leading-6 text-gray-600">
+            <p className="text-base font-normal leading-6 text-auth-placeholder">
               {labels.resetEmailSent}
             </p>
           ) : (
@@ -95,15 +95,15 @@ export function ForgotPasswordForm({
               onSubmit={handleForgotPassword}
               className="flex w-full flex-col gap-6"
             >
-              <div className="flex self-stretch flex-col items-start gap-2 overflow-hidden bg-white/0">
+              <div className="flex self-stretch flex-col items-start gap-2 overflow-hidden bg-transparent">
                 <label
                   htmlFor="email"
-                  className="text-base font-medium text-black"
+                  className="text-base font-medium text-auth-foreground"
                 >
                   {labels.email}
                 </label>
-                <div className="inline-flex h-12 self-stretch items-center justify-start gap-4 overflow-hidden rounded-lg bg-white px-4 py-3 outline outline-[1.5px] -outline-offset-[1.5px] outline-gray-200">
-                  <Mail className="pointer-events-none size-5 shrink-0 text-blue-700" />
+                <div className="inline-flex h-12 self-stretch items-center justify-start gap-4 overflow-hidden rounded-lg bg-auth-background px-4 py-3 outline outline-[1.5px] -outline-offset-[1.5px] outline-auth-border">
+                  <Mail className="pointer-events-none size-5 shrink-0 text-auth-primary" />
                   <input
                     id="email"
                     type="email"
@@ -111,20 +111,20 @@ export function ForgotPasswordForm({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-full min-w-0 flex-1 bg-transparent text-base font-normal text-black outline-none placeholder:text-gray-600"
+                    className="h-full min-w-0 flex-1 bg-transparent text-base font-normal text-auth-foreground outline-none placeholder:text-auth-placeholder"
                   />
                 </div>
               </div>
 
               {error && (
-                <p role="alert" className="text-sm font-medium text-red-600">
+                <p role="alert" className="text-sm font-medium text-auth-destructive">
                   {error}
                 </p>
               )}
 
               <Button
                 type="submit"
-                className="h-12 w-full rounded-lg bg-blue-700 text-base font-medium text-white shadow-none transition-colors hover:bg-blue-800"
+                className="h-12 w-full rounded-lg bg-auth-primary text-base font-medium text-auth-primary-foreground shadow-none transition-colors hover:bg-auth-primary-hover"
                 disabled={isLoading}
               >
                 {isLoading ? labels.sending : labels.sendResetEmail}
@@ -133,7 +133,7 @@ export function ForgotPasswordForm({
           )}
         </div>
 
-        <div className="inline-flex items-center justify-center gap-1 overflow-hidden bg-white/0 text-base text-white">
+        <div className="inline-flex items-center justify-center gap-1 overflow-hidden bg-transparent text-base text-foreground">
           <ArrowLeft aria-hidden="true" className="size-4" />
           <span className="font-medium leading-5">{labels.backToLogin} </span>
           <div className="relative h-5 w-24">

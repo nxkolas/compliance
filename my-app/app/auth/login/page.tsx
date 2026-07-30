@@ -6,7 +6,7 @@ import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 
 export default function Page() {
   return (
-    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-slate-950 p-4">
+    <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-background p-4">
       <Suspense fallback={null}>
         <PublicLanguageSwitcher />
       </Suspense>

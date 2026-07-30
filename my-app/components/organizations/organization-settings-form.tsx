@@ -101,9 +101,9 @@ export function OrganizationSettingsForm({
           className={cn(
             "rounded-md border px-4 py-3 text-sm",
             notice.tone === "success" &&
-              "border-emerald-200 bg-emerald-50 text-emerald-900",
+              "border-success/30 bg-success/10 text-success-foreground",
             notice.tone === "error" &&
-              "border-red-200 bg-red-50 text-red-900",
+              "border-destructive/40 bg-destructive/10 text-destructive-muted-foreground",
           )}
         >
           {notice.message}

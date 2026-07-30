@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import { Building2, LogIn, Trash2, UserPlus } from "lucide-react";
@@ -54,12 +55,9 @@ export function GuestApplicabilityActions({
   return (
     <div className="rounded-lg border bg-card p-5 shadow-sm">
       {error ? (
-        <div
-          role="alert"
-          className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-        >
-          {error}
-        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription className="text-current">{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">

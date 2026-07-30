@@ -252,6 +252,50 @@ describe("unsupported-country applicability result", () => {
 });
 
 describe("applicability result outcomes", () => {
+  it.each([
+    [
+      "essential_entity",
+      "border-[rgba(70,169,90,0.70)]",
+      "border-[rgba(70,169,90,0.60)]",
+    ],
+    [
+      "important_entity",
+      "border-[rgba(255,210,109,0.70)]",
+      "border-[rgba(234,180,70,0.60)]",
+    ],
+    [
+      "not_directly_in_scope",
+      "border-[rgba(217,96,94,0.70)]",
+      "border-[rgba(217,96,94,0.60)]",
+    ],
+    [
+      "clarification_required",
+      "border-[#6C4275]",
+      "border-[rgba(178,25,248,0.60)]",
+    ],
+  ] as const)(
+    "keeps the %s outcome border above the shared card border",
+    (outcome, expectedBorderClass, expectedMetricBorderClass) => {
+      const html = renderOutcome(outcome, "en");
+      const cardClassNames = Array.from(
+        html.matchAll(/data-slot="card" class="([^"]*)"/g),
+        (match) => match[1],
+      );
+      const resultCardClassName = cardClassNames[0] ?? "";
+      const metricCardClassNames = cardClassNames.filter((className) =>
+        className.includes(expectedMetricBorderClass),
+      );
+
+      expect(resultCardClassName).toContain(expectedBorderClass);
+      expect(resultCardClassName).toContain("bg-[var(--card)]");
+      expect(resultCardClassName).not.toMatch(/(?:^|\s)bg-card(?:\s|$)/);
+      expect(metricCardClassNames).toHaveLength(3);
+      for (const className of metricCardClassNames) {
+        expect(className).not.toMatch(/(?:^|\s)bg-card(?:\s|$)/);
+      }
+    },
+  );
+
   it("uses the available content width for responsive layout changes", () => {
     const html = renderOutcome("important_entity", "de");
 

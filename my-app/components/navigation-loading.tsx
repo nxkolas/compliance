@@ -29,9 +29,9 @@ export function AppShellSkeleton({ children }: AppShellSkeletonProps) {
       <SidebarInset className="min-w-0 bg-transparent">
         <div
           aria-hidden="true"
-          className="flex h-14 shrink-0 items-center border-b border-white/10 bg-background/95 px-4 xl:hidden"
+          className="flex h-14 shrink-0 items-center border-b border-foreground/10 bg-background/95 px-4 xl:hidden"
         >
-          <Skeleton className="size-9 rounded-lg bg-white/15" />
+          <Skeleton className="size-9 rounded-lg bg-foreground/15" />
         </div>
         <div className="min-w-0 flex-1 px-4 pt-5 pb-8 sm:px-6 sm:pt-7 md:px-8 md:pt-9 xl:px-[53px] xl:pt-[54px]">
           {children ?? <ProductModuleContentSkeleton />}
@@ -45,7 +45,7 @@ export function AppSidebarSkeleton() {
   return (
     <Sidebar
       collapsible="none"
-      className="h-svh max-h-svh shrink-0 overflow-hidden border-r bg-[rgba(255,255,255,0.10)]"
+      className="h-svh max-h-svh shrink-0 overflow-hidden border-r bg-foreground/10"
     >
       <AppSidebarContentSkeleton />
     </Sidebar>
@@ -58,15 +58,15 @@ export function AppSidebarContentSkeleton() {
       <SidebarHeader className="gap-8 px-[clamp(1.25rem,2.5vw,3rem)] pt-10 pb-8">
         <div className="flex flex-col gap-3">
           <div className="flex items-start gap-3">
-            <Skeleton className="size-10 shrink-0 rounded-lg bg-white/20" />
+            <Skeleton className="size-10 shrink-0 rounded-lg bg-foreground/20" />
             <div className="flex flex-col gap-2 pt-1">
-              <Skeleton className="h-7 w-32 bg-white/20" />
-              <Skeleton className="h-4 w-40 bg-white/15" />
+              <Skeleton className="h-7 w-32 bg-foreground/20" />
+              <Skeleton className="h-4 w-40 bg-foreground/15" />
             </div>
           </div>
-          <Skeleton className="h-10 w-full bg-white/15" />
+          <Skeleton className="h-10 w-full bg-foreground/15" />
         </div>
-        <Skeleton className="h-10 w-full rounded-lg bg-white/15" />
+        <Skeleton className="h-10 w-full rounded-lg bg-foreground/15" />
       </SidebarHeader>
 
       <SidebarContent className="overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -130,34 +130,34 @@ export function GuestCheckPageSkeleton() {
     <main className="min-h-screen px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <header className="flex items-center justify-between gap-4">
-          <Skeleton className="h-7 w-24 bg-white/20" />
-          <Skeleton className="h-7 w-32 rounded-full bg-white/15" />
+          <Skeleton className="h-7 w-24 bg-foreground/20" />
+          <Skeleton className="h-7 w-32 rounded-full bg-foreground/15" />
         </header>
         <section className="flex flex-col gap-3">
-          <Skeleton className="h-10 w-3/4 bg-white/20" />
-          <Skeleton className="h-5 w-full max-w-2xl bg-white/15" />
-          <Skeleton className="h-5 w-2/3 bg-white/15" />
+          <Skeleton className="h-10 w-3/4 bg-foreground/20" />
+          <Skeleton className="h-5 w-full max-w-2xl bg-foreground/15" />
+          <Skeleton className="h-5 w-2/3 bg-foreground/15" />
         </section>
         <div className="flex flex-col gap-6">
-          <div className="rounded-xl border border-white/15 bg-white/5 p-4">
+          <div className="rounded-xl border border-foreground/15 bg-foreground/5 p-4">
             <div className="mb-3 flex items-center justify-between">
-              <Skeleton className="h-4 w-32 bg-white/15" />
-              <Skeleton className="h-4 w-12 bg-white/15" />
+              <Skeleton className="h-4 w-32 bg-foreground/15" />
+              <Skeleton className="h-4 w-12 bg-foreground/15" />
             </div>
-            <Skeleton className="h-2 w-full bg-white/15" />
+            <Skeleton className="h-2 w-full bg-foreground/15" />
           </div>
-          <div className="rounded-2xl border border-white/15 bg-[#111522]/95 p-6 sm:p-8">
-            <Skeleton className="h-7 w-40 bg-white/20" />
-            <Skeleton className="mt-3 h-4 w-2/3 bg-white/15" />
+          <div className="rounded-2xl border border-foreground/15 bg-surface-subtle/95 p-6 sm:p-8">
+            <Skeleton className="h-7 w-40 bg-foreground/20" />
+            <Skeleton className="mt-3 h-4 w-2/3 bg-foreground/15" />
             <div className="mt-7 flex flex-col gap-8">
               {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="flex flex-col gap-3">
-                  <Skeleton className="h-5 w-3/4 bg-white/20" />
-                  <Skeleton className="h-4 w-full bg-white/15" />
+                  <Skeleton className="h-5 w-3/4 bg-foreground/20" />
+                  <Skeleton className="h-4 w-full bg-foreground/15" />
                   <div className="grid gap-2 sm:grid-cols-3">
-                    <Skeleton className="h-11 rounded-lg bg-white/10" />
-                    <Skeleton className="h-11 rounded-lg bg-white/10" />
-                    <Skeleton className="h-11 rounded-lg bg-white/10" />
+                    <Skeleton className="h-11 rounded-lg bg-foreground/10" />
+                    <Skeleton className="h-11 rounded-lg bg-foreground/10" />
+                    <Skeleton className="h-11 rounded-lg bg-foreground/10" />
                   </div>
                 </div>
               ))}
@@ -358,9 +358,9 @@ function TabSkeleton({ count }: { count: number }) {
 
 function SidebarSkeletonRow({ width }: { width: string }) {
   return (
-    <div className="flex h-[48px] items-center gap-3 rounded-lg bg-white/10 px-3">
-      <Skeleton className="size-5 shrink-0 rounded-md bg-white/20" />
-      <Skeleton className="h-4 bg-white/20" style={{ width }} />
+    <div className="flex h-[48px] items-center gap-3 rounded-lg bg-foreground/10 px-3">
+      <Skeleton className="size-5 shrink-0 rounded-md bg-foreground/20" />
+      <Skeleton className="h-4 bg-foreground/20" style={{ width }} />
     </div>
   );
 }

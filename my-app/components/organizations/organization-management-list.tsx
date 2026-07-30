@@ -205,22 +205,22 @@ export function OrganizationManagementList({
 
   return (
     <div className="grid gap-10">
-      {notice && <div role="status" className="rounded-lg border border-zinc-700 bg-gray-900 px-4 py-3 text-sm text-zinc-100">{notice}</div>}
+      {notice && <div role="status" className="rounded-lg border border-border-strong bg-card px-4 py-3 text-sm text-card-foreground">{notice}</div>}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full max-w-[539px] rounded-lg bg-[#292C34] outline outline-[1.5px] outline-offset-[-1.5px] outline-[#3D4049]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/50" />
+        <div className="relative w-full max-w-[539px] rounded-lg bg-surface outline outline-[1.5px] outline-offset-[-1.5px] outline-border-strong">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/50" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={labels.searchPlaceholder}
             aria-label={labels.searchLabel}
-            className="h-12 rounded-lg border-0 bg-transparent py-3 pl-10 pr-3 font-['Space_Grotesk'] text-base font-normal text-neutral-50 shadow-none placeholder:text-neutral-50/60 focus-visible:border-0 focus-visible:ring-blue-700/40"
+            className="h-12 rounded-lg border-0 bg-transparent py-3 pr-3 pl-10 font-['Space_Grotesk'] text-base font-normal text-foreground shadow-none placeholder:text-foreground/60 focus-visible:border-0 focus-visible:ring-primary/40"
           />
         </div>
         {createHref && createLabel && (
           <Button
             asChild
-            className="h-12 w-full justify-center gap-2 rounded-lg bg-[#002BFF] px-5 py-2.5 text-sm font-semibold leading-5 text-white shadow-none hover:bg-[#002BFF]/90 sm:w-64"
+            className="h-12 w-full justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm leading-5 font-semibold text-primary-foreground shadow-none hover:bg-primary/90 sm:w-64"
           >
             <Link href={createHref}>
               <Plus className="size-4 shrink-0" />
@@ -293,19 +293,19 @@ export function OrganizationManagementList({
               className="size-8"
               aria-hidden="true"
             >
-              <path d="M21 11L12 20" stroke="#9F9FA9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M12 11L21 20" stroke="#9F9FA9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M21 11L12 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 11L21 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           }
-          overlayClassName="bg-black/75 backdrop-blur-[3px]"
-          className="h-[380px] w-[min(649px,calc(100vw-32px))] max-w-none rounded-xl border-[1.5px] border-[#3D4149] bg-[#1B1E27] p-0 font-['Space_Grotesk'] text-white shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10)] sm:h-72 sm:max-w-none [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-[15px] [&_[data-slot=dialog-close]]:flex [&_[data-slot=dialog-close]]:size-8 [&_[data-slot=dialog-close]]:items-center [&_[data-slot=dialog-close]]:justify-center [&_[data-slot=dialog-close]]:rounded-[10px] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:ring-offset-0 [&_[data-slot=dialog-close]]:focus:ring-0"
+          overlayClassName="bg-scrim/75 backdrop-blur-[3px]"
+          className="h-[380px] w-[min(649px,calc(100vw-32px))] max-w-none rounded-xl border-[1.5px] border-border-strong bg-card p-0 font-['Space_Grotesk'] text-card-foreground shadow-control sm:h-72 sm:max-w-none [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-[15px] [&_[data-slot=dialog-close]]:flex [&_[data-slot=dialog-close]]:size-8 [&_[data-slot=dialog-close]]:items-center [&_[data-slot=dialog-close]]:justify-center [&_[data-slot=dialog-close]]:rounded-[10px] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:ring-offset-0 [&_[data-slot=dialog-close]]:focus:ring-0"
         >
           <DialogTitle className="absolute left-6 right-14 top-[38px] h-10 text-xl font-semibold sm:left-[49px] sm:right-auto sm:inline-flex sm:w-[480px] sm:items-start sm:whitespace-nowrap">
             <span className="leading-8">
               {confirming?.archivedAt ? labels.restoreTitle : labels.archiveTitle}
             </span>
           </DialogTitle>
-          <DialogDescription className="absolute left-6 right-6 top-20 text-base font-normal leading-7 text-gray-400 sm:left-[49px] sm:right-auto sm:h-24 sm:w-[515px] sm:text-lg sm:leading-8">
+          <DialogDescription className="absolute top-20 right-6 left-6 text-base leading-7 font-normal text-foreground-subtle sm:right-auto sm:left-[49px] sm:h-24 sm:w-[515px] sm:text-lg sm:leading-8">
             {confirming?.archivedAt
               ? labels.restoreDescription.replace("{name}", confirming?.name ?? "")
               : labels.archiveDescription.replace("{name}", confirming?.name ?? "")}
@@ -317,7 +317,7 @@ export function OrganizationManagementList({
               className={
                 confirming?.archivedAt
                   ? "h-12 w-full gap-2 rounded-lg px-5 text-base font-medium sm:w-56"
-                  : "inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-lg border-0 bg-red-900 px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none outline-none hover:bg-red-900/90 focus-visible:border-0 focus-visible:ring-0 sm:w-56"
+                  : "inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-lg border-0 bg-destructive px-5 font-['Space_Grotesk'] text-base font-medium text-destructive-foreground shadow-none outline-none hover:bg-destructive/90 focus-visible:border-0 focus-visible:ring-0 sm:w-56"
               }
             >
               {!confirming?.archivedAt && <Trash2 className="size-5" />}
@@ -326,7 +326,7 @@ export function OrganizationManagementList({
             <Button
               variant="outline"
               onClick={() => setConfirming(null)}
-              className="h-12 w-full overflow-hidden rounded-lg border-[1.5px] border-[#3D4049] bg-[#3F3F47]/0 px-5 font-['Space_Grotesk'] text-base font-medium text-[#D9D9D9] hover:bg-[#3F3F47]/0 hover:text-[#D9D9D9] sm:w-28"
+              className="h-12 w-full overflow-hidden rounded-lg border-[1.5px] border-border-strong bg-transparent px-5 font-['Space_Grotesk'] text-base font-medium text-muted-foreground hover:bg-transparent hover:text-muted-foreground sm:w-28"
             >
               {labels.cancel}
             </Button>
@@ -354,16 +354,16 @@ function OrganizationSection({
   return (
     <section aria-labelledby={`${title}-heading`} className="grid gap-4">
       <h2 id={`${title}-heading`} className="sr-only">{title}</h2>
-      <Card className="relative rounded-xl border-[1.5px] border-[#3D4149] !bg-[#1B1E27] p-0 py-0 shadow-none">
+      <Card className="relative rounded-xl border-[1.5px] border-border-strong !bg-card p-0 py-0 shadow-none">
         <CardContent className="grid gap-5 p-5 md:px-8 md:py-5">
           {stream.items.length === 0 && !stream.loading ? (
-            <p className="rounded-xl border-[1.5px] border-zinc-700 bg-gray-800 p-8 text-center text-sm text-neutral-50/60">{empty}</p>
+            <p className="rounded-xl border-[1.5px] border-border-strong bg-surface p-8 text-center text-sm text-foreground/60">{empty}</p>
           ) : stream.items.map((item) => (
             <OrganizationRow key={item.id} item={item} labels={labels} locale={locale} onEdit={onEdit} onManageMembers={onManageMembers} onArchive={onArchive} />
           ))}
-          {stream.loading && <div role="status" className="flex items-center gap-2 rounded-xl border-[1.5px] border-zinc-700 bg-gray-800 px-5 py-4 text-sm text-neutral-50/60"><Loader2 className="size-4 animate-spin" />{labels.loading}</div>}
-          {stream.error && <div className="flex items-center justify-between gap-3 rounded-xl border-[1.5px] border-zinc-700 bg-gray-800 px-5 py-4 text-sm text-red-400"><span>{stream.error}</span><Button size="sm" variant="outline" className="border-zinc-700 bg-gray-900 text-zinc-100 hover:bg-blue-950" onClick={onMore}>{labels.retry}</Button></div>}
-          {stream.cursor && !stream.loading && <div className="text-center"><Button variant="ghost" size="sm" className="text-zinc-200 hover:bg-blue-950 hover:text-white" onClick={onMore}>{labels.loadMore}</Button></div>}
+          {stream.loading && <div role="status" className="flex items-center gap-2 rounded-xl border-[1.5px] border-border-strong bg-surface px-5 py-4 text-sm text-foreground/60"><Loader2 className="size-4 animate-spin" />{labels.loading}</div>}
+          {stream.error && <div className="flex items-center justify-between gap-3 rounded-xl border-[1.5px] border-border-strong bg-surface px-5 py-4 text-sm text-destructive-muted-foreground"><span>{stream.error}</span><Button size="sm" variant="outline" className="border-border-strong bg-card text-card-foreground hover:bg-accent" onClick={onMore}>{labels.retry}</Button></div>}
+          {stream.cursor && !stream.loading && <div className="text-center"><Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-accent hover:text-foreground" onClick={onMore}>{labels.loadMore}</Button></div>}
           <div ref={sentinel} className="absolute bottom-0 h-px w-px" aria-hidden />
         </CardContent>
       </Card>
@@ -386,18 +386,18 @@ function OrganizationRow({
     <>
       <OrganizationAvatar id={item.id} name={item.name} className="size-10 rounded-full text-sm leading-5" />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-base font-semibold leading-5 text-zinc-100">{item.name}</span>
-        <span className="mt-2 block truncate text-sm font-normal leading-4 text-white">{item.legalName || labels.noLegalName} | {country}</span>
+        <span className="block truncate text-base leading-5 font-semibold text-foreground">{item.name}</span>
+        <span className="mt-2 block truncate text-sm leading-4 font-normal text-foreground">{item.legalName || labels.noLegalName} | {country}</span>
       </span>
-      <span className="hidden min-w-16 items-center gap-1.5 text-base font-normal leading-5 text-neutral-50 sm:flex"><Users className="size-5 text-zinc-400" />{item.activeMemberCount}</span>
+      <span className="hidden min-w-16 items-center gap-1.5 text-base leading-5 font-normal text-foreground sm:flex"><Users className="size-5 text-foreground-subtle" />{item.activeMemberCount}</span>
     </>
   );
   return (
-    <div className="flex h-20 items-center gap-3 rounded-xl border-[1.5px] border-[#3D4149] bg-[#292C34] px-4 py-0 transition-colors hover:border-[#4A4F59] hover:bg-[#292C34]/90 md:px-5">
+    <div className="flex h-20 items-center gap-3 rounded-xl border-[1.5px] border-border-strong bg-surface px-4 py-0 transition-colors hover:border-muted-foreground hover:bg-surface/90 md:px-5">
       {item.archivedAt ? (
         <div className="flex h-full min-w-0 flex-1 items-center gap-4 opacity-75">{contents}</div>
       ) : (
-        <Link href={`/tool/organizations/${item.id}`} className="flex h-full min-w-0 flex-1 items-center gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-700">{contents}</Link>
+        <Link href={`/tool/organizations/${item.id}`} className="flex h-full min-w-0 flex-1 items-center gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">{contents}</Link>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -405,40 +405,40 @@ function OrganizationRow({
             variant="ghost"
             size="icon-sm"
             aria-label={`${labels.actions}: ${item.name}`}
-            className="rounded-[10px] text-zinc-400 hover:bg-[#18275D] hover:text-zinc-100 data-[state=open]:bg-[#18275D] data-[state=open]:text-zinc-100"
+            className="rounded-[10px] text-foreground-subtle hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
           >
             <MoreHorizontal className="size-5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64 rounded-2xl border border-[#3D4149] bg-[#1B1E27] p-1 font-['Space_Grotesk'] text-zinc-200 shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.60)]">
+        <DropdownMenuContent align="end" className="w-64 rounded-2xl border border-border-strong bg-card p-1 font-['Space_Grotesk'] text-muted-foreground shadow-menu">
           {item.allowedActions.edit && (
-            <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200" onSelect={() => onEdit(item)}>
+            <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground focus:bg-accent focus:text-muted-foreground" onSelect={() => onEdit(item)}>
               <span className="flex size-4 shrink-0 items-center justify-center">
-                <Pencil className="size-3.5 text-zinc-400" />
+                <Pencil className="size-3.5 text-foreground-subtle" />
               </span>
               {labels.edit}
             </DropdownMenuItem>
           )}
           {!item.archivedAt && (
             <DropdownMenuItem
-              className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-zinc-200 focus:bg-[#18275D] focus:text-zinc-200"
+              className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground focus:bg-accent focus:text-muted-foreground"
               onSelect={() => onManageMembers(item)}
             >
               <span className="flex size-4 shrink-0 items-center justify-center">
-                <Users className="size-3.5 text-zinc-400" />
+                <Users className="size-3.5 text-foreground-subtle" />
               </span>
               {item.allowedActions.manageMembers ? labels.manageMembers : labels.viewMembers}
             </DropdownMenuItem>
           )}
           {(item.allowedActions.archive || item.allowedActions.restore) && (
             <>
-              <DropdownMenuSeparator className="mx-3 my-1 h-px bg-zinc-700/60" />
-              <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-red-400 focus:bg-[#18275D] focus:text-red-400 [&_svg]:text-red-400" variant={item.allowedActions.archive ? "destructive" : "default"} onSelect={() => onArchive(item)}>
+              <DropdownMenuSeparator className="mx-3 my-1 h-px bg-border-strong/60" />
+              <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-destructive-muted-foreground focus:bg-accent focus:text-destructive-muted-foreground [&_svg]:text-destructive-muted-foreground" variant={item.allowedActions.archive ? "destructive" : "default"} onSelect={() => onArchive(item)}>
                 <span className="flex size-4 shrink-0 items-center justify-center">
                   {item.allowedActions.restore ? (
                     <RotateCcw className="size-4" />
                   ) : (
-                    <Trash2 className="size-4 text-red-400" />
+                    <Trash2 className="size-4 text-destructive-muted-foreground" />
                   )}
                 </span>
                 {item.allowedActions.restore ? labels.restore : labels.archive}
@@ -520,18 +520,18 @@ function OrganizationMembersDialog({
     <Dialog open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         closeLabel={closeLabel}
-        overlayClassName="border border-black bg-black/75 backdrop-blur-[3px]"
-        className="max-h-[88svh] w-[min(790px,calc(100vw-32px))] !max-w-none gap-0 overflow-hidden rounded-xl border-[1.5px] border-[#3D4149] bg-[#1B1E27] p-0 font-['Space_Grotesk'] text-white shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] [&>[data-slot=dialog-close]]:right-[38px] [&>[data-slot=dialog-close]]:top-[38px] [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-none [&>[data-slot=dialog-close]]:text-zinc-400 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent [&>[data-slot=dialog-close]]:focus:!ring-0 [&>[data-slot=dialog-close]]:focus:!ring-offset-0 [&>[data-slot=dialog-close]]:focus:!outline-none"
+        overlayClassName="border border-scrim bg-scrim/75 backdrop-blur-[3px]"
+        className="max-h-[88svh] w-[min(790px,calc(100vw-32px))] !max-w-none gap-0 overflow-hidden rounded-xl border-[1.5px] border-border-strong bg-card p-0 font-['Space_Grotesk'] text-card-foreground shadow-dialog [&>[data-slot=dialog-close]]:right-[38px] [&>[data-slot=dialog-close]]:top-[38px] [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-none [&>[data-slot=dialog-close]]:text-foreground-subtle [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent [&>[data-slot=dialog-close]]:focus:!ring-0 [&>[data-slot=dialog-close]]:focus:!ring-offset-0 [&>[data-slot=dialog-close]]:focus:!outline-none"
       >
         <DialogHeader className="relative min-h-[88px] gap-0 px-[38px] pt-[38px] text-left">
           <div className="flex items-center gap-[15px]">
             <span
               aria-hidden="true"
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-600 text-sm font-semibold leading-5 text-neutral-50"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground-subtle/60 text-sm leading-5 font-semibold text-foreground"
             >
               {item ? organizationInitials(item.name) : ""}
             </span>
-            <span className="text-base font-semibold leading-5 text-white">
+            <span className="text-base leading-5 font-semibold text-foreground">
               {item?.allowedActions.manageMembers ? manageTitle : viewTitle}
             </span>
           </div>
@@ -545,15 +545,15 @@ function OrganizationMembersDialog({
           </DialogDescription>
           <div
             aria-hidden="true"
-            className="absolute bottom-0 left-[37px] right-[37px] border-t-[1.5px] border-zinc-700/50"
+            className="absolute right-[37px] bottom-0 left-[37px] border-t-[1.5px] border-border-strong/50"
           />
         </DialogHeader>
 
-        <div className="min-h-0 overflow-y-auto px-[37px] pb-8 pt-9 [scrollbar-color:rgba(161,161,170,0.45)_transparent] [scrollbar-width:thin]">
+        <div className="min-h-0 overflow-y-auto px-[37px] pt-9 pb-8 [scrollbar-color:var(--scrollbar-thumb)_transparent] [scrollbar-width:thin]">
           {loading && (
           <div
             role="status"
-            className="flex min-h-72 items-center justify-center gap-3 text-sm text-gray-400"
+            className="flex min-h-72 items-center justify-center gap-3 text-sm text-foreground-subtle"
           >
             <Loader2 className="size-5 animate-spin" />
             {labelsForLoading(teamLabels)}
@@ -563,7 +563,7 @@ function OrganizationMembersDialog({
           {error && !loading && (
           <div
             role="alert"
-            className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive-muted-foreground"
           >
             {error}
           </div>
@@ -630,12 +630,12 @@ function OrganizationEditDialog({
           country: "Country where the organization is registered.",
         };
   const inputClassName =
-    "h-12 rounded-lg border-[1.5px] border-[#3D4049] !bg-white/[0.06] px-5 text-base font-normal leading-5 text-white shadow-sm placeholder:text-zinc-500 focus-visible:border-blue-700 focus-visible:ring-blue-700/40";
+    "h-12 rounded-lg border-[1.5px] border-border-strong !bg-foreground/[0.06] px-5 text-base font-normal leading-5 text-foreground shadow-sm placeholder:text-foreground-subtle focus-visible:border-primary focus-visible:ring-primary/40";
   const fieldBlockClassName = "flex w-full flex-col";
   const fieldLabelClassName =
-    "flex min-h-5 w-full items-center text-base font-semibold leading-5 text-white";
+    "flex min-h-5 w-full items-center text-base leading-5 font-semibold text-foreground";
   const fieldDescriptionClassName =
-    "mt-[5px] flex min-h-5 w-full max-w-96 items-start text-xs font-normal leading-5 text-gray-400";
+    "mt-[5px] flex min-h-5 w-full max-w-96 items-start text-xs leading-5 font-normal text-foreground-subtle";
   useEffect(() => {
     if (!item) return;
     const controller = new AbortController();
@@ -701,21 +701,21 @@ function OrganizationEditDialog({
           >
             <path
               d="M21 11L12 20"
-              stroke="#9F9FA9"
+              stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
             <path
               d="M12 11L21 20"
-              stroke="#9F9FA9"
+              stroke="currentColor"
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
         }
-        overlayClassName="bg-black/75 backdrop-blur-[3px]"
+        overlayClassName="bg-scrim/75 backdrop-blur-[3px]"
         className="
           max-h-[calc(100svh-32px)]
           !w-[790px]
@@ -724,12 +724,12 @@ function OrganizationEditDialog({
           overflow-hidden
           rounded-xl
           border-[1.5px]
-          border-[#3D4049]
-          bg-[#1B1E27]
+          border-border-strong
+          bg-card
           p-0
           font-['Space_Grotesk']
-          text-white
-          shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_24px_80px_-24px_rgba(0,0,0,0.75)]
+          text-card-foreground
+          shadow-popover
           sm:!max-w-[790px]
           [&_[data-slot=dialog-close]]:flex
           [&_[data-slot=dialog-close]]:size-8
@@ -742,10 +742,10 @@ function OrganizationEditDialog({
           [&_[data-slot=dialog-close]]:bg-transparent
           [&_[data-slot=dialog-close]]:p-0
           [&_[data-slot=dialog-close]]:shadow-none
-          [&_[data-slot=dialog-close]]:text-zinc-400
+          [&_[data-slot=dialog-close]]:text-foreground-subtle
           [&_[data-slot=dialog-close]]:opacity-100
-          [&_[data-slot=dialog-close]]:hover:bg-white/5
-          [&_[data-slot=dialog-close]]:hover:text-white
+          [&_[data-slot=dialog-close]]:hover:bg-foreground/5
+          [&_[data-slot=dialog-close]]:hover:text-foreground
           [&_[data-slot=dialog-close]]:focus:ring-0
           [&_[data-slot=dialog-close]]:focus:ring-offset-0
           [&_[data-slot=dialog-close]]:focus:outline-none
@@ -758,24 +758,24 @@ function OrganizationEditDialog({
             {item && (
               <span
                 aria-hidden="true"
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-600 text-sm font-semibold leading-5 text-neutral-50"
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground-subtle/60 text-sm leading-5 font-semibold text-foreground"
               >
                 {organizationInitials(item.name)}
               </span>
             )}
-            <DialogTitle className="flex h-8 w-56 items-center text-base font-semibold leading-5 text-white">
+            <DialogTitle className="flex h-8 w-56 items-center text-base leading-5 font-semibold text-foreground">
               {labels.editTitle}
             </DialogTitle>
           </div>
           <DialogDescription className="sr-only">
             {labels.editDescription}
           </DialogDescription>
-          <div aria-hidden="true" className="absolute right-5 bottom-0 left-5 border-t-[1.5px] border-[#3D4049] opacity-50 sm:right-[38px] sm:left-[37px]" />
+          <div aria-hidden="true" className="absolute right-5 bottom-0 left-5 border-t-[1.5px] border-border-strong opacity-50 sm:right-[38px] sm:left-[37px]" />
         </DialogHeader>
 
         <div className="max-h-[calc(100svh-120px)] overflow-y-auto px-5 pt-[35px] pb-[30px] sm:pr-8 sm:pl-[38px]">
-        {!settings && !error && <div className="flex items-center gap-2 py-10 text-sm text-zinc-400"><Loader2 className="size-4 animate-spin" />{labels.loading}</div>}
-        {error && <p role="alert" className="mb-5 rounded-lg border border-red-400/30 bg-red-950/30 p-3 text-sm text-red-300">{error}</p>}
+        {!settings && !error && <div className="flex items-center gap-2 py-10 text-sm text-foreground-subtle"><Loader2 className="size-4 animate-spin" />{labels.loading}</div>}
+        {error && <p role="alert" className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive-muted-foreground">{error}</p>}
         {settings && (
           <form onSubmit={save} className="w-full">
             <div className="grid gap-[31px]">
@@ -800,8 +800,8 @@ function OrganizationEditDialog({
                     [&_[data-slot=select-trigger]]:h-12
                     [&_[data-slot=select-trigger]]:rounded-lg
                     [&_[data-slot=select-trigger]]:border-[1.5px]
-                    [&_[data-slot=select-trigger]]:border-[#3D4049]
-                    [&_[data-slot=select-trigger]]:!bg-white/[0.06]
+                    [&_[data-slot=select-trigger]]:border-border-strong
+                    [&_[data-slot=select-trigger]]:!bg-foreground/[0.06]
                     [&_[data-slot=select-trigger]]:pl-5
                     [&_[data-slot=select-trigger]]:pr-5
                     [&_[data-slot=select-trigger]]:py-0
@@ -809,10 +809,10 @@ function OrganizationEditDialog({
                     [&_[data-slot=select-trigger]]:text-base
                     [&_[data-slot=select-trigger]]:font-normal
                     [&_[data-slot=select-trigger]]:leading-6
-                    [&_[data-slot=select-trigger]]:text-white
+                    [&_[data-slot=select-trigger]]:text-foreground
                     [&_[data-slot=select-trigger]]:shadow-sm
-                    [&_[data-slot=select-trigger]]:focus-visible:border-blue-700
-                    [&_[data-slot=select-trigger]]:focus-visible:ring-blue-700/40
+                    [&_[data-slot=select-trigger]]:focus-visible:border-primary
+                    [&_[data-slot=select-trigger]]:focus-visible:ring-primary/40
                   "
                 >
                   <CountrySelector
@@ -839,7 +839,7 @@ function OrganizationEditDialog({
                     {labels.aiPolicy}
                   </Label>
                 </div>
-                <p className="mt-[5px] max-w-2xl text-xs font-normal leading-5 text-gray-400">
+                <p className="mt-[5px] max-w-2xl text-xs leading-5 font-normal text-foreground-subtle">
                   {labels.aiPolicyDescription}
                 </p>
               </div>
@@ -858,17 +858,17 @@ function OrganizationEditDialog({
                 [&_button]:text-base
                 [&_button]:font-medium
                 [&_button]:shadow-none
-                [&_button[data-variant=outline]]:border-zinc-700
+                [&_button[data-variant=outline]]:border-border-strong
                 [&_button[data-variant=outline]]:bg-transparent
-                [&_button[data-variant=outline]]:text-zinc-200
-                [&_button[data-variant=outline]]:hover:bg-white/5
-                [&_button[data-variant=outline]]:hover:text-white
+                [&_button[data-variant=outline]]:text-muted-foreground
+                [&_button[data-variant=outline]]:hover:bg-foreground/5
+                [&_button[data-variant=outline]]:hover:text-foreground
               "
             >
               <Button
                 type="submit"
                 disabled={saving}
-                className="h-12 w-full gap-2 rounded-lg bg-[#002BFF] px-5 text-base font-medium text-white shadow-none hover:bg-[#002BFF]/90 sm:w-64"
+                className="h-12 w-full gap-2 rounded-lg bg-primary px-5 text-base font-medium text-primary-foreground shadow-none hover:bg-primary/90 sm:w-64"
               >
                 {saving ? (
                   <Loader2 className="size-5 animate-spin" />
@@ -885,7 +885,7 @@ function OrganizationEditDialog({
                   >
                     <path
                       d="M9.99831 12.665V7.99837C9.99831 7.82156 9.92807 7.65199 9.80305 7.52697C9.67803 7.40194 9.50846 7.33171 9.33164 7.33171H3.99831C3.8215 7.33171 3.65193 7.40194 3.52691 7.52697C3.40188 7.65199 3.33164 7.82156 3.33164 7.99837V12.665M3.33164 0.665039V3.33171C3.33164 3.50852 3.40188 3.67809 3.52691 3.80311C3.65193 3.92813 3.8215 3.99837 3.99831 3.99837H8.66498M8.79831 0.665039C9.15 0.670048 9.48547 0.81382 9.73165 1.06504L12.265 3.59837C12.5162 3.84455 12.66 4.18001 12.665 4.53171V11.3317C12.665 11.6853 12.5245 12.0245 12.2745 12.2745C12.0244 12.5246 11.6853 12.665 11.3316 12.665H1.99831C1.64469 12.665 1.30555 12.5246 1.0555 12.2745C0.805454 12.0245 0.664978 11.6853 0.664978 11.3317V1.99837C0.664978 1.64475 0.805454 1.30561 1.0555 1.05556C1.30555 0.805515 1.64469 0.665039 1.99831 0.665039H8.79831Z"
-                      stroke="white"
+                      stroke="currentColor"
                       strokeWidth="1.33"
                       strokeLinecap="round"
                       strokeLinejoin="round"

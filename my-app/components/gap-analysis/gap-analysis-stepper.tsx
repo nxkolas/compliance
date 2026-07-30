@@ -46,7 +46,7 @@ export function GapAnalysisStepper({
                     activeStep === step
                       ? "border-primary bg-primary text-primary-foreground"
                       : completed
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                        ? "border-success bg-success/10 text-success-foreground"
                         : ""
                   }`}
                 >

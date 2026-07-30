@@ -16,11 +16,25 @@
   --secondary-foreground: #fafafa;
   --muted: #11172a;
   --muted-foreground: #b6bdcc;
+  --foreground-subtle: #9f9fa9;
   --accent: #18275d;
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
+  --destructive-muted-foreground: #fca5a5;
+  --success: #22c55e;
+  --success-foreground: #86efac;
+  --warning: #f59e0b;
+  --warning-foreground: #fde68a;
+  --info: #3b82f6;
+  --info-foreground: #bfdbfe;
+  --surface: #292c34;
+  --surface-hover: #30333c;
+  --surface-subtle: #161922;
+  --scrim: #000000;
+  --scrollbar-thumb: rgb(161 161 170 / 45%);
   --border: #2b3247;
+  --border-strong: #3d4049;
   --input: #3b4359;
   --ring: #002aff;
   --chart-1: #002aff;
@@ -49,6 +63,14 @@
   --shadow-lg: 0 0 #0000;
   --shadow-xl: 0 0 #0000;
   --shadow-2xl: 0 0 #0000;
+  --shadow-control:
+    0 1px 2px -1px rgb(0 0 0 / 10%), 0 1px 3px 0 rgb(0 0 0 / 10%);
+  --shadow-auth-panel: 0 8px 32px -4px rgb(0 0 0 / 10%);
+  --shadow-popover: 0 8px 32px 0 rgb(0 0 0 / 50%);
+  --shadow-menu: 0 25px 50px -12px rgb(0 0 0 / 60%);
+  --shadow-dialog: 0 4px 4px 0 rgb(0 0 0 / 25%);
+  --shadow-navigation: 0 4px 4px 0 rgb(0 0 0 / 12%);
+  --shadow-icon-halo: 0 0 0 10px rgb(255 255 255 / 2.5%);
   --tracking-normal: -0.01em;
   --spacing: 0.25rem;
 
@@ -56,6 +78,16 @@
   --auth-foreground: #000000;
   --auth-placeholder: #4a5565;
   --auth-border: #e5e7eb;
+  --auth-panel: #fafafa;
+  --auth-primary: #002aff;
+  --auth-primary-hover: #0022cc;
+  --auth-primary-foreground: #ffffff;
+  --auth-muted: #f3f4f6;
+  --auth-muted-foreground: #9ca3af;
+  --auth-destructive: #dc2626;
+  --auth-destructive-background: #fef2f2;
+  --auth-warning: #a16207;
+  --auth-warning-background: #fffbeb;
 }
 
 /*
@@ -94,11 +126,24 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-foreground-subtle: var(--foreground-subtle);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-muted-foreground: var(--destructive-muted-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-scrim: var(--scrim);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -114,6 +159,20 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-auth-background: var(--auth-background);
+  --color-auth-foreground: var(--auth-foreground);
+  --color-auth-placeholder: var(--auth-placeholder);
+  --color-auth-border: var(--auth-border);
+  --color-auth-panel: var(--auth-panel);
+  --color-auth-primary: var(--auth-primary);
+  --color-auth-primary-hover: var(--auth-primary-hover);
+  --color-auth-primary-foreground: var(--auth-primary-foreground);
+  --color-auth-muted: var(--auth-muted);
+  --color-auth-muted-foreground: var(--auth-muted-foreground);
+  --color-auth-destructive: var(--auth-destructive);
+  --color-auth-destructive-background: var(--auth-destructive-background);
+  --color-auth-warning: var(--auth-warning);
+  --color-auth-warning-background: var(--auth-warning-background);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -133,6 +192,13 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+  --shadow-control: var(--shadow-control);
+  --shadow-auth-panel: var(--shadow-auth-panel);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-menu: var(--shadow-menu);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-navigation: var(--shadow-navigation);
+  --shadow-icon-halo: var(--shadow-icon-halo);
 
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
@@ -209,8 +275,8 @@
 }
 
 .auth-checkbox:checked {
-  border-color: #002aff;
-  background-color: #002aff;
+  border-color: var(--auth-primary);
+  background-color: var(--auth-primary);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8l3 3 7-7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-position: center;
   background-repeat: no-repeat;
@@ -218,7 +284,7 @@
 }
 
 .auth-checkbox:focus-visible {
-  outline: 2px solid #002aff;
+  outline: 2px solid var(--auth-primary);
   outline-offset: 2px;
 }
 
