@@ -17,6 +17,7 @@ export async function getOrganizationProgress(
     db.query.generatedArtifacts.findMany({
       columns: {
         artifactType: true,
+        currentRevisionId: true,
         acceptedRevisionId: true,
       },
       where: {
@@ -53,10 +54,15 @@ export async function getOrganizationProgress(
     }),
   ]);
 
+  const applicabilityArtifact = artifacts.find(
+    (artifact) => artifact.artifactType === "affectedness_result",
+  );
+  const acceptedApplicabilityRevisionId =
+    applicabilityArtifact?.acceptedRevisionId ?? null;
   const applicabilityRevisionId =
-    artifacts.find(
-      (artifact) => artifact.artifactType === "affectedness_result",
-    )?.acceptedRevisionId ?? null;
+    acceptedApplicabilityRevisionId ??
+    applicabilityArtifact?.currentRevisionId ??
+    null;
   const gapRevisionId =
     artifacts.find(
       (artifact) => artifact.artifactType === "gap_analysis_result",
@@ -66,7 +72,7 @@ export async function getOrganizationProgress(
   const [applicabilityRevision, activePlanItems] = await Promise.all([
     applicabilityRevisionId
       ? db.query.generatedArtifactRevisions.findFirst({
-          columns: { outcomeCode: true },
+          columns: { status: true, outcomeCode: true },
           where: {
             RAW: (table, operators) =>
               eq(table.id, applicabilityRevisionId) ?? operators.sql`true`,
@@ -85,7 +91,9 @@ export async function getOrganizationProgress(
   ]);
 
   return deriveOrganizationProgress({
-    hasAcceptedApplicability: applicabilityRevisionId !== null,
+    hasAcceptedApplicability:
+      acceptedApplicabilityRevisionId !== null ||
+      applicabilityRevision?.status === "approved",
     applicabilityOutcome: applicabilityRevision?.outcomeCode ?? null,
     hasAcceptedGapAnalysis: gapRevisionId !== null,
     hasUploadedDocument: uploadedDocument !== undefined,

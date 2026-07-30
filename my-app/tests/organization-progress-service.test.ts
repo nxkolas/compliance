@@ -79,7 +79,6 @@ describe("organization progress service", () => {
     );
     expect(mocks.findActionPlanItems).toHaveBeenCalledOnce();
     expect(progress).toMatchObject({
-      currentStep: null,
       completedCount: 6,
       totalCount: 6,
     });
@@ -94,6 +93,63 @@ describe("organization progress service", () => {
 
     expect(mocks.findApplicabilityRevision).not.toHaveBeenCalled();
     expect(mocks.findActionPlanItems).not.toHaveBeenCalled();
-    expect(progress.currentStep).toBe("welcome");
+    expect(progress.steps[0]).toEqual({ key: "welcome", completed: false });
+  });
+
+  it("recognizes a legacy approved applicability revision without an accepted pointer", async () => {
+    mocks.findArtifacts.mockResolvedValue([
+      {
+        artifactType: "affectedness_result",
+        currentRevisionId: "applicability-revision",
+        acceptedRevisionId: null,
+      },
+    ]);
+    mocks.findUploadedDocument.mockResolvedValue(undefined);
+    mocks.findPlans.mockResolvedValue([]);
+    mocks.findApplicabilityRevision.mockResolvedValue({
+      status: "approved",
+      outcomeCode: "important_entity",
+    });
+
+    const progress = await getOrganizationProgress(userId, organizationId);
+
+    expect(progress.completedCount).toBe(2);
+    expect(progress.steps[1]).toEqual({
+      key: "applicability_check",
+      completed: true,
+    });
+  });
+
+  it("does not mask completed gap and action-plan steps behind a legacy applicability pointer", async () => {
+    mocks.findArtifacts.mockResolvedValue([
+      {
+        artifactType: "affectedness_result",
+        currentRevisionId: "applicability-revision",
+        acceptedRevisionId: null,
+      },
+      {
+        artifactType: "gap_analysis_result",
+        currentRevisionId: "gap-revision",
+        acceptedRevisionId: "gap-revision",
+      },
+    ]);
+    mocks.findUploadedDocument.mockResolvedValue({ id: "document" });
+    mocks.findPlans.mockResolvedValue([
+      {
+        id: "active-plan",
+        status: "active",
+        activatedAt: new Date("2026-07-20T12:00:00.000Z"),
+      },
+    ]);
+    mocks.findApplicabilityRevision.mockResolvedValue({
+      status: "approved",
+      outcomeCode: "important_entity",
+    });
+    mocks.findActionPlanItems.mockResolvedValue([{ status: "done" }]);
+
+    const progress = await getOrganizationProgress(userId, organizationId);
+
+    expect(progress.completedCount).toBe(6);
+    expect(progress.steps.every((step) => step.completed)).toBe(true);
   });
 });

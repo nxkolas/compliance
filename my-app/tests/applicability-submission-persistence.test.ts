@@ -97,7 +97,7 @@ describe("applicability submission persistence", () => {
       "find-profile-version",
       "insert-result-projection",
       "insert-artifact-source",
-      "set-current-artifact-revision",
+      "set-current-and-accepted-artifact-revision",
       "transaction-commit",
     ]);
   });
@@ -128,7 +128,7 @@ describe("applicability submission persistence", () => {
     );
 
     expect(calls.indexOf("claim-guest-check")).toBeGreaterThan(
-      calls.indexOf("set-current-artifact-revision"),
+      calls.indexOf("set-current-and-accepted-artifact-revision"),
     );
     expect(calls.indexOf("claim-guest-check")).toBeLessThan(
       calls.indexOf("transaction-commit"),
@@ -150,6 +150,23 @@ describe("applicability submission persistence", () => {
     );
 
     expect(persistedStatus).toBe("approved");
+  });
+
+  it("accepts the approved applicability result so organization progress sees it as completed", async () => {
+    const calls: string[] = [];
+
+    await persistApplicabilitySubmission(
+      fixturePersistenceCommand(12),
+      fixturePersistenceAdapter(calls),
+    );
+
+    expect(calls).toContain("set-current-and-accepted-artifact-revision");
+    expect(
+      calls.indexOf("set-current-and-accepted-artifact-revision"),
+    ).toBeGreaterThan(calls.indexOf("insert-artifact-source"));
+    expect(
+      calls.indexOf("set-current-and-accepted-artifact-revision"),
+    ).toBeLessThan(calls.indexOf("transaction-commit"));
   });
 });
 
@@ -391,8 +408,8 @@ function fixturePersistenceTransaction(
     async insertArtifactSource() {
       calls.push("insert-artifact-source");
     },
-    async setCurrentArtifactRevision() {
-      calls.push("set-current-artifact-revision");
+    async setCurrentAndAcceptedArtifactRevision() {
+      calls.push("set-current-and-accepted-artifact-revision");
     },
     async claimGuestCheck() {
       calls.push("claim-guest-check");

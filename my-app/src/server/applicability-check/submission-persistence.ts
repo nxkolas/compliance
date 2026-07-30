@@ -145,7 +145,7 @@ export type SubmissionPersistenceTransaction = {
     artifactRevisionId: string;
     assessmentRevisionId: string;
   }): Promise<void>;
-  setCurrentArtifactRevision(input: {
+  setCurrentAndAcceptedArtifactRevision(input: {
     artifactId: string;
     revisionId: string;
   }): Promise<void>;
@@ -511,7 +511,7 @@ export async function persistApplicabilitySubmission(
       artifactRevisionId: artifactRevision.id,
       assessmentRevisionId: assessmentRevision.id,
     });
-    await tx.setCurrentArtifactRevision({
+    await tx.setCurrentAndAcceptedArtifactRevision({
       artifactId: artifact.id,
       revisionId: artifactRevision.id,
     });
@@ -701,10 +701,16 @@ export const postgresSubmissionPersistenceAdapter: SubmissionPersistenceAdapter 
             assessmentRevisionId,
           });
         },
-        async setCurrentArtifactRevision({ artifactId, revisionId }) {
+        async setCurrentAndAcceptedArtifactRevision({
+          artifactId,
+          revisionId,
+        }) {
           await tx
             .update(generatedArtifacts)
-            .set({ currentRevisionId: revisionId })
+            .set({
+              currentRevisionId: revisionId,
+              acceptedRevisionId: revisionId,
+            })
             .where(eq(generatedArtifacts.id, artifactId));
         },
         async claimGuestCheck({
