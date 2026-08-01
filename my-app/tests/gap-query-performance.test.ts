@@ -8,7 +8,7 @@ import {
   createGapReleaseReader,
   type LoadedGapRelease,
 } from "@/src/server/gap-analysis/release-loader";
-import { createGapReassessmentDraftReader } from "@/src/server/gap-analysis/reassessment-service";
+import { createGapAnalysisCycleReader } from "@/src/server/gap-analysis/analysis-cycle-service";
 import { createGapPageReader } from "@/src/server/gap-analysis/page-reader";
 
 function release(id: string, locale: "de" | "en"): LoadedGapRelease {
@@ -129,7 +129,7 @@ describe("Gap release reader", () => {
   });
 });
 
-describe("Gap reassessment reader", () => {
+describe("Gap analysisCycle reader", () => {
   const draft = {
     id: "draft",
     organizationId: "organization",
@@ -157,7 +157,7 @@ describe("Gap reassessment reader", () => {
 
   it("reuses an already-loaded release when it matches the draft", async () => {
     const deps = dependencies();
-    const reader = createGapReassessmentDraftReader(deps);
+    const reader = createGapAnalysisCycleReader(deps);
 
     const result = await reader.getPreauthorized({
       organizationId: "organization",
@@ -172,7 +172,7 @@ describe("Gap reassessment reader", () => {
 
   it("loads the draft's pinned release when a reused release does not match", async () => {
     const deps = dependencies();
-    const reader = createGapReassessmentDraftReader(deps);
+    const reader = createGapAnalysisCycleReader(deps);
 
     const result = await reader.getPreauthorized({
       organizationId: "organization",
@@ -188,7 +188,7 @@ describe("Gap reassessment reader", () => {
   it("does not enter the preauthorized read when public authorization fails", async () => {
     const deps = dependencies();
     deps.authorize.mockRejectedValueOnce(new Error("forbidden"));
-    const reader = createGapReassessmentDraftReader(deps);
+    const reader = createGapAnalysisCycleReader(deps);
 
     await expect(
       reader.getAuthorized({
@@ -224,7 +224,7 @@ describe("Gap reassessment reader", () => {
       loadAssessmentRevision: vi.fn(() => assessmentRevision.promise),
       loadAssessment: vi.fn(() => assessment.promise),
     };
-    const reader = createGapReassessmentDraftReader(deps);
+    const reader = createGapAnalysisCycleReader(deps);
 
     const result = reader.getPreauthorized({
       organizationId: "organization",
@@ -279,7 +279,7 @@ describe("Gap page reader", () => {
         currentRevisionId: "assessment-revision",
       };
     });
-    const loadReassessment = vi.fn(async () => {
+    const loadAnalysisCycle = vi.fn(async () => {
       queryCount += 2;
       return { draft: { id: "draft" } };
     });
@@ -299,7 +299,7 @@ describe("Gap page reader", () => {
       loadHistory: vi.fn(),
       loadAnswers,
       loadFindingsBatch,
-      loadReassessment,
+      loadAnalysisCycle,
       loadStalenessBatch,
       loadRun,
       loadGeneratedInputs: vi.fn(),
@@ -318,7 +318,7 @@ describe("Gap page reader", () => {
         canContribute: true,
         documents: [],
       },
-      reassessment: { draft: { id: "draft" } },
+      analysisCycle: { draft: { id: "draft" } },
     });
 
     expect(authorize).toHaveBeenCalledOnce();
@@ -355,7 +355,7 @@ describe("Gap page reader", () => {
     const candidateFindings = [
       { finding: { id: "candidate-finding", requiresReview: true } },
     ];
-    const reassessment = { draft: { id: "draft" } };
+    const analysisCycle = { draft: { id: "draft" } };
     const acceptedStaleness = { stale: false };
     const candidateStaleness = { stale: true };
     const run = { id: "run" };
@@ -407,9 +407,9 @@ describe("Gap page reader", () => {
           candidate: candidateFindings,
         };
       }),
-      loadReassessment: vi.fn(async () => {
+      loadAnalysisCycle: vi.fn(async () => {
         queryCount += 2;
-        return reassessment;
+        return analysisCycle;
       }),
       loadStalenessBatch: vi.fn(async () => {
         queryCount += 1;
@@ -451,21 +451,21 @@ describe("Gap page reader", () => {
       candidateRevision,
       candidateFindings,
       activePlan: { sourceGapArtifactRevisionId: "older-revision" },
-      reassessment,
+      analysisCycle,
       prerequisite: {
         satisfied: true,
         status: "eligible",
         destination: "/applicability-check",
       },
       history: [],
-      generatedInputs: { revisionId: "candidate" },
+      generatedInputs: null,
       reviewBlockers: ["candidate-finding"],
       planUpdateAvailable: true,
       acceptedStaleness,
       candidateStaleness,
       staleness: candidateStaleness,
     });
-    expect(queryCount).toBe(17);
+    expect(queryCount).toBe(13);
   });
 
   it("starts every peer in a dependency phase before awaiting a peer", async () => {
@@ -496,7 +496,7 @@ describe("Gap page reader", () => {
     const history = pending<[]>();
     const answers = pending<Record<string, string>>();
     const findings = pending<{ accepted: []; candidate: [] }>();
-    const reassessment = pending<null>();
+    const analysisCycle = pending<null>();
     const staleness = pending<{ accepted: null; candidate: null }>();
     const run = pending<null>();
     const generatedInputs = pending<{ revisionId: string }>();
@@ -511,7 +511,7 @@ describe("Gap page reader", () => {
       loadHistory: vi.fn(() => history.promise),
       loadAnswers: vi.fn(() => answers.promise),
       loadFindingsBatch: vi.fn(() => findings.promise),
-      loadReassessment: vi.fn(() => reassessment.promise),
+      loadAnalysisCycle: vi.fn(() => analysisCycle.promise),
       loadStalenessBatch: vi.fn(() => staleness.promise),
       loadRun: vi.fn(() => run.promise),
       loadGeneratedInputs: vi.fn(() => generatedInputs.promise),
@@ -533,7 +533,7 @@ describe("Gap page reader", () => {
     await vi.waitFor(() => {
       expect(dependencies.loadWorkflowSnapshot).toHaveBeenCalledOnce();
       expect(dependencies.loadPrerequisite).toHaveBeenCalledOnce();
-      expect(dependencies.loadHistory).toHaveBeenCalledOnce();
+      expect(dependencies.loadHistory).not.toHaveBeenCalled();
     });
     snapshot.resolve({
       assessment: { id: "assessment" },
@@ -557,25 +557,14 @@ describe("Gap page reader", () => {
     await vi.waitFor(() => {
       expect(dependencies.loadAnswers).toHaveBeenCalledOnce();
       expect(dependencies.loadFindingsBatch).toHaveBeenCalledOnce();
-      expect(dependencies.loadReassessment).toHaveBeenCalledOnce();
+      expect(dependencies.loadAnalysisCycle).toHaveBeenCalledOnce();
       expect(dependencies.loadStalenessBatch).toHaveBeenCalledOnce();
       expect(dependencies.loadRun).toHaveBeenCalledOnce();
-      expect(dependencies.loadGeneratedInputs).toHaveBeenCalledOnce();
-      expect(dependencies.loadGeneratedInputs).toHaveBeenCalledWith(
-        expect.objectContaining({
-          organizationId: "organization",
-          locale: "de",
-        }),
-        {
-          id: "revision",
-          gapAnalysisReleaseId: "release-a",
-        },
-        expect.objectContaining({ id: "release-a" }),
-      );
+      expect(dependencies.loadGeneratedInputs).not.toHaveBeenCalled();
     });
     answers.resolve({});
     findings.resolve({ accepted: [], candidate: [] });
-    reassessment.resolve(null);
+    analysisCycle.resolve(null);
     staleness.resolve({ accepted: null, candidate: null });
     run.resolve(null);
     generatedInputs.resolve({ revisionId: "revision" });
@@ -583,7 +572,7 @@ describe("Gap page reader", () => {
       assessment: { id: "assessment" },
       prerequisite: { satisfied: true },
       history: [],
-      generatedInputs: { revisionId: "revision" },
+      generatedInputs: null,
     });
   });
 
@@ -603,7 +592,7 @@ describe("Gap page reader", () => {
       loadHistory: vi.fn(),
       loadAnswers: vi.fn(),
       loadFindingsBatch: vi.fn(),
-      loadReassessment: vi.fn(),
+      loadAnalysisCycle: vi.fn(),
       loadStalenessBatch: vi.fn(),
       loadRun: vi.fn(),
       loadGeneratedInputs: vi.fn(),
@@ -642,7 +631,7 @@ describe("Gap page reader", () => {
 
     for (const path of applicationFiles) {
       expect(readFileSync(path, "utf8")).not.toMatch(
-        /(?:DocumentLibrary|ReassessmentDraft|RevisionStalenessBatch)Preauthorized/,
+        /(?:DocumentLibrary|AnalysisCycleDraft|RevisionStalenessBatch)Preauthorized/,
       );
     }
   });

@@ -35,11 +35,11 @@ import { uploadOrganizationDocument } from "@/src/server/documents";
 import {
   correctGapRevision,
   createOrOpenGapAssessment,
-  generateGapReassessment,
+  enqueueGapAnalysisGeneration,
   loadGapAnalysisRelease,
-  prepareGapReassessment,
+  prepareGapAnalysisCycle,
   regenerateGapFindingGuidance,
-  retryGapReassessment,
+  retryGapAnalysisGeneration,
   saveQuestionnaireDraftAnswer,
   submitGapQuestionnaire,
 } from "@/src/server/gap-analysis";
@@ -902,7 +902,7 @@ async function executeCase(testCase: EvaluationCase) {
       optionId: option.id,
       expectedVersion: draftVersion,
     });
-    draftVersion = saved.version;
+    draftVersion = saved.answer.version;
     submittedAnswers.push({
       questionNumber: questionIndex + 1,
       stableKey: question.stableKey,
@@ -931,7 +931,7 @@ async function executeCase(testCase: EvaluationCase) {
     });
   }
 
-  const prepared = await prepareGapReassessment({
+  const prepared = await prepareGapAnalysisCycle({
     userId: USER_ID,
     organizationId: organization.id,
     assessmentId: assessment.id,
@@ -939,7 +939,7 @@ async function executeCase(testCase: EvaluationCase) {
     locale: testCase.locale,
   });
   if (!prepared) throw new Error("Gap generation draft was not prepared");
-  const generation = await generateGapReassessment({
+  const generation = await enqueueGapAnalysisGeneration({
     userId: USER_ID,
     organizationId: organization.id,
     draftId: prepared.draft.id,
@@ -1416,7 +1416,7 @@ async function workGenerationJob(jobId: string, draftId: string) {
     },
   });
   if (draft?.status === "failed") {
-    const retried = await retryGapReassessment({
+    const retried = await retryGapAnalysisGeneration({
       userId: USER_ID,
       organizationId: await organizationIdForDraft(draftId),
       draftId,

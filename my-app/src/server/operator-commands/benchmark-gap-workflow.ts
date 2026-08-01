@@ -18,7 +18,7 @@ import {
   createDatabaseGapPageReader,
   directGapReleaseReader,
   getGapAnalysisWorkflow,
-  getGapReassessmentDraft,
+  getGapAnalysisCycle,
   getGapRevisionStaleness,
   loadActiveGapAnalysisReleasePointer,
   loadGapHistoryPreauthorized,
@@ -268,9 +268,9 @@ function createOperations(fixture: Fixture) {
       sequentialLayers: 2,
     },
     {
-      name: "reassessmentDraft",
+      name: "analysisCycleDraft",
       create: () => () =>
-        getGapReassessmentDraft({
+        getGapAnalysisCycle({
           userId: fixture.userId,
           organizationId: fixture.organizationId,
           assessmentId: fixture.assessmentId,
@@ -446,14 +446,14 @@ function summarize(name: string, value: unknown) {
       assessment: unknown;
       documents: unknown[];
       findings: unknown[];
-      reassessment: unknown;
+      analysisCycle: unknown;
     };
     return {
       hasRelease: Boolean(workflow.release),
       hasAssessment: Boolean(workflow.assessment),
       documentCount: workflow.documents.length,
       findingCount: workflow.findings.length,
-      hasReassessment: Boolean(workflow.reassessment),
+      hasAnalysisCycle: Boolean(workflow.analysisCycle),
     };
   }
   if (name === "completeWorkflow") {
@@ -462,26 +462,26 @@ function summarize(name: string, value: unknown) {
       assessment: unknown;
       documentLibrary: { documents: unknown[] };
       findings: unknown[];
-      reassessment: unknown;
+      analysisCycle: unknown;
     };
     return {
       hasRelease: Boolean(workflow.release),
       hasAssessment: Boolean(workflow.assessment),
       documentCount: workflow.documentLibrary.documents.length,
       findingCount: workflow.findings.length,
-      hasReassessment: Boolean(workflow.reassessment),
+      hasAnalysisCycle: Boolean(workflow.analysisCycle),
     };
   }
   if (name === "documentsPage") {
     const page = value as {
       assessmentId: string | null;
       documentLibrary: { documents: unknown[] };
-      reassessment: unknown;
+      analysisCycle: unknown;
     };
     return {
       hasAssessment: Boolean(page.assessmentId),
       documentCount: page.documentLibrary.documents.length,
-      hasReassessment: Boolean(page.reassessment),
+      hasAnalysisCycle: Boolean(page.analysisCycle),
     };
   }
   if (name === "documentLibrary") {

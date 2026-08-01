@@ -125,7 +125,7 @@ describe("Gap workflow localization", () => {
         acceptedFindings: [finding(oldRequirementId, "accepted")],
         candidateFindings: [finding(newRequirementId, "candidate")],
         answers: {},
-        reassessment: null,
+        analysisCycle: null,
         documentLibrary: { documents: [] },
         activePlan: null,
         run: null,

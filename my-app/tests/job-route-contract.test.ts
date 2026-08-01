@@ -53,7 +53,14 @@ describe("job status route contract", () => {
       outputSchema: z.object({ job: jobDtoSchema }),
     });
 
-    expect(result.parsed.data).toEqual({ job });
+    expect(result.parsed.data).toEqual({
+      job: {
+        ...job,
+        phase: null,
+        completedUnits: null,
+        totalUnits: null,
+      },
+    });
     expect(mocks.getAuthorizedJob).toHaveBeenCalledWith(
       "00000000-0000-4000-8000-000000000001",
       job.id,

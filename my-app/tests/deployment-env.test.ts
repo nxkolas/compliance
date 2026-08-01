@@ -37,6 +37,26 @@ describe("deployment environment contracts", () => {
     );
   });
 
+  it("accepts benchmark category concurrency and validates both AI limits", () => {
+    const configured = getWebEnvironment({
+      ...productionEnvironment,
+      AI_CATEGORY_CONCURRENCY: "5",
+      AI_PROVIDER_MAX_CONCURRENCY: "4",
+    });
+    expect(configured.AI_CATEGORY_CONCURRENCY).toBe(5);
+    expect(configured.AI_PROVIDER_MAX_CONCURRENCY).toBe(4);
+
+    expect(() =>
+      getWebEnvironment({
+        ...productionEnvironment,
+        AI_CATEGORY_CONCURRENCY: "6",
+        AI_PROVIDER_MAX_CONCURRENCY: "101",
+      }),
+    ).toThrow(
+      "Invalid environment variables: AI_CATEGORY_CONCURRENCY, AI_PROVIDER_MAX_CONCURRENCY",
+    );
+  });
+
   it("rejects public production database and AI endpoints", () => {
     const values = {
       ...productionEnvironment,

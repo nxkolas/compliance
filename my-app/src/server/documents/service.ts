@@ -722,7 +722,7 @@ export async function getOrganizationDocumentLibraryPreauthorized(
       extraction: typeof documentExtractions.$inferSelect | null;
       embedding: typeof documentEmbeddingGenerations.$inferSelect | null;
       usage: DocumentUsageLabel[];
-      eligibleForReassessment: boolean;
+      eligibleForAnalysisCycle: boolean;
     }> }
   >();
   for (const row of rows) {
@@ -742,7 +742,7 @@ export async function getOrganizationDocumentLibraryPreauthorized(
         extraction: row.extraction,
         embedding: row.embedding,
         usage,
-        eligibleForReassessment:
+        eligibleForAnalysisCycle:
           row.document.status === "active" &&
           row.document.currentVersionId === row.version.id &&
           !row.version.archivedAt &&
@@ -909,7 +909,7 @@ export async function listOrganizationDocumentVersionsPage(input: { userId: stri
   const versions = page.map((row) => ({
     ...row,
     usage: deriveDocumentUsageLabels({ versionId: row.version.id, artifactSources, draftVersionIds, activePlanVersionIds }),
-    eligibleForReassessment: document.status === "active" && document.currentVersionId === row.version.id && !row.version.archivedAt && row.embedding?.status === "succeeded",
+    eligibleForAnalysisCycle: document.status === "active" && document.currentVersionId === row.version.id && !row.version.archivedAt && row.embedding?.status === "succeeded",
   }));
   const last = page.at(-1)?.version;
   return { versions, nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.versionNumber, last.id]) : undefined };

@@ -1,6 +1,6 @@
 # End-to-End Compliance Workflow
 
-Status: canonical description of the implemented workflow as of 2026-07-25.
+Status: canonical description of the implemented workflow as of 2026-08-02.
 
 This document explains the current architecture from the Applicability Check
 (`Betroffenheitscheck`) through the Action Plan (`Maßnahmenplan`). It is the
@@ -21,8 +21,9 @@ The system contains two fundamentally different decision stages:
    requirements using pinned questionnaire assertions, selected organization
    evidence, and legal excerpts retrieved from pinned Legal Corpus Releases.
 
-The Action Plan is deterministic again. It does not call AI; it creates exactly
-one item for each Gap finding whose status is not `fulfilled`.
+The Action Plan is also AI-assisted. It runs one grounded operation for each
+actionable category, validates complete gap/action linkage, then atomically
+approves the Gap revision and persists the generated plan.
 
 ```mermaid
 flowchart TD
@@ -44,12 +45,12 @@ flowchart TD
     J --> K[Review exact inputs]
     L --> M[One finding per applicable requirement]
     M --> O{Human review needed?}
-    O -->|yes| P[Owner or admin creates<br/>corrected immutable revision]
+    O -->|yes| P[Owner or admin enqueues<br/>an async revision mutation]
     P --> O
-    O -->|no| R[Atomic finalization]
+    O -->|no| R[Grounded Action Plan generation<br/>and atomic finalization]
     R --> S[Approve and accept Gap revision]
     S --> T[Create one Action Plan]
-    T --> U[Create one item per<br/>non-fulfilled finding]
+    T --> U[Create validated actions<br/>linked to atomic gaps]
 
     K --> W{Positive result and<br/>applicable requirements?}
     W -->|yes| L
@@ -72,9 +73,9 @@ requirements before a job or AI run exists.
 | `organization-evidence` private bucket | Original organization-provided files | Legal sources, rules, findings, or plans |
 | `legal-corpus` private bucket | Original curated legal-source renditions | Organization evidence |
 | Legal Corpus database model | Reviewed source versions, renditions, processing generations, chunks, embeddings, immutable corpus releases | Organization implementation facts |
-| Deterministic server code | Applicability evaluation, input validation, hashing, applicability filtering, severity calculation, action-item mapping | Free-form Gap rationale and recommendations |
+| Deterministic server code | Applicability evaluation, input validation, hashing, applicability filtering, severity calculation, schema/linkage validation, finalization | Free-form Gap findings or Action Plan prose |
 | AI embedding provider | Vectorizes extracted chunks and retrieval queries | Business outcome or final approval |
-| Approved chat-model provider | Produces structured Gap findings from supplied context | Applicability, requirement creation, severity policy, approval, or plan decomposition |
+| Approved chat-model provider | Produces structured Gap findings and Action Plan actions from supplied context | Applicability, requirement creation, severity policy, approval, or cross-category merging |
 | Organization users | Answers, document selection, review corrections, finalization, plan execution state | Shared legal-corpus publication |
 | Platform Administrators | Legal-corpus curation/review/publication/activation | Organization membership permissions or tenant findings |
 
@@ -115,7 +116,7 @@ flowchart LR
         RET[Separate legal and<br/>organization retrieval]
         GAI[Grounded AI]
         VAL[Schema, coverage and<br/>citation validation]
-        PLAN[Deterministic<br/>plan mapper]
+        PLAN[Grounded Action Plan<br/>generation and validation]
     end
 
     CR -->|publish and pin corpus releases| PDB
@@ -258,19 +259,19 @@ prompt metadata, and exact corpus pins. Activation advances
 Non-production commands:
 
 ```powershell
-npm.cmd run db:publish:gap -- --release nis2-gap/guided-v3
-npm.cmd run db:activate:gap -- --release nis2-gap/guided-v3
+npm.cmd run db:publish:gap -- --release nis2-gap/reliability-v8
+npm.cmd run db:activate:gap -- --release nis2-gap/reliability-v8
 ```
 
-The current `guided-v3` definition inherits its requirements from `guided-v2`,
-which inherits four demo-originated requirements from `demo-v1`: access
-control, backup and recovery, incident response, and supply-chain security.
-This is a current product limitation, not a complete NIS2 control catalogue.
+The current `reliability-v8` definition inherits ten guided categories from
+`guided-v6` and pins Gap response contract v12 plus Action Plan response
+contract v6. This remains a guided product catalogue, not an exhaustive
+interpretation of every possible NIS2 obligation.
 
 Primary implementation:
 
-- [Current Gap release](../../src/server/gap-analysis/releases/guided-v3/release.ts)
-- [Inherited requirement definitions](../../src/server/gap-analysis/releases/demo-v1/release.ts)
+- [Current Gap release](../../src/server/gap-analysis/releases/reliability-v8/release.ts)
+- [Guided category definitions](../../src/server/gap-analysis/releases/guided-v6/release.ts)
 - [Gap release compiler](../../src/server/gap-analysis/publishing/compile-release.ts)
 - [Gap release publisher](../../src/server/gap-analysis/publishing/publish-release.ts)
 - [Gap release activator](../../src/server/gap-analysis/publishing/activate-release.ts)
@@ -429,15 +430,15 @@ The Gap selection may be empty. If documents are selected, they must be active,
 current organization-owned versions with successful extraction and embedding.
 The exact version IDs—not stable document IDs—are selected.
 
-#### Prepared input draft
+#### Analysis cycle
 
 The implementation uses `gap_reassessment_drafts` and
 `gap_reassessment_draft_documents` to hold the initial generation input bundle.
-The “reassessment” name is retained from an earlier architecture; in the
-current product this structure is used to prepare and lock the one permitted
-initial generation.
+Those physical names are retained for persistence compatibility. The domain,
+HTTP, client, and UI name is **analysis cycle**, used to prepare and lock the
+one permitted initial generation.
 
-An open draft pins:
+An open analysis cycle pins:
 
 - the Gap assessment;
 - the exact Gap questionnaire revision;
@@ -445,17 +446,17 @@ An open draft pins:
 - zero or more exact document versions; and
 - a lock version for optimistic concurrency.
 
-Saving the document step creates or updates that draft. Starting generation
+Saving the document step creates or updates that cycle. Starting generation
 changes it from `open` to `locked`, records the lock date, creates an
 idempotency record, and enqueues one cancellable `gap-generation` job.
-Questionnaire and evidence-selection mutations are rejected while the draft is
+Questionnaire and evidence-selection mutations are rejected while the cycle is
 locked.
 
 Primary implementation:
 
 - [Gap questionnaire service](../../src/server/gap-analysis/questionnaire-service.ts)
 - [Organization document service](../../src/server/documents/service.ts)
-- [Gap input-draft service](../../src/server/gap-analysis/reassessment-service.ts)
+- [Gap analysis-cycle service](../../src/server/gap-analysis/analysis-cycle-service.ts)
 - [Lifecycle guards](../../src/server/gap-analysis/lifecycle-guards.ts)
 
 ### Phase 4: Generate the grounded Gap Analysis
@@ -472,27 +473,25 @@ sequenceDiagram
 
     User->>UI: Confirm reviewed inputs
     UI->>API: Generate + Idempotency-Key
-    API->>DB: Lock input draft and create gap-generation job
+    API->>DB: Lock analysis cycle and create gap-generation job
     API-->>UI: 202 Accepted + job ID
     Worker->>DB: Lease job and load pinned revisions
-    Worker->>DB: Select requirements by applicability outcome
-    loop One retrieval query per applicable requirement
-        Worker->>Embed: Embed requirement query
-        Embed-->>Worker: Query vector
-        Worker->>DB: Retrieve legal chunks from pinned corpus releases
-        Worker->>DB: Retrieve chunks from selected document versions
+    Worker->>DB: Select requirements and resolve shared dependencies once
+    Worker->>Embed: Batch initial legal and organization queries
+    Embed-->>Worker: Query vectors in input order
+    par Concurrent category workers
+        Worker->>DB: Retrieve legal and organization chunks concurrently
         Worker->>DB: Load mapped questionnaire assertions
+        Worker->>Model: One strict category operation
+        Model-->>Worker: One structured category finding
     end
-    Worker->>Model: Strict schema + requirements + labelled excerpts
-    Model-->>Worker: One structured finding per requirement
     Worker->>Worker: Validate schema, coverage, citations, and claims
     Worker->>DB: Atomically persist AI run, provenance, revision, findings, evidence, and job success
-    UI->>API: Poll job
-    API-->>UI: Generated revision
-    User->>API: Correct findings if required
-    API->>DB: Create complete reviewed child revision
-    User->>API: Generate Maßnahmenplan
-    API->>DB: Atomically approve Gap revision and create plan/items
+    UI->>API: Poll job phase and category-unit progress
+    API-->>UI: Generated revision link
+    User->>API: Enqueue Maßnahmenplan generation
+    Worker->>Model: One grounded operation per actionable category
+    Worker->>DB: Atomically approve Gap revision and persist plan/items
 ```
 
 #### Requirement selection
@@ -523,14 +522,18 @@ The Grounding Gateway then builds three labelled channels:
 3. **Questionnaire assertions** — answers whose stable question keys are mapped
    to that requirement.
 
-Legal and organization retrieval occur separately. Their results are combined
-only after each has been independently scoped and labelled. An original file
-is not placed in the chat prompt; the model receives selected excerpt
-snapshots and citation IDs.
+Legal and organization retrieval remain independently scoped and labelled, but
+the two searches execute concurrently for each category and are settled
+together before the prompt is built. Their results are combined only after
+that separation has been preserved. Initial query embeddings are prepared in
+batches grouped by embedding space; repairs embed only their changed queries.
+An original file is not placed in the chat prompt; the model receives selected
+excerpt snapshots and citation IDs.
 
 #### Provider policy
 
-The Grounding Gateway loads `organization_ai_provider_policies`. The default
+The Gap batch loads `organization_ai_provider_policies` and pinned corpus
+dependencies once, then reuses them across category operations. The default
 policy allows `company_hosted` and `self_hosted` modes and disallows external
 disclosure. OpenAI chat generation is selectable only when the organization's
 policy explicitly permits it. If no configured provider satisfies the policy,
@@ -539,6 +542,23 @@ generation fails closed.
 The selected provider, model, policy version, prompt hash, token usage, and
 whether context was disclosed through OpenAI chat are stored on the AI run and
 its provenance rows.
+
+`AI_CATEGORY_CONCURRENCY` controls category workers (1-5, default 3).
+`AI_PROVIDER_MAX_CONCURRENCY` caps simultaneous chat calls (1-100, default 3)
+across Gap, Action Plan, repair, correction, and guidance work in one Node.js
+process. It does not limit embeddings and is not a deployment-wide semaphore.
+The application already ran three category calls concurrently before this
+change; raising category workers above the provider limit overlaps preparation
+but does not create more simultaneous provider calls.
+
+#### Generation progress
+
+Gap and revision-mutation jobs report monotonic `phase`, `completedUnits`, and
+`totalUnits` alongside percentage progress. Gap phases are evidence
+preparation, category generation, validation, persistence, and completion.
+Heartbeats extend job ownership without advancing progress. The existing
+portable after-response/recovery execution path handles these jobs; no new
+mandatory `npm run worker` process was introduced.
 
 #### AI responsibilities
 
@@ -622,7 +642,7 @@ Primary implementation:
 - [Legal retrieval](../../src/server/ai/grounding/legal-retrieval.ts)
 - [Organization retrieval](../../src/server/ai/grounding/organization-retrieval.ts)
 - [Grounded-output validation](../../src/server/ai/grounding/validation.ts)
-- [Gap response validation](../../src/server/gap-analysis/generation-schema.ts)
+- [Gap response validation](../../src/server/gap-analysis/generation-schema-v12.ts)
 
 ### Phase 5: Review and correct findings
 
@@ -630,7 +650,10 @@ All organization members with read access can inspect the immutable result and
 its pinned inputs. Owner/admin management permission is required to correct or
 finalize it.
 
-A correction does not update the generated revision in place. It:
+A correction or guidance regeneration first enqueues a cancellable
+`gap-revision-mutation-v1` job and returns `202 Accepted`; the browser polls the
+shared job endpoint. The worker does not update the generated revision in
+place. It:
 
 1. locks the stable artifact;
 2. verifies the source revision is still current and no active plan exists;
@@ -650,13 +673,24 @@ creating the Action Plan.
 
 Primary implementation:
 
+- [Gap revision-mutation service](../../src/server/gap-analysis/revision-mutation-service.ts)
 - [Gap review service](../../src/server/gap-analysis/review-service.ts)
 - [Gap workflow reader](../../src/server/gap-analysis/workflow-reader.ts)
 
 ### Phase 6: Finalize and create the Maßnahmenplan
 
 There is no standalone Gap approval in the current lifecycle. The only
-supported approval boundary is “Generate action plan.”
+supported approval boundary is “Generate action plan.” The request returns
+`202 Accepted` with an `action-plan-generation-vN` job. The worker loads the
+exact Gap revision and its pinned inputs, then runs one grounded AI operation
+for every actionable category. These operations use the same category
+coordinator and shared provider limiter as Gap generation.
+
+The response contract permits one to ten ordered actions per actionable
+category. An action may cover multiple atomic gaps and a gap may be covered by
+multiple actions, but every action and every gap must be linked within its
+source category. Validation also constrains citations, localized prose, title
+and result length, and recommended evidence before persistence.
 
 Before starting the transaction, finalization rejects a Gap revision when:
 
@@ -678,42 +712,37 @@ Inside one database transaction, the service:
 8. changes the Gap revision from `generated`/`reviewed` to `approved`;
 9. sets `generated_artifacts.accepted_revision_id`;
 10. creates one active `action_plans` row;
-11. creates the fixed item baseline;
+11. creates the validated generated actions and their gap links;
 12. writes approval and generation audit events; and
 13. completes the idempotency record.
 
 Any failure rolls the whole transaction back.
 
-#### Finding-to-item cardinality
+#### Category-to-action cardinality
 
-Action Plan generation is deterministic:
-
-| Finding status | Number of plan items |
-| --- | ---: |
-| `fulfilled` | 0 |
-| `partially_fulfilled` | 1 |
-| `not_fulfilled` | 1 |
-| `insufficient_evidence` | 1 |
-
-Two findings are never merged into one item, and one finding is never split
-into multiple items.
+Fulfilled categories produce no Action Plan category. Each non-fulfilled
+category produces one to ten validated actions. Categories are never merged;
+within a category, the model may group related gaps into an action or use
+several actions for one gap when the full linkage remains explicit.
 
 Each created item starts with:
 
 | Action Plan field | Source |
 | --- | --- |
 | `sourceFindingId` | Current approved Gap finding |
-| `title` | Localized published requirement title |
-| `description` | Current finding recommendation, AI-generated or human-corrected |
+| `title` | Validated localized AI output |
+| `result` | Validated localized AI output |
+| `suggestedEvidence` | One to five validated evidence names |
 | `priority` | Deterministically derived finding severity |
 | `status` | Constant `open` |
 | `ownerUserId` | Initially `null` |
 | `dueDate` | Initially `null` |
+| `executionNotes` | Initially empty |
 
 Primary implementation:
 
-- [Atomic finalization service](../../src/server/gap-analysis/finalization-service.ts)
-- [Deterministic Action Plan mapping](../../src/server/action-plans/service.ts)
+- [Action Plan generation and atomic persistence](../../src/server/action-plans/generation-service.ts)
+- [Action Plan response contract](../../src/server/action-plans/generation-schema-v2.ts)
 
 ### Phase 7: Operate the Action Plan
 
@@ -754,11 +783,10 @@ a later plan revision.
 | Finding assumptions/disagreements/contradictions | Structured model output | AI metadata | Yes | Finding/revision result and review metadata |
 | Finding citations | Model chooses only from supplied IDs; server validates and resolves | AI selection under deterministic validation | Yes, constrained | `gap_finding_evidence`, AI provenance tables |
 | Finding severity | Requirement criticality + final finding status | Deterministic server-derived | AI influences status, not severity formula | `gap_findings.severity` |
-| Plan existence and item count | Finalization command + non-fulfilled findings | Deterministic server-derived | No new AI call | `action_plans`, `action_plan_items` |
-| Plan item title | Published requirement title | Reviewed release content | None | `action_plan_items.title` snapshot |
-| Plan item description | Current finding recommendation | AI or human-corrected upstream | No plan-generation AI | `action_plan_items.description` snapshot |
-| Plan item priority | Current finding severity | Deterministic upstream | No plan-generation AI | `action_plan_items.priority` |
-| Plan item owner/due date/status | Organization contributor | Operational organization state | None | Mutable columns with version/audit history |
+| Plan existence and item count | Finalization command + validated category output | AI under deterministic coverage/linkage validation | One Action Plan call per actionable category | `action_plans`, `action_plan_items`, `action_plan_item_gaps` |
+| Plan item title/result/evidence | Grounded localized Action Plan output | AI under schema, citation, style, and length constraints | Yes | `action_plan_items` snapshots |
+| Plan item priority | Current finding severity | Deterministic upstream | AI cannot change category priority | `action_plan_items.priority` |
+| Plan item owner/due date/status/execution notes | Organization contributor | Operational organization state | None | Mutable columns with version/audit history |
 
 ## Immutability and reproducibility
 
@@ -775,8 +803,8 @@ The architecture uses stable identities plus immutable revisions:
 - `accepted_revision_id` means the approved authoritative Gap result.
 - AI runs store source hashes, prompt/model metadata, exact excerpt snapshots,
   claims, and citation links.
-- Action Plan items snapshot requirement titles and recommendations so later
-  release activation cannot rewrite the plan.
+- Action Plan items snapshot generated titles, results, recommended evidence,
+  and gap links so later release activation cannot rewrite the plan.
 
 Three typed lineage tables are the central cross-workflow lineage:
 `artifact_revision_assessment_sources`,
@@ -917,17 +945,19 @@ The complete schema remains in [src/db/schema.ts](../../src/db/schema.ts).
 
 These points describe the implementation, not desired behavior:
 
-1. **The Gap requirement catalogue is demo-derived.** `guided-v3` contains only
-   four inherited requirements with demo-labelled legal-reference metadata.
+1. **The Gap requirement catalogue is guided rather than exhaustive.**
+   `reliability-v8` contains ten inherited categories; it is not a complete
+   catalogue of every possible NIS2 control or organization-specific measure.
 2. **Embedding disclosure bypasses organization chat policy.** The OpenAI
    embedding path is fixed independently of
    `organization_ai_provider_policies`.
 3. **Organization-document processing is synchronous and has no OCR.** Legal
    corpus processing is worker-based and may use configured Docling fallback;
    Organization Evidence cannot.
-4. **The lifecycle is generate-once.** Although tables and routes retain
-   “reassessment” names, lifecycle guards reject a second generation after the
-   first result exists.
+4. **The lifecycle is generate-once.** Although physical tables and historical
+   audit events retain “reassessment” names, application routes use analysis
+   cycles and lifecycle guards reject a second generation after the first
+   result exists.
 5. **There is no plan reconciliation or replacement.** The historical
    reconciliation tables and application routes have been removed.
 6. **The service permits only one plan ever, not merely one active plan.**

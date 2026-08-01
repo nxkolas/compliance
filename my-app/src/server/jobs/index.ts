@@ -1,4 +1,5 @@
 export {
+  advanceJobProgress,
   enqueueJob,
   failJob,
   finalizeJobCancellation,

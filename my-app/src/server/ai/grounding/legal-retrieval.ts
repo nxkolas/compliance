@@ -19,6 +19,26 @@ import { createDocumentEmbeddingProvider, validateEmbeddings, type DocumentEmbed
 import type { GroundingContextItem } from "./types";
 import { ApiError } from "../../api/errors";
 
+export async function resolvePinnedLegalScope(input: {
+  workflowKind: "compliance" | "gap";
+  workflowReleaseId: string;
+  familyCodes: string[];
+}) {
+  const pins = input.workflowKind === "gap"
+    ? await db.select({ familyId: gapAnalysisReleaseCorpusReleases.familyId, releaseId: gapAnalysisReleaseCorpusReleases.corpusReleaseId })
+        .from(gapAnalysisReleaseCorpusReleases)
+        .innerJoin(legalCorpusFamilies, eq(gapAnalysisReleaseCorpusReleases.familyId, legalCorpusFamilies.id))
+        .where(and(eq(gapAnalysisReleaseCorpusReleases.gapAnalysisReleaseId, input.workflowReleaseId), inArray(legalCorpusFamilies.code, input.familyCodes)))
+    : await db.select({ familyId: complianceCheckReleaseCorpusReleases.familyId, releaseId: complianceCheckReleaseCorpusReleases.corpusReleaseId })
+        .from(complianceCheckReleaseCorpusReleases)
+        .innerJoin(legalCorpusFamilies, eq(complianceCheckReleaseCorpusReleases.familyId, legalCorpusFamilies.id))
+        .where(and(eq(complianceCheckReleaseCorpusReleases.checkReleaseId, input.workflowReleaseId), inArray(legalCorpusFamilies.code, input.familyCodes)));
+  if (pins.length !== new Set(input.familyCodes).size) {
+    throw new ApiError(409, "Workflow release has incomplete corpus pins", undefined, "CORPUS_PINS_INCOMPLETE");
+  }
+  return pins;
+}
+
 export async function retrievePinnedLegalContext(
   input: {
     workflowKind: "compliance" | "gap";
@@ -33,23 +53,18 @@ export async function retrievePinnedLegalContext(
     preferredMappedLegalProvisionIds?: string[];
     preferredMappedLegalProvisionKeys?: string[];
     tierLimits?: Partial<Record<"primary_authority" | "official_guidance" | "curated_secondary", number>>;
+    pinnedReleases?: Array<{ familyId: string; releaseId: string }>;
   },
-  dependencies: { embeddingProvider?: DocumentEmbeddingProvider } = {},
+  dependencies: {
+    embeddingProvider?: DocumentEmbeddingProvider;
+    queryEmbedding?: number[];
+  } = {},
 ): Promise<GroundingContextItem[]> {
-  const pins = input.workflowKind === "gap"
-    ? await db.select({ familyId: gapAnalysisReleaseCorpusReleases.familyId, releaseId: gapAnalysisReleaseCorpusReleases.corpusReleaseId })
-        .from(gapAnalysisReleaseCorpusReleases)
-        .innerJoin(legalCorpusFamilies, eq(gapAnalysisReleaseCorpusReleases.familyId, legalCorpusFamilies.id))
-        .where(and(eq(gapAnalysisReleaseCorpusReleases.gapAnalysisReleaseId, input.workflowReleaseId), inArray(legalCorpusFamilies.code, input.familyCodes)))
-    : await db.select({ familyId: complianceCheckReleaseCorpusReleases.familyId, releaseId: complianceCheckReleaseCorpusReleases.corpusReleaseId })
-        .from(complianceCheckReleaseCorpusReleases)
-        .innerJoin(legalCorpusFamilies, eq(complianceCheckReleaseCorpusReleases.familyId, legalCorpusFamilies.id))
-        .where(and(eq(complianceCheckReleaseCorpusReleases.checkReleaseId, input.workflowReleaseId), inArray(legalCorpusFamilies.code, input.familyCodes)));
-  if (pins.length !== new Set(input.familyCodes).size) {
-    throw new ApiError(409, "Workflow release has incomplete corpus pins", undefined, "CORPUS_PINS_INCOMPLETE");
-  }
+  const pins = input.pinnedReleases ?? await resolvePinnedLegalScope(input);
   const provider = dependencies.embeddingProvider ?? createDocumentEmbeddingProvider();
-  const [queryEmbedding] = await provider.embed([input.query], "query");
+  const queryEmbedding = dependencies.queryEmbedding ??
+    (await provider.embed([input.query], "query"))[0];
+  if (!queryEmbedding) throw new Error("Query embedding is missing");
   validateEmbeddings([queryEmbedding], 1, provider.dimensions);
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
   const lexical = sql<number>`coalesce(ts_rank_cd(${legalSourceChunks.searchVector}, websearch_to_tsquery('simple', ${input.query})), 0)`;

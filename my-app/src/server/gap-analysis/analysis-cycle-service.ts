@@ -25,15 +25,15 @@ import {
 } from "../organizations/service";
 import { generateGapAnalysis } from "./generation-service";
 import { loadGapAnalysisRelease } from "./release-loader";
-import { buildReassessmentEvidenceSelection } from "./reassessment-selection";
+import { buildAnalysisCycleEvidenceSelection } from "./analysis-cycle-selection";
 import { gapGenerationJobKind, toJobDto } from "@/src/server/jobs";
-import { retryableGapReassessmentStatuses } from "@/src/contracts/gap-analysis/generation";
+import { retryableGapAnalysisCycleStatuses } from "@/src/contracts/gap-analysis/generation";
 import type { LoadedGapRelease } from "./release-loader";
 import { assertGapInputsMutable } from "./lifecycle-guards";
 import { buildGapGenerationEnqueueFingerprint } from "./generation-identity";
 import { resolveGapGenerationPrerequisites } from "./applicability-eligibility";
 
-export async function prepareGapReassessment(input: {
+export async function prepareGapAnalysisCycle(input: {
   userId: string;
   organizationId: string;
   assessmentId: string;
@@ -78,14 +78,14 @@ export async function prepareGapReassessment(input: {
     },
   });
   if (existing) {
-    await updateGapReassessmentEvidence({
+    await replaceGapAnalysisEvidence({
       userId: input.userId,
       organizationId: input.organizationId,
       draftId: existing.id,
       expectedLockVersion: existing.lockVersion,
       selectedDocumentIds: input.selectedDocumentIds,
     });
-    return getGapReassessmentDraft({
+    return getGapAnalysisCycle({
       userId: input.userId,
       organizationId: input.organizationId,
       draftId: existing.id,
@@ -104,7 +104,7 @@ export async function prepareGapReassessment(input: {
   if (selection.blocked.length) {
     throw new ApiError(
       409,
-      "Current versions of all selected evidence must be indexed before reassessment",
+      "Current versions of all selected evidence must be indexed before the analysis cycle",
       { documentIds: selection.blocked },
       "GAP_DOCUMENT_NOT_READY",
     );
@@ -201,7 +201,7 @@ export async function prepareGapReassessment(input: {
       "GAP_DRAFT_CHANGED",
     );
   }
-  return getGapReassessmentDraft({
+  return getGapAnalysisCycle({
     userId: input.userId,
     organizationId: input.organizationId,
     draftId: draft.id,
@@ -209,7 +209,7 @@ export async function prepareGapReassessment(input: {
   });
 }
 
-export async function updateGapReassessmentEvidence(input: {
+export async function replaceGapAnalysisEvidence(input: {
   userId: string;
   organizationId: string;
   draftId: string;
@@ -357,22 +357,22 @@ export async function updateGapReassessmentEvidence(input: {
   return updated;
 }
 
-type GapReassessmentDraftLookup = {
+type GapAnalysisCycleLookup = {
   organizationId: string;
   draftId?: string;
   assessmentId?: string;
 };
 
-export type GapReassessmentDraftReadInput = GapReassessmentDraftLookup & {
+export type GapAnalysisCycleReadInput = GapAnalysisCycleLookup & {
   locale: Locale;
   release?: LoadedGapRelease;
 };
 
-type AuthorizedGapReassessmentDraftReadInput = GapReassessmentDraftReadInput & {
+type AuthorizedGapAnalysisCycleReadInput = GapAnalysisCycleReadInput & {
   userId: string;
 };
 
-export function createGapReassessmentDraftReader<
+export function createGapAnalysisCycleReader<
   TDraft extends {
     id: string;
     assessmentId: string;
@@ -401,7 +401,7 @@ export function createGapReassessmentDraftReader<
     organizationId: string;
   }) => Promise<void>;
   findDraft: (
-    input: GapReassessmentDraftLookup,
+    input: GapAnalysisCycleLookup,
   ) => Promise<TDraft | null | undefined>;
   loadSelected: (draftId: string) => Promise<TSelected[]>;
   loadAcceptedEvidence: (
@@ -418,7 +418,7 @@ export function createGapReassessmentDraftReader<
     revisionId: string | null,
   ) => Promise<TApplicabilityRevision>;
 }) {
-  const getPreauthorized = async (input: GapReassessmentDraftReadInput) => {
+  const getPreauthorized = async (input: GapAnalysisCycleReadInput) => {
     const draft = await dependencies.findDraft(input);
     if (!draft) return null;
     const release =
@@ -487,14 +487,14 @@ export function createGapReassessmentDraftReader<
 
   return {
     getPreauthorized,
-    async getAuthorized(input: AuthorizedGapReassessmentDraftReadInput) {
+    async getAuthorized(input: AuthorizedGapAnalysisCycleReadInput) {
       await dependencies.authorize(input);
       return getPreauthorized(input);
     },
   };
 }
 
-export async function getGapReassessmentDraft(input: {
+export async function getGapAnalysisCycle(input: {
   userId: string;
   organizationId: string;
   draftId?: string;
@@ -502,17 +502,17 @@ export async function getGapReassessmentDraft(input: {
   locale: Locale;
 }) {
   await assertCanAccessOrganization(input.userId, input.organizationId);
-  return readGapReassessmentDraftSnapshotPreauthorized(input);
+  return readGapAnalysisCycleSnapshotPreauthorized(input);
 }
 
-export async function getGapReassessmentDraftPreauthorized(
-  input: GapReassessmentDraftReadInput,
+export async function getGapAnalysisCyclePreauthorized(
+  input: GapAnalysisCycleReadInput,
 ) {
-  return readGapReassessmentDraftSnapshotPreauthorized(input);
+  return readGapAnalysisCycleSnapshotPreauthorized(input);
 }
 
-async function readGapReassessmentDraftSnapshotPreauthorized(
-  input: GapReassessmentDraftReadInput,
+async function readGapAnalysisCycleSnapshotPreauthorized(
+  input: GapAnalysisCycleReadInput,
 ) {
   const baseRevision = alias(
     generatedArtifactRevisions,
@@ -676,7 +676,7 @@ async function readGapReassessmentDraftSnapshotPreauthorized(
   };
 }
 
-export async function generateGapReassessment(input: {
+export async function enqueueGapAnalysisGeneration(input: {
   userId: string;
   organizationId: string;
   draftId: string;
@@ -688,7 +688,7 @@ export async function generateGapReassessment(input: {
   return enqueueDraftGeneration({ ...input, operation: "generate" });
 }
 
-export async function retryGapReassessment(input: {
+export async function retryGapAnalysisGeneration(input: {
   userId: string;
   organizationId: string;
   draftId: string;
@@ -737,13 +737,13 @@ async function enqueueDraftGeneration(input: {
         ) ?? operators.sql`true`,
     },
   });
-  if (!candidate) throw new ApiError(404, "Reassessment draft not found");
+  if (!candidate) throw new ApiError(404, "Analysis cycle not found");
   const outputLocale =
     input.operation === "generate" ? input.locale : candidate.outputLocale;
   if (outputLocale !== "de" && outputLocale !== "en") {
     throw new ApiError(
       409,
-      "The reassessment has no valid pinned result language",
+      "The analysis cycle has no valid pinned result language",
       undefined,
       "GAP_OUTPUT_LOCALE_INVALID",
     );
@@ -969,7 +969,7 @@ async function enqueueDraftGeneration(input: {
           input.operation === "generate"
             ? eq(gapReassessmentDrafts.status, "open")
             : inArray(gapReassessmentDrafts.status, [
-                ...retryableGapReassessmentStatuses,
+                ...retryableGapAnalysisCycleStatuses,
               ]),
           ...(input.operation === "generate" && input.expectedLockVersion
             ? [eq(gapReassessmentDrafts.lockVersion, input.expectedLockVersion)]
@@ -978,7 +978,7 @@ async function enqueueDraftGeneration(input: {
       )
       .returning();
     if (!locked)
-      throw new ApiError(409, "Reassessment draft changed before generation");
+      throw new ApiError(409, "Analysis cycle changed before generation");
     await tx
       .update(gapQuestionnaireDrafts)
       .set({
@@ -1105,7 +1105,7 @@ async function lockAssessmentGenerationSlot(
     },
   });
   if (competingDraft) {
-    throw new ApiError(409, "Another reassessment generation is still running");
+    throw new ApiError(409, "Another analysis cycle generation is still running");
   }
   const artifact = await tx.query.generatedArtifacts.findFirst({
     columns: {
@@ -1199,6 +1199,7 @@ async function runLockedDraft(
   input: {
     userId: string;
     organizationId: string;
+    workerId?: string;
     abortSignal?: AbortSignal;
   },
   retryNonce?: string,
@@ -1208,7 +1209,7 @@ async function runLockedDraft(
   if (draft.outputLocale !== "de" && draft.outputLocale !== "en") {
     throw new ApiError(
       409,
-      "The reassessment has no valid pinned result language",
+      "The analysis cycle has no valid pinned result language",
       undefined,
       "GAP_OUTPUT_LOCALE_INVALID",
     );
@@ -1240,6 +1241,7 @@ async function runLockedDraft(
       locale: draft.outputLocale,
       retryNonce,
       jobId,
+      workerId: input.workerId,
       asOfDate: draft.lockedAt?.toISOString().slice(0, 10),
       abortSignal: input.abortSignal,
     });
@@ -1357,6 +1359,7 @@ export async function executeGapGenerationJob(input: {
   draftId: string;
   userId: string;
   organizationId: string;
+  workerId: string;
   locale: Locale;
   retryNonce?: string;
   abortSignal?: AbortSignal;
@@ -1413,7 +1416,7 @@ export async function executeGapGenerationJob(input: {
   if (draft.outputLocale !== input.locale) {
     throw new ApiError(
       409,
-      "The generation job locale conflicts with the locked reassessment",
+      "The generation job locale conflicts with the locked analysis cycle",
       undefined,
       "GAP_OUTPUT_LOCALE_CONFLICT",
     );
@@ -1459,7 +1462,7 @@ async function loadPreparationContext(
     },
   });
   if (!assessment?.gapAnalysisReleaseId || !assessment.currentRevisionId) {
-    throw new ApiError(409, "Save the gap questionnaire before reassessment");
+    throw new ApiError(409, "Save the gap questionnaire before preparing an analysis cycle");
   }
   const artifact = await db.query.generatedArtifacts.findFirst({
     columns: {
@@ -1616,7 +1619,7 @@ async function resolveEvidenceSelection(input: {
     const versionId = requestedDocuments.get(documentId)?.currentVersionId;
     return versionId ? [versionId] : [];
   });
-  const result = buildReassessmentEvidenceSelection({
+  const result = buildAnalysisCycleEvidenceSelection({
     accepted: input.accepted,
     candidates,
     explicitAdditions: explicitVersionIds,

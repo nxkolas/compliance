@@ -1,7 +1,36 @@
 # Gap Analysis Cycle, Performance, Progress, and Async Revisions
 
-Status: proposed incremental implementation plan; based on the gap-analysis
-architecture review completed on 2026-08-01.
+Status: completed on 2026-08-02; based on the gap-analysis architecture review
+completed on 2026-08-01.
+
+## Completion record
+
+The implementation delivered the analysis-cycle domain and route vocabulary,
+monotonic job phase/unit progress, asynchronous correction and guidance jobs,
+focused Results/Inputs/History reads, questionnaire save completion, shared
+polling, concurrent legal/organization retrieval, batched initial Gap
+embeddings, and the process-local shared chat-provider limiter. Existing
+`gap_reassessment_*` tables and audit event names remain for compatibility.
+
+The additive database changes were applied with Drizzle Kit `push`, following
+the repository workflow; no migration workflow was introduced. Static
+qualification finished with lint, TypeScript, and i18n green, 749 tests passed,
+and 6 skipped. Database integrity checks and the authenticated Gap benchmark
+also passed; the latter recorded a 305.5 ms warm p50 with 12 SQL calls against
+the 2480 ms reference.
+
+The default category and provider concurrency remain 3. One exploratory paid
+OpenAI run at category/provider concurrency 5/3 completed all five English and
+five German workflows and all twenty generation jobs without provider failure
+or repair. It was not a matched 3/4/5 A/B benchmark, and one English Action Plan
+result failed the offline two-sentence quality limit. The run therefore
+qualifies functionality but does not support raising the default. See the
+[qualification record](../../qa/gap-analysis-cycle-progress-and-async-revisions-2026-08-01.md)
+and [bilingual manifest](../../qa/gap-action-plan-manual-evaluation-concurrency5-openai-bilingual-once-2026-08-01/manifest.json).
+
+The phases, rollout sequence, and acceptance matrix below are retained as the
+historical implementation plan. Any future concurrency-default change still
+requires the matched benchmark described there.
 
 ## Outcome
 

@@ -6,8 +6,8 @@ import {
   getOrganizationDocumentLibraryPreauthorized,
 } from "@/src/server/documents";
 import {
-  getGapReassessmentDraftPreauthorized,
-} from "./reassessment-service";
+  getGapAnalysisCyclePreauthorized,
+} from "./analysis-cycle-service";
 import {
   getGapRevisionStalenessBatchPreauthorized,
 } from "./staleness";
@@ -378,13 +378,13 @@ export async function loadFindingsForRevisionIds(revisionIds: string[]) {
   return [...findings.values()];
 }
 
-export async function loadReassessment(
+export async function loadAnalysisCycle(
   input: PageInput,
   assessment: typeof assessments.$inferSelect | null,
   release: LoadedGapRelease,
 ) {
   return assessment
-    ? getGapReassessmentDraftPreauthorized({
+    ? getGapAnalysisCyclePreauthorized({
         organizationId: input.organizationId,
         assessmentId: assessment.id,
         locale: input.locale,
@@ -434,7 +434,7 @@ export const postgresGapPageData = {
   loadWorkflowSnapshot,
   loadAnswers,
   loadFindingsBatch,
-  loadReassessment,
+  loadAnalysisCycle,
   loadStalenessBatch: getGapRevisionStalenessBatchPreauthorized,
   loadRun,
   loadGapPrerequisiteState,

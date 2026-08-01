@@ -3852,6 +3852,9 @@ export const backgroundJobs = pgTable.withRLS(
       .default(sql`'{}'::jsonb`)
       .notNull(),
     progress: integer("progress").default(0).notNull(),
+    progressPhase: text("progress_phase"),
+    completedUnits: integer("completed_units"),
+    totalUnits: integer("total_units"),
     attemptCount: integer("attempt_count").default(0).notNull(),
     maxAttempts: integer("max_attempts").default(3).notNull(),
     cancellable: boolean("cancellable").default(true).notNull(),
@@ -3907,9 +3910,22 @@ export const backgroundJobs = pgTable.withRLS(
       .where(
         sql`${table.kind} in ('action-plan-generation', 'action-plan-generation-v2', 'action-plan-generation-v3', 'action-plan-generation-v4', 'action-plan-generation-v5', 'action-plan-generation-v6') and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
       ),
+    uniqueIndex("background_jobs_gap_revision_mutation_active_unique")
+      .on(table.organizationId, sql`(${table.payload} ->> 'sourceRevisionId')`)
+      .where(
+        sql`${table.kind} = 'gap-revision-mutation-v1' and ${table.state} in ('queued', 'running', 'cancellation_requested')`,
+      ),
     check(
       "background_jobs_progress_check",
       sql`${table.progress} between 0 and 100`,
+    ),
+    check(
+      "background_jobs_progress_phase_check",
+      sql`${table.progressPhase} is null or ${table.progressPhase} in ('preparing_evidence', 'generating_categories', 'validating', 'saving_result', 'completed')`,
+    ),
+    check(
+      "background_jobs_progress_units_check",
+      sql`(${table.completedUnits} is null or ${table.completedUnits} >= 0) and (${table.totalUnits} is null or ${table.totalUnits} >= 0) and (${table.completedUnits} is null or ${table.totalUnits} is null or ${table.completedUnits} <= ${table.totalUnits})`,
     ),
     check(
       "background_jobs_attempts_check",

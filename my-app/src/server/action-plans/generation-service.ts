@@ -118,6 +118,7 @@ import {
   coordinateCategoryGeneration,
   safeGenerationIssues,
 } from "../ai/generation";
+import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
 
 const ACTIVE_JOB_STATES = [
   "queued",
@@ -1049,7 +1050,7 @@ async function generateActionPlanCategoriesVersioned(
     ValidatedActionPlanContent["categories"][number]
   >({
     signal: input.input.abortSignal ?? new AbortController().signal,
-    concurrency: actionPlanGenerationConcurrency(),
+    concurrency: configuredCategoryConcurrency(),
     tasks: input.categoryInputs.map((category) => ({
       categoryCode: category.requirement.code,
       taskId: contentHash({
@@ -1440,11 +1441,6 @@ function actionPlanV2Policy(
       }),
     ),
   };
-}
-
-function actionPlanGenerationConcurrency() {
-  const value = Number(process.env.AI_CATEGORY_CONCURRENCY ?? 3);
-  return Number.isFinite(value) ? Math.max(1, Math.min(3, value)) : 3;
 }
 
 function buildPolicies(

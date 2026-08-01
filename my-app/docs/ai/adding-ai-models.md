@@ -145,6 +145,34 @@ AI_DEFAULT_PROVIDER=new_provider
 
 `getDefaultAiProviderMode()` falls back to `openai` if the value is missing or not listed in `aiProviderModes`.
 
+## Generation Concurrency And Batching
+
+These optional environment values tune Gap and Action Plan generation:
+
+```env
+AI_CATEGORY_CONCURRENCY=3
+AI_PROVIDER_MAX_CONCURRENCY=3
+AI_EMBEDDING_BATCH_SIZE=64
+```
+
+- `AI_CATEGORY_CONCURRENCY` accepts 1-5 and controls how many category workers
+  can prepare and generate concurrently inside one job.
+- `AI_PROVIDER_MAX_CONCURRENCY` accepts 1-100 and limits simultaneous chat
+  provider calls across Gap, Action Plan, repair, correction, and guidance work
+  in one Node.js process. It does not limit embeddings and does not coordinate
+  permits between application instances.
+- `AI_EMBEDDING_BATCH_SIZE` accepts 1-512 and controls how many initial Gap
+  retrieval queries are sent in one embedding request. The default 64 fits all
+  legal and organization queries for a normal ten-category Gap run. Repair
+  queries are embedded separately, and Action Plan retrieval is not part of
+  this Gap batch.
+
+The defaults intentionally remain 3/3. Category generation already allowed
+three concurrent calls before the shared limiter was added. Setting category
+workers to 5 while leaving the provider limit at 3 can overlap preparation,
+but still allows only three chat calls at once and does not itself prove a
+provider-bound speedup.
+
 ## Embedding Dimension Rule
 
 All rows in `ai_document_chunks.embedding` share one pgvector dimension:

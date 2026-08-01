@@ -3,6 +3,23 @@
 Status: `reliability-v8` is active with the immutable Gap v12
 contradiction-only review policy.
 
+## Analysis cycle and browser reads
+
+The user-facing and application-domain name for the persisted generation input
+bundle is **analysis cycle**. An analysis cycle pins one submitted questionnaire
+revision, the selected current document versions, the Gap release, output
+locale, generation job, and generated Gap revision. The existing
+`gap_reassessment_*` tables and historical `gap_reassessment.*` audit events
+retain their names for persistence compatibility; they are projected as an
+analysis cycle at the TypeScript, HTTP, client, and UI boundaries.
+
+The initial post-generation page reads the Results projection. Inputs and
+History have separate authorized read endpoints and load only when their tabs
+are opened. This keeps their heavier provenance and audit projections out of
+the normal Results response. The local benchmark recorded a 305.5 ms warm p50
+for the Gap page with 12 SQL calls, compared with the benchmark's 2.48 s
+reference.
+
 ## Domain model
 
 Each Gap revision contains one deterministic category finding per requirement.
@@ -44,8 +61,53 @@ irrelevant, insufficient, or uncited Organization Evidence is represented by
 the normal document/evidence indicators and does not create a review notice.
 Before a plan exists, an optional structured reviewer correction regenerates
 the affected category and copies unchanged category children into a new
-immutable revision. Queued or running Action Plan generation reserves the Gap
-revision; an active plan locks it permanently.
+immutable revision. Correction and guidance-regeneration commands return
+`202 Accepted` with a cancellable `gap-revision-mutation-v1` job; the browser
+uses the shared job poller instead of holding the mutation request open.
+Queued or running Action Plan generation reserves the Gap revision; an active
+plan locks it permanently.
+
+Gap jobs expose monotonic phase and unit progress through `/api/jobs/{jobId}`:
+evidence preparation, generated categories, validation, persistence, and
+completion. Questionnaire answer saves separately report locally answered and
+server-confirmed required-question completion.
+
+## Generation performance and provider concurrency
+
+Full Gap generation still performs one chat generation per category. The
+performance work changes preparation and scheduling rather than merging prompt
+contracts:
+
+- provider policy and corpus-release pins are resolved once per Gap batch;
+- initial legal and organization retrieval searches run concurrently;
+- initial category retrieval queries are embedded in batches grouped by the
+  configured embedding space; and
+- one process-wide provider limiter is shared by Gap, Action Plan, repair,
+  correction, and guidance calls.
+
+With the default embedding batch size of 64, a normal ten-category initial Gap
+run uses one embedding API request containing ten legal queries, or twenty
+legal and organization-document queries when documents are selected. Before
+batching, those paths normally used ten or twenty embedding API requests.
+Repairs embed their changed queries separately. Action Plan retrieval is not
+part of this Gap embedding batch.
+
+`AI_CATEGORY_CONCURRENCY` accepts 1-5 and controls category workers.
+`AI_PROVIDER_MAX_CONCURRENCY` accepts 1-100 and limits simultaneous chat calls
+per Node.js process. Both default to 3. The application already ran three
+categories concurrently before this work. Therefore category concurrency 5
+with provider concurrency 3 overlaps more preparation but still permits only
+three simultaneous OpenAI chat calls and is not expected to materially reduce
+provider-bound latency.
+
+The 2026-08-01 bilingual OpenAI run at category/provider concurrency 5/3
+completed all ten workflows and all 154 recorded provider attempts without a
+provider failure or repair. It was not an A/B comparison and does not justify
+raising either default. One English Action Plan result contained three
+sentences where the offline quality limit permits two, so automated workflow
+qualification passed while the offline content gate retained one violation.
+The limiter is process-wide, not deployment-wide across multiple application
+instances.
 
 ## Contract boundary
 

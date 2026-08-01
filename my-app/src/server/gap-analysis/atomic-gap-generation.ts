@@ -1,5 +1,12 @@
-import { runGroundedOperation } from "../ai/grounding/gateway";
-import type { GroundingContextItem } from "../ai/grounding/types";
+import {
+  prepareGroundingOperation,
+  runGroundedOperation,
+} from "../ai/grounding/gateway";
+import {
+  resolveGroundingRetrievalQuery,
+  type GroundingContextItem,
+  type QueryUnit,
+} from "../ai/grounding/types";
 import type { Locale } from "@/lib/i18n-config";
 import {
   buildGapModelResponseSchemaV7,
@@ -92,6 +99,12 @@ import {
 import { contentHash } from "../compliance";
 import { auditEvents } from "@/src/db/schema";
 import { db } from "@/src/db";
+import {
+  createDocumentEmbeddingProvider,
+  validateEmbeddings,
+} from "@/src/server/documents";
+import { emitGenerationMetric } from "../ai/generation/metrics";
+import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
 
 export type AtomicGapRequirementInput = {
   requirement: LoadedGapRelease["requirements"][number];
@@ -129,6 +142,7 @@ export async function generateAtomicGapBatch(input: {
   jobId?: string;
   runOperationKind?: "gap_analysis" | "gap_guidance_regeneration";
   abortSignal?: AbortSignal;
+  onAcceptedCategory?: (categoryCode: string) => Promise<void> | void;
 }): Promise<{
   runId: string;
   outputLocale: Locale;
@@ -280,14 +294,18 @@ export async function generateAtomicGapBatch(input: {
       input.outputLocale,
     );
   }
+  const findings = normalizeGroundedGapModelResponseV7({
+    value: grounded.output,
+    policies: responsePolicies,
+  });
+  for (const finding of findings) {
+    await input.onAcceptedCategory?.(finding.requirementCode);
+  }
   return {
     runId: grounded.runId,
     outputLocale: input.outputLocale,
     context: grounded.context,
-    findings: normalizeGroundedGapModelResponseV7({
-      value: grounded.output,
-      policies: responsePolicies,
-    }),
+    findings,
   };
 }
 
@@ -304,13 +322,29 @@ async function generateAtomicGapCategoriesVersioned(
   const signal = input.abortSignal ?? new AbortController().signal;
   const contextByCategory = new Map<string, GroundingContextItem[]>();
   const runIdsByCategory: Record<string, string> = {};
+  const preparedGrounding = await prepareGroundingOperation({
+    operation: "gap_analysis",
+    organizationId: input.organizationId,
+    workflowReleaseId: input.release.id,
+  });
+  const initialQueryUnits = new Map(
+    input.requirements.map((item) => [
+      item.requirement.code,
+      gapV8QueryUnit(input, item, "initial"),
+    ]),
+  );
+  const preparedEmbeddings = await prepareQueryEmbeddings(
+    [...initialQueryUnits.values()],
+    input.jobId,
+    input.selectedDocumentVersionIds.length > 0,
+  );
   const coordinated = await coordinateCategoryGeneration<
     AtomicGapRequirementInput,
     GapCategoryResponseV8,
     ValidatedCategoryGapResult
   >({
     signal,
-    concurrency: generationConcurrency(),
+    concurrency: configuredCategoryConcurrency(),
     tasks: input.requirements.map((item) => ({
       categoryCode: item.requirement.code,
       taskId: contentHash({
@@ -341,7 +375,14 @@ async function generateAtomicGapCategoriesVersioned(
     }) {
       const item = task.input;
       let responsePolicy: GapResponsePolicyV8 | GapResponsePolicyV9 | undefined;
-      const queryUnit = gapV8QueryUnit(input, item, phase, rejectedCandidate);
+      const queryUnit = phase === "initial"
+        ? initialQueryUnits.get(item.requirement.code)!
+        : gapV8QueryUnit(input, item, phase, rejectedCandidate);
+      const legalQuery = resolveGroundingRetrievalQuery(queryUnit, "legal");
+      const organizationQuery = resolveGroundingRetrievalQuery(
+        queryUnit,
+        "organization_document",
+      );
       const grounded = await runGroundedOperation<GapCategoryResponseV8>({
         operation: "gap_analysis",
         runOperationKind: input.runOperationKind,
@@ -443,6 +484,13 @@ async function generateAtomicGapCategoriesVersioned(
         jobId: input.jobId,
         abortSignal: taskSignal,
         promptMetadata: gapVersionedMetadata(contractVersion),
+        precomputedQueryEmbeddings: phase === "initial"
+          ? {
+              legal: preparedEmbeddings.get(legalQuery),
+              organizationDocument: preparedEmbeddings.get(organizationQuery),
+            }
+          : undefined,
+        preparedGrounding,
       });
       contextByCategory.set(item.requirement.code, grounded.context);
       runIdsByCategory[item.requirement.code] = grounded.runId;
@@ -538,6 +586,9 @@ async function generateAtomicGapCategoriesVersioned(
         metadata: diagnostic,
       });
     },
+    async onAcceptedCategory(_output, task) {
+      await input.onAcceptedCategory?.(task.categoryCode);
+    },
   });
   const contexts = [...contextByCategory.values()].flat();
   const firstRunId = input.requirements
@@ -551,6 +602,47 @@ async function generateAtomicGapCategoriesVersioned(
     findings: coordinated.categories,
     runIdsByCategory,
   };
+}
+
+async function prepareQueryEmbeddings(
+  queryUnits: QueryUnit[],
+  jobId?: string,
+  includeOrganizationDocuments = true,
+) {
+  const queries = [...new Set(queryUnits.flatMap((unit) => [
+    resolveGroundingRetrievalQuery(unit, "legal"),
+    ...(includeOrganizationDocuments
+      ? [resolveGroundingRetrievalQuery(unit, "organization_document")]
+      : []),
+  ]))];
+  const provider = createDocumentEmbeddingProvider();
+  const vectors = new Map<string, number[]>();
+  const batchSize = embeddingBatchSize();
+  let callCount = 0;
+  for (let offset = 0; offset < queries.length; offset += batchSize) {
+    const batch = queries.slice(offset, offset + batchSize);
+    const startedAt = Date.now();
+    const embeddings = await provider.embed(batch, "query");
+    validateEmbeddings(embeddings, batch.length, provider.dimensions);
+    callCount += 1;
+    emitGenerationMetric({
+      name: "embedding_call_ms",
+      value: Date.now() - startedAt,
+      jobId,
+      batchSize: batch.length,
+      callCount,
+    });
+    batch.forEach((query, index) => vectors.set(query, embeddings[index]!));
+  }
+  return vectors;
+}
+
+function embeddingBatchSize() {
+  const configured = Number(process.env.AI_EMBEDDING_BATCH_SIZE ?? "64");
+  if (!Number.isInteger(configured) || configured < 1 || configured > 512) {
+    throw new Error("AI_EMBEDDING_BATCH_SIZE must be an integer between 1 and 512");
+  }
+  return configured;
 }
 
 function gapV8QueryUnit(
@@ -816,11 +908,6 @@ function gapVersionedMetadata(
     templateHash: GAP_PROMPT_V8_TEMPLATE_HASH,
     responseSchemaVersion: GAP_RESPONSE_SCHEMA_V8_VERSION,
   };
-}
-
-function generationConcurrency() {
-  const value = Number(process.env.AI_CATEGORY_CONCURRENCY ?? 3);
-  return Number.isFinite(value) ? Math.max(1, Math.min(3, value)) : 3;
 }
 
 export function extractAtomicGapGeneratedProse(

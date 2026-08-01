@@ -254,7 +254,7 @@ describe("generated output language indicators", () => {
               versionLabel: "guided-v3",
             },
             documentLibrary: { documents: [] },
-            reassessment: {
+            analysisCycle: {
               draft: {
                 status: "failed",
                 outputLocale: locale,

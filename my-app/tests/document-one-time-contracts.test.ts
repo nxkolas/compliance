@@ -5,8 +5,8 @@ import {
   documentUploadCompletionSchema,
 } from "@/src/contracts/documents";
 import {
-  gapReassessmentEvidenceSchema,
-  gapReassessmentPrepareSchema,
+  gapAnalysisCycleEvidenceSchema,
+  gapAnalysisCyclePrepareSchema,
   gapWorkflowReadSchema,
 } from "@/src/contracts/gap-analysis/generation";
 
@@ -82,13 +82,13 @@ describe("one-time document browser contracts", () => {
 
   it("uses document IDs for Gap Analysis selection", () => {
     expect(
-      gapReassessmentPrepareSchema.parse({
+      gapAnalysisCyclePrepareSchema.parse({
         assessmentId: id,
         selectedDocumentIds: [id],
       }).selectedDocumentIds,
     ).toEqual([id]);
     expect(
-      gapReassessmentEvidenceSchema.safeParse({
+      gapAnalysisCycleEvidenceSchema.safeParse({
         draftId: id,
         expectedLockVersion: 1,
         selectedDocumentVersionIds: [id],
@@ -104,7 +104,7 @@ describe("one-time document browser contracts", () => {
         release: null,
         assessment: null,
         run: null,
-        reassessment: null,
+        analysisCycle: null,
         acceptedRevision: null,
         candidateRevision: null,
         acceptedFindings: [],

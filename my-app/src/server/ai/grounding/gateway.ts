@@ -6,7 +6,10 @@ import { aiProcessingRuns } from "@/src/db/schema";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../../api/errors";
 import { buildGroundedPrompt } from "./context-builder";
-import { retrievePinnedLegalContext } from "./legal-retrieval";
+import {
+  resolvePinnedLegalScope,
+  retrievePinnedLegalContext,
+} from "./legal-retrieval";
 import { retrieveOrganizationContext } from "./organization-retrieval";
 import { resolveGroundingPolicy } from "./policy";
 import { selectGroundedProvider } from "./provider-policy";
@@ -40,6 +43,42 @@ import {
   gapOutputLocaleInstruction,
 } from "@/src/server/gap-analysis";
 import { createAiProcessingRunWithLiveJobGate } from "../generation/job-run-lifecycle";
+import { emitGenerationMetric } from "../generation/metrics";
+import { withProviderPermit } from "./provider-limiter";
+
+export type PreparedGroundingOperation = {
+  policy: Awaited<ReturnType<typeof resolveGroundingPolicy>>;
+  provider: GroundedProvider;
+  pinnedReleases: Array<{ familyId: string; releaseId: string }>;
+};
+
+export async function prepareGroundingOperation(
+  input: {
+    operation: "gap_analysis";
+    organizationId: string;
+    workflowReleaseId: string;
+  },
+  dependencies: {
+    providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
+  } = {},
+): Promise<PreparedGroundingOperation> {
+  const policy = await resolveGroundingPolicy({
+    operation: input.operation,
+    organizationId: input.organizationId,
+  });
+  const provider = selectGroundedProvider({
+    allowedModes: policy.providerPolicy.allowedProviderModes,
+    externalDisclosureAllowed: policy.providerPolicy.externalDisclosureAllowed,
+    providers: dependencies.providers ?? configuredProviders(),
+    preferredMode: process.env.AI_DEFAULT_PROVIDER,
+  });
+  const pinnedReleases = await resolvePinnedLegalScope({
+    workflowKind: policy.workflowKind,
+    workflowReleaseId: input.workflowReleaseId,
+    familyCodes: policy.familyCodes,
+  });
+  return { policy, provider, pinnedReleases };
+}
 
 export async function runGroundedOperation<T>(
   input: {
@@ -70,6 +109,11 @@ export async function runGroundedOperation<T>(
       responseSchemaVersion: string;
     };
     abortSignal?: AbortSignal;
+    precomputedQueryEmbeddings?: {
+      legal?: number[];
+      organizationDocument?: number[];
+    };
+    preparedGrounding?: PreparedGroundingOperation;
   },
   dependencies: {
     providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
@@ -215,20 +259,24 @@ export async function runGroundedOperation<T>(
       { runId: existing.id },
       "GROUNDING_RUN_EXISTS",
     );
-  const policy = await resolveGroundingPolicy({
-    operation: input.operation,
-    organizationId: input.organizationId,
-  });
-  const providers = dependencies.providers ?? configuredProviders();
-  const provider = selectGroundedProvider({
-    allowedModes: policy.providerPolicy.allowedProviderModes,
-    externalDisclosureAllowed: policy.providerPolicy.externalDisclosureAllowed,
-    providers,
-    preferredMode: process.env.AI_DEFAULT_PROVIDER,
+  const prepared = input.preparedGrounding ?? await prepareGroundingOperation(
+    {
+      operation: input.operation,
+      organizationId: input.organizationId,
+      workflowReleaseId: input.workflowReleaseId,
+    },
+    dependencies,
+  );
+  const policy = prepared.policy;
+  const selectedProvider = prepared.provider;
+  const provider = withProviderPermit(selectedProvider, {
+    jobId: input.jobId,
+    categoryCode: input.queryUnits.length === 1 ? input.queryUnits[0]?.id : undefined,
   });
   const retrievedContext = (
     await Promise.all(
       input.queryUnits.map(async (unit) => {
+        const retrievalStartedAt = Date.now();
         const legalRetrievalQuery = resolveGroundingRetrievalQuery(
           unit,
           "legal",
@@ -237,31 +285,70 @@ export async function runGroundedOperation<T>(
           unit,
           "organization_document",
         );
-        const legal = await retrievePinnedLegalContext({
-          workflowKind: policy.workflowKind,
-          workflowReleaseId: input.workflowReleaseId,
-          familyCodes: policy.familyCodes,
-          frameworkCode: policy.frameworkCode,
-          jurisdictionCodes: policy.jurisdictionCodes,
-          asOfDate: input.asOfDate,
-          language: "de",
-          queryUnitId: unit.id,
-          query: legalRetrievalQuery,
-          preferredMappedLegalProvisionIds:
-            unit.preferredMappedLegalProvisionIds,
-          preferredMappedLegalProvisionKeys:
-            unit.preferredMappedLegalProvisionKeys,
-          tierLimits: unit.legalTierLimits,
-        });
-        const organization = input.organizationEvidenceVersionIds.length
-          ? await retrieveOrganizationContext({
-              userId: input.actor.userId,
-              organizationId: input.organizationId,
-              documentVersionIds: input.organizationEvidenceVersionIds,
+        const timed = async <T>(
+          name: "legal_retrieval_ms" | "organization_retrieval_ms",
+          operation: () => Promise<T>,
+        ) => {
+          const startedAt = Date.now();
+          try {
+            return await operation();
+          } finally {
+            emitGenerationMetric({
+              name,
+              value: Date.now() - startedAt,
+              jobId: input.jobId,
+              categoryCode: unit.id,
+            });
+          }
+        };
+        const [legalResult, organizationResult] = await Promise.allSettled([
+          timed("legal_retrieval_ms", () =>
+            retrievePinnedLegalContext({
+              workflowKind: policy.workflowKind,
+              workflowReleaseId: input.workflowReleaseId,
+              familyCodes: policy.familyCodes,
+              frameworkCode: policy.frameworkCode,
+              jurisdictionCodes: policy.jurisdictionCodes,
+              asOfDate: input.asOfDate,
+              language: "de",
               queryUnitId: unit.id,
-              query: organizationRetrievalQuery,
-            })
-          : [];
+              query: legalRetrievalQuery,
+              preferredMappedLegalProvisionIds:
+                unit.preferredMappedLegalProvisionIds,
+              preferredMappedLegalProvisionKeys:
+                unit.preferredMappedLegalProvisionKeys,
+              tierLimits: unit.legalTierLimits,
+              pinnedReleases: prepared.pinnedReleases,
+            }, {
+              queryEmbedding: input.precomputedQueryEmbeddings?.legal,
+            }),
+          ),
+          input.organizationEvidenceVersionIds.length
+            ? timed("organization_retrieval_ms", () =>
+                retrieveOrganizationContext({
+                  userId: input.actor.userId,
+                  organizationId: input.organizationId,
+                  documentVersionIds: input.organizationEvidenceVersionIds,
+                  queryUnitId: unit.id,
+                  query: organizationRetrievalQuery,
+                  queryEmbedding:
+                    input.precomputedQueryEmbeddings?.organizationDocument,
+                }),
+              )
+            : Promise.resolve([] as GroundingContextItem[]),
+        ]);
+        emitGenerationMetric({
+          name: "retrieval_wall_ms",
+          value: Date.now() - retrievalStartedAt,
+          jobId: input.jobId,
+          categoryCode: unit.id,
+        });
+        if (legalResult.status === "rejected") throw legalResult.reason;
+        if (organizationResult.status === "rejected") {
+          throw organizationResult.reason;
+        }
+        const legal = legalResult.value;
+        const organization = organizationResult.value;
         return [...legal, ...organization];
       }),
     )

@@ -42,7 +42,7 @@ export async function createLegalSourceMonitor(input: {
 
 export async function getLegalSourceMonitorCreationResult(actorUserId: string, jobId: string) {
   await requirePlatformCapability(actorUserId, "corpus:read");
-  const job = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, jobId)) ?? operators.sql`true` } });
+  const job = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, progressPhase: true, completedUnits: true, totalUnits: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, jobId)) ?? operators.sql`true` } });
   const payload = job?.payload && typeof job.payload === "object" ? job.payload as Record<string, unknown> : null;
   if (!job || job.kind !== "legal-source-monitor" || typeof payload?.monitorId !== "string") {
     throw new ApiError(409, "Created monitor result is unavailable", undefined, "IDEMPOTENCY_RESULT_UNAVAILABLE");

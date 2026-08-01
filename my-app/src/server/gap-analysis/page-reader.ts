@@ -21,6 +21,7 @@ export type GapPageReadInput = {
   userId: string;
   organizationId: string;
   locale: Locale;
+  view?: "results" | "inputs" | "history";
 };
 
 type GapWorkflowSnapshot<
@@ -44,7 +45,7 @@ export function createGapPageReader<
   TAssessment extends { id: string },
   TRevision extends { id: string },
   TFinding extends { finding: { id: string; requiresReview: boolean } },
-  TReassessment,
+  TAnalysisCycle,
   TStaleness,
   TPlan extends { sourceGapArtifactRevisionId: string | null },
   TRun,
@@ -93,11 +94,11 @@ export function createGapPageReader<
     accepted: TFinding[];
     candidate: TFinding[];
   }>;
-  loadReassessment: (
+  loadAnalysisCycle: (
     input: GapPageReadInput,
     assessment: TAssessment | null,
     release: TRelease,
-  ) => Promise<TReassessment | null>;
+  ) => Promise<TAnalysisCycle | null>;
   loadStalenessBatch: (input: {
     organizationId: string;
     acceptedRevisionId: string | null;
@@ -135,14 +136,14 @@ export function createGapPageReader<
         documentLibraryPromise,
         assessmentPromise,
       ]);
-      const reassessment =
+      const analysisCycle =
         release && assessment
-          ? await dependencies.loadReassessment(input, assessment, release)
+          ? await dependencies.loadAnalysisCycle(input, assessment, release)
           : null;
       return {
         assessmentId: assessment?.id ?? null,
         documentLibrary,
-        reassessment,
+        analysisCycle,
       };
     },
 
@@ -182,7 +183,7 @@ export function createGapPageReader<
           candidateRevision: null,
           candidateFindings: [],
           activePlan: null,
-          reassessment: null,
+          analysisCycle: null,
           prerequisite: {
             satisfied: false as const,
             status: "missing" as const,
@@ -204,7 +205,9 @@ export function createGapPageReader<
           documentLibraryPromise,
           dependencies.loadWorkflowSnapshot(input, release),
           dependencies.loadPrerequisite(input, release),
-          dependencies.loadHistory(input),
+          input.view === "history"
+            ? dependencies.loadHistory(input)
+            : Promise.resolve([]),
         ]);
       const documents = dependencies.getCurrentDocuments(documentLibrary);
       const acceptedRevision = snapshot.acceptedRevision;
@@ -216,7 +219,7 @@ export function createGapPageReader<
       const [
         answers,
         findings,
-        reassessment,
+        analysisCycle,
         staleness,
         run,
         generatedInputs,
@@ -227,7 +230,7 @@ export function createGapPageReader<
             acceptedRevisionId: acceptedRevision?.id ?? null,
             candidateRevisionId: candidateRevision?.id ?? null,
           }),
-          dependencies.loadReassessment(
+          dependencies.loadAnalysisCycle(
             input,
             snapshot.assessment,
             release,
@@ -239,7 +242,7 @@ export function createGapPageReader<
             activeGapReleaseId: release.id,
           }),
           dependencies.loadRun(input, snapshot.runContext),
-          revision
+          revision && input.view === "inputs"
             ? dependencies.loadGeneratedInputs(input, revision, release)
             : Promise.resolve(null),
         ]);
@@ -262,7 +265,7 @@ export function createGapPageReader<
         candidateRevision,
         candidateFindings: findings.candidate,
         activePlan: snapshot.activePlan,
-        reassessment,
+        analysisCycle,
         prerequisite,
         history,
         generatedInputs,
@@ -353,8 +356,8 @@ type ProductionPlan = NonNullable<ProductionSnapshot["activePlan"]>;
 type ProductionFinding = Awaited<
   ReturnType<typeof postgresGapPageData.loadFindingsBatch>
 >["accepted"][number];
-type ProductionReassessment = NonNullable<
-  Awaited<ReturnType<typeof postgresGapPageData.loadReassessment>>
+type ProductionAnalysisCycle = NonNullable<
+  Awaited<ReturnType<typeof postgresGapPageData.loadAnalysisCycle>>
 >;
 type ProductionStaleness = NonNullable<
   Awaited<ReturnType<typeof postgresGapPageData.loadStalenessBatch>>["accepted"]
@@ -379,7 +382,7 @@ export function createDatabaseGapPageReader(
     ProductionAssessment,
     ProductionRevision,
     ProductionFinding,
-    ProductionReassessment,
+    ProductionAnalysisCycle,
     ProductionStaleness,
     ProductionPlan,
     ProductionRun,
@@ -425,7 +428,7 @@ export function createDatabaseGapPageReader(
       }),
     loadAnswers: postgresGapPageData.loadAnswers,
     loadFindingsBatch: postgresGapPageData.loadFindingsBatch,
-    loadReassessment: postgresGapPageData.loadReassessment,
+    loadAnalysisCycle: postgresGapPageData.loadAnalysisCycle,
     loadStalenessBatch: postgresGapPageData.loadStalenessBatch,
     loadRun: postgresGapPageData.loadRun,
     loadGeneratedInputs: (input, revision, release) =>

@@ -16,6 +16,7 @@ export async function handleGapGeneration(
   if (!job.organizationId || !job.requestedByUserId) throw new Error("Gap generation job scope is incomplete");
   return executeGapGenerationJob({
     jobId: job.id,
+    workerId: job.leaseOwner!,
     organizationId: job.organizationId,
     userId: job.requestedByUserId,
     abortSignal,

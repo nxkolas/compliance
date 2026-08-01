@@ -43,6 +43,8 @@ import { deriveAtomicGapTriggerPolicy } from "./trigger-policy";
 import { generateAtomicGapBatch } from "./atomic-gap-generation";
 import type { ValidatedCategoryGapResult } from "./generation-schema-v7";
 import { defaultGapStatementMaximum } from "./generation-schema-v8";
+import { advanceJobProgress } from "../jobs";
+import { emitGenerationMetric } from "../ai/generation/metrics";
 
 export async function generateGapAnalysis(input: {
   userId: string;
@@ -53,10 +55,19 @@ export async function generateGapAnalysis(input: {
   locale: Locale;
   retryNonce?: string;
   jobId?: string;
+  workerId?: string;
   asOfDate?: string;
   abortSignal?: AbortSignal;
 }) {
   await assertCanContributeToOrganization(input.userId, input.organizationId);
+  if (input.jobId && input.workerId) {
+    await advanceJobProgress({
+      jobId: input.jobId,
+      workerId: input.workerId,
+      progress: 1,
+      phase: "preparing_evidence",
+    });
+  }
   const assessment = await db.query.assessments.findFirst({
     columns: {
       id: true,
@@ -487,6 +498,18 @@ async function generateGroundedAtomicGapsV7(
     Parameters<typeof generateGroundedGapResult>[0]["evaluationRows"][number]
   >,
 ) {
+  const totalCategories = input.applicableRequirements.length;
+  let completedCategories = 0;
+  if (input.input.jobId && input.input.workerId) {
+    await advanceJobProgress({
+      jobId: input.input.jobId,
+      workerId: input.input.workerId,
+      progress: 10,
+      phase: "generating_categories",
+      completedUnits: 0,
+      totalUnits: totalCategories,
+    });
+  }
   const requirementPolicies = input.applicableRequirements.map(
     (requirement) => {
       const questions = requirement.questionStableKeys.map((stableKey) => {
@@ -592,7 +615,30 @@ async function generateGroundedAtomicGapsV7(
     asOfDate: input.input.asOfDate,
     jobId: input.input.jobId,
     abortSignal: input.input.abortSignal,
+    onAcceptedCategory: input.input.jobId && input.input.workerId
+      ? async () => {
+          completedCategories += 1;
+          await advanceJobProgress({
+            jobId: input.input.jobId!,
+            workerId: input.input.workerId!,
+            progress: 10 + Math.floor((completedCategories / Math.max(1, totalCategories)) * 79),
+            phase: "generating_categories",
+            completedUnits: completedCategories,
+            totalUnits: totalCategories,
+          });
+        }
+      : undefined,
   });
+  if (input.input.jobId && input.input.workerId) {
+    await advanceJobProgress({
+      jobId: input.input.jobId,
+      workerId: input.input.workerId,
+      progress: 90,
+      phase: "validating",
+      completedUnits: totalCategories,
+      totalUnits: totalCategories,
+    });
+  }
   const citations: SuppliedCitation[] = generated.context.map((item) => ({
     id: item.citationId,
     sourceType:
@@ -711,6 +757,17 @@ async function generateGroundedAtomicGapsV7(
         .status,
     }),
   );
+  if (input.input.jobId && input.input.workerId) {
+    await advanceJobProgress({
+      jobId: input.input.jobId,
+      workerId: input.input.workerId,
+      progress: 95,
+      phase: "saving_result",
+      completedUnits: totalCategories,
+      totalUnits: totalCategories,
+    });
+  }
+  const persistenceStartedAt = Date.now();
   const persisted = await persistGeneratedGapResult({
     runId: generated.runId,
     runIds: generatedRunIds,
@@ -743,6 +800,11 @@ async function generateGroundedAtomicGapsV7(
         evaluation.status,
       ]),
     ),
+  });
+  emitGenerationMetric({
+    name: "persistence_ms",
+    value: Date.now() - persistenceStartedAt,
+    jobId: input.input.jobId,
   });
   return {
     run: persisted.run,
@@ -1194,7 +1256,7 @@ async function persistGeneratedGapResult(input: {
         )
         .returning({ id: gapReassessmentDrafts.id });
       if (!draft)
-        throw new Error("Gap reassessment draft no longer owns persistence");
+        throw new Error("Gap analysis cycle no longer owns persistence");
       events.push({
         organizationId: input.organizationId,
         actorUserId: input.userId,
@@ -1211,6 +1273,8 @@ async function persistGeneratedGapResult(input: {
         .set({
           state: "succeeded",
           progress: 100,
+          progressPhase: "completed",
+          completedUnits: backgroundJobs.totalUnits,
           safeErrorCode: null,
           safeErrorMessage: null,
           leaseOwner: null,

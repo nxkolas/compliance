@@ -1,6 +1,6 @@
 # Database structure
 
-Status: current schema overview as of 2026-07-24.
+Status: current schema overview as of 2026-08-02.
 
 `src/db/schema.ts` is the source of truth for ordinary application tables,
 columns, enums, relations, constraints, indexes, and RLS enablement. Every
@@ -137,12 +137,16 @@ append-only audit trigger.
 Archiving is non-destructive. Historical document versions referenced by an
 artifact or plan remain available for reproducibility.
 
-## Reassessment drafts
+## Analysis cycles
 
 `gap_reassessment_drafts` persists the shared organization workflow for one
 assessment. It pins the base accepted result, latest saved questionnaire
 revision, gap release, AI run, and output candidate. Its states are `open`,
 `locked`, `generated`, `failed`, and `cancelled`.
+
+The physical table and historical audit names retain “reassessment” for
+compatibility. Domain code, HTTP routes, clients, and UI project these rows as
+an **analysis cycle**.
 
 `gap_reassessment_draft_documents` pins the exact selected document versions
 and records whether each was carried from accepted evidence, replaced by a
@@ -150,8 +154,23 @@ current version, or explicitly added. A partial unique index permits at most one
 open draft per assessment. `lock_version` provides optimistic concurrency, and
 generation locks the input before the external model call.
 
-Preparing or editing a draft does not call AI. Failed locked input is retried
+Preparing or editing a cycle does not call AI. Failed locked input is retried
 explicitly; a generated candidate is never mutated by later uploads.
+
+## Background job progress and revision mutations
+
+`background_jobs` stores durable state, leasing, heartbeats, cancellation,
+safe failures, and monotonic numeric progress. The optional
+`progress_phase`, `completed_units`, and `total_units` columns add truthful
+workflow progress without deriving progress from heartbeats. Checks constrain
+phases, non-negative units, completed units not exceeding total units, and
+successful jobs reaching 100 percent.
+
+Corrections and guidance regenerations use cancellable
+`gap-revision-mutation-v1` jobs. A partial unique index on organization and
+source revision prevents two active mutation jobs from racing on the same Gap
+revision. The worker persists the new immutable revision, AI-run outcomes,
+audit records, and terminal job state atomically.
 
 ## AI runs, findings, and review
 
@@ -170,27 +189,27 @@ evidence only from selected immutable document versions and admits no
 organization chunk below the pinned relevance floor.
 
 `gap_findings` is the sole authority for one result per applicable requirement.
-It stores the server-owned guidance mode and hashed guidance basis, structured
-objective/deliverables/acceptance criteria/suggested evidence, and the exact AI
-run that authored the current guidance. Database checks pair status with
-guidance mode and prohibit execution guidance on fulfilled findings.
+It stores status, evidence sufficiency, deterministic severity, the hashed
+statement basis, optional contradiction review notice, and the exact AI run
+that authored the category. `gap_items` stores ordered atomic missing, partial,
+or uncertain statements and links each one to its source assessment answer.
 `gap_finding_evidence` stores exact question or document citations, and
 `gap_finding_review_resolutions` records human resolution history. Invalid or
 incomplete structured output fails closed before a result revision is stored.
 The revision JSON is metadata-only (`gap_revision_metadata_v1`); it cannot
 contain a duplicate `findings` array. Material review corrections regenerate
-the target finding first, then copy normalized rows and evidence into a new
-immutable revision atomically. Unchanged findings preserve their guidance-run
+the target category first, then copy normalized rows and evidence into a new
+immutable revision atomically. Unchanged findings preserve their generation-run
 lineage.
 
 ## Action plans
 
-`action_plans` stores the one fixed plan produced atomically from the approved
-Gap revision.
-`action_plan_items` stores immutable measure type, source recommendation,
-objective, deliverables, acceptance criteria, and suggested-evidence snapshots
-derived from a finding. Only status, responsible user, due date, and separate
-execution notes are mutable.
+`action_plans` stores the one fixed plan produced atomically with approval of
+the source Gap revision and pins the generation job and successful AI run.
+`action_plan_items` stores validated generated title, result, recommended
+evidence, priority, and source finding. `action_plan_item_gaps` records the
+many-to-many linkage between actions and atomic gaps. Status, responsible user,
+due date, and separate execution notes are mutable.
 The current lifecycle creates at most one fixed action plan per organization.
 There is no refresh, replacement, or reconciliation workflow.
 

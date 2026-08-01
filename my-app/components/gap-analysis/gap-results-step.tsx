@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
   ListChecks,
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { gapAnalysisClient } from "@/src/client/gap-analysis";
 import { actionPlansClient } from "@/src/client/action-plans";
-import { jobsClient } from "@/src/client/jobs";
+import { pollJob } from "@/src/client/job-polling";
 import { ApiClientError } from "@/src/client/api-client";
 import { formatDateTime } from "@/lib/i18n/format";
 import {
@@ -58,6 +58,8 @@ export function GapResultsStep({
   const [overrides, setOverrides] = useState<Record<string, GapStatus>>({});
   const [manualOverrides, setManualOverrides] = useState<string[]>([]);
   const [showFinalization, setShowFinalization] = useState(false);
+  const actionPlanPollingRef = useRef<AbortController | null>(null);
+  useEffect(() => () => actionPlanPollingRef.current?.abort(), []);
   const displayed = workflow.findings.map((row) => ({
     ...row,
     finding: {
@@ -83,15 +85,13 @@ export function GapResultsStep({
       });
       setAnnouncement(labels.actionPlanGenerating);
       setShowFinalization(false);
-      let job = started.data.job;
-      while (
-        job.state === "queued" ||
-        job.state === "running" ||
-        job.state === "cancellation_requested"
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
-        job = (await jobsClient.get(job.id)).data.job;
-      }
+      const controller = new AbortController();
+      actionPlanPollingRef.current = controller;
+      const job = await pollJob({
+        jobId: started.data.job.id,
+        signal: controller.signal,
+        finalRefresh: () => undefined,
+      });
       if (job.state !== "succeeded" || !job.result?.actionPlanId) {
         throw new Error(
           job.safeError?.message ?? labels.actionPlanGenerationFailed,
@@ -102,6 +102,7 @@ export function GapResultsStep({
     } catch (error) {
       onError(localizeGapError(error, labels));
     } finally {
+      actionPlanPollingRef.current = null;
       setBusy(null);
     }
   }
@@ -326,6 +327,8 @@ function FindingCard({
   const [resolutionReason, setResolutionReason] = useState("");
   const [regenerationReason, setRegenerationReason] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const mutationPollingRef = useRef<AbortController | null>(null);
+  useEffect(() => () => mutationPollingRef.current?.abort(), []);
   useEffect(() => {
     setStatus(row.finding.status);
     setReason("");
@@ -343,7 +346,7 @@ function FindingCard({
     setFieldError(null);
     onError(null);
     try {
-      await gapAnalysisClient.regenerateGuidance(
+      const started = await gapAnalysisClient.regenerateGuidance(
         organizationId,
         revisionId,
         {
@@ -352,11 +355,22 @@ function FindingCard({
           retryNonce: crypto.randomUUID(),
         },
       );
+      const controller = new AbortController();
+      mutationPollingRef.current = controller;
+      const job = await pollJob({
+        jobId: started.data.job.id,
+        signal: controller.signal,
+        finalRefresh: () => undefined,
+      });
+      if (job.state !== "succeeded") {
+        throw new Error(job.safeError?.message ?? labels.runFailed);
+      }
       setRegenerating(false);
       onSaved(row.finding.status, labels.guidanceRegenerated);
     } catch (error) {
       onError(localizeGapError(error, labels));
     } finally {
+      mutationPollingRef.current = null;
       setBusy(null);
     }
   }
@@ -374,7 +388,7 @@ function FindingCard({
     setFieldError(null);
     onError(null);
     try {
-      await gapAnalysisClient.correctRevision(organizationId, revisionId, {
+      const started = await gapAnalysisClient.correctRevision(organizationId, revisionId, {
         corrections: [
           {
             findingId: row.finding.id,
@@ -386,6 +400,16 @@ function FindingCard({
           },
         ],
       });
+      const controller = new AbortController();
+      mutationPollingRef.current = controller;
+      const job = await pollJob({
+        jobId: started.data.job.id,
+        signal: controller.signal,
+        finalRefresh: () => undefined,
+      });
+      if (job.state !== "succeeded") {
+        throw new Error(job.safeError?.message ?? labels.runFailed);
+      }
       setEditing(false);
       onSaved(status);
     } catch (error) {
@@ -399,6 +423,7 @@ function FindingCard({
         onError(localizeGapError(error, labels));
       }
     } finally {
+      mutationPollingRef.current = null;
       setBusy(null);
     }
   }

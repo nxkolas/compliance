@@ -1,4 +1,4 @@
-export type ReassessmentEvidenceCandidate = {
+export type AnalysisCycleEvidenceCandidate = {
   versionId: string;
   documentId: string;
   currentVersionId: string | null;
@@ -6,15 +6,15 @@ export type ReassessmentEvidenceCandidate = {
   indexed: boolean;
 };
 
-export type ReassessmentEvidenceSelection = {
+export type AnalysisCycleEvidenceSelection = {
   versionId: string;
   documentId: string;
   origin: "approved_carryover" | "version_replacement" | "explicit_addition";
 };
 
-export function buildReassessmentEvidenceSelection(input: {
+export function buildAnalysisCycleEvidenceSelection(input: {
   accepted: Array<{ versionId: string; documentId: string }>;
-  candidates: ReassessmentEvidenceCandidate[];
+  candidates: AnalysisCycleEvidenceCandidate[];
   explicitAdditions: string[];
 }) {
   const candidateByVersion = new Map(
@@ -33,7 +33,7 @@ export function buildReassessmentEvidenceSelection(input: {
   const acceptedByDocument = new Map(
     input.accepted.map((accepted) => [accepted.documentId, accepted]),
   );
-  const selection = new Map<string, ReassessmentEvidenceSelection>();
+  const selection = new Map<string, AnalysisCycleEvidenceSelection>();
   const blocked: string[] = [];
 
   for (const versionId of new Set(input.explicitAdditions)) {

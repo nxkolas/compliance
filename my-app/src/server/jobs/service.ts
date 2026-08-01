@@ -7,7 +7,7 @@ import {
   gapReassessmentDrafts,
   reports,
 } from "@/src/db/schema";
-import type { JobDto } from "@/src/contracts/common/jobs";
+import type { JobDto, JobProgressPhase } from "@/src/contracts/common/jobs";
 import {
   requireOrganizationCapability,
   requirePlatformCapability,
@@ -16,7 +16,7 @@ import {
   organizationCapabilities,
   type OrganizationCapability,
 } from "@/src/server/auth/capabilities";
-import { and, asc, eq, inArray, isNotNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { cancellationTransition, nextFailureState } from "./state-machine";
 import {
@@ -76,6 +76,9 @@ export async function getAuthorizedJob(userId: string, jobId: string) {
       state: true,
       payload: true,
       progress: true,
+      progressPhase: true,
+      completedUnits: true,
+      totalUnits: true,
       attemptCount: true,
       maxAttempts: true,
       cancellable: true,
@@ -111,7 +114,7 @@ export async function getAuthorizedJob(userId: string, jobId: string) {
   const result =
     job.state === "succeeded"
       ? await db.query.backgroundJobResults.findFirst({
-          columns: { actionPlanId: true },
+          columns: { actionPlanId: true, generatedArtifactRevisionId: true },
           where: {
             RAW: (table, operators) =>
               eq(table.jobId, job.id) ?? operators.sql`true`,
@@ -121,6 +124,9 @@ export async function getAuthorizedJob(userId: string, jobId: string) {
   return toJobDto(
     job,
     result?.actionPlanId ? { actionPlanId: result.actionPlanId } : null,
+    result?.generatedArtifactRevisionId && job.organizationId
+      ? `/api/organizations/${job.organizationId}/gap-analysis/revisions/${result.generatedArtifactRevisionId}`
+      : null,
   );
 }
 
@@ -207,7 +213,6 @@ export async function leaseNextJob(input: {
 export async function heartbeatJob(input: {
   jobId: string;
   workerId: string;
-  progress: number;
   leaseSeconds: number;
   now?: Date;
 }) {
@@ -215,7 +220,6 @@ export async function heartbeatJob(input: {
   const [job] = await db
     .update(backgroundJobs)
     .set({
-      progress: Math.max(0, Math.min(100, Math.trunc(input.progress))),
       heartbeatAt: now,
       leaseExpiresAt: new Date(now.getTime() + input.leaseSeconds * 1000),
       updatedAt: now,
@@ -238,6 +242,9 @@ export async function heartbeatJob(input: {
         state: true,
         payload: true,
         progress: true,
+        progressPhase: true,
+        completedUnits: true,
+        totalUnits: true,
         attemptCount: true,
         maxAttempts: true,
         cancellable: true,
@@ -273,6 +280,9 @@ export async function heartbeatJob(input: {
         state: true,
         payload: true,
         progress: true,
+        progressPhase: true,
+        completedUnits: true,
+        totalUnits: true,
         attemptCount: true,
         maxAttempts: true,
         cancellable: true,
@@ -301,6 +311,97 @@ export async function heartbeatJob(input: {
   return job;
 }
 
+const progressPhaseOrder: readonly JobProgressPhase[] = [
+  "preparing_evidence",
+  "generating_categories",
+  "validating",
+  "saving_result",
+  "completed",
+];
+
+export async function advanceJobProgress(input: {
+  jobId: string;
+  workerId: string;
+  progress: number;
+  phase: JobProgressPhase;
+  completedUnits?: number;
+  totalUnits?: number;
+  now?: Date;
+}) {
+  const proposedProgress = Math.max(0, Math.min(99, Math.trunc(input.progress)));
+  const proposedCompleted = input.completedUnits === undefined
+    ? undefined
+    : Math.max(0, Math.trunc(input.completedUnits));
+  const proposedTotal = input.totalUnits === undefined
+    ? undefined
+    : Math.max(0, Math.trunc(input.totalUnits));
+  const now = input.now ?? new Date();
+
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({
+        id: backgroundJobs.id,
+        progressPhase: backgroundJobs.progressPhase,
+        completedUnits: backgroundJobs.completedUnits,
+        totalUnits: backgroundJobs.totalUnits,
+      })
+      .from(backgroundJobs)
+      .where(
+        and(
+          eq(backgroundJobs.id, input.jobId),
+          eq(backgroundJobs.leaseOwner, input.workerId),
+          eq(backgroundJobs.state, "running"),
+        ),
+      )
+      .limit(1)
+      .for("update");
+    if (!current) throw leaseLost();
+    const progressPhase =
+      current.progressPhase &&
+      progressPhaseOrder.indexOf(input.phase) <
+        progressPhaseOrder.indexOf(current.progressPhase as JobProgressPhase)
+        ? (current.progressPhase as JobProgressPhase)
+        : input.phase;
+    if (
+      current.totalUnits !== null &&
+      proposedTotal !== undefined &&
+      current.totalUnits !== proposedTotal
+    ) {
+      throw new ApiError(
+        409,
+        "Job progress total cannot change",
+        undefined,
+        "JOB_PROGRESS_TOTAL_CHANGED",
+      );
+    }
+    const totalUnits = current.totalUnits ?? proposedTotal;
+    if (totalUnits !== null && totalUnits !== undefined && proposedCompleted !== undefined && proposedCompleted > totalUnits) {
+      throw new ApiError(
+        409,
+        "Completed job units exceed the total",
+        undefined,
+        "JOB_PROGRESS_UNITS_INVALID",
+      );
+    }
+    const [updated] = await tx
+      .update(backgroundJobs)
+      .set({
+        progress: sql`greatest(${backgroundJobs.progress}, ${proposedProgress})`,
+        progressPhase,
+        completedUnits:
+          proposedCompleted === undefined
+            ? current.completedUnits
+            : sql`greatest(coalesce(${backgroundJobs.completedUnits}, 0), ${proposedCompleted})`,
+        totalUnits,
+        updatedAt: now,
+      })
+      .where(eq(backgroundJobs.id, current.id))
+      .returning();
+    if (!updated) throw leaseLost();
+    return updated;
+  });
+}
+
 export async function succeedJob(input: {
   jobId: string;
   workerId: string;
@@ -317,6 +418,8 @@ export async function succeedJob(input: {
       .set({
         state: "succeeded",
         progress: 100,
+        progressPhase: "completed",
+        completedUnits: sql`coalesce(${backgroundJobs.totalUnits}, ${backgroundJobs.completedUnits})`,
         safeErrorCode: null,
         safeErrorMessage: null,
         leaseOwner: null,
@@ -438,6 +541,9 @@ export async function requestJobCancellation(userId: string, jobId: string) {
       state: true,
       payload: true,
       progress: true,
+      progressPhase: true,
+      completedUnits: true,
+      totalUnits: true,
       attemptCount: true,
       maxAttempts: true,
       cancellable: true,
@@ -529,6 +635,9 @@ export async function requestJobCancellation(userId: string, jobId: string) {
           state: backgroundJobs.state,
           payload: backgroundJobs.payload,
           progress: backgroundJobs.progress,
+          progressPhase: backgroundJobs.progressPhase,
+          completedUnits: backgroundJobs.completedUnits,
+          totalUnits: backgroundJobs.totalUnits,
           attemptCount: backgroundJobs.attemptCount,
           maxAttempts: backgroundJobs.maxAttempts,
           cancellable: backgroundJobs.cancellable,
@@ -711,15 +820,30 @@ export async function finalizeJobCancellation(jobId: string, workerId: string) {
   return job;
 }
 
+type JobDtoSource = Omit<
+  typeof backgroundJobs.$inferSelect,
+  "progressPhase" | "completedUnits" | "totalUnits"
+> &
+  Partial<
+    Pick<
+      typeof backgroundJobs.$inferSelect,
+      "progressPhase" | "completedUnits" | "totalUnits"
+    >
+  >;
+
 export function toJobDto(
-  job: typeof backgroundJobs.$inferSelect,
+  job: JobDtoSource,
   result: { actionPlanId: string } | null = null,
+  resultLink: string | null = null,
 ): JobDto {
   return {
     id: job.id,
     kind: job.kind,
     state: job.state,
     progress: job.progress,
+    phase: (job.progressPhase ?? null) as JobProgressPhase | null,
+    completedUnits: job.completedUnits ?? null,
+    totalUnits: job.totalUnits ?? null,
     attemptCount: job.attemptCount,
     safeError:
       job.state === "failed" && job.safeErrorCode && job.safeErrorMessage
@@ -732,7 +856,7 @@ export function toJobDto(
     cancellable:
       job.cancellable &&
       !["succeeded", "failed", "cancelled"].includes(job.state),
-    resultLink: null,
+    resultLink,
     result,
   };
 }

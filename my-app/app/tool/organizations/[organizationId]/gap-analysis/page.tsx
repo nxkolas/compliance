@@ -21,12 +21,14 @@ export default async function GapAnalysisPage({
   const dictionary = await getDictionary();
   const locale = await getLocale();
   const { organizationId } = await params;
+  const requested = await searchParams;
+  const requestedView = resolveGapPostGenerationView(requested.view);
   const workflow = await getGapAnalysisWorkflow({
     userId: user.id,
     organizationId,
     locale,
+    view: requestedView,
   });
-  const requested = await searchParams;
   const requestedStep = requested.step;
   const navigation = deriveGapWorkflowNavigation({
     prerequisiteSatisfied: workflow.prerequisite.satisfied,
@@ -37,7 +39,7 @@ export default async function GapAnalysisPage({
     requiredQuestionCount: workflow.answerSummary.filter(
       (answer) => answer.required,
     ).length,
-    hasPreparedInputs: Boolean(workflow.reassessment),
+    hasPreparedInputs: Boolean(workflow.analysisCycle),
     hasResult: Boolean(workflow.revision),
     requestedStep,
   });
@@ -51,9 +53,9 @@ export default async function GapAnalysisPage({
       <GapAnalysisWorkflow
         key={[
           workflow.assessment?.currentRevisionId ?? "no-assessment",
-          workflow.reassessment?.draft.id ?? "no-draft",
-          workflow.reassessment?.draft.lockVersion ?? 0,
-          workflow.reassessment?.draft.status ?? "no-status",
+          workflow.analysisCycle?.draft.id ?? "no-draft",
+          workflow.analysisCycle?.draft.lockVersion ?? 0,
+          workflow.analysisCycle?.draft.status ?? "no-status",
           workflow.revision?.id ?? "no-result",
         ].join(":")}
         organizationId={organizationId}
@@ -61,7 +63,7 @@ export default async function GapAnalysisPage({
         labels={dictionary.modules.gapAnalysis.workflow}
         locale={locale}
         initialStep={navigation.activeStep}
-        initialView={resolveGapPostGenerationView(requested.view)}
+        initialView={requestedView}
       />
     </section>
   );

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildReassessmentEvidenceSelection } from "@/src/server/gap-analysis/reassessment-selection";
+import { buildAnalysisCycleEvidenceSelection } from "@/src/server/gap-analysis/analysis-cycle-selection";
 
-describe("buildReassessmentEvidenceSelection", () => {
+describe("buildAnalysisCycleEvidenceSelection", () => {
   it("treats the submitted documents as exact and resolves selected names to current versions", () => {
-    const result = buildReassessmentEvidenceSelection({
+    const result = buildAnalysisCycleEvidenceSelection({
       accepted: [
         { versionId: "policy-v1", documentId: "policy" },
         { versionId: "runbook-v1", documentId: "runbook" },
@@ -32,7 +32,7 @@ describe("buildReassessmentEvidenceSelection", () => {
   });
 
   it("allows removing every previously accepted document", () => {
-    const result = buildReassessmentEvidenceSelection({
+    const result = buildAnalysisCycleEvidenceSelection({
       accepted: [
         { versionId: "archived-v1", documentId: "archived" },
         { versionId: "pending-v1", documentId: "pending" },
@@ -47,7 +47,7 @@ describe("buildReassessmentEvidenceSelection", () => {
   });
 
   it("records omitted carried evidence as removed", () => {
-    const result = buildReassessmentEvidenceSelection({
+    const result = buildAnalysisCycleEvidenceSelection({
       accepted: [
         { versionId: "policy-v1", documentId: "policy" },
         { versionId: "runbook-v1", documentId: "runbook" },
@@ -63,7 +63,7 @@ describe("buildReassessmentEvidenceSelection", () => {
   });
 
   it("rejects explicit additions that are not indexed current versions", () => {
-    const result = buildReassessmentEvidenceSelection({
+    const result = buildAnalysisCycleEvidenceSelection({
       accepted: [],
       candidates: [
         {

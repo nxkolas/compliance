@@ -30,12 +30,14 @@ import {
 } from "@/src/server/corpus";
 import { handleGapGeneration } from "@/src/worker/handlers/gap-generation";
 import { handleActionPlanGeneration } from "@/src/worker/handlers/action-plan-generation";
+import { handleGapRevisionMutation } from "@/src/worker/handlers/gap-revision-mutation";
 import { handleReportRender } from "@/src/server/reports";
 import { runMaintenanceCleanup, ensureScheduledCleanupJob } from "@/src/server/api/cleanup";
 import { ApiError } from "@/src/server/api/errors";
 import { createJobDrain } from "./drain";
 import type { DrainJobsInput, JobExecutionCycleResult } from "./contracts";
 import { throwIfJobExecutionAborted } from "./abort";
+import { emitGenerationMetric } from "@/src/server/ai/generation/metrics";
 
 const LEASE_SECONDS = 60;
 const HEARTBEAT_INTERVAL_MS = 20_000;
@@ -48,6 +50,7 @@ const PORTABLE_JOB_KINDS = [
   "grounding-evaluation",
   ...GAP_GENERATION_JOB_KINDS,
   ...ACTION_PLAN_GENERATION_JOB_KINDS,
+  "gap-revision-mutation-v1",
   "report-render",
   "cleanup",
 ] as const;
@@ -87,6 +90,7 @@ const handlers = {
   "action-plan-generation-v4": handleActionPlanGeneration,
   "action-plan-generation-v5": handleActionPlanGeneration,
   "action-plan-generation-v6": handleActionPlanGeneration,
+  "gap-revision-mutation-v1": handleGapRevisionMutation,
   "report-render": async (job, signal) => {
     return handleReportRender(job, signal);
   },
@@ -134,6 +138,12 @@ async function executeOneJob(input: {
   if (!job) return { claimed: false };
 
   const startedAt = Date.now();
+  emitGenerationMetric({
+    name: "job_queue_delay_ms",
+    value: Math.max(0, (job.startedAt ?? new Date()).getTime() - job.createdAt.getTime()),
+    jobId: job.id,
+    state: job.kind,
+  });
   let outcome: string = "running";
   let executionOutcome: JobExecutionCycleResult & { claimed: true } = {
     claimed: true,
@@ -149,7 +159,6 @@ async function executeOneJob(input: {
     void heartbeatJob({
       jobId: job.id,
       workerId: input.invocationId,
-      progress: job.progress,
       leaseSeconds: LEASE_SECONDS,
     }).catch((error) =>
       console.error("Worker heartbeat failed", {
@@ -179,7 +188,6 @@ async function executeOneJob(input: {
     const current = await heartbeatJob({
       jobId: job.id,
       workerId: input.invocationId,
-      progress: 100,
       leaseSeconds: LEASE_SECONDS,
     });
     if (current.state === "succeeded") {
@@ -291,6 +299,12 @@ async function executeOneJob(input: {
       durationMs: Date.now() - startedAt,
       attempt: job.attemptCount,
       invocationId: input.invocationId,
+    });
+    emitGenerationMetric({
+      name: "job_total_ms",
+      value: Date.now() - job.createdAt.getTime(),
+      jobId: job.id,
+      state: outcome,
     });
   }
   return executionOutcome;

@@ -37,6 +37,7 @@ import { GapReviewStep } from "./gap-review-step";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
 import { GapInputsUsed } from "./gap-inputs-used";
 import { GapHistory } from "./gap-history";
+import type { JobDto } from "@/src/contracts/common/jobs";
 
 export function GapAnalysisWorkflow({
   organizationId,
@@ -58,6 +59,13 @@ export function GapAnalysisWorkflow({
     useState<GapWorkflowStep>(initialStep);
   const [activeView, setActiveView] =
     useState<GapPostGenerationView>(initialView);
+  const [loadedInputs, setLoadedInputs] = useState<
+    GapWorkflow["generatedInputs"] | undefined
+  >(initialView === "inputs" ? workflow.generatedInputs : undefined);
+  const [loadedHistory, setLoadedHistory] = useState<
+    GapWorkflow["history"] | undefined
+  >(initialView === "history" ? workflow.history : undefined);
+  const viewRequestRef = useRef<AbortController | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>(
@@ -75,20 +83,21 @@ export function GapAnalysisWorkflow({
   const questionnaireSaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const questionnaireSaveFailedRef = useRef(false);
   const initialDocuments =
-    workflow.reassessment?.selected.map((selection) => selection.documentId) ??
+    workflow.analysisCycle?.selected.map((selection) => selection.documentId) ??
     [];
   const [selectedDocuments, setSelectedDocuments] =
     useState<string[]>(initialDocuments);
   const [savedDocuments, setSavedDocuments] =
     useState<string[]>(initialDocuments);
   const [inputsPrepared, setInputsPrepared] = useState(
-    Boolean(workflow.reassessment),
+    Boolean(workflow.analysisCycle),
   );
   const [pollingJobId, setPollingJobId] = useState<string | null>(
-    workflow.reassessment?.draft.status === "locked"
-      ? workflow.reassessment.draft.generationJobId
+    workflow.analysisCycle?.draft.status === "locked"
+      ? workflow.analysisCycle.draft.generationJobId
       : null,
   );
+  const [generationJob, setGenerationJob] = useState<JobDto | null>(null);
   const answerDirty = useMemo(
     () => JSON.stringify(answers) !== JSON.stringify(savedAnswers),
     [answers, savedAnswers],
@@ -171,6 +180,40 @@ export function GapAnalysisWorkflow({
   }, [activeStep]);
 
   useEffect(() => {
+    if (!workflow.revision) return;
+    if (activeView === "inputs" && loadedInputs === undefined) {
+      const controller = new AbortController();
+      viewRequestRef.current?.abort();
+      viewRequestRef.current = controller;
+      void gapAnalysisClient
+        .getInputs(organizationId, workflow.revision.id, controller.signal)
+        .then((result) => {
+          if (!controller.signal.aborted) {
+            setLoadedInputs(result.data.inputs as GapWorkflow["generatedInputs"]);
+          }
+        })
+        .catch((caught) => {
+          if (!controller.signal.aborted) setError(localizeGapError(caught, labels));
+        });
+    } else if (activeView === "history" && loadedHistory === undefined) {
+      const controller = new AbortController();
+      viewRequestRef.current?.abort();
+      viewRequestRef.current = controller;
+      void gapAnalysisClient
+        .getHistory(organizationId, controller.signal)
+        .then((result) => {
+          if (!controller.signal.aborted) {
+            setLoadedHistory(result.data.history as GapWorkflow["history"]);
+          }
+        })
+        .catch((caught) => {
+          if (!controller.signal.aborted) setError(localizeGapError(caught, labels));
+        });
+    }
+    return () => viewRequestRef.current?.abort();
+  }, [activeView, labels, loadedHistory, loadedInputs, organizationId, workflow.revision]);
+
+  useEffect(() => {
     if (!dirty) return;
     const beforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -201,8 +244,10 @@ export function GapAnalysisWorkflow({
     void pollJob({
       jobId: pollingJobId,
       signal: controller.signal,
+      onUpdate: setGenerationJob,
       finalRefresh: () => {
         setPollingJobId(null);
+        setGenerationJob(null);
         navigate("gaps", true);
         router.refresh();
       },
@@ -296,14 +341,14 @@ export function GapAnalysisWorkflow({
     setBusy("documents");
     setError(null);
     try {
-      if (workflow.reassessment?.draft.status === "open") {
-        await gapAnalysisClient.updateReassessmentEvidence(organizationId, {
-          draftId: workflow.reassessment.draft.id,
-          expectedLockVersion: workflow.reassessment.draft.lockVersion,
+      if (workflow.analysisCycle?.draft.status === "open") {
+        await gapAnalysisClient.replaceGapAnalysisEvidence(organizationId, {
+          cycleId: workflow.analysisCycle.draft.id,
+          expectedLockVersion: workflow.analysisCycle.draft.lockVersion,
           selectedDocumentIds: selectedDocuments,
         });
       } else {
-        await gapAnalysisClient.prepareReassessment(organizationId, {
+        await gapAnalysisClient.prepareGapAnalysisCycle(organizationId, {
           assessmentId: workflow.assessment.id,
           selectedDocumentIds: selectedDocuments,
         });
@@ -327,31 +372,25 @@ export function GapAnalysisWorkflow({
   }
 
   async function enqueueGeneration(kind: "generate" | "retry") {
-    const reassessment = workflow.reassessment;
-    if (!reassessment) return;
+    const analysisCycle = workflow.analysisCycle;
+    if (!analysisCycle) return;
     setBusy(kind);
     setError(null);
     try {
       const idempotencyKey = crypto.randomUUID();
-      const result =
+      const result = await gapAnalysisClient.enqueueGapAnalysisGeneration(
+        organizationId,
+        analysisCycle.draft.id,
         kind === "generate"
-          ? await gapAnalysisClient.generate(
-              organizationId,
-              {
-                draftId: reassessment.draft.id,
-                expectedLockVersion: reassessment.draft.lockVersion,
-              },
-              idempotencyKey,
-            )
-          : await gapAnalysisClient.retry(
-              organizationId,
-              {
-                draftId: reassessment.draft.id,
-                retryNonce: idempotencyKey,
-              },
-              idempotencyKey,
-            );
+          ? {
+              operation: "start",
+              expectedLockVersion: analysisCycle.draft.lockVersion,
+            }
+          : { operation: "retry", retryNonce: idempotencyKey },
+        idempotencyKey,
+      );
       setPollingJobId(result.data.job.id);
+      setGenerationJob(result.data.job);
       router.refresh();
     } catch (caught) {
       setError(localizeGapError(caught, labels));
@@ -362,12 +401,13 @@ export function GapAnalysisWorkflow({
 
   async function cancelGeneration() {
     const jobId =
-      workflow.reassessment?.draft.generationJobId ?? pollingJobId;
+      workflow.analysisCycle?.draft.generationJobId ?? pollingJobId;
     if (!jobId) return;
     setBusy("cancel-generation");
     setError(null);
     try {
       const result = await jobsClient.cancel(jobId);
+      setGenerationJob(result.data.job);
       if (result.data.job.state === "cancelled") setPollingJobId(null);
       router.refresh();
     } catch (caught) {
@@ -479,12 +519,16 @@ export function GapAnalysisWorkflow({
           <CardContent className="pt-6">
             {activeView === "history" ? (
               <GapHistory
-                history={workflow.history}
+                history={loadedHistory ?? []}
                 labels={labels}
                 locale={locale}
               />
             ) : activeView === "inputs" ? (
-              <GapInputsUsed workflow={workflow} labels={labels} />
+              <GapInputsUsed
+                workflow={workflow}
+                snapshot={loadedInputs}
+                labels={labels}
+              />
             ) : (
               <GapResultsStep
                 organizationId={organizationId}
@@ -518,6 +562,7 @@ export function GapAnalysisWorkflow({
               workflow={workflow}
               labels={labels}
               answers={answers}
+              savedAnswers={savedAnswers}
               busy={busy === "questionnaire"}
               saveState={answerSaveState}
               onAnswer={saveQuestionnaireAnswer}
@@ -547,6 +592,7 @@ export function GapAnalysisWorkflow({
               selected={selectedDocuments}
               busy={busy}
               generating={Boolean(pollingJobId)}
+              generationJob={generationJob}
               editable={workflow.lifecycle.inputsEditable}
               locale={locale}
               onNavigate={navigate}

@@ -1,6 +1,6 @@
 # API Route Inventory
 
-Status: 24 July 2026. Every route below returns the common JSON envelope.
+Status: 2 August 2026. Every route below returns the common JSON envelope.
 
 ## Shared and organization routes
 
@@ -14,8 +14,8 @@ Status: 24 July 2026. Every route below returns the common JSON envelope.
 - `/api/organizations/:organizationId/documents` with detail, direct upload
   sessions, immutable versions, archive/restore, and source access
 - `/api/organizations/:organizationId/gap-analysis` with assessment,
-  questionnaire, shared reassessment, async generation/retry, revision review,
-  correction, and approval
+  questionnaire, analysis cycles, async generation/retry, focused Inputs and
+  History reads, async revision correction/guidance jobs, and approval
 - `/api/organizations/:organizationId/action-plan` with plan detail and item
   updates
 - `/api/organizations/:organizationId/reports` with detail and controlled

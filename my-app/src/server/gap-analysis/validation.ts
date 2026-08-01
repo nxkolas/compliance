@@ -4,10 +4,10 @@ export {
   actionPlanItemUpdateSchema,
 } from "@/src/contracts/action-plans";
 export {
-  gapReassessmentEvidenceSchema,
-  gapReassessmentGenerateSchema,
-  gapReassessmentPrepareSchema,
-  gapReassessmentRetrySchema,
+  gapAnalysisCycleEvidenceSchema,
+  gapAnalysisCycleGenerateSchema,
+  gapAnalysisCyclePrepareSchema,
+  gapAnalysisCycleRetrySchema,
 } from "@/src/contracts/gap-analysis/generation";
 
 export const gapQuestionnaireSubmissionSchema = gapQuestionnaireInputSchema;

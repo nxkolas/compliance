@@ -40,7 +40,10 @@ export async function retrieveDocumentEvidence(
     query: string;
     limit?: number;
   },
-  dependencies: { embeddingProvider?: DocumentEmbeddingProvider } = {},
+  dependencies: {
+    embeddingProvider?: DocumentEmbeddingProvider;
+    queryEmbedding?: number[];
+  } = {},
 ) {
   await assertCanAccessOrganization(input.userId, input.organizationId);
   const query = input.query.trim();
@@ -67,7 +70,9 @@ export async function retrieveDocumentEvidence(
   if (provider.dimensions !== EMBEDDING_DIMENSIONS) {
     throw new ApiError(500, "The configured embedding space requires re-indexing");
   }
-  const [queryEmbedding] = await provider.embed([query], "query");
+  const queryEmbedding = dependencies.queryEmbedding ??
+    (await provider.embed([query], "query"))[0];
+  if (!queryEmbedding) throw new Error("Query embedding is missing");
   validateEmbeddings([queryEmbedding], 1, EMBEDDING_DIMENSIONS);
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
   const fullTextRank = sql<number>`coalesce(ts_rank_cd(${documentChunks.searchVector}, websearch_to_tsquery('simple', ${query})), 0)`;

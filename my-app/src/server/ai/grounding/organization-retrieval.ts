@@ -16,6 +16,7 @@ export async function retrieveOrganizationContext(input: {
   queryUnitId: string;
   query: string;
   limit?: number;
+  queryEmbedding?: number[];
 }): Promise<GroundingContextItem[]> {
   const evidence = await retrieveDocumentEvidence({
     userId: input.userId,
@@ -23,7 +24,7 @@ export async function retrieveOrganizationContext(input: {
     selectedDocumentVersionIds: input.documentVersionIds,
     query: input.query,
     limit: Math.max(input.limit ?? 0, 12),
-  });
+  }, { queryEmbedding: input.queryEmbedding });
   const decision = admitOrganizationEvidence({
     operation: "gap_analysis",
     provider: EMBEDDING_PROVIDER,

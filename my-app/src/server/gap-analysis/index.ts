@@ -37,23 +37,33 @@ export {
 } from "./review-service";
 export {
   executeGapGenerationJob,
-  generateGapReassessment,
-  getGapReassessmentDraft,
-  prepareGapReassessment,
-  retryGapReassessment,
-  updateGapReassessmentEvidence,
-} from "./reassessment-service";
+  enqueueGapAnalysisGeneration,
+  getGapAnalysisCycle,
+  prepareGapAnalysisCycle,
+  retryGapAnalysisGeneration,
+  replaceGapAnalysisEvidence,
+} from "./analysis-cycle-service";
 export {
   getGapQuestionnaireRevision,
   submitGapQuestionnaire,
 } from "./questionnaire-service";
 export { saveQuestionnaireDraftAnswer } from "./questionnaire-draft-service";
+export {
+  enqueueGapRevisionMutation,
+  executeGapRevisionMutation,
+} from "./revision-mutation-service";
 export { getGapRevisionStaleness } from "./staleness";
 export { readGapRevisionMetadata } from "./gap-revision-metadata";
 export { createDatabaseGapPageReader } from "./page-reader";
 export { readGeneratedGapInputs } from "./generated-inputs-reader";
 export { loadGapHistoryPreauthorized } from "./history-reader";
 export { postgresGapPageData } from "./postgres-page-data";
+export {
+  getGapHistory,
+  getGapInputs,
+  getGapResults,
+  getGapWorkflowSummary,
+} from "./read-models";
 export {
   GAP_GROUNDING_INSTRUCTION,
   gapOutputLocaleInstruction,

@@ -8,30 +8,30 @@ import {
   gapQuestionnaireDraftAnswerSchema,
   gapRevisionReadSchema,
   gapWorkflowReadSchema,
+  gapInputsReadSchema,
+  gapHistoryReadSchema,
 } from "@/src/contracts/gap-analysis/generation";
 import { request } from "./api-client";
-
-const generationInputSchema = z.object({ draftId: z.uuid(), expectedLockVersion: z.number().int().positive() });
-const retryInputSchema = z.object({ draftId: z.uuid(), retryNonce: z.string().min(1).max(100) });
+import { jobDtoSchema } from "@/src/contracts/common/jobs";
 
 function gapBase(organizationId: string) {
   return `/api/organizations/${encodeURIComponent(organizationId)}/gap-analysis`;
 }
 
-function reassessmentBase(organizationId: string) {
-  return `${gapBase(organizationId)}/reassessment`;
+function analysisCycleBase(organizationId: string) {
+  return `${gapBase(organizationId)}/cycles`;
 }
 
 export const gapAnalysisClient = {
-  prepareReassessment(organizationId: string, input: { assessmentId: string; selectedDocumentIds: string[] }) {
-    return request(reassessmentBase(organizationId), {
-      method: "POST", input, idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ reassessment: z.unknown() }),
+  prepareGapAnalysisCycle(organizationId: string, input: { assessmentId: string; selectedDocumentIds: string[] }) {
+    return request(analysisCycleBase(organizationId), {
+      method: "POST", input, idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ analysisCycle: z.unknown() }),
     });
   },
 
-  updateReassessmentEvidence(organizationId: string, input: { draftId: string; expectedLockVersion: number; selectedDocumentIds: string[] }) {
-    return request(`${reassessmentBase(organizationId)}/evidence`, {
-      method: "PATCH", input, ifMatch: input.expectedLockVersion, outputSchema: z.object({ draft: z.object({ id: z.uuid() }).loose() }),
+  replaceGapAnalysisEvidence(organizationId: string, input: { cycleId: string; expectedLockVersion: number; selectedDocumentIds: string[] }) {
+    return request(`${analysisCycleBase(organizationId)}/${encodeURIComponent(input.cycleId)}/evidence`, {
+      method: "PUT", input: { expectedLockVersion: input.expectedLockVersion, selectedDocumentIds: input.selectedDocumentIds }, ifMatch: input.expectedLockVersion, outputSchema: z.object({ analysisCycle: z.object({ id: z.uuid() }).loose() }),
     });
   },
 
@@ -44,6 +44,20 @@ export const gapAnalysisClient = {
   getRevision(organizationId: string, revisionId: string, signal?: AbortSignal) {
     return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}`, {
       outputSchema: gapRevisionReadSchema, signal,
+    });
+  },
+
+  getInputs(organizationId: string, revisionId: string, signal?: AbortSignal) {
+    return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/inputs`, {
+      outputSchema: gapInputsReadSchema,
+      signal,
+    });
+  },
+
+  getHistory(organizationId: string, signal?: AbortSignal) {
+    return request(`${gapBase(organizationId)}/history`, {
+      outputSchema: gapHistoryReadSchema,
+      signal,
     });
   },
 
@@ -80,6 +94,11 @@ export const gapAnalysisClient = {
             optionId: z.uuid(),
             updatedAt: z.string(),
           }),
+          completion: z.object({
+            answeredRequired: z.number().int().nonnegative(),
+            totalRequired: z.number().int().nonnegative(),
+            complete: z.boolean(),
+          }),
         }),
         signal,
       },
@@ -87,8 +106,8 @@ export const gapAnalysisClient = {
   },
 
   correctRevision(organizationId: string, revisionId: string, input: z.infer<typeof gapCorrectionInputSchema>, signal?: AbortSignal) {
-    return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/correct`, {
-      method: "POST", input: gapCorrectionInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ revision: gapEntitySchema }), signal,
+    return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/corrections`, {
+      method: "POST", input: gapCorrectionInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ job: jobDtoSchema, reused: z.boolean() }), signal,
     });
   },
 
@@ -99,31 +118,21 @@ export const gapAnalysisClient = {
     signal?: AbortSignal,
   ) {
     return request(
-      `${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/regenerate-guidance`,
+      `${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/guidance-regenerations`,
       {
         method: "POST",
         input: gapGuidanceRegenerationInputSchema.parse(input),
         idempotencyKey: crypto.randomUUID(),
-        outputSchema: z.object({ revision: gapEntitySchema }),
+        outputSchema: z.object({ job: jobDtoSchema, reused: z.boolean() }),
         signal,
       },
     );
   },
 
-  generate(organizationId: string, input: z.infer<typeof generationInputSchema>, idempotencyKey: string, signal?: AbortSignal) {
-    return request(`${reassessmentBase(organizationId)}/generate`, {
+  enqueueGapAnalysisGeneration(organizationId: string, cycleId: string, input: { operation: "start"; expectedLockVersion: number } | { operation: "retry"; retryNonce: string }, idempotencyKey: string, signal?: AbortSignal) {
+    return request(`${analysisCycleBase(organizationId)}/${encodeURIComponent(cycleId)}/generation-jobs`, {
       method: "POST",
-      input: generationInputSchema.parse(input),
-      idempotencyKey,
-      outputSchema: gapGenerationEnqueueResponseSchema,
-      signal,
-    });
-  },
-
-  retry(organizationId: string, input: z.infer<typeof retryInputSchema>, idempotencyKey: string, signal?: AbortSignal) {
-    return request(`${reassessmentBase(organizationId)}/retry`, {
-      method: "POST",
-      input: retryInputSchema.parse(input),
+      input,
       idempotencyKey,
       outputSchema: gapGenerationEnqueueResponseSchema,
       signal,

@@ -8,6 +8,8 @@ import {
   artifactRevisionDocumentSources,
   assessmentAnswerOptions,
   auditEvents,
+  backgroundJobResults,
+  backgroundJobs,
   gapFindingEvidence,
   gapFindingReviewResolutions,
   gapFindings,
@@ -30,6 +32,8 @@ import { loadGapAnalysisRelease } from "./release-loader";
 import { assertGapFindingsMutable } from "./lifecycle-guards";
 import { deriveCorrectedAtomicGapTriggerPolicy } from "./trigger-policy";
 import { generateAtomicGapBatch } from "./atomic-gap-generation";
+import { advanceJobProgress } from "../jobs";
+import { throwIfGenerationCancelled } from "../ai/generation";
 
 export type FindingApprovalSnapshot = {
   id: string;
@@ -260,9 +264,22 @@ export async function regenerateAndCorrectGapFinding(input: {
   reason: string;
   resolutionReason?: string;
   retryNonce?: string;
+  jobId?: string;
+  workerId?: string;
+  abortSignal?: AbortSignal;
 }) {
   await assertCanManageOrganization(input.userId, input.organizationId);
   await assertGapFindingsMutable(input.organizationId);
+  if (input.jobId && input.workerId) {
+    await advanceJobProgress({
+      jobId: input.jobId,
+      workerId: input.workerId,
+      progress: 1,
+      phase: "preparing_evidence",
+      completedUnits: 0,
+      totalUnits: 1,
+    });
+  }
   if (!input.reason.trim()) {
     throw new ApiError(
       400,
@@ -548,6 +565,16 @@ export async function regenerateAndCorrectGapFinding(input: {
     reason: input.reason.trim(),
     retryNonce: input.retryNonce ?? "correction",
   });
+  if (input.jobId && input.workerId) {
+    await advanceJobProgress({
+      jobId: input.jobId,
+      workerId: input.workerId,
+      progress: 10,
+      phase: "generating_categories",
+      completedUnits: 0,
+      totalUnits: 1,
+    });
+  }
   const generated = await generateAtomicGapBatch({
     actor: { userId: input.userId },
     organizationId: input.organizationId,
@@ -589,7 +616,31 @@ export async function regenerateAndCorrectGapFinding(input: {
       }`,
     })),
     runOperationKind: "gap_guidance_regeneration",
+    jobId: input.jobId,
+    abortSignal: input.abortSignal,
+    onAcceptedCategory: input.jobId && input.workerId
+      ? async () => {
+          await advanceJobProgress({
+          jobId: input.jobId!,
+          workerId: input.workerId!,
+          progress: 89,
+          phase: "generating_categories",
+          completedUnits: 1,
+          totalUnits: 1,
+          });
+        }
+      : undefined,
   });
+  if (input.jobId && input.workerId) {
+    await advanceJobProgress({
+      jobId: input.jobId,
+      workerId: input.workerId,
+      progress: 90,
+      phase: "validating",
+      completedUnits: 1,
+      totalUnits: 1,
+    });
+  }
   const generatedFinding = generated.findings[0];
   if (
     !generatedFinding ||
@@ -604,6 +655,17 @@ export async function regenerateAndCorrectGapFinding(input: {
     );
   }
   try {
+    throwIfGenerationCancelled(input.abortSignal);
+    if (input.jobId && input.workerId) {
+      await advanceJobProgress({
+        jobId: input.jobId,
+        workerId: input.workerId,
+        progress: 95,
+        phase: "saving_result",
+        completedUnits: 1,
+        totalUnits: 1,
+      });
+    }
     const documentRows = documentSources.length
       ? await db.query.documentVersions.findMany({
           columns: { id: true, contentHash: true },
@@ -1006,6 +1068,7 @@ export async function regenerateAndCorrectGapFinding(input: {
           });
         }
       }
+      throwIfGenerationCancelled(input.abortSignal);
       const [advanced] = await tx
         .update(generatedArtifacts)
         .set({ currentRevisionId: revision.id })
@@ -1062,6 +1125,38 @@ export async function regenerateAndCorrectGapFinding(input: {
           metadata: { artifactRevisionId: revision.id },
         },
       ]);
+      if (input.jobId && input.workerId) {
+        const now = new Date();
+        const [completedJob] = await tx
+          .update(backgroundJobs)
+          .set({
+            state: "succeeded",
+            progress: 100,
+            progressPhase: "completed",
+            completedUnits: backgroundJobs.totalUnits,
+            safeErrorCode: null,
+            safeErrorMessage: null,
+            leaseOwner: null,
+            leaseExpiresAt: null,
+            finishedAt: now,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(backgroundJobs.id, input.jobId),
+              eq(backgroundJobs.leaseOwner, input.workerId),
+              eq(backgroundJobs.state, "running"),
+            ),
+          )
+          .returning({ id: backgroundJobs.id });
+        if (!completedJob) {
+          throw new ApiError(409, "Revision mutation job lease was lost", undefined, "JOB_LEASE_LOST");
+        }
+        await tx.insert(backgroundJobResults).values({
+          jobId: completedJob.id,
+          generatedArtifactRevisionId: revision.id,
+        });
+      }
       return revision;
     });
   } catch (error) {

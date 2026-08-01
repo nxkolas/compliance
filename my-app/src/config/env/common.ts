@@ -51,6 +51,8 @@ export const commonApplicationEnvironmentSchema = z
     AI_DEFAULT_PROVIDER: z
       .enum(["company_hosted", "openai", "self_hosted"])
       .default("openai"),
+    AI_CATEGORY_CONCURRENCY: integerFromEnvironment(1, 5).default(3),
+    AI_PROVIDER_MAX_CONCURRENCY: integerFromEnvironment(1, 100).default(3),
     AI_EMBEDDING_DIM: integerFromEnvironment(1536, 1536).default(1536),
     AI_PROVIDER_TIMEOUT_MS: integerFromEnvironment(5000, 300000).default(
       120000,

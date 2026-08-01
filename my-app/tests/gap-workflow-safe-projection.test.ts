@@ -213,7 +213,7 @@ describe("customer-safe Gap workflow projection", () => {
                     contentHash: "DOCUMENT_HASH_SENTINEL",
                   },
                   usage: [],
-                  eligibleForReassessment: true,
+                  eligibleForAnalysisCycle: true,
                 },
               ],
             },
@@ -227,7 +227,7 @@ describe("customer-safe Gap workflow projection", () => {
         candidateRevision,
         candidateFindings: [rawFinding("candidate", "CANDIDATE")],
         activePlan: null,
-        reassessment: null,
+        analysisCycle: null,
         prerequisite: {
           satisfied: true,
           status: "eligible",

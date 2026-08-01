@@ -161,7 +161,7 @@ export async function getGapAnalysisWorkflow(
     enrich(row, candidateCorrectedIds, candidateMetadata?.findingDiagnostics ?? [], candidateCatalogue),
   );
   const selectedDocumentIds = new Set(
-    workflow.reassessment?.selected.map(
+    workflow.analysisCycle?.selected.map(
       (selection) => selection.documentId,
     ) ?? [],
   );
@@ -187,7 +187,7 @@ export async function getGapAnalysisWorkflow(
     hasActiveActionPlan: Boolean(workflow.activePlan),
     generationActive:
       !workflow.revision &&
-      (workflow.reassessment?.draft.status === "locked" ||
+      (workflow.analysisCycle?.draft.status === "locked" ||
         workflow.run?.status === "pending" ||
         workflow.run?.status === "processing"),
   });
@@ -234,25 +234,25 @@ export async function getGapAnalysisWorkflow(
             workflow.activePlan.sourceGapArtifactRevisionId,
         }
       : null,
-    reassessment: workflow.reassessment
+    analysisCycle: workflow.analysisCycle
       ? {
           draft: {
-            id: workflow.reassessment.draft.id,
-            status: workflow.reassessment.draft.status,
-            outputLocale: workflow.reassessment.draft.outputLocale,
+            id: workflow.analysisCycle.draft.id,
+            status: workflow.analysisCycle.draft.status,
+            outputLocale: workflow.analysisCycle.draft.outputLocale,
             generationJobId:
-              workflow.reassessment.draft.generationJobId,
-            lockVersion: workflow.reassessment.draft.lockVersion,
+              workflow.analysisCycle.draft.generationJobId,
+            lockVersion: workflow.analysisCycle.draft.lockVersion,
           },
-          selected: workflow.reassessment.selected.map((selection) => ({
+          selected: workflow.analysisCycle.selected.map((selection) => ({
             documentId: selection.documentId,
           })),
           summary: {
             baseAcceptedGapRevisionNumber:
-              workflow.reassessment.summary.baseAcceptedGapRevisionNumber,
+              workflow.analysisCycle.summary.baseAcceptedGapRevisionNumber,
             assessmentRevisionNumber:
-              workflow.reassessment.summary.assessmentRevisionNumber,
-            requirementCount: workflow.reassessment.summary.requirementCount,
+              workflow.analysisCycle.summary.assessmentRevisionNumber,
+            requirementCount: workflow.analysisCycle.summary.requirementCount,
           },
         }
       : null,
@@ -502,7 +502,7 @@ function projectDocumentLibrary<
         };
         extraction: { status: string } | null;
         embedding: { status: string } | null;
-        eligibleForReassessment: boolean;
+        eligibleForAnalysisCycle: boolean;
       }>;
     }>;
   },
@@ -530,7 +530,7 @@ function projectDocumentLibrary<
           indexStatus,
           eligibleForAnalysis:
             entry.document.status === "active" &&
-            current.eligibleForReassessment,
+            current.eligibleForAnalysisCycle,
         },
       ];
     }),

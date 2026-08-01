@@ -20,11 +20,11 @@ import {
   createDatabaseGapPageReader,
   createOrOpenGapAssessment,
   directGapReleaseReader,
-  generateGapReassessment,
+  enqueueGapAnalysisGeneration,
   getActiveGapAnalysisRelease,
   getGapAnalysisWorkflow,
-  prepareGapReassessment,
-  retryGapReassessment,
+  prepareGapAnalysisCycle,
+  retryGapAnalysisGeneration,
   saveQuestionnaireDraftAnswer,
   submitGapQuestionnaire,
 } from "@/src/server/gap-analysis";
@@ -154,7 +154,7 @@ async function main() {
         optionId: option.id,
         expectedVersion: draftVersion,
       });
-      draftVersion = saved.version;
+      draftVersion = saved.answer.version;
     }
     const questionnaireRevision = await submitGapQuestionnaire({
       userId,
@@ -180,7 +180,7 @@ async function main() {
     orderBy: { createdAt: "desc" },
   });
   if (!draft) {
-    const prepared = await prepareGapReassessment({
+    const prepared = await prepareGapAnalysisCycle({
       userId,
       organizationId: organization.id,
       assessmentId: assessment.id,
@@ -193,7 +193,7 @@ async function main() {
 
   let generationJobId = draft.generationJobId;
   if (draft.status === "open") {
-    const generation = await generateGapReassessment({
+    const generation = await enqueueGapAnalysisGeneration({
       userId,
       organizationId: organization.id,
       draftId: draft.id,
@@ -203,7 +203,7 @@ async function main() {
     });
     generationJobId = generation.job.id;
   } else if (draft.status === "failed") {
-    const generation = await retryGapReassessment({
+    const generation = await retryGapAnalysisGeneration({
       userId,
       organizationId: organization.id,
       draftId: draft.id,

@@ -283,13 +283,36 @@ export async function saveQuestionnaireDraftAnswer(input: {
           updatedAt: now,
         },
       });
-    const answered = await tx.query.gapQuestionnaireDraftAnswers.findMany({
+    const requiredQuestions = await tx.query.questions.findMany({
+      columns: { id: true },
+      where: {
+        RAW: (table, operators) =>
+          and(
+            eq(table.questionnaireVersionId, draft.questionnaireVersionId),
+            eq(table.required, true),
+          ) ?? operators.sql`true`,
+      },
+    });
+    const answered = requiredQuestions.length
+      ? await tx.query.gapQuestionnaireDraftAnswers.findMany({
       columns: { questionId: true },
       where: {
         RAW: (table, operators) =>
-          eq(table.draftId, input.draftId) ?? operators.sql`true`,
+          and(
+            eq(table.draftId, input.draftId),
+            inArray(
+              table.questionId,
+              requiredQuestions.map((question) => question.id),
+            ),
+          ) ?? operators.sql`true`,
       },
-    });
+    })
+      : [];
+    const completion = {
+      answeredRequired: new Set(answered.map((answer) => answer.questionId)).size,
+      totalRequired: requiredQuestions.length,
+      complete: requiredQuestions.length === 0 || answered.length === requiredQuestions.length,
+    };
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
@@ -299,15 +322,19 @@ export async function saveQuestionnaireDraftAnswer(input: {
       metadata: {
         assessmentId: draft.assessmentId,
         version: updated.version,
-        answeredCount: answered.length,
+        answeredCount: completion.answeredRequired,
+        requiredCount: completion.totalRequired,
       },
     });
     return {
-      draftId: input.draftId,
-      version: updated.version,
-      questionId: input.questionId,
-      optionId: input.optionId,
-      updatedAt: now.toISOString(),
+      answer: {
+        draftId: input.draftId,
+        version: updated.version,
+        questionId: input.questionId,
+        optionId: input.optionId,
+        updatedAt: now.toISOString(),
+      },
+      completion,
     };
   });
 }

@@ -32,7 +32,7 @@ export const PATCH = apiRoute(
         "PRECONDITION_MISMATCH",
       );
     }
-    const answer = await saveQuestionnaireDraftAnswer({
+    const result = await saveQuestionnaireDraftAnswer({
       userId: user.id,
       organizationId,
       questionId,
@@ -40,6 +40,9 @@ export const PATCH = apiRoute(
       expectedVersion,
     });
     revalidatePath(`/tool/organizations/${organizationId}/gap-analysis`);
-    return { data: { answer }, meta: { version: answer.version } };
+    return {
+      data: result,
+      meta: { version: result.answer.version },
+    };
   },
 );

@@ -10,11 +10,24 @@ export const jobStateSchema = z.enum([
   "cancelled",
 ]);
 
+export const jobProgressPhaseSchema = z.enum([
+  "preparing_evidence",
+  "generating_categories",
+  "validating",
+  "saving_result",
+  "completed",
+]);
+
+export type JobProgressPhase = z.infer<typeof jobProgressPhaseSchema>;
+
 export const jobDtoSchema = z.object({
   id: jobIdSchema,
   kind: z.string().min(1),
   state: jobStateSchema,
   progress: z.number().int().min(0).max(100),
+  phase: jobProgressPhaseSchema.nullable().default(null),
+  completedUnits: z.number().int().nonnegative().nullable().default(null),
+  totalUnits: z.number().int().nonnegative().nullable().default(null),
   attemptCount: z.number().int().nonnegative(),
   safeError: z.object({ code: z.string(), message: z.string() }).nullable(),
   createdAt: z.iso.datetime(),
