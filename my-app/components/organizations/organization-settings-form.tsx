@@ -57,7 +57,7 @@ export function OrganizationSettingsForm({
   const [form, setForm] = useState<OrganizationFormState>({
     name: organization.name,
     legalName: organization.legalName ?? "",
-    country: organization.country ?? "DE",
+    country: organization.countryCode ?? "DE",
   });
   const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState<RequestState>({
@@ -74,8 +74,9 @@ export function OrganizationSettingsForm({
       await organizationsClient.update(organization.id, {
           name: form.name,
           legalName: form.legalName || null,
-          country: form.country || "DE",
-        }, organization.version);
+          countryCode: form.country || "DE",
+          aiProviderMode: organization.aiProviderMode,
+        });
 
       setNotice({
         message: labels.saveSuccess,

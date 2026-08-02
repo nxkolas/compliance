@@ -8,7 +8,7 @@ export type IdempotencyRecord = {
   operation: string;
   key: string;
   requestFingerprint: string;
-  state: "in_progress" | "succeeded" | "failed";
+  state: "in_progress" | "completed" | "failed";
   responseStatus?: number;
   resultReference?: { type: IdempotencyResultType; id: string };
 };
@@ -22,6 +22,7 @@ export type IdempotencyResultType =
   | "legal_source_rendition"
   | "legal_source"
   | "generated_artifact_revision"
+  | "analysis_output_revision"
   | "assessment"
   | "assessment_revision"
   | "gap_reassessment_draft"
@@ -70,7 +71,7 @@ export async function claimIdempotency(
   if (existing.requestFingerprint !== input.requestFingerprint) {
     throw new ApiError(409, "Idempotency key was reused with different input", undefined, "IDEMPOTENCY_KEY_REUSED");
   }
-  if (existing.state === "succeeded") return { kind: "replay", record: existing };
+  if (existing.state === "completed") return { kind: "replay", record: existing };
   if (existing.state === "failed") {
     const restarted = { ...existing, state: "in_progress" as const, responseStatus: undefined, resultReference: undefined };
     await repository.save(restarted);
@@ -127,7 +128,7 @@ export async function completeIdempotency(
   record: IdempotencyRecord,
   result: { responseStatus: number; resultReference: { type: IdempotencyResultType; id: string } },
 ) {
-  await repository.save({ ...record, ...result, state: "succeeded" });
+  await repository.save({ ...record, ...result, state: "completed" });
 }
 
 export async function failIdempotency(

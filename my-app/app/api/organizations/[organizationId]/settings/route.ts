@@ -7,7 +7,6 @@ import {
   getOrganizationSettings,
   updateOrganizationSettings,
 } from "@/src/server/organizations/settings-service";
-import { readOrganizationSettingsToken } from "@/src/server/organizations/settings-concurrency";
 
 type Context = { params: Promise<{ organizationId: string }> };
 
@@ -15,10 +14,7 @@ export const GET = apiRoute(async ({ routeContext }: { request: Request; routeCo
   const user = await requireApiUser();
   const { organizationId } = await routeContext.params;
   const settings = await getOrganizationSettings(user.id, organizationId);
-  return {
-    data: { settings },
-    headers: { etag: `"${settings.concurrencyToken}"` },
-  };
+  return { data: { settings } };
 });
 
 export const PATCH = apiRoute(async ({ request, routeContext, requestId }: { request: Request; routeContext: Context; requestId: string }) => {
@@ -27,15 +23,11 @@ export const PATCH = apiRoute(async ({ request, routeContext, requestId }: { req
   const settings = await updateOrganizationSettings({
     userId: user.id,
     organizationId,
-    expected: readOrganizationSettingsToken(request),
     values: await readJsonBody(request, organizationSettingsUpdateSchema),
     requestId,
   });
   revalidatePath("/tool/organizations");
   revalidatePath(`/tool/organizations/${organizationId}`);
   revalidatePath(`/tool/organizations/${organizationId}/settings`);
-  return {
-    data: { settings },
-    headers: { etag: `"${settings.concurrencyToken}"` },
-  };
+  return { data: { settings } };
 });

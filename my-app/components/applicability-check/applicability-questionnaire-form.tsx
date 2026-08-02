@@ -243,6 +243,7 @@ export function ApplicabilityQuestionnaireForm({
     try {
       const response = await applicabilityCheckClient.submit(submitUrl, {
           guestSession: questionnaire.guestSession,
+          locale: questionnaire.locale,
           answers: visibleQuestions
             .filter((question) => isAnswered(answers[question.id]))
             .map((question) => ({

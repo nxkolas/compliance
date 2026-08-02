@@ -67,10 +67,8 @@ export async function prepareGroundingOperation(
     organizationId: input.organizationId,
   });
   const provider = selectGroundedProvider({
-    allowedModes: policy.providerPolicy.allowedProviderModes,
-    externalDisclosureAllowed: policy.providerPolicy.externalDisclosureAllowed,
+    selectedMode: policy.providerPolicy.selectedProviderMode,
     providers: dependencies.providers ?? configuredProviders(),
-    preferredMode: process.env.AI_DEFAULT_PROVIDER,
   });
   const pinnedReleases = await resolvePinnedLegalScope({
     workflowKind: policy.workflowKind,

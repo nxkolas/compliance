@@ -1,65 +1,62 @@
-import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
-import { auditEvents, organizationAiProviderPolicies } from "@/src/db/schema";
+import { auditEvents, organizations } from "@/src/db/schema";
+import { eq } from "drizzle-orm";
 import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
-import { ApiError } from "@/src/server/api/errors";
-import { defaultOrganizationAiProviderPolicy } from "@/src/server/ai/grounding/provider-policy";
+import { ApiError } from "../api/errors";
 
-export async function getOrganizationAiProviderPolicy(userId: string, organizationId: string) {
+export async function getOrganizationAiProviderPolicy(
+  userId: string,
+  organizationId: string,
+) {
   await requireOrganizationCapability(userId, organizationId, "organizations:read");
-  const policy = await db.query.organizationAiProviderPolicies.findFirst({ columns: { organizationId: true, allowedProviderModes: true, externalDisclosureAllowed: true, retentionClassification: true, version: true, updatedBy: true, createdAt: true, updatedAt: true },
-    where: { RAW: (table, operators) => (eq(table.organizationId, organizationId)) ?? operators.sql`true` },
+  const organization = await db.query.organizations.findFirst({
+    columns: { id: true, aiProviderMode: true },
+    where: {
+      RAW: (table, operators) =>
+        eq(table.id, organizationId) ?? operators.sql`true`,
+    },
   });
-  if (!policy) {
-    throw new ApiError(409, "Organization AI provider policy is not configured", undefined, "AI_PROVIDER_POLICY_MISSING");
-  }
-  return policy;
+  if (!organization) throw organizationNotFound();
+  return {
+    organizationId: organization.id,
+    providerMode: organization.aiProviderMode,
+  };
 }
 
 export async function updateOrganizationAiProviderPolicy(input: {
   userId: string;
   organizationId: string;
-  openAiDisclosureApproved: boolean;
-  expectedVersion: number;
+  providerMode: "company_hosted" | "openai" | "self_hosted";
   requestId?: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "organizations:update");
-  const allowedProviderModes = input.openAiDisclosureApproved
-    ? ["openai", ...defaultOrganizationAiProviderPolicy.allowedProviderModes]
-    : [...defaultOrganizationAiProviderPolicy.allowedProviderModes];
-  const retentionClassification = input.openAiDisclosureApproved
-    ? "external_openai_disclosure_approved"
-    : defaultOrganizationAiProviderPolicy.retentionClassification;
-
+  await requireOrganizationCapability(
+    input.userId,
+    input.organizationId,
+    "organizations:update",
+  );
   return db.transaction(async (tx) => {
-    const [policy] = await tx.update(organizationAiProviderPolicies).set({
-      allowedProviderModes,
-      externalDisclosureAllowed: input.openAiDisclosureApproved,
-      retentionClassification,
-      version: input.expectedVersion + 1,
-      updatedBy: input.userId,
-      updatedAt: new Date(),
-    }).where(and(
-      eq(organizationAiProviderPolicies.organizationId, input.organizationId),
-      eq(organizationAiProviderPolicies.version, input.expectedVersion),
-    )).returning();
-    if (!policy) throw new ApiError(412, "The AI provider policy changed", undefined, "PRECONDITION_FAILED");
+    const [organization] = await tx
+      .update(organizations)
+      .set({ aiProviderMode: input.providerMode, updatedAt: new Date() })
+      .where(eq(organizations.id, input.organizationId))
+      .returning({ id: organizations.id, aiProviderMode: organizations.aiProviderMode });
+    if (!organization) throw organizationNotFound();
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
-      eventType: input.openAiDisclosureApproved
-        ? "organization.ai_provider_policy.openai_approved"
-        : "organization.ai_provider_policy.openai_revoked",
-      entityType: "organization_ai_provider_policy",
+      eventType: "organization.ai_provider_changed",
+      entityType: "organization",
       entityId: input.organizationId,
-      metadata: {
-        externalDisclosureAllowed: policy.externalDisclosureAllowed,
-        allowedProviderModes: policy.allowedProviderModes,
-        retentionClassification: policy.retentionClassification,
-        version: policy.version,
-        requestId: input.requestId,
-      },
+      metadata: { providerMode: organization.aiProviderMode },
+      requestId: input.requestId,
     });
-    return policy;
+    return {
+      organizationId: organization.id,
+      providerMode: organization.aiProviderMode,
+    };
   });
+}
+
+function organizationNotFound() {
+  return new ApiError(404, "Organization not found", undefined, "ORGANIZATION_NOT_FOUND");
 }

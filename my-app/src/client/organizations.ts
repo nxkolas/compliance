@@ -4,8 +4,6 @@ import {
   invitationSchema,
   membershipSchema,
   memberUpdateSchema,
-  organizationAiProviderPolicySchema,
-  organizationAiProviderPolicyUpdateSchema,
   organizationInputSchema,
   organizationListItemSchema,
   organizationListQuerySchema,
@@ -44,11 +42,6 @@ export const organizationsClient = {
     return request(`${base(organizationId)}/members?limit=100`, {
       outputSchema: z.object({
         members: z.array(organizationMemberSchema),
-        controls: z.object({
-          actorUserId: z.uuid(),
-          canManage: z.boolean(),
-          canManageOwners: z.boolean(),
-        }),
       }),
       signal,
     });
@@ -62,20 +55,14 @@ export const organizationsClient = {
   create(input: z.input<typeof organizationInputSchema>, signal?: AbortSignal) {
     return request(base(), { method: "POST", input: organizationInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ organization: organizationSchema }), signal });
   },
-  update(organizationId: string, input: z.input<typeof organizationInputSchema>, ifMatch: number, signal?: AbortSignal) {
-    return request(base(organizationId), { method: "PATCH", input: organizationInputSchema.parse(input), ifMatch, outputSchema: z.object({ organization: organizationSchema }), signal });
+  update(organizationId: string, input: z.input<typeof organizationInputSchema>, signal?: AbortSignal) {
+    return request(base(organizationId), { method: "PATCH", input: organizationInputSchema.parse(input), outputSchema: z.object({ organization: organizationSchema }), signal });
   },
   invite(organizationId: string, input: z.input<typeof invitationInputSchema>, signal?: AbortSignal) {
     return request(`${base(organizationId)}/invitations`, { method: "POST", input: invitationInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ invitation: invitationSchema }), signal });
   },
   acceptInvitation(invitationId: string, signal?: AbortSignal) {
     return request(`/api/organization-invitations/${encodeURIComponent(invitationId)}/accept`, { method: "POST", outputSchema: z.object({ invitation: invitationSchema }), signal });
-  },
-  getAiProviderPolicy(organizationId: string, signal?: AbortSignal) {
-    return request(`${base(organizationId)}/ai-provider-policy`, { outputSchema: z.object({ policy: organizationAiProviderPolicySchema }), signal });
-  },
-  updateAiProviderPolicy(organizationId: string, input: z.input<typeof organizationAiProviderPolicyUpdateSchema>, ifMatch: number, signal?: AbortSignal) {
-    return request(`${base(organizationId)}/ai-provider-policy`, { method: "PATCH", input: organizationAiProviderPolicyUpdateSchema.parse(input), ifMatch, outputSchema: z.object({ policy: organizationAiProviderPolicySchema }), signal });
   },
   getSettings(organizationId: string, signal?: AbortSignal) {
     return request(`${base(organizationId)}/settings`, {
@@ -86,29 +73,25 @@ export const organizationsClient = {
   updateSettings(
     organizationId: string,
     input: z.input<typeof organizationSettingsUpdateSchema>,
-    ifMatch: string,
     signal?: AbortSignal,
   ) {
     return request(`${base(organizationId)}/settings`, {
       method: "PATCH",
       input: organizationSettingsUpdateSchema.parse(input),
-      ifMatch: `"${ifMatch}"`,
       outputSchema: z.object({ settings: organizationSettingsSchema }),
       signal,
     });
   },
-  archive(organizationId: string, ifMatch: number, signal?: AbortSignal) {
+  archive(organizationId: string, signal?: AbortSignal) {
     return request(`${base(organizationId)}/archive`, {
       method: "POST",
-      ifMatch,
       outputSchema: z.object({ organization: organizationSchema }),
       signal,
     });
   },
-  restore(organizationId: string, ifMatch: number, signal?: AbortSignal) {
+  restore(organizationId: string, signal?: AbortSignal) {
     return request(`${base(organizationId)}/restore`, {
       method: "POST",
-      ifMatch,
       outputSchema: z.object({ organization: organizationSchema }),
       signal,
     });
@@ -117,13 +100,11 @@ export const organizationsClient = {
     organizationId: string,
     userId: string,
     input: z.input<typeof memberUpdateSchema>,
-    ifMatch: number,
     signal?: AbortSignal,
   ) {
     return request(`${base(organizationId)}/members/${encodeURIComponent(userId)}`, {
       method: "PATCH",
       input: memberUpdateSchema.parse(input),
-      ifMatch,
       outputSchema: z.object({ member: membershipSchema }),
       signal,
     });
@@ -131,33 +112,17 @@ export const organizationsClient = {
   removeMember(
     organizationId: string,
     userId: string,
-    ifMatch: number,
     signal?: AbortSignal,
   ) {
-    return request(`${base(organizationId)}/members/${encodeURIComponent(userId)}/deactivate`, {
-      method: "POST",
-      ifMatch,
+    return request(`${base(organizationId)}/members/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
       outputSchema: z.object({ member: membershipSchema }),
       signal,
     });
   },
-  restoreMember(
-    organizationId: string,
-    userId: string,
-    ifMatch: number,
-    signal?: AbortSignal,
-  ) {
-    return request(`${base(organizationId)}/members/${encodeURIComponent(userId)}/reactivate`, {
-      method: "POST",
-      ifMatch,
-      outputSchema: z.object({ member: membershipSchema }),
-      signal,
-    });
-  },
-  leave(organizationId: string, ifMatch: number, signal?: AbortSignal) {
+  leave(organizationId: string, signal?: AbortSignal) {
     return request(`${base(organizationId)}/members/me/leave`, {
       method: "POST",
-      ifMatch,
       outputSchema: z.object({ member: membershipSchema }),
       signal,
     });
