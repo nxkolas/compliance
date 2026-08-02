@@ -116,7 +116,7 @@ if ($Mode -eq "test") {
 if ($Mode -eq "infra") {
   $services = @(
     "db", "rustfs", "rustfs-init", "mailpit", "auth", "rest", "storage",
-    "kong", "ollama", "ollama-model-init", "litellm", "migrate",
+    "kong", "ollama", "ollama-model-init", "litellm", "database-bootstrap",
     "supabase-bootstrap"
   )
   $buildOption = if ($UsePrebuiltImages) { "--no-build" } else { "--build" }

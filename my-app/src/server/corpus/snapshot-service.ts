@@ -11,6 +11,7 @@ import {
   platformAuditEvents,
 } from "@/src/db/schema";
 import { contentHash } from "@/src/server/compliance/domain";
+import { validateLegalCorpusActivationCandidate } from "./validation";
 
 export async function activateLegalCorpusSnapshot(input: {
   operatorIdentity: string;
@@ -23,6 +24,10 @@ export async function activateLegalCorpusSnapshot(input: {
   if (!generationIds.length || generationIds.length !== input.processingGenerationIds.length) {
     throw new Error("Processing generation IDs must be unique and non-empty");
   }
+  await validateLegalCorpusActivationCandidate({
+    familyCode: input.familyCode,
+    processingGenerationIds: generationIds,
+  });
   return db.transaction(async (tx) => {
     const [family] = await tx.select().from(legalCorpusFamilies)
       .where(eq(legalCorpusFamilies.code, input.familyCode)).limit(1).for("update");

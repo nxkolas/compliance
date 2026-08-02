@@ -31,7 +31,8 @@ import { requireOrganizationCapability } from "../auth/capability-service";
 import { evaluateGapRequirement } from "./deterministic-evaluator";
 import { deriveAtomicGapTriggerPolicy } from "./trigger-policy";
 import { generateAtomicGapBatch } from "./atomic-gap-generation";
-import { defaultGapStatementMaximum } from "./generation-schema-v8";
+import { defaultGapStatementMaximum } from "./current-contract";
+import { classifyFindingCitationLinks } from "./evidence-link-policy";
 
 const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentGapDefinitionHash;
 
@@ -283,6 +284,7 @@ export async function executeGapGenerationJob(input: {
   locale: Locale;
   retryNonce?: string;
   abortSignal?: AbortSignal;
+  groundingDependencies?: import("../ai/grounding/gateway").GroundingExecutionDependencies;
 }) {
   if (input.abortSignal?.aborted) throw input.abortSignal.reason;
   const cycle = await requireCycle(input.organizationId, input.cycleId ?? input.draftId ?? "");
@@ -374,7 +376,9 @@ export async function executeGapGenerationJob(input: {
     questionnaireAssertions,
     asOfDate: new Date().toISOString().slice(0, 10),
     jobId: input.jobId,
+    workerId: input.workerId,
     abortSignal: input.abortSignal,
+    groundingDependencies: input.groundingDependencies,
   });
   const runIds = [...new Set(Object.values(generated.runIdsByCategory ?? { primary: generated.runId }))];
   const applicability = await currentApplicabilityRevision(input.organizationId);
@@ -457,16 +461,23 @@ export async function executeGapGenerationJob(input: {
         position,
       }).returning();
       if (!finding) throw new Error("Gap finding was not created");
-      const findingContextIds = [...new Set([
+      const findingCitationIds = [...new Set([
         ...groundedFinding.citationIds,
         groundedFinding.legalCitationId,
         ...groundedFinding.gaps.flatMap((gap) => gap.citationIds),
-      ].flatMap((citationId) => contextIdByCitation.get(citationId) ? [contextIdByCitation.get(citationId)!] : []))];
-      if (findingContextIds.length) {
-        await tx.insert(gapFindingContextLinks).values(findingContextIds.map((contextId) => ({
+      ])];
+      const findingContextLinks = classifyFindingCitationLinks({
+        citationIds: findingCitationIds,
+        contextIdByCitation,
+        conflictingOrganizationCitationIds:
+          groundedFinding.conflictingOrganizationCitationIds ?? [],
+      });
+      if (findingContextLinks.length) {
+        await tx.insert(gapFindingContextLinks).values(findingContextLinks.map((link) => ({
           organizationId: input.organizationId,
           findingId: finding.id,
-          contextId,
+          contextId: link.contextId,
+          relationship: link.relationship,
         })));
       }
       if (groundedFinding.gaps.length) {

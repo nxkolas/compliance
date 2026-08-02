@@ -1,5 +1,11 @@
 # Schema simplification implementation audit
 
+> **Historical point-in-time assessment.** The code defects described below
+> have been remediated and automatically verified; connected clean-database and
+> active-corpus verification is still pending. See the
+> [remediation evidence](schema-simplification-remediation-evidence-2026-08-02.md).
+> The original findings and severity statements are preserved below unchanged.
+
 Date: 2 August 2026  
 Plan: [`schema-simplification-refactor.md`](../plans/done/schema-simplification-refactor.md)  
 Reviewed range: `daee67f28a4f4cc1196be30aa72e2a79c6b3842f...662e24cff8ce83a5c615b473890828cc7b7b74fb`  

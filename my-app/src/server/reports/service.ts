@@ -15,7 +15,6 @@ import {
 import { ApiError } from "@/src/server/api/errors";
 import { getCursorCodec } from "@/src/server/api/pagination";
 import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
-import { contentHash } from "@/src/server/compliance";
 import { toJobDto } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { assertReportConcurrency } from "./quota";
@@ -64,13 +63,6 @@ export async function createReport(input: { userId: string; organizationId: stri
 
   const reportId = randomUUID();
   const jobId = randomUUID();
-  const source = {
-    applicabilityRevisionId,
-    gapRevisionId,
-    actionPlanId: plan?.id ?? null,
-    documentVersionIds: documentSources.map((row) => row.documentVersionId),
-    locale: input.locale,
-  };
   return db.transaction(async (tx) => {
     const [job] = await tx.insert(backgroundJobs).values({
       id: jobId,
@@ -87,7 +79,6 @@ export async function createReport(input: { userId: string; organizationId: stri
       actionPlanId: plan?.id ?? null,
       renderingJobId: jobId,
       locale: input.locale,
-      inputHash: contentHash(source),
       createdBy: input.userId,
     }).returning();
     if (!job || !report) throw new ApiError(500, "Could not create report", undefined, "REPORT_CREATE_FAILED");
@@ -105,7 +96,7 @@ export async function createReport(input: { userId: string; organizationId: stri
       eventType: "report.created",
       entityType: "report",
       entityId: reportId,
-      metadata: { inputHash: report.inputHash, documentCount: documentSources.length },
+      metadata: { documentCount: documentSources.length },
     });
     return { report: toReportDto(report, job), job: toJobDto(job) };
   });

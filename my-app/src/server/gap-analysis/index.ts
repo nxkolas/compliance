@@ -12,19 +12,12 @@ export type {
   GapEligibleOutcome,
   GapPrerequisiteView,
 } from "./applicability-eligibility";
-export {
-  createGapReleaseReader,
-  directGapReleaseReader,
-  getActiveGapAnalysisRelease,
-  loadActiveGapAnalysisReleasePointer,
-  loadGapAnalysisRelease,
-} from "./release-loader";
 export type { LoadedGapRelease } from "./release-loader";
 export type {
   AtomicGapKind,
   GapStatementBasis,
   ValidatedCategoryGapResult,
-} from "./generation-schema-v7";
+} from "./current-contract";
 export type { DeterministicGapStatus, GapAnswerValue } from "./deterministic-evaluator";
 export {
   executeGapGenerationJob,

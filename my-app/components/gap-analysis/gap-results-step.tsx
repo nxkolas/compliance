@@ -151,10 +151,17 @@ export function GapResultsStep({
               <span className="ml-auto rounded-full border px-2 py-0.5 text-xs">
                 {labels.statuses[row.finding.status]}
               </span>
+              <span className="rounded-full border px-2 py-0.5 text-xs">
+                {row.hasOrganizationDocument
+                  ? labels.supportHasDocument
+                  : labels.supportNoDocument}
+              </span>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">{row.finding.guidance}</p>
             {row.finding.materialContradiction && !row.finding.contradictionResolved ? (
               <div className="mt-4 grid gap-3 rounded-md border border-warning/50 bg-warning/10 p-4">
+                {row.finding.reviewNotice ? (
+                  <p className="text-sm">{row.finding.reviewNotice}</p>
+                ) : null}
                 <p className="text-sm">{labels.contradictionDecision}</p>
                 <div className="flex flex-wrap gap-2">
                   <Button

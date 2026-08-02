@@ -26,26 +26,24 @@ import {
 } from "../ai/grounding/gateway";
 import type { GroundingContextItem } from "../ai/grounding/types";
 import {
-  buildActionPlanCategoryResponseSchemaV6,
-  normalizeActionPlanCategoryResponseV6,
-  type ActionPlanCategoryPolicyV6,
-  type ActionPlanCategoryResponseV6,
-} from "./generation-schema-v6";
-import {
-  ACTION_PLAN_PROMPT_V6_NAME,
-  ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
-  ACTION_PLAN_PROMPT_V6_VERSION,
-  ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION,
-  actionPlanPromptV6,
-  actionPlanRepairPromptV6,
-} from "./prompt-contract-v6";
+  CURRENT_ACTION_PLAN_PROMPT_METADATA,
+  actionPlanDefinitionHash,
+  actionPlanPrompt as actionPlanPromptV6,
+  actionPlanRepairPrompt as actionPlanRepairPromptV6,
+  buildActionPlanCategoryResponseSchema as buildActionPlanCategoryResponseSchemaV6,
+  normalizeActionPlanCategoryResponse as normalizeActionPlanCategoryResponseV6,
+  type ActionPlanCategoryPolicy as ActionPlanCategoryPolicyV6,
+  type ActionPlanCategoryResponse as ActionPlanCategoryResponseV6,
+} from "./current-contract";
 import { buildActionPlanCategoryQuery } from "./prompt-contract";
 import {
   coordinateCategoryGeneration,
   safeGenerationIssues,
 } from "../ai/generation";
 import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
+import { assertLiveParentJobForAiRun } from "../ai/generation/job-run-lifecycle";
 import { serializeActionDescription } from "./action-description";
+import { assertActionPlanPublicationLease } from "./publication-lease-policy";
 
 const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentGapDefinitionHash;
 
@@ -134,7 +132,8 @@ export async function enqueueActionPlanGeneration(input: {
       payload: {
         sourceGapRevisionId: revision.id,
         locale: revision.locale,
-        definitionHash: revision.definitionHash,
+        gapDefinitionHash: revision.definitionHash,
+        actionPlanDefinitionHash,
         buildHash: BUILD_HASH,
       },
       requestedBy: input.userId,
@@ -148,12 +147,19 @@ export async function executeActionPlanGenerationJob(input: {
   jobId: string;
   organizationId: string;
   userId: string;
+  workerId: string;
   sourceGapRevisionId: string;
   locale: "de" | "en";
   attemptCount?: number;
   abortSignal?: AbortSignal;
+  groundingDependencies?: import("../ai/grounding/gateway").GroundingExecutionDependencies;
 }) {
   if (input.abortSignal?.aborted) throw input.abortSignal.reason;
+  await assertLiveParentJobForAiRun({
+    jobId: input.jobId,
+    organizationId: input.organizationId,
+    expectedLeaseOwner: input.workerId,
+  });
   const existing = await db.query.actionPlans.findFirst({
     where: {
       RAW: (table, operators) =>
@@ -269,11 +275,14 @@ export async function executeActionPlanGenerationJob(input: {
     );
   }
 
-  const preparedGrounding = await prepareGroundingOperation({
-    operation: "gap_analysis",
-    organizationId: input.organizationId,
-    workflowReleaseId: currentGapDefinitionHash,
-  });
+  const preparedGrounding = await prepareGroundingOperation(
+    {
+      operation: "gap_analysis",
+      organizationId: input.organizationId,
+      workflowReleaseId: currentGapDefinitionHash,
+    },
+    input.groundingDependencies,
+  );
   const contextByCategory = new Map<string, GroundingContextItem[]>();
   const runIdsByCategory: Record<string, string> = {};
   const coordinated = await coordinateCategoryGeneration<
@@ -441,15 +450,14 @@ export async function executeActionPlanGenerationJob(input: {
         idempotencyKey: hash({ taskId: task.taskId, phase, providerAttempt }),
         assessmentRevisionId: revision.assessmentRevisionId,
         jobId: input.jobId,
+        expectedLeaseOwner: input.workerId,
+        definitionHash: actionPlanDefinitionHash,
         abortSignal: signal,
         promptMetadata: {
-          name: ACTION_PLAN_PROMPT_V6_NAME,
-          version: ACTION_PLAN_PROMPT_V6_VERSION,
-          templateHash: ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
-          responseSchemaVersion: ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION,
+          ...CURRENT_ACTION_PLAN_PROMPT_METADATA,
         },
         preparedGrounding,
-      });
+      }, input.groundingDependencies);
       contextByCategory.set(task.categoryCode, grounded.context);
       runIdsByCategory[task.categoryCode] = grounded.runId;
       return grounded.output;
@@ -501,25 +509,14 @@ export async function executeActionPlanGenerationJob(input: {
       .select({
         state: backgroundJobs.state,
         leaseOwner: backgroundJobs.leaseOwner,
+        leaseExpiresAt: backgroundJobs.leaseExpiresAt,
         cancellationRequestedAt: backgroundJobs.cancellationRequestedAt,
       })
       .from(backgroundJobs)
       .where(eq(backgroundJobs.id, input.jobId))
       .limit(1)
       .for("update");
-    if (
-      !job ||
-      job.state !== "running" ||
-      !job.leaseOwner ||
-      job.cancellationRequestedAt
-    ) {
-      throw new ApiError(
-        409,
-        "Action Plan generation no longer owns publication",
-        undefined,
-        "ACTION_PLAN_GENERATION_RESERVATION_INVALID",
-      );
-    }
+    assertActionPlanPublicationLease(job, { workerId: input.workerId, now });
     const output = await tx.query.analysisOutputs.findFirst({
       where: {
         RAW: (table, operators) =>

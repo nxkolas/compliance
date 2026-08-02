@@ -39,13 +39,24 @@ import {
   localAggregateLanguageDetector,
   type LanguageDetector,
 } from "./language-detector";
+import type { DocumentEmbeddingProvider } from "@/src/server/documents";
 import { withProviderPermit } from "./provider-limiter";
-import { createAiProcessingRunWithLiveJobGate } from "../generation/job-run-lifecycle";
+import {
+  assertLiveParentJobForAiRun,
+  createAiProcessingRunWithLiveJobGate,
+} from "../generation/job-run-lifecycle";
+import { hashExactPrompt } from "../generation/prompt-provenance";
 
 export type PreparedGroundingOperation = {
   policy: Awaited<ReturnType<typeof resolveGroundingPolicy>>;
   provider: GroundedProvider;
   pinnedSnapshots: PinnedLegalSnapshot[];
+};
+
+export type GroundingExecutionDependencies = {
+  providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
+  languageDetector?: LanguageDetector;
+  embeddingProvider?: DocumentEmbeddingProvider;
 };
 
 export async function prepareGroundingOperation(
@@ -54,9 +65,7 @@ export async function prepareGroundingOperation(
     organizationId: string;
     workflowReleaseId: string;
   },
-  dependencies: {
-    providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
-  } = {},
+  dependencies: Pick<GroundingExecutionDependencies, "providers"> = {},
 ): Promise<PreparedGroundingOperation> {
   const policy = await resolveGroundingPolicy({
     operation: input.operation,
@@ -96,6 +105,8 @@ export async function runGroundedOperation<T>(
     idempotencyKey: string;
     assessmentRevisionId?: string;
     jobId?: string;
+    expectedLeaseOwner?: string;
+    definitionHash?: string;
     promptMetadata?: {
       name: string;
       version: string;
@@ -109,12 +120,16 @@ export async function runGroundedOperation<T>(
     };
     preparedGrounding?: PreparedGroundingOperation;
   },
-  dependencies: {
-    providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
-    languageDetector?: LanguageDetector;
-  } = {},
+  dependencies: GroundingExecutionDependencies = {},
 ) {
   const operationKind = input.runOperationKind ?? "gap_analysis";
+  if (input.jobId && input.expectedLeaseOwner) {
+    await assertLiveParentJobForAiRun({
+      jobId: input.jobId,
+      organizationId: input.organizationId,
+      expectedLeaseOwner: input.expectedLeaseOwner,
+    });
+  }
   const existing = await db.query.aiProcessingRuns.findFirst({
     where: {
       RAW: (table, operators) =>
@@ -194,7 +209,10 @@ export async function runGroundedOperation<T>(
               tierLimits: unit.legalTierLimits,
               pinnedSnapshots: prepared.pinnedSnapshots,
             },
-            { queryEmbedding: input.precomputedQueryEmbeddings?.legal },
+            {
+              queryEmbedding: input.precomputedQueryEmbeddings?.legal,
+              embeddingProvider: dependencies.embeddingProvider,
+            },
           ),
           input.organizationEvidenceVersionIds.length
             ? retrieveOrganizationContext({
@@ -226,6 +244,20 @@ export async function runGroundedOperation<T>(
   const renderedInputHash = createHash("sha256")
     .update(`${prompt.system}\n${prompt.prompt}`)
     .digest("hex");
+  const promptHash = hashExactPrompt({
+    messages: [
+      { role: "system", content: prompt.system },
+      { role: "user", content: prompt.prompt },
+    ],
+    responseSchema: input.promptMetadata
+      ? {
+          name: input.promptMetadata.name,
+          version: input.promptMetadata.version,
+          templateHash: input.promptMetadata.templateHash,
+          schemaVersion: input.promptMetadata.responseSchemaVersion,
+        }
+      : { name: "grounded-generation", version: "1" },
+  });
   const manifest = {
     version: 1,
     assessmentRevisionId: input.assessmentRevisionId ?? null,
@@ -244,14 +276,14 @@ export async function runGroundedOperation<T>(
       model: provider.model,
       promptName: input.promptMetadata?.name ?? "grounded-generation",
       promptVersion: input.promptMetadata?.version ?? "1",
-      promptHash: input.promptMetadata?.templateHash ?? renderedInputHash,
-      definitionHash: input.workflowReleaseId,
+      promptHash,
+      definitionHash: input.definitionHash ?? input.workflowReleaseId,
       buildHash: process.env.APP_BUILD_SHA ?? input.workflowReleaseId,
       inputManifest: manifest,
       claimValidation: { version: 1, status: "pending" },
       outputLocale: input.outputLocale,
       startedAt: new Date(),
-    });
+    }, new Date(), input.expectedLeaseOwner);
 
   try {
     const result =

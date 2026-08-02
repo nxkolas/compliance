@@ -20,7 +20,9 @@ AI provenance, evidence, durable operations, legal-source history, and audit.
   immutable document versions.
 - Gap work: one unfinished `gap_analysis_cycles` row, selected versions in
   `gap_analysis_cycle_documents`, normalized `gap_findings` and `gap_items`,
-  and exact citation links to `ai_processing_run_context`.
+  and exact citation links to `ai_processing_run_context`. Finding links record
+  evidence relationship (`supporting` or `conflicting`) separately from
+  resolution disposition (`admitted` or `rejected`).
 - Documents: `documents` is the stable identity, `document_versions` owns one
   indexing lifecycle, and `document_chunks` stores text, search data, and the
   vector directly.
@@ -32,6 +34,9 @@ AI provenance, evidence, durable operations, legal-source history, and audit.
 - Downstream products: one `action_plans` row per organization with immutable
   generated items and status-only mutation; immutable `reports` use direct
   applicability, Gap, optional plan, document, job, and PDF lineage.
+  A pending report has no input hash. The successful render attempt hashes the
+  exact in-memory snapshot, including current item statuses, and commits that
+  hash with all PDF metadata in one fenced transaction.
 - Operations: `background_jobs`, `upload_sessions`, and `idempotency_records`
   hold small validated result locators inline; rate-limit windows are durable.
 - Legal evidence: corpus families point to immutable current snapshots.
@@ -50,17 +55,24 @@ decision creates a new Gap revision: questionnaire-authoritative decisions mark
 conflicting document contexts rejected; document-authoritative decisions run a
 one-finding regeneration against those exact excerpts.
 
+Job-linked AI-run creation and Action Plan/report publication lock the parent
+job and require the executing worker to own its current, unexpired lease. A
+candidate produced after lease turnover is discarded rather than published.
+
 Organizations are archived, not customer-deleted. Membership deletion removes
 access, invitations are deleted when accepted/revoked/expired, and at least one
 Owner must remain. Each organization can create one Action Plan ever.
 
 ## Security and rollout
 
-Every public application table is declared with RLS enabled. Browser roles have
+Both chunk search vectors are stored generated columns declared by Drizzle;
+their GIN indexes are also Drizzle-owned. Every public application table is
+declared with RLS enabled. Browser roles have
 no policies; application access uses authenticated, capability-checked,
 organization-scoped server services. After every `npm run db:push`, run
 `npm run db:verify:server-only` and require a second push explanation to show
 zero drift.
 
-This pre-production cutover deliberately uses `npm run db:push` without a data
-migration. Future non-disposable environments return to committed migrations.
+This disposable pre-production cutover deliberately uses `npm run db:push`
+without a data migration. The only operator SQL creates the `vector` extension
+before push and the two append-only audit triggers after push.

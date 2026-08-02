@@ -117,6 +117,11 @@ export const contextLinkDispositionEnum = pgEnum("context_link_disposition", [
   "rejected",
 ]);
 
+export const contextLinkRelationshipEnum = pgEnum("context_link_relationship", [
+  "supporting",
+  "conflicting",
+]);
+
 export const actionPlanItemStatusEnum = pgEnum("action_plan_item_status", [
   "open",
   "in_progress",
@@ -689,7 +694,9 @@ export const documentChunks = pgTable.withRLS(
     sectionPath: text("section_path"),
     text: text("text").notNull(),
     contentHash: text("content_hash").notNull(),
-    searchVector: tsvector("search_vector"),
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce("text", ''))`,
+    ),
     embedding: vector("embedding"),
     createdAt: createdAt(),
   },
@@ -981,7 +988,9 @@ export const legalSourceChunks = pgTable.withRLS(
     sectionPath: text("section_path"),
     text: text("text").notNull(),
     contentHash: text("content_hash").notNull(),
-    searchVector: tsvector("search_vector"),
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce("text", ''))`,
+    ),
     createdAt: createdAt(),
   },
   (table) => [
@@ -1233,6 +1242,9 @@ export const gapFindingContextLinks = pgTable.withRLS(
     organizationId: uuid("organization_id").notNull(),
     findingId: uuid("finding_id").notNull(),
     contextId: uuid("context_id").notNull(),
+    relationship: contextLinkRelationshipEnum("relationship")
+      .default("supporting")
+      .notNull(),
     disposition: contextLinkDispositionEnum("disposition").default("admitted").notNull(),
   },
   (table) => [
@@ -1250,6 +1262,10 @@ export const gapFindingContextLinks = pgTable.withRLS(
         aiProcessingRunContext.id,
       ],
     }).onDelete("restrict"),
+    index("gap_finding_context_links_relationship_idx").on(
+      table.findingId,
+      table.relationship,
+    ),
   ],
 );
 
@@ -1392,7 +1408,7 @@ export const reports = pgTable.withRLS(
       { onDelete: "restrict" },
     ),
     locale: varchar("locale", { length: 5 }).notNull(),
-    inputHash: text("input_hash").notNull(),
+    inputHash: text("input_hash"),
     createdBy: uuid("created_by").notNull(),
     pdfBucket: text("pdf_bucket"),
     pdfKey: text("pdf_key"),
@@ -1429,7 +1445,7 @@ export const reports = pgTable.withRLS(
     check("reports_locale_check", sql`${table.locale} in ('de', 'en')`),
     check(
       "reports_pdf_locator_check",
-      sql`num_nonnulls(${table.pdfBucket}, ${table.pdfKey}, ${table.pdfHash}, ${table.pdfByteSize}) in (0, 4)`,
+      sql`num_nonnulls(${table.inputHash}, ${table.pdfBucket}, ${table.pdfKey}, ${table.pdfHash}, ${table.pdfByteSize}) in (0, 5)`,
     ),
   ],
 );

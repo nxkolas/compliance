@@ -1,58 +1,48 @@
-# Development database reset and bootstrap
+# Disposable database recreation and bootstrap
 
-This procedure is destructive and only for disposable development or
-pre-production databases. Stop the web app and workers first.
+This procedure is destructive and only for an explicitly identified local,
+test, development, staging, or pre-production target. Stop web and workers and
+record the operator approval first.
 
-## Confirm the target
+## Recreate the application schema
 
-Configure `DATABASE_URL`/`DRIZZLE_DATABASE_URL`, then print only host, port, and
-database name. Never print the URL or credentials.
-
-```powershell
-node -e "require('dotenv').config({ quiet:true }); for (const n of ['DATABASE_URL','DRIZZLE_DATABASE_URL']) { if (process.env[n]) { const u=new URL(process.env[n]); console.log(n,{host:u.hostname,port:u.port||'5432',database:u.pathname.slice(1)}); } }"
-```
-
-Stop if the identity is unexpected or the two variables identify different
-databases. Use a direct/session-pooler privileged connection, not port 6543.
-
-## Push a fresh simplified schema
-
-Install required operator infrastructure such as the vector extension first.
-Then preview, review every destructive change, apply, verify RLS, and preview
-again:
+Print the configured identity without credentials, visually verify it, and pass
+that exact value back to the guarded command. `APP_ENV` must match the explicit
+environment and production is rejected.
 
 ```powershell
-npm run db:push -- --explain
-npm run db:push
-npm run db:verify:server-only
-npm run db:push -- --explain
+node -e "require('dotenv').config({quiet:true}); const v=process.env.DRIZZLE_DATABASE_URL??process.env.DATABASE_URL; if(!v) throw Error('database URL missing'); const u=new URL(v); console.log(`${u.hostname}:${u.port||'5432'}/${u.pathname.slice(1)}`)"
+
+npm run db:recreate:disposable -- `
+  --target <host:port/database> `
+  --environment preproduction `
+  --confirm recreate-disposable-database
 ```
 
-The final preview must report zero drift. This schema-simplification cutover
-does not generate or run a migration and does not backfill old rows.
+The command drops and recreates only the database's `public` application
+schema. It does not infer a target and does not touch Auth, Storage, extension,
+or other Supabase schemas.
 
-## Clear rows without changing schema
+## Build and verify the clean schema
+
+Follow the ordered four-stage commands in
+[the Drizzle workflow](drizzle-workflow.md). For a disposable local/staging
+container, `npm run db:bootstrap:disposable` performs pre-push, Drizzle push,
+and post-push in that order; storage remains its explicit fourth stage.
+
+Then provision the real corpus manifest, drain legal-source processing jobs,
+bind reviewed stable provisions, validate completeness, and only then activate
+the exact successful generation IDs:
 
 ```powershell
-$env:DB_CLEAR_CONFIRM = 'clear-app-tables'
-try { npm run db:clear } finally { Remove-Item Env:DB_CLEAR_CONFIRM -ErrorAction SilentlyContinue }
+npm run db:provision:legal-corpus -- provision <manifest.json>
+npm run jobs:drain:local
+npm run db:bind:gap-corpus-provisions
+npm run db:validate:legal-corpus -- <family-code> <generation-id,...>
+$env:CORPUS_OPERATOR_IDENTITY='<deployment identity>'
+npm run db:activate:legal-snapshot -- <family-code> <generation-id,...>
 ```
 
-This truncates Drizzle-managed public tables only. It preserves extensions,
-Supabase Auth users, Storage objects, and operator infrastructure. Re-run the
-RLS verifier afterward.
-
-## Bootstrap runtime data
-
-Executable applicability/Gap definitions need no database seed, publication,
-or activation. Configure private document/report/legal-corpus storage. Legal
-evidence is loaded and processed through deployment-authorized tooling; once
-the desired processing generations have succeeded, activate the immutable
-family snapshot:
-
-```powershell
-npm run db:activate:legal-snapshot -- --family <family-code> --operator <identity> --generation <uuid> --generation <uuid>
-```
-
-Historical seed/publish/activate release commands and platform-administrator
-bootstrap are intentionally obsolete.
+Do not activate fixture-only, empty, pending, failed, unembedded, or
+incompletely bound generations. Finish with integrity verification and a second
+Drizzle explanation showing no drift.

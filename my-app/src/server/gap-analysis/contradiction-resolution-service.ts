@@ -20,6 +20,7 @@ import type { GroundedProvider } from "@/src/server/ai/grounding/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { requireOrganizationCapability } from "../auth/capability-service";
+import { resolvedFindingLinkDisposition } from "./evidence-link-policy";
 
 const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentGapDefinitionHash;
 const PROMPT_NAME = "gap-conflict-resolution";
@@ -91,9 +92,14 @@ export async function executeGapContradictionResolutionJob(input: {
     context: aiProcessingRunContext,
   }).from(gapFindingContextLinks)
     .innerJoin(aiProcessingRunContext, eq(aiProcessingRunContext.id, gapFindingContextLinks.contextId))
-    .where(eq(gapFindingContextLinks.findingId, source.finding.id))
+    .where(and(
+      eq(gapFindingContextLinks.findingId, source.finding.id),
+      eq(gapFindingContextLinks.relationship, "conflicting"),
+    ))
     .orderBy(asc(aiProcessingRunContext.position));
-  const conflictingDocuments = contextLinks.filter(({ context }) => context.channel === "organization_evidence");
+  const conflictingDocuments = contextLinks.filter(
+    ({ context }) => context.channel === "organization_evidence",
+  );
   if (!conflictingDocuments.length) {
     throw new ApiError(409, "The contradiction has no exact document citations", undefined, "GAP_CONTRADICTION_CITATIONS_MISSING");
   }
@@ -259,15 +265,24 @@ export async function executeGapContradictionResolutionJob(input: {
 
     const newFindingLinks = oldFindingLinks.flatMap((link) => {
       const target = link.findingId === source.finding.id;
-      const mappedContextId = target && generated ? contextIdMap.get(link.contextId) : link.contextId;
+      const mappedContextId = target && generated
+        ? contextIdMap.get(link.contextId) ?? link.contextId
+        : link.contextId;
       if (!mappedContextId) return [];
       return [{
         organizationId: input.organizationId,
         findingId: findingIdMap.get(link.findingId)!,
         contextId: mappedContextId,
-        disposition: target && input.sourceChoice === "questionnaire" && conflictingDocuments.some(({ context }) => context.id === link.contextId)
-          ? "rejected" as const
-          : link.disposition,
+        relationship: link.relationship,
+        disposition: resolvedFindingLinkDisposition({
+          currentDisposition: link.disposition,
+          relationship: link.relationship,
+          sourceChoice: input.sourceChoice,
+          isTargetFinding: target,
+          isExactConflictingContext: conflictingDocuments.some(
+            ({ context }) => context.id === link.contextId,
+          ),
+        }),
       }];
     });
     if (newFindingLinks.length) await tx.insert(gapFindingContextLinks).values(newFindingLinks);

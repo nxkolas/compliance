@@ -31,6 +31,14 @@ const expectedIndexes = [
   "gap_items_finding_stable_key_unique",
   "action_plans_organization_unique",
   "action_plan_items_plan_position_unique",
+  "document_chunks_search_idx",
+  "legal_source_chunks_search_idx",
+  "gap_finding_context_links_relationship_idx",
+] as const;
+
+const expectedAuditTriggers = [
+  "audit_events_append_only",
+  "platform_audit_events_append_only",
 ] as const;
 
 async function main() {
@@ -48,6 +56,31 @@ async function main() {
       where schemaname = 'public'
         and indexname in ${sql(expectedIndexes)}
     `;
+    const [vectorExtension] = await sql<{ schemaName: string }[]>`
+      select namespace.nspname as "schemaName"
+      from pg_extension extension
+      join pg_namespace namespace on namespace.oid = extension.extnamespace
+      where extension.extname = 'vector'
+    `;
+    const generatedSearchColumns = await sql<{
+      tableName: string;
+      generationExpression: string;
+    }[]>`
+      select table_name as "tableName", generation_expression as "generationExpression"
+      from information_schema.columns
+      where table_schema = 'public'
+        and column_name = 'search_vector'
+        and table_name in ('document_chunks', 'legal_source_chunks')
+        and is_generated = 'ALWAYS'
+    `;
+    const triggers = await sql<{ triggerName: string }[]>`
+      select trigger.tgname as "triggerName"
+      from pg_trigger trigger
+      join pg_class relation on relation.oid = trigger.tgrelid
+      join pg_namespace namespace on namespace.oid = relation.relnamespace
+      where namespace.nspname = 'public'
+        and not trigger.tgisinternal
+    `;
     const constraintNames = new Set(constraints.map((row) => row.conname));
     const indexNames = new Set(indexes.map((row) => row.indexname));
     const missing = [
@@ -57,7 +90,31 @@ async function main() {
       ...expectedIndexes.flatMap((name) =>
         indexNames.has(name) ? [] : [`index ${name}`],
       ),
+      ...(vectorExtension?.schemaName === "extensions"
+        ? []
+        : ["vector extension in extensions schema"]),
+      ...["document_chunks", "legal_source_chunks"].flatMap((tableName) => {
+        const column = generatedSearchColumns.find(
+          (candidate) => candidate.tableName === tableName,
+        );
+        return column &&
+          /to_tsvector\('simple'::regconfig,\s*COALESCE\(text,\s*''::text\)\)/i.test(
+            column.generationExpression,
+          )
+          ? []
+          : [`generated search vector ${tableName}.search_vector`];
+      }),
     ];
+    const triggerNames = triggers.map((row) => row.triggerName).sort();
+    const unexpectedTriggers = triggerNames.filter(
+      (name) => !expectedAuditTriggers.includes(name as typeof expectedAuditTriggers[number]),
+    );
+    for (const trigger of expectedAuditTriggers) {
+      if (!triggerNames.includes(trigger)) missing.push(`trigger ${trigger}`);
+    }
+    if (unexpectedTriggers.length) {
+      missing.push(`unexpected trigger(s) ${unexpectedTriggers.join(", ")}`);
+    }
     if (missing.length) {
       throw new Error(`Current-schema integrity objects are missing: ${missing.join(", ")}`);
     }
@@ -139,7 +196,7 @@ async function main() {
       );
     }
     console.log(
-      `Verified ${expectedConstraints.length} constraints, ${expectedIndexes.length} indexes, current pointers, cycle/plan uniqueness, Action Plan coverage, and terminal AI-run lifecycle.`,
+      `Verified ${expectedConstraints.length} constraints, ${expectedIndexes.length} indexes, generated search vectors, vector extension, append-only audit triggers, current pointers, cycle/plan uniqueness, Action Plan coverage, and terminal AI-run lifecycle.`,
     );
   } finally {
     await sql.end();

@@ -1,37 +1,10 @@
 import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { reportsMessages } from "@/lib/i18n/messages/reports";
 import { formatDateTime } from "@/lib/i18n/format";
+import type { ReportRenderSnapshot } from "./render-snapshot";
 
 const styles = StyleSheet.create({ page: { padding: 42, fontSize: 10 }, title: { fontSize: 22, marginBottom: 18 }, heading: { fontSize: 13, marginTop: 14, marginBottom: 6 }, row: { marginBottom: 4 }, muted: { color: "#555" } });
-export type ReportContentSnapshot = {
-  applicability: {
-    outcome: string;
-    jurisdiction: string | null;
-    answers: Array<{ question: string; answer: string }>;
-  };
-  findings: Array<{
-    title: string;
-    status: string;
-    summary: string;
-    gaps: string[];
-    sources: string[];
-  }>;
-  actions: Array<{
-    title: string;
-    description: string;
-    status: string;
-  }>;
-};
-
-type Snapshot = {
-  capturedAt: string;
-  applicabilityRevisionId: string | null;
-  gapRevisionId: string | null;
-  actionPlanId: string | null;
-  documentVersionIds: string[];
-  content?: ReportContentSnapshot;
-};
-export async function renderComplianceReport(input: { reportId: string; organizationId: string; locale: "de" | "en"; snapshot: Snapshot; inputHash: string }) {
+export async function renderComplianceReport(input: { reportId: string; organizationId: string; locale: "de" | "en"; snapshot: ReportRenderSnapshot; inputHash: string }) {
   const labels = reportsMessages[input.locale].reports.pdf;
   return renderToBuffer(
     <Document title={labels.title} subject={labels.subject} language={input.locale}>
@@ -52,8 +25,7 @@ export async function renderComplianceReport(input: { reportId: string; organiza
         <Text style={styles.row}>{labels.organization}: {input.organizationId}</Text>
         <Text style={styles.row}>{labels.report}: {input.reportId}</Text>
         <Text style={styles.row}>{labels.inputHash}: {input.inputHash}</Text>
-        {input.snapshot.content ? (
-          <>
+        <>
             <Text style={styles.heading}>{input.locale === "de" ? "Betroffenheitsergebnis" : "Applicability result"}</Text>
             <Text style={styles.row}>{input.snapshot.content.applicability.outcome}</Text>
             {input.snapshot.content.applicability.jurisdiction ? (
@@ -69,7 +41,12 @@ export async function renderComplianceReport(input: { reportId: string; organiza
             {input.snapshot.content.findings.map((finding, index) => (
               <View key={`finding-${index}`} style={styles.row} wrap={false}>
                 <Text>{finding.title} — {finding.status}</Text>
-                <Text>{finding.summary}</Text>
+                <Text style={styles.muted}>
+                  {finding.hasOrganizationDocument
+                    ? input.locale === "de" ? "Dokument hinterlegt" : "Document provided"
+                    : input.locale === "de" ? "Kein Dokument hinterlegt" : "No document provided"}
+                </Text>
+                {finding.reviewNotice ? <Text>{finding.reviewNotice}</Text> : null}
                 {finding.gaps.map((gap, gapIndex) => (
                   <Text key={`gap-${gapIndex}`}>• {gap}</Text>
                 ))}
@@ -85,8 +62,7 @@ export async function renderComplianceReport(input: { reportId: string; organiza
                 <Text>{action.description}</Text>
               </View>
             ))}
-          </>
-        ) : null}
+        </>
       </Page>
     </Document>,
   );

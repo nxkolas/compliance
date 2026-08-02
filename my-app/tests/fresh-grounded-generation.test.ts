@@ -79,6 +79,7 @@ vi.mock("@/src/server/ai/grounding/providers/ai-sdk", () => ({
 }));
 
 vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
+  assertLiveParentJobForAiRun: vi.fn().mockResolvedValue(undefined),
   createAiProcessingRunWithLiveJobGate: vi.fn(async (values) => ({
     id: "00000000-0000-4000-8000-000000000010",
     ...values,
@@ -228,6 +229,7 @@ describe("fresh grounded generation", () => {
     await expect(
       executeActionPlanGenerationJob({
         jobId: mocks.cycle.generationJobId,
+        workerId: "worker-1",
         organizationId: mocks.cycle.organizationId,
         userId: "00000000-0000-4000-8000-000000000006",
         sourceGapRevisionId: "00000000-0000-4000-8000-000000000008",

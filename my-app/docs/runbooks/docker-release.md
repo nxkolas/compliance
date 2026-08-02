@@ -12,10 +12,11 @@
    infra/scripts/deploy-app-host.sh green /etc/compliancetool/staging/application.env
    ```
 
-5. The script starts the new web color, takes the migration advisory lock,
-   applies checksummed forward migrations/operator SQL, reconciles buckets,
+5. For disposable staging, the script runs vector bootstrap, Drizzle push, and
+   append-only audit bootstrap in that order, then reconciles private buckets,
    drains the old worker, starts the new worker, atomically switches Caddy, and
-   records a release manifest.
+   records a release manifest. Production deliberately skips this disposable
+   schema path and requires a separately reviewed clean-baseline procedure.
 6. Run production-safe Auth, Storage, readiness, queue, and AI smoke checks.
 
 Staging has its own Compose projects, domain, environment file, database,
@@ -28,9 +29,9 @@ the staging procedure with the production environment. Stop staging if the
 shared host approaches its production resource reserve.
 
 Application rollback switches Caddy to the preceding compatible web digest and
-restores its worker color. A migrated database is never automatically
-downgraded. If old code is incompatible, forward-fix or execute the verified
-restore procedure.
+restores its worker color. Database schema is never automatically downgraded.
+If old code is incompatible, forward-fix or execute the verified restore
+procedure.
 
 ## Verification
 
@@ -42,5 +43,6 @@ restore procedure.
   only the application peer over `wg0`.
 
 Keep the preceding image digests and configuration until the observation
-window closes. Record the revision, image digests, migration checksums, active
-color, smoke results, and operator identity.
+window closes. Record the revision, image digests, Drizzle explanation and
+zero-drift result, bootstrap results, active color, smoke results, and operator
+identity.

@@ -24,16 +24,15 @@ function queryBuilder(result: unknown[]) {
 
 vi.mock("@/src/db", () => ({
   db: {
-    query: {
-      actionPlans: {
-        findFirst: mocks.findPlan,
-      },
-    },
+    query: { actionPlans: { findFirst: mocks.findPlan } },
     select: vi.fn(() => queryBuilder(mocks.selectResults.shift() ?? [])),
   },
 }));
 vi.mock("@/src/server/ai/grounding/gateway", () => ({
   runGroundedOperation: mocks.runGroundedOperation,
+}));
+vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
+  assertLiveParentJobForAiRun: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { executeActionPlanGenerationJob } from "@/src/server/action-plans/generation-service";
@@ -57,10 +56,10 @@ describe("Action Plan generation exactly-once retry", () => {
     await expect(
       executeActionPlanGenerationJob({
         jobId,
+        workerId: "worker-1",
         organizationId: "00000000-0000-4000-8000-000000000003",
         userId: "00000000-0000-4000-8000-000000000004",
-        sourceGapRevisionId:
-          "00000000-0000-4000-8000-000000000005",
+        sourceGapRevisionId: "00000000-0000-4000-8000-000000000005",
         locale: "en",
       }),
     ).resolves.toEqual({ type: "action_plan", id: planId });
@@ -82,6 +81,7 @@ describe("Action Plan generation exactly-once retry", () => {
     await expect(
       executeActionPlanGenerationJob({
         jobId,
+        workerId: "worker-1",
         organizationId: "00000000-0000-4000-8000-000000000003",
         userId: "00000000-0000-4000-8000-000000000004",
         sourceGapRevisionId: "00000000-0000-4000-8000-000000000005",

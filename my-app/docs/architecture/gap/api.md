@@ -264,13 +264,12 @@ Returns `201`:
 }
 ```
 
-The command requires an active published Gap release and a current approved,
-eligible applicability artifact compatible with that release. It reuses an
-active assessment already pinned to the active release; otherwise it archives
-the previous active assessment for the module, creates a new assessment, and
-opens a questionnaire draft. Typical prerequisite failures are `503` when the
-active release/questionnaire is unavailable and `409` or `400` applicability
-eligibility errors.
+The command requires the deployed code-owned current Gap definition and a
+current eligible applicability result compatible with it. It reuses an active
+assessment whose definition hash still matches; otherwise it creates the
+current assessment/draft lineage. There is no database Gap release publication
+or activation lookup. Typical prerequisite failures are definition-staleness
+or applicability eligibility errors.
 
 Source:
 [assessment route](<../../../app/api/organizations/[organizationId]/gap-analysis/assessments/route.ts>)

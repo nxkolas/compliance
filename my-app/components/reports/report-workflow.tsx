@@ -120,7 +120,7 @@ export function ReportWorkflow({
               <p>{formatDateTime(report.createdAt, locale)}</p>
               <p className="text-muted-foreground">
                 {labels.statuses[report.state]} · {labels.sourceHash}:{" "}
-                {report.inputHash.slice(0, 12)}
+                {report.inputHash?.slice(0, 12) ?? "—"}
               </p>
             </div>
             <div className="flex gap-2">

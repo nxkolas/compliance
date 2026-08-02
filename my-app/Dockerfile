@@ -82,14 +82,12 @@ ENV NODE_ENV=production
 RUN groupadd --gid 10001 comply && \
     useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin comply
 COPY --from=production-dependencies --chown=10001:10001 /app/node_modules ./node_modules
-COPY --chown=10001:10001 package.json package-lock.json tsconfig.json ./
+COPY --chown=10001:10001 package.json package-lock.json tsconfig.json drizzle.config.ts ./
 COPY --chown=10001:10001 src ./src
 COPY --chown=10001:10001 lib ./lib
 COPY --chown=10001:10001 components ./components
 COPY --chown=10001:10001 public ./public
 COPY --chown=10001:10001 scripts ./scripts
-COPY --chown=10001:10001 drizzle ./drizzle
-COPY --chown=10001:10001 supabase/sql-editor ./supabase/sql-editor
 COPY --chown=10001:10001 infra/config/supabase/db-init ./infra/config/supabase/db-init
 USER 10001:10001
 HEALTHCHECK --interval=15s --timeout=6s --start-period=15s --retries=4 \

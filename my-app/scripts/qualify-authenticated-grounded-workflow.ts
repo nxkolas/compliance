@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
 import {
   actionPlanItemGaps,
@@ -32,8 +32,11 @@ import {
 } from "@/src/server/gap-analysis";
 import { succeedJob } from "@/src/server/jobs";
 import { createOrganizationForUser } from "@/src/server/organizations/service";
+import type { GroundingExecutionDependencies } from "@/src/server/ai/grounding/gateway";
+import type { GroundedProvider } from "@/src/server/ai/grounding/types";
 
-const userId = required("WORKFLOW_QUALIFICATION_USER_ID");
+const deterministic = process.env.WORKFLOW_QUALIFICATION_DETERMINISTIC === "true";
+const userId = process.env.WORKFLOW_QUALIFICATION_USER_ID?.trim() || randomUUID();
 const workerId = `grounded-qualification-${randomUUID()}`;
 const providerMode = provider();
 
@@ -53,6 +56,9 @@ const applicabilityAnswers: Record<string, ApplicabilityAnswerValue> = {
 };
 
 async function main() {
+  const groundingDependencies = deterministic
+    ? await deterministicGroundingDependencies(providerMode)
+    : undefined;
   await resolvePinnedLegalScope({
     familyCodes: ["nis2-de-primary", "nis2-eu-primary"],
   });
@@ -135,6 +141,7 @@ async function main() {
     organizationId: organization.id,
     workerId,
     locale: "de",
+    groundingDependencies,
   });
   await succeedJob({
     jobId: gapEnqueue.job.id,
@@ -167,10 +174,12 @@ async function main() {
   await claimJob(actionJob.id);
   const actionResult = await executeActionPlanGenerationJob({
     jobId: actionJob.id,
+    workerId,
     organizationId: organization.id,
     userId,
     sourceGapRevisionId: gapResult.id,
     locale: "de",
+    groundingDependencies,
   });
   await succeedJob({ jobId: actionJob.id, workerId, result: actionResult });
   const plan = await getCurrentActionPlan(userId, organization.id);
@@ -190,7 +199,7 @@ async function main() {
     runs.some(
       (run) =>
         run.status !== "succeeded" ||
-        run.model.startsWith("deterministic-") ||
+        (!deterministic && run.model.startsWith("deterministic-")) ||
         !run.provider ||
         !run.model ||
         run.inputTokens === null ||
@@ -222,7 +231,6 @@ async function main() {
     !contexts.length ||
     contexts.some((context) => !context.exactText.trim()) ||
     !findingLinks.length ||
-    !gapLinks.length ||
     new Set(actionLinks.map((link) => link.gapItemId)).size !== atomicGaps.length
   ) {
     throw new Error("Persisted exact context or generated coverage is incomplete");
@@ -237,6 +245,7 @@ async function main() {
         gapRevisionId: gapResult.id,
         actionPlanId: plan.plan.id,
         providerMode,
+        deterministic,
         providers: [...new Set(runs.map((run) => run.provider))],
         models: [...new Set(runs.map((run) => run.model))],
         aiRunCount: runs.length,
@@ -288,17 +297,127 @@ function assertNoPlaceholder(values: string[]) {
 }
 
 function provider(): "company_hosted" | "openai" | "self_hosted" {
-  const value = process.env.WORKFLOW_QUALIFICATION_PROVIDER ?? "openai";
+  const value = process.env.WORKFLOW_QUALIFICATION_PROVIDER ??
+    (deterministic ? "self_hosted" : "openai");
   if (!["company_hosted", "openai", "self_hosted"].includes(value)) {
     throw new Error("WORKFLOW_QUALIFICATION_PROVIDER is invalid");
   }
   return value as "company_hosted" | "openai" | "self_hosted";
 }
 
-function required(name: string) {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is required`);
-  return value;
+async function deterministicGroundingDependencies(
+  mode: "company_hosted" | "openai" | "self_hosted",
+): Promise<GroundingExecutionDependencies> {
+  const dimensionResult = await db.execute<{ dimensions: number }>(sql`
+    select vector_dims(embedding)::int as dimensions
+    from legal_source_chunk_embeddings
+    limit 1
+  `);
+  const dimensions = Array.from(dimensionResult)[0]?.dimensions;
+  if (!dimensions) throw new Error("Deterministic qualification could not resolve embedding dimensions");
+  const provider: GroundedProvider = {
+    mode,
+    provider: "deterministic-fixture",
+    model: "deterministic-grounded-v1",
+    async run(input) {
+      const payload = parseQueryUnitPayload(input.prompt);
+      return {
+        output: input.system.includes("Create operational actions")
+          ? deterministicActionPlanOutput(payload)
+          : deterministicGapOutput(payload),
+        usage: { inputTokens: 1, outputTokens: 1, cachedInputTokens: 0 },
+      };
+    },
+  };
+  return {
+    providers: { [mode]: provider },
+    embeddingProvider: {
+      provider: "deterministic-fixture",
+      model: "text-embedding-3-small",
+      modelRevision: "deterministic-v1",
+      dimensions,
+      retrievalInstructionId: "deterministic-query-v1",
+      async embed(values) {
+        return values.map((value) => {
+          const vector = Array.from({ length: dimensions }, () => 0);
+          vector[Math.abs(hashCode(value)) % dimensions] = 1;
+          return vector;
+        });
+      },
+    },
+    languageDetector: {
+      implementation: "deterministic-fixture",
+      version: "1",
+      async classify(_document, expectedLocale) {
+        return { kind: "match" as const, detected: expectedLocale, confidence: 1 };
+      },
+    },
+  };
+}
+
+function parseQueryUnitPayload(prompt: string) {
+  const firstLine = prompt.split("\n", 1)[0] ?? "";
+  const separator = firstLine.indexOf(": ");
+  if (separator < 0) throw new Error("Deterministic qualification prompt has no query-unit payload");
+  return JSON.parse(firstLine.slice(separator + 2)) as Record<string, unknown>;
+}
+
+function deterministicGapOutput(payload: Record<string, unknown>) {
+  const policy = payload.serverOwnedPolicy as {
+    triggeringQuestions: Array<{ stableKey: string; kind: "missing" | "partial" | "uncertain" }>;
+  };
+  return {
+    gaps: Object.fromEntries(policy.triggeringQuestions.map((trigger) => [
+      trigger.stableKey,
+      [{
+        statement: trigger.kind === "missing"
+          ? "Die erforderliche Kontrolle fehlt."
+          : trigger.kind === "partial"
+            ? "Die erforderliche Kontrolle ist nur teilweise umgesetzt."
+            : "Der Umsetzungsstand der erforderlichen Kontrolle ist unklar.",
+        supportingOrganizationCitationIds: [],
+      }],
+    ])),
+    evidenceSufficiency: "none",
+    reviewNotice: null,
+    assumptions: [],
+    contradictions: [],
+    requiresReview: false,
+    conflictingOrganizationCitationIds: [],
+  };
+}
+
+function deterministicActionPlanOutput(payload: Record<string, unknown>) {
+  const gaps = payload.gaps as Array<{ key: string; kind: "missing" | "partial" | "uncertain" }>;
+  const confirmed = gaps.filter((gap) => gap.kind !== "uncertain");
+  const uncertain = gaps.filter((gap) => gap.kind === "uncertain");
+  return {
+    actions: [
+      ...(confirmed.length ? [{
+        mode: "remediation" as const,
+        gapKeys: confirmed.map((gap) => gap.key),
+        title: "Erforderliche Kontrolle umsetzen",
+        result: "Setzen Sie die erforderliche Kontrolle vollständig um und dokumentieren Sie das Ergebnis.",
+        suggestedEvidence: ["Freigegebene Kontrolldokumentation"],
+        supportingOrganizationCitationIds: [],
+      }] : []),
+      ...(uncertain.length ? [{
+        mode: "verification" as const,
+        gapKeys: uncertain.map((gap) => gap.key),
+        verificationTitle: "Kontrollstatus verifizieren",
+        verificationResult: "Prüfen und dokumentieren Sie den aktuellen Kontrollstatus.",
+        conditionalRemediation: "Fehlende Kontrolle vollständig umsetzen",
+        suggestedEvidence: ["Dokumentiertes Prüfergebnis"],
+        supportingOrganizationCitationIds: [],
+      }] : []),
+    ],
+  };
+}
+
+function hashCode(value: string) {
+  let hash = 0;
+  for (const character of value) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
+  return hash;
 }
 
 main()

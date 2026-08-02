@@ -1,11 +1,11 @@
 import type { Locale } from "@/lib/i18n-config";
 import { compileGapAnalysisRelease } from "@/src/server/gap-analysis/publishing/compile-release";
-import { reliabilityV8GapRelease } from "@/src/server/gap-analysis/releases/reliability-v8/release";
+import { currentGapContractDefinition } from "@/src/server/gap-analysis/current-contract";
 import type { LoadedGapRelease } from "@/src/server/gap-analysis/release-loader";
 import { currentApplicabilityDefinitionHash } from "./applicability";
 
 export const CURRENT_GAP_DEFINITION_CODE = "nis2-gap";
-export const currentGapDefinition = reliabilityV8GapRelease;
+export const currentGapDefinition = currentGapContractDefinition;
 
 const compiled = compileGapAnalysisRelease(currentGapDefinition);
 

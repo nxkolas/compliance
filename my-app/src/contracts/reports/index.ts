@@ -11,7 +11,7 @@ export const reportSchema = z.object({
   actionPlanId: z.uuid().nullable(),
   renderingJobId: z.uuid(),
   locale: z.enum(["de", "en"]),
-  inputHash: z.string().length(64),
+  inputHash: z.string().length(64).nullable(),
   pdfHash: z.string().length(64).nullable(),
   pdfByteSize: z.number().int().positive().nullable(),
   state: z.enum(["queued", "rendering", "ready", "failed", "cancelled"]),
