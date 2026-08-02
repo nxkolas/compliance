@@ -1,20 +1,24 @@
 import { unstable_cache } from "next/cache";
-import { assemblePublishedComplianceRelease } from "./postgres-assembler";
 import { createRuntimeReleaseReader } from "./direct-reader";
-import { loadActiveReleasePointer } from "./postgres-assembler";
+import {
+  CURRENT_APPLICABILITY_CHECK_CODE,
+  currentApplicabilityDefinition,
+  currentApplicabilityDefinitionHash,
+  getCurrentApplicabilityDefinition,
+} from "@/src/server/definitions/applicability";
 
 const loadCachedPublished = unstable_cache(
   async (checkReleaseId: string, locale: "de" | "en") => {
-    const release = await assemblePublishedComplianceRelease(
-      checkReleaseId,
-      locale,
-    );
+    const release =
+      checkReleaseId === currentApplicabilityDefinitionHash
+        ? getCurrentApplicabilityDefinition(locale)
+        : null;
     if (!release) {
       throw new PublishedReleaseNotFoundError(checkReleaseId);
     }
     return release;
   },
-  ["published-compliance-release"],
+  ["code-owned-applicability-definition"],
   { revalidate: false },
 );
 
@@ -33,5 +37,12 @@ export const nextCachedRuntimeReleaseReader = createRuntimeReleaseReader({
       throw error;
     }
   },
-  loadActivePointer: loadActiveReleasePointer,
+  loadActivePointer: async (checkCode) =>
+    checkCode === CURRENT_APPLICABILITY_CHECK_CODE
+      ? {
+          checkCode,
+          checkReleaseId: currentApplicabilityDefinitionHash,
+          versionLabel: currentApplicabilityDefinition.versionLabel,
+        }
+      : null,
 });
