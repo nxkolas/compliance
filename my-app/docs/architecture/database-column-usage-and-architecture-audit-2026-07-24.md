@@ -1,7 +1,7 @@
 # Database Column Usage and Architecture Audit
 
 Date: 2026-07-24  
-Status: historical audit; superseded by the schema simplification on 2026-08-02  
+Status: historical audit; superseded by the schema simplification on 2026-08-02
 Scope: PostgreSQL schema, runtime usage, operational scripts, tests, and persistence architecture
 Implementation response:
 [Database Column and Persistence Architecture Remediation](../plans/done/database-column-and-persistence-architecture-remediation.md)

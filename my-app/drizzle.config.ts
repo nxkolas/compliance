@@ -1,5 +1,8 @@
-import 'dotenv/config';
+import { config as loadEnvironment } from 'dotenv';
 import { defineConfig } from 'drizzle-kit';
+
+loadEnvironment({ path: '.env.local', quiet: true });
+loadEnvironment({ quiet: true });
 
 const databaseUrl = getDrizzleDatabaseUrl();
 

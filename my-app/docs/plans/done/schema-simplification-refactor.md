@@ -1,8 +1,14 @@
 # Schema Simplification Refactor
 
-Status: decisions complete; ready for implementation  
+Status: implemented and verified on 2 August 2026
 Database posture: pre-production and disposable  
 Schema rollout: Drizzle Kit `push`; no data migration and no generated SQL migration for this refactor
+
+Implementation evidence: the disposable Supabase target was recreated from the
+43-table Drizzle inventory, server-only verification confirmed RLS enabled with
+no browser policies and append-only audit triggers, and a second push reported
+`no_changes`. `npm run verify`, worker, route, report, and AI suites all passed.
+The runtime cutover is recorded in commits `2fb7cbc`, `b8ad719`, and `a04b396`.
 
 ## Problem statement
 

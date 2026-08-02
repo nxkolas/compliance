@@ -1,5 +1,5 @@
 > Status update (2026-08-02): historical and superseded by
-> `docs/plans/pending/schema-simplification-refactor.md` and the current
+> `docs/plans/done/schema-simplification-refactor.md` and the current
 > `docs/architecture/database-structure.md`. The catalogs, publication,
 > activation, approval, and generic artifact model described below no longer
 > represent the application. This file is retained only as design history.
