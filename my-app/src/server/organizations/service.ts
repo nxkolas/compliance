@@ -737,6 +737,13 @@ async function assertAnotherOwner(
   organizationId: string,
   excludedUserId: string,
 ) {
+  const [organization] = await tx
+    .select({ id: organizations.id })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1)
+    .for("update");
+  if (!organization) throw organizationNotFound();
   const owners = await tx
     .select({ count: sql<number>`count(*)::int` })
     .from(organizationMemberships)

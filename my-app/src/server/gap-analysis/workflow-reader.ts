@@ -2,11 +2,13 @@ import type { Locale } from "@/lib/i18n-config";
 import { db } from "@/src/db";
 import {
   analysisOutputDocumentSources,
+  aiProcessingRunContext,
   assessmentAnswers,
   auditEvents,
   documentVersions,
   documents,
   gapFindings,
+  gapFindingContextLinks,
   gapItems,
   userProfiles,
 } from "@/src/db/schema";
@@ -25,6 +27,7 @@ import {
 } from "./applicability-eligibility";
 import { getGapAnalysisCyclePreauthorized } from "./analysis-cycle-service";
 import { deriveGapLifecycleCapabilities, deriveGapLifecycleMode } from "./workflow-state";
+import { projectGapFindingSources, type GapFindingSourceEvidence } from "./finding-source-projection";
 
 export type GapPageReadInput = {
   userId: string;
@@ -90,7 +93,7 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
         answers,
       }
     : null;
-  const findings = revision ? await loadFindings(input.organizationId, revision.id) : [];
+  const findings = revision ? await loadFindings(input.organizationId, revision.id, input.locale) : [];
   const generationRun = revision?.aiProcessingRunId
     ? await db.query.aiProcessingRuns.findFirst({
         where: { RAW: (table, operators) => eq(table.id, revision.aiProcessingRunId!) ?? operators.sql`true` },
@@ -171,16 +174,22 @@ export async function getGapAnalysisRevision(
 ) {
   const revision = await getGapAnalysisRevisionRecord(userId, organizationId, revisionId);
   if (!revision) return null;
-  return { revision, findings: await loadFindings(organizationId, revision.id), staleness: revision.definitionHash === currentGapDefinitionHash ? null : { outdated: true } };
+  return { revision, findings: await loadFindings(organizationId, revision.id, revision.locale as Locale), staleness: revision.definitionHash === currentGapDefinitionHash ? null : { outdated: true } };
 }
 
-async function loadFindings(organizationId: string, revisionId: string) {
+async function loadFindings(organizationId: string, revisionId: string, locale: Locale) {
   const rows = await db.select().from(gapFindings)
     .where(and(eq(gapFindings.organizationId, organizationId), eq(gapFindings.outputRevisionId, revisionId)))
     .orderBy(asc(gapFindings.position));
   const items = rows.length ? await db.select().from(gapItems)
     .where(inArray(gapItems.findingId, rows.map((row) => row.id)))
     .orderBy(asc(gapItems.position)) : [];
+  const contextRows = rows.length ? await db.select({
+    findingId: gapFindingContextLinks.findingId,
+    context: aiProcessingRunContext,
+  }).from(gapFindingContextLinks)
+    .innerJoin(aiProcessingRunContext, eq(aiProcessingRunContext.id, gapFindingContextLinks.contextId))
+    .where(inArray(gapFindingContextLinks.findingId, rows.map((row) => row.id))) : [];
   return rows.map((finding) => ({
     finding: {
       ...finding,
@@ -197,10 +206,69 @@ async function loadFindings(organizationId: string, revisionId: string) {
       criticality: finding.criticality,
       position: finding.position,
     },
-    sources: [],
-    hasOrganizationDocument: false,
+    sources: projectGapFindingSources({
+      organizationId,
+      locale,
+      evidence: [
+        ...(items.some((item) => item.findingId === finding.id)
+          ? [{
+              sourceType: "assessment_answer" as const,
+              pageNumber: null,
+              sectionLabel: null,
+            }]
+          : []),
+        ...contextRows
+          .filter((item) => item.findingId === finding.id)
+          .map(({ context }) => contextEvidence(context)),
+      ],
+    }),
+    hasOrganizationDocument: contextRows.some(
+      (item) => item.findingId === finding.id && item.context.channel === "organization_evidence",
+    ),
     manuallyChanged: Boolean(finding.sourceChoice),
   }));
+}
+
+function contextEvidence(
+  context: typeof aiProcessingRunContext.$inferSelect,
+): GapFindingSourceEvidence {
+  const metadata = context.metadata && typeof context.metadata === "object"
+    ? context.metadata as Record<string, unknown>
+    : {};
+  const pageNumber = typeof metadata.pageNumber === "number" ? metadata.pageNumber : null;
+  const sectionLabel = typeof metadata.sectionPath === "string" ? metadata.sectionPath : null;
+  if (context.channel === "organization_evidence") {
+    return {
+      sourceType: "document_chunk",
+      pageNumber,
+      sectionLabel,
+      documentSource: {
+        versionId: stringMetadata(metadata, "documentVersionId"),
+        documentId: stringMetadata(metadata, "documentId"),
+        title: stringMetadata(metadata, "title"),
+        mimeType: stringMetadata(metadata, "mimeType"),
+        chunkPageNumber: pageNumber,
+        chunkSectionLabel: sectionLabel,
+      },
+    };
+  }
+  return {
+    sourceType: "legal_source_chunk",
+    pageNumber,
+    sectionLabel,
+    legalSource: {
+      versionId: stringMetadata(metadata, "sourceVersionId"),
+      title: stringMetadata(metadata, "title"),
+      upstreamUrl: stringMetadata(metadata, "officialSourceUrl"),
+      mimeType: "application/pdf",
+      chunkPageNumber: pageNumber,
+      chunkSectionLabel: sectionLabel,
+    },
+  };
+}
+
+function stringMetadata(metadata: Record<string, unknown>, key: string) {
+  return typeof metadata[key] === "string" ? metadata[key] : null;
 }
 
 async function loadInputs(organizationId: string, assessmentRevisionId: string, outputRevisionId: string) {
@@ -234,7 +302,7 @@ async function loadHistory(organizationId: string) {
     .where(and(eq(auditEvents.organizationId, organizationId), eq(auditEvents.entityType, "analysis_output_revision")))
     .orderBy(desc(auditEvents.occurredAt));
   return rows.map(({ event, profile }) => ({
-    id: event.id,
+    id: event.entityId,
     label: event.eventType,
     occurredAt: event.occurredAt.toISOString(),
     actor: profile?.displayName ?? profile?.email ?? "System",

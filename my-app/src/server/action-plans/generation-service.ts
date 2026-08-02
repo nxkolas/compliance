@@ -5,16 +5,47 @@ import {
   actionPlanItems,
   actionPlans,
   aiProcessingRuns,
+  analysisOutputDocumentSources,
+  assessmentAnswers,
   auditEvents,
   backgroundJobs,
   gapFindings,
   gapItems,
 } from "@/src/db/schema";
-import { currentGapDefinitionHash, getCurrentGapDefinition } from "@/src/server/definitions";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import {
+  currentGapDefinitionHash,
+  getCurrentGapDefinition,
+} from "@/src/server/definitions";
+import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { requireOrganizationCapability } from "../auth/capability-service";
 import { getCurrentActionPlan } from "./service";
+import {
+  prepareGroundingOperation,
+  runGroundedOperation,
+} from "../ai/grounding/gateway";
+import type { GroundingContextItem } from "../ai/grounding/types";
+import {
+  buildActionPlanCategoryResponseSchemaV6,
+  normalizeActionPlanCategoryResponseV6,
+  type ActionPlanCategoryPolicyV6,
+  type ActionPlanCategoryResponseV6,
+} from "./generation-schema-v6";
+import {
+  ACTION_PLAN_PROMPT_V6_NAME,
+  ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_V6_VERSION,
+  ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION,
+  actionPlanPromptV6,
+  actionPlanRepairPromptV6,
+} from "./prompt-contract-v6";
+import { buildActionPlanCategoryQuery } from "./prompt-contract";
+import {
+  coordinateCategoryGeneration,
+  safeGenerationIssues,
+} from "../ai/generation";
+import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
+import { serializeActionDescription } from "./action-description";
 
 const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentGapDefinitionHash;
 
@@ -23,30 +54,92 @@ export async function enqueueActionPlanGeneration(input: {
   organizationId: string;
   sourceGapRevisionId: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "plans:manage");
-  if (await db.query.actionPlans.findFirst({ where: { RAW: (table, operators) => eq(table.organizationId, input.organizationId) ?? operators.sql`true` } })) {
-    throw new ApiError(409, "This organization already has its one Action Plan", undefined, "ACTION_PLAN_ALREADY_EXISTS");
+  await requireOrganizationCapability(
+    input.userId,
+    input.organizationId,
+    "plans:manage",
+  );
+  if (
+    await db.query.actionPlans.findFirst({
+      where: {
+        RAW: (table, operators) =>
+          eq(table.organizationId, input.organizationId) ??
+          operators.sql`true`,
+      },
+    })
+  ) {
+    throw new ApiError(
+      409,
+      "This organization already has its one Action Plan",
+      undefined,
+      "ACTION_PLAN_ALREADY_EXISTS",
+    );
   }
   const output = await db.query.analysisOutputs.findFirst({
-    where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.organizationId, input.organizationId),
+          eq(table.kind, "gap"),
+        ) ?? operators.sql`true`,
+    },
   });
-  if (output?.currentRevisionId !== input.sourceGapRevisionId) throw new ApiError(409, "Action Plan generation requires the current Gap revision");
-  const blockers = await db.select({ id: gapFindings.id }).from(gapFindings).where(and(
-    eq(gapFindings.outputRevisionId, input.sourceGapRevisionId),
-    eq(gapFindings.materialContradiction, true),
-    eq(gapFindings.contradictionResolved, false),
-  ));
-  if (blockers.length) throw new ApiError(409, "Resolve material contradictions before creating the Action Plan", { findingIds: blockers.map((item) => item.id) }, "ACTION_PLAN_CONTRADICTION_BLOCKED");
+  if (output?.currentRevisionId !== input.sourceGapRevisionId) {
+    throw new ApiError(
+      409,
+      "Action Plan generation requires the current Gap revision",
+    );
+  }
+  const blockers = await db
+    .select({ id: gapFindings.id })
+    .from(gapFindings)
+    .where(
+      and(
+        eq(gapFindings.outputRevisionId, input.sourceGapRevisionId),
+        eq(gapFindings.materialContradiction, true),
+        eq(gapFindings.contradictionResolved, false),
+      ),
+    );
+  if (blockers.length) {
+    throw new ApiError(
+      409,
+      "Resolve material contradictions before creating the Action Plan",
+      { findingIds: blockers.map((item) => item.id) },
+      "ACTION_PLAN_CONTRADICTION_BLOCKED",
+    );
+  }
   const revision = await db.query.analysisOutputRevisions.findFirst({
-    where: { RAW: (table, operators) => and(eq(table.id, input.sourceGapRevisionId), eq(table.organizationId, input.organizationId)) ?? operators.sql`true` },
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, input.sourceGapRevisionId),
+          eq(table.organizationId, input.organizationId),
+        ) ?? operators.sql`true`,
+    },
   });
   if (!revision) throw new ApiError(404, "Gap revision not found");
-  const [job] = await db.insert(backgroundJobs).values({
-    organizationId: input.organizationId,
-    kind: "action_plan_generation",
-    payload: { sourceGapRevisionId: revision.id, locale: revision.locale, definitionHash: revision.definitionHash, buildHash: BUILD_HASH },
-    requestedBy: input.userId,
-  }).returning();
+  if (revision.definitionHash !== currentGapDefinitionHash) {
+    throw new ApiError(
+      409,
+      "The current Gap result uses an outdated definition",
+      undefined,
+      "GAP_DEFINITION_CHANGED",
+    );
+  }
+  const [job] = await db
+    .insert(backgroundJobs)
+    .values({
+      organizationId: input.organizationId,
+      kind: "action_plan_generation",
+      payload: {
+        sourceGapRevisionId: revision.id,
+        locale: revision.locale,
+        definitionHash: revision.definitionHash,
+        buildHash: BUILD_HASH,
+      },
+      requestedBy: input.userId,
+    })
+    .returning();
   if (!job) throw new Error("Action Plan job was not created");
   return job;
 }
@@ -61,79 +154,644 @@ export async function executeActionPlanGenerationJob(input: {
   abortSignal?: AbortSignal;
 }) {
   if (input.abortSignal?.aborted) throw input.abortSignal.reason;
-  const existing = await db.query.actionPlans.findFirst({ where: { RAW: (table, operators) => eq(table.organizationId, input.organizationId) ?? operators.sql`true` } });
-  if (existing) return { type: "action_plan", id: existing.id };
-  const findings = await db.select().from(gapFindings).where(eq(gapFindings.outputRevisionId, input.sourceGapRevisionId)).orderBy(asc(gapFindings.position));
-  const actionable = findings.filter((finding) => finding.status !== "fulfilled");
-  const gaps = actionable.length ? await db.select().from(gapItems).where(inArray(gapItems.findingId, actionable.map((finding) => finding.id))).orderBy(asc(gapItems.position)) : [];
-  const organization = await db.query.organizations.findFirst({ where: { RAW: (table, operators) => eq(table.id, input.organizationId) ?? operators.sql`true` } });
-  const definition = getCurrentGapDefinition(input.locale);
-  const manifest = { sourceGapRevisionId: input.sourceGapRevisionId, findingIds: actionable.map((item) => item.id), gapIds: gaps.map((item) => item.id) };
-  const now = new Date();
-  const [run] = await db.insert(aiProcessingRuns).values({
-    organizationId: input.organizationId,
-    jobId: input.jobId,
-    operationKind: "action_plan_generation",
-    status: "succeeded",
-    provider: organization?.aiProviderMode ?? "company_hosted",
-    model: "deterministic-action-plan-v1",
-    promptName: definition.actionPlanPrompt.name,
-    promptVersion: definition.actionPlanPrompt.version,
-    promptHash: definition.actionPlanPrompt.templateHash,
-    definitionHash: currentGapDefinitionHash,
-    buildHash: BUILD_HASH,
-    inputManifest: manifest,
-    claimValidation: { version: 1, status: "validated", actionCount: actionable.length },
-    validatedOutput: { version: 1, findingIds: actionable.map((item) => item.id) },
-    outputLocale: input.locale,
-    startedAt: now,
-    completedAt: now,
-  }).returning();
-  if (!run) throw new Error("Action Plan AI run was not created");
-  const [plan] = await db.insert(actionPlans).values({
-    organizationId: input.organizationId,
-    sourceGapRevisionId: input.sourceGapRevisionId,
-    generationJobId: input.jobId,
-    aiProcessingRunId: run.id,
-    locale: input.locale,
-    inputHash: hash(manifest),
-    createdBy: input.userId,
-  }).returning();
-  if (!plan) throw new Error("Action Plan was not created");
-  if (actionable.length) {
-    const items = await db.insert(actionPlanItems).values(actionable.map((finding, position) => ({
-      organizationId: input.organizationId,
-      actionPlanId: plan.id,
-      findingId: finding.id,
-      title: finding.requirementTitle,
-      description: finding.guidance,
-      position,
-    }))).returning();
-    const links = items.flatMap((item) => gaps.filter((gap) => gap.findingId === item.findingId).map((gap) => ({
-      organizationId: input.organizationId,
-      actionPlanId: plan.id,
-      actionPlanItemId: item.id,
-      gapItemId: gap.id,
-    })));
-    if (links.length) await db.insert(actionPlanItemGaps).values(links);
-  }
-  await db.insert(auditEvents).values({
-    organizationId: input.organizationId,
-    actorUserId: input.userId,
-    eventType: "action_plan.created",
-    entityType: "action_plan",
-    entityId: plan.id,
-    metadata: { sourceGapRevisionId: input.sourceGapRevisionId },
+  const existing = await db.query.actionPlans.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        eq(table.organizationId, input.organizationId) ?? operators.sql`true`,
+    },
   });
-  return { type: "action_plan", id: plan.id };
+  if (existing) {
+    if (existing.generationJobId !== input.jobId) {
+      throw new ApiError(
+        409,
+        "This organization already has its one Action Plan",
+        { actionPlanId: existing.id },
+        "ACTION_PLAN_ALREADY_EXISTS",
+      );
+    }
+    if (
+      !(await hasCompletePublishedPlan({
+        actionPlanId: existing.id,
+        sourceGapRevisionId: input.sourceGapRevisionId,
+      }))
+    ) {
+      throw new ApiError(
+        409,
+        "The Action Plan publication is incomplete and requires operator repair",
+        { actionPlanId: existing.id, generationJobId: input.jobId },
+        "ACTION_PLAN_PARTIAL_STATE",
+      );
+    }
+    return { type: "action_plan", id: existing.id };
+  }
+
+  const revision = await db.query.analysisOutputRevisions.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, input.sourceGapRevisionId),
+          eq(table.organizationId, input.organizationId),
+        ) ?? operators.sql`true`,
+    },
+  });
+  if (!revision || revision.locale !== input.locale) {
+    throw new ApiError(
+      409,
+      "Action Plan inputs do not match the Gap revision",
+      undefined,
+      "GAP_INPUT_SNAPSHOT_INVALID",
+    );
+  }
+  if (revision.definitionHash !== currentGapDefinitionHash) {
+    throw new ApiError(
+      409,
+      "The source Gap result uses an outdated definition",
+      undefined,
+      "GAP_DEFINITION_CHANGED",
+    );
+  }
+  const definition = getCurrentGapDefinition(input.locale);
+  const findings = await db
+    .select()
+    .from(gapFindings)
+    .where(eq(gapFindings.outputRevisionId, input.sourceGapRevisionId))
+    .orderBy(asc(gapFindings.position));
+  const actionable = findings.filter((finding) => finding.status !== "fulfilled");
+  const gaps = actionable.length
+    ? await db
+        .select()
+        .from(gapItems)
+        .where(inArray(gapItems.findingId, actionable.map((finding) => finding.id)))
+        .orderBy(asc(gapItems.position))
+    : [];
+  const selectedVersions = await db
+    .select({ documentVersionId: analysisOutputDocumentSources.documentVersionId })
+    .from(analysisOutputDocumentSources)
+    .where(eq(analysisOutputDocumentSources.outputRevisionId, revision.id))
+    .orderBy(asc(analysisOutputDocumentSources.position));
+  const answers = await db
+    .select()
+    .from(assessmentAnswers)
+    .where(eq(assessmentAnswers.assessmentRevisionId, revision.assessmentRevisionId))
+    .orderBy(asc(assessmentAnswers.position));
+
+  const categoryInputs = actionable.flatMap((finding) => {
+    const requirement = definition.requirements.find(
+      (candidate) => candidate.stableRequirementId === finding.requirementKey,
+    );
+    if (!requirement) {
+      throw new ApiError(
+        409,
+        "A pinned Action Plan requirement is unavailable",
+        undefined,
+        "GAP_INPUT_SNAPSHOT_INVALID",
+      );
+    }
+    const categoryGaps = gaps
+      .filter((gap) => gap.findingId === finding.id)
+      .map((gap, position) => ({
+        key: `G${position + 1}`,
+        row: gap,
+        sourceAssessmentAnswerId: findSourceAnswerId(
+          gap.stableKey,
+          requirement.questionStableKeys,
+          answers,
+        ),
+      }));
+    return categoryGaps.length ? [{ finding, requirement, gaps: categoryGaps }] : [];
+  });
+  if (!categoryInputs.length) {
+    throw new ApiError(
+      409,
+      "The Gap result contains no atomic gaps for Action Plan generation",
+      undefined,
+      "ACTION_PLAN_NO_GAPS",
+    );
+  }
+
+  const preparedGrounding = await prepareGroundingOperation({
+    operation: "gap_analysis",
+    organizationId: input.organizationId,
+    workflowReleaseId: currentGapDefinitionHash,
+  });
+  const contextByCategory = new Map<string, GroundingContextItem[]>();
+  const runIdsByCategory: Record<string, string> = {};
+  const coordinated = await coordinateCategoryGeneration<
+    (typeof categoryInputs)[number],
+    ActionPlanCategoryResponseV6,
+    {
+      requirementCode: string;
+      sourceFindingId: string;
+      actions: Array<{
+        title: string;
+        result: string;
+        suggestedEvidence: string[];
+        priority: "low" | "medium" | "high" | "critical";
+        position: number;
+        gapKeys: string[];
+        citationIds: string[];
+      }>;
+    }
+  >({
+    signal: input.abortSignal ?? new AbortController().signal,
+    concurrency: configuredCategoryConcurrency(),
+    tasks: categoryInputs.map((category) => ({
+      categoryCode: category.requirement.code,
+      taskId: hash({
+        operation: "action_plan_generation",
+        sourceGapRevisionId: input.sourceGapRevisionId,
+        categoryCode: category.requirement.code,
+        attemptCount: input.attemptCount ?? 1,
+      }),
+      input: category,
+    })),
+    async generate({
+      task,
+      phase,
+      rejectedCandidate,
+      issues,
+      signal,
+      providerAttempt,
+    }) {
+      const category = task.input;
+      const questions = category.requirement.questionStableKeys.map((stableKey) => {
+        const question = definition.questions.find((item) => item.stableKey === stableKey);
+        const answer = answers.find((item) => item.questionKey === stableKey);
+        return {
+          question: question?.questionText ?? stableKey,
+          answer: typeof answer?.answerValue === "string" ? answer.answerValue : "missing",
+          satisfied: answer?.answerValue === "fully_implemented",
+        };
+      });
+      const mappedProvisions = category.requirement.questionStableKeys.flatMap(
+        (stableKey) =>
+          definition.questions.find((question) => question.stableKey === stableKey)
+            ?.legalProvisions ?? [],
+      );
+      const baseQuery = buildActionPlanCategoryQuery({
+        requirement: category.requirement,
+        gaps: category.gaps.map((gap) => ({
+          key: gap.key,
+          kind: gap.row.kind,
+          statement: gap.row.statement,
+        })),
+        questionsAndAnswers: questions,
+      });
+      const queryUnit = {
+        id: category.requirement.code,
+        query:
+          phase === "repair"
+            ? JSON.stringify({
+                pinnedCategoryInput: JSON.parse(baseQuery),
+                rejectedCandidate,
+              })
+            : baseQuery,
+        retrievalQuery: [
+          category.requirement.title,
+          category.requirement.requirementText,
+          ...category.gaps.map((gap) => gap.row.statement),
+          ...questions.map((question) => question.question),
+        ].join("\n"),
+        preferredMappedLegalProvisionIds: [
+          ...new Set(mappedProvisions.map((provision) => provision.id)),
+        ],
+        preferredMappedLegalProvisionKeys: [
+          ...new Set(mappedProvisions.map((provision) => provision.key)),
+        ],
+        legalTierLimits: {
+          primary_authority: 0,
+          official_guidance: 0,
+          curated_secondary: 0,
+        },
+      };
+      let responsePolicy: ActionPlanCategoryPolicyV6 | undefined;
+      const grounded = await runGroundedOperation<ActionPlanCategoryResponseV6>({
+        operation: "gap_analysis",
+        runOperationKind: "action_plan_generation",
+        actor: { userId: input.userId },
+        organizationId: input.organizationId,
+        outputLocale: input.locale,
+        workflowReleaseId: currentGapDefinitionHash,
+        asOfDate: new Date().toISOString().slice(0, 10),
+        organizationEvidenceVersionIds: selectedVersions.map(
+          (item) => item.documentVersionId,
+        ),
+        questionnaireAssertions: category.gaps.map((gap) => {
+          const answer = answers.find(
+            (candidate) => candidate.id === gap.sourceAssessmentAnswerId,
+          )!;
+          return {
+            answerId: answer.id,
+            queryUnitId: category.requirement.code,
+            excerpt: `${answer.questionText}: ${answer.selectedOptionLabels.join(", ") || String(answer.answerValue)}`,
+          };
+        }),
+        queryUnits: [queryUnit],
+        systemInstruction:
+          phase === "initial"
+            ? actionPlanPromptV6(input.locale)
+            : actionPlanRepairPromptV6({
+                locale: input.locale,
+                categoryCode: category.requirement.code,
+                issues: issues ?? [],
+              }),
+        outputContract: {
+          schema(context) {
+            responsePolicy = actionPlanPolicy(category, context, input.locale);
+            return buildActionPlanCategoryResponseSchemaV6(responsePolicy);
+          },
+          languagePolicy: "localized",
+          generatedProse(value) {
+            return value.actions.flatMap((action) =>
+              action.mode === "remediation"
+                ? [action.title, action.result, ...action.suggestedEvidence]
+                : [
+                    action.verificationTitle,
+                    action.verificationResult,
+                    ...(action.conditionalRemediation
+                      ? [action.conditionalRemediation]
+                      : []),
+                    ...action.suggestedEvidence,
+                  ],
+            );
+          },
+          claims(value) {
+            const policy =
+              responsePolicy ?? actionPlanPolicy(category, contextByCategory.get(task.categoryCode) ?? [], input.locale);
+            return value.actions.map((action, index) => ({
+              key: `action-plan:${task.categoryCode}:${index + 1}`,
+              queryUnitId: task.categoryCode,
+              kind: "legal" as const,
+              binding: true,
+              citationIds: [
+                ...new Set([
+                  ...action.gapKeys.flatMap(
+                    (key) => policy.mandatoryCitationIdsByGapKey[key] ?? [],
+                  ),
+                  ...action.supportingOrganizationCitationIds,
+                ]),
+              ],
+              text:
+                action.mode === "remediation"
+                  ? `${action.title}. ${action.result}`
+                  : `${action.verificationTitle}. ${action.verificationResult}`,
+            }));
+          },
+        },
+        idempotencyKey: hash({ taskId: task.taskId, phase, providerAttempt }),
+        assessmentRevisionId: revision.assessmentRevisionId,
+        jobId: input.jobId,
+        abortSignal: signal,
+        promptMetadata: {
+          name: ACTION_PLAN_PROMPT_V6_NAME,
+          version: ACTION_PLAN_PROMPT_V6_VERSION,
+          templateHash: ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
+          responseSchemaVersion: ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION,
+        },
+        preparedGrounding,
+      });
+      contextByCategory.set(task.categoryCode, grounded.context);
+      runIdsByCategory[task.categoryCode] = grounded.runId;
+      return grounded.output;
+    },
+    validate(candidate, task) {
+      try {
+        const normalized = normalizeActionPlanCategoryResponseV6({
+          value: candidate,
+          policy: actionPlanPolicy(
+            task.input,
+            contextByCategory.get(task.categoryCode) ?? [],
+            input.locale,
+          ),
+        });
+        return {
+          valid: true,
+          value: normalized.value,
+          normalizedIssueCodes: normalized.normalizationCodes,
+        };
+      } catch (error) {
+        return {
+          valid: false,
+          failureClass: "repairable_content",
+          issues:
+            error &&
+            typeof error === "object" &&
+            "issues" in error &&
+            Array.isArray(error.issues)
+              ? safeGenerationIssues(error.issues)
+              : [{ code: "content_invalid", path: [] }],
+        };
+      }
+    },
+  });
+  const runIds = categoryInputs.map(
+    (category) => runIdsByCategory[category.requirement.code]!,
+  );
+  if (runIds.some((runId) => !runId)) {
+    throw new Error("Action Plan grounded run coverage is incomplete");
+  }
+  const manifest = {
+    sourceGapRevisionId: input.sourceGapRevisionId,
+    findingIds: categoryInputs.map((item) => item.finding.id),
+    gapIds: gaps.map((item) => item.id),
+  };
+  const now = new Date();
+  const planId = await db.transaction(async (tx) => {
+    const [job] = await tx
+      .select({
+        state: backgroundJobs.state,
+        leaseOwner: backgroundJobs.leaseOwner,
+        cancellationRequestedAt: backgroundJobs.cancellationRequestedAt,
+      })
+      .from(backgroundJobs)
+      .where(eq(backgroundJobs.id, input.jobId))
+      .limit(1)
+      .for("update");
+    if (
+      !job ||
+      job.state !== "running" ||
+      !job.leaseOwner ||
+      job.cancellationRequestedAt
+    ) {
+      throw new ApiError(
+        409,
+        "Action Plan generation no longer owns publication",
+        undefined,
+        "ACTION_PLAN_GENERATION_RESERVATION_INVALID",
+      );
+    }
+    const output = await tx.query.analysisOutputs.findFirst({
+      where: {
+        RAW: (table, operators) =>
+          and(
+            eq(table.organizationId, input.organizationId),
+            eq(table.kind, "gap"),
+          ) ?? operators.sql`true`,
+      },
+    });
+    if (output?.currentRevisionId !== input.sourceGapRevisionId) {
+      throw new ApiError(
+        409,
+        "Only the current Gap result can create an Action Plan",
+        undefined,
+        "GAP_REVISION_NOT_CURRENT",
+      );
+    }
+    const source = await tx.query.analysisOutputRevisions.findFirst({
+      where: {
+        RAW: (table, operators) =>
+          eq(table.id, input.sourceGapRevisionId) ?? operators.sql`true`,
+      },
+    });
+    if (!source || source.definitionHash !== currentGapDefinitionHash) {
+      throw new ApiError(
+        409,
+        "The source Gap result is outdated",
+        undefined,
+        "GAP_DEFINITION_CHANGED",
+      );
+    }
+    const anyPlan = await tx.query.actionPlans.findFirst({
+      where: {
+        RAW: (table, operators) =>
+          eq(table.organizationId, input.organizationId) ?? operators.sql`true`,
+      },
+    });
+    if (anyPlan) {
+      if (anyPlan.generationJobId === input.jobId) return anyPlan.id;
+      throw new ApiError(
+        409,
+        "This organization already has its one Action Plan",
+        { actionPlanId: anyPlan.id },
+        "ACTION_PLAN_ALREADY_EXISTS",
+      );
+    }
+    const [plan] = await tx
+      .insert(actionPlans)
+      .values({
+        organizationId: input.organizationId,
+        sourceGapRevisionId: input.sourceGapRevisionId,
+        generationJobId: input.jobId,
+        aiProcessingRunId: runIds[0],
+        locale: input.locale,
+        inputHash: hash(manifest),
+        createdBy: input.userId,
+      })
+      .returning();
+    if (!plan) throw new Error("Action Plan was not created");
+    const gapByKey = new Map(
+      categoryInputs.flatMap((category) =>
+        category.gaps.map((gap) => [
+          `${category.finding.id}:${gap.key}`,
+          gap.row,
+        ] as const),
+      ),
+    );
+    let position = 0;
+    for (const category of coordinated.categories) {
+      for (const action of category.actions) {
+        const [stored] = await tx
+          .insert(actionPlanItems)
+          .values({
+            organizationId: input.organizationId,
+            actionPlanId: plan.id,
+            findingId: category.sourceFindingId,
+            title: action.title,
+            description: serializeActionDescription(
+              action.result,
+              action.suggestedEvidence,
+              input.locale,
+            ),
+            position,
+          })
+          .returning();
+        if (!stored) throw new Error("Generated Action Plan item was not stored");
+        position += 1;
+        await tx.insert(actionPlanItemGaps).values(
+          action.gapKeys.map((gapKey) => ({
+            organizationId: input.organizationId,
+            actionPlanId: plan.id,
+            actionPlanItemId: stored.id,
+            gapItemId: requireMapValue(
+              gapByKey,
+              `${category.sourceFindingId}:${gapKey}`,
+            ).id,
+          })),
+        );
+      }
+    }
+    const completed = await tx
+      .update(aiProcessingRuns)
+      .set({
+        status: "succeeded",
+        completedAt: now,
+        failureCode: null,
+        failureMessage: null,
+      })
+      .where(
+        and(
+          inArray(aiProcessingRuns.id, runIds),
+          eq(aiProcessingRuns.status, "processing"),
+        ),
+      )
+      .returning({ id: aiProcessingRuns.id });
+    if (completed.length !== runIds.length) {
+      throw new Error("Grounded Action Plan run publication is incomplete");
+    }
+    await tx
+      .update(aiProcessingRuns)
+      .set({
+        status: "failed",
+        failureCode: "GENERATION_CANDIDATE_REJECTED",
+        failureMessage:
+          "A corrected category candidate replaced this generation attempt.",
+        completedAt: now,
+      })
+      .where(
+        and(
+          eq(aiProcessingRuns.jobId, input.jobId),
+          eq(aiProcessingRuns.status, "processing"),
+          notInArray(aiProcessingRuns.id, runIds),
+        ),
+      );
+    await tx.insert(auditEvents).values({
+      organizationId: input.organizationId,
+      actorUserId: input.userId,
+      eventType: "action_plan.created",
+      entityType: "action_plan",
+      entityId: plan.id,
+      metadata: {
+        sourceGapRevisionId: input.sourceGapRevisionId,
+        groundedRunIds: runIds,
+        itemCount: position,
+      },
+    });
+    return plan.id;
+  });
+  return { type: "action_plan", id: planId };
 }
 
-export function generateActionPlanContent(input: { findings: Array<{ id: string; title: string; guidance: string }> }) {
-  return input.findings.map((finding, position) => ({ findingId: finding.id, title: finding.title, description: finding.guidance, position }));
-}
-
-export async function activateGeneratedActionPlan(input: { userId: string; organizationId: string }) {
+export async function activateGeneratedActionPlan(input: {
+  userId: string;
+  organizationId: string;
+}) {
   return getCurrentActionPlan(input.userId, input.organizationId);
 }
 
-function hash(value: unknown) { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
+function actionPlanPolicy(
+  category: {
+    finding: { id: string; criticality: string };
+    requirement: { code: string };
+    gaps: Array<{
+      key: string;
+      row: { kind: "missing" | "partial" | "uncertain" };
+      sourceAssessmentAnswerId: string;
+    }>;
+  },
+  context: GroundingContextItem[],
+  outputLocale: "de" | "en",
+): ActionPlanCategoryPolicyV6 {
+  const supplied = context.filter(
+    (item) => item.queryUnitId === category.requirement.code,
+  );
+  const legal = supplied.find(
+    (item) =>
+      item.channel === "legal" &&
+      item.metadata.selectionRole === "mapped_primary",
+  );
+  if (!legal) throw new Error("Action Plan primary legal citation is missing");
+  return {
+    requirementCode: category.requirement.code,
+    sourceFindingId: category.finding.id,
+    priority: isPriority(category.finding.criticality)
+      ? category.finding.criticality
+      : "medium",
+    outputLocale,
+    gaps: category.gaps.map((gap) => ({ key: gap.key, kind: gap.row.kind })),
+    admittedOrganizationCitationIds: supplied
+      .filter((item) => item.channel === "organization_document")
+      .map((item) => item.citationId),
+    mandatoryCitationIdsByGapKey: Object.fromEntries(
+      category.gaps.map((gap) => {
+        const questionnaire = supplied.find(
+          (item) =>
+            item.channel === "questionnaire_assertion" &&
+            item.sourceId === gap.sourceAssessmentAnswerId,
+        );
+        if (!questionnaire) {
+          throw new Error("Action Plan questionnaire citation is missing");
+        }
+        return [gap.key, [questionnaire.citationId, legal.citationId]];
+      }),
+    ),
+  };
+}
+
+function findSourceAnswerId(
+  gapStableKey: string,
+  questionKeys: string[],
+  answers: Array<typeof assessmentAnswers.$inferSelect>,
+) {
+  const questionKey = [...questionKeys]
+    .sort((left, right) => right.length - left.length)
+    .find(
+      (candidate) =>
+        gapStableKey === candidate || gapStableKey.startsWith(`${candidate}.`),
+    );
+  const answer = answers.find((candidate) => candidate.questionKey === questionKey);
+  if (!answer) {
+    throw new ApiError(
+      409,
+      "An atomic Gap is not traceable to its questionnaire answer",
+      undefined,
+      "GAP_ANSWER_TRACE_INVALID",
+    );
+  }
+  return answer.id;
+}
+
+async function hasCompletePublishedPlan(input: {
+  actionPlanId: string;
+  sourceGapRevisionId: string;
+}) {
+  const [items, links, sourceGaps] = await Promise.all([
+    db
+      .select({ id: actionPlanItems.id })
+      .from(actionPlanItems)
+      .where(eq(actionPlanItems.actionPlanId, input.actionPlanId)),
+    db
+      .select({
+        actionPlanItemId: actionPlanItemGaps.actionPlanItemId,
+        gapItemId: actionPlanItemGaps.gapItemId,
+      })
+      .from(actionPlanItemGaps)
+      .where(eq(actionPlanItemGaps.actionPlanId, input.actionPlanId)),
+    db
+      .select({ id: gapItems.id })
+      .from(gapItems)
+      .where(eq(gapItems.outputRevisionId, input.sourceGapRevisionId)),
+  ]);
+  if (!items.length || !sourceGaps.length) return false;
+  const linkedItemIds = new Set(links.map((link) => link.actionPlanItemId));
+  const linkedGapIds = new Set(links.map((link) => link.gapItemId));
+  return (
+    items.every((item) => linkedItemIds.has(item.id)) &&
+    sourceGaps.every((gap) => linkedGapIds.has(gap.id))
+  );
+}
+
+function isPriority(
+  value: string,
+): value is "low" | "medium" | "high" | "critical" {
+  return ["low", "medium", "high", "critical"].includes(value);
+}
+
+function requireMapValue<K, V>(map: Map<K, V>, key: K) {
+  const value = map.get(key);
+  if (!value) throw new Error(`Required Action Plan mapping is missing: ${String(key)}`);
+  return value;
+}
+
+function hash(value: unknown) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}

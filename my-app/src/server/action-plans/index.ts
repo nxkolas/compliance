@@ -7,7 +7,6 @@ export {
   activateGeneratedActionPlan,
   enqueueActionPlanGeneration,
   executeActionPlanGenerationJob,
-  generateActionPlanContent,
 } from "./generation-service";
 export {
   ACTION_PLAN_PROMPT_NAME,

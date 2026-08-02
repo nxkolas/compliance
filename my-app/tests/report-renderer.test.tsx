@@ -59,6 +59,57 @@ describe("compliance report renderer", () => {
       expect(text).toContain(label);
     }
   });
+
+  it("renders the pinned historical compliance content", async () => {
+    const pdf = await renderComplianceReport({
+      reportId: "00000000-0000-4000-8000-000000000001",
+      organizationId: "00000000-0000-4000-8000-000000000002",
+      locale: "en",
+      inputHash: "b".repeat(64),
+      snapshot: {
+        capturedAt: "2026-08-02T12:00:00.000Z",
+        applicabilityRevisionId: "00000000-0000-4000-8000-000000000003",
+        gapRevisionId: "00000000-0000-4000-8000-000000000004",
+        actionPlanId: "00000000-0000-4000-8000-000000000005",
+        documentVersionIds: ["00000000-0000-4000-8000-000000000006"],
+        content: {
+          applicability: {
+            outcome: "Covered by NIS2",
+            jurisdiction: "DE",
+            answers: [
+              { question: "Does the organization provide digital services?", answer: "Yes" },
+            ],
+          },
+          findings: [
+            {
+              title: "Governance",
+              status: "Not fulfilled",
+              summary: "Governance evidence is incomplete.",
+              gaps: ["Security owner is not assigned."],
+              sources: ["Security policy.pdf — page 2"],
+            },
+          ],
+          actions: [
+            {
+              title: "Assign security owner",
+              description: "A named owner is approved and documented.",
+              status: "Open",
+            },
+          ],
+        },
+      },
+    });
+    const text = await extractText(pdf);
+    for (const expected of [
+      "Covered by NIS2",
+      "Does the organization provide digital services?",
+      "Security owner is not assigned.",
+      "Security policy.pdf",
+      "Assign security owner",
+    ]) {
+      expect(text).toContain(expected);
+    }
+  });
 });
 
 async function extractText(pdf: Buffer) {

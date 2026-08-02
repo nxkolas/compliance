@@ -10,6 +10,9 @@ import {
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { requireOrganizationCapability } from "../auth/capability-service";
+import { parseActionDescription } from "./action-description";
+
+type ActionPriority = "low" | "medium" | "high" | "critical";
 
 export async function getCurrentActionPlan(userId: string, organizationId: string) {
   await requireOrganizationCapability(userId, organizationId, "plans:read");
@@ -69,6 +72,8 @@ async function loadBundle(plan: typeof actionPlans.$inferSelect) {
     position: finding.position,
     actions: items.filter((item) => item.findingId === finding.id).map((item) => ({
       ...item,
+      ...parseActionDescription(item.description, plan.locale === "de" ? "de" : "en"),
+      priority: actionPriority(finding.criticality),
       gaps: links.filter((link) => link.actionPlanItemId === item.id).map((link) => gaps.find((gap) => gap.id === link.gapItemId)).filter(Boolean),
     })),
   })).filter((category) => category.actions.length);
@@ -78,4 +83,10 @@ async function loadBundle(plan: typeof actionPlans.$inferSelect) {
     categories,
     sourceStaleness: { stale: currentGap?.currentRevisionId !== plan.sourceGapRevisionId },
   };
+}
+
+function actionPriority(value: string): ActionPriority {
+  return value === "low" || value === "high" || value === "critical"
+    ? value
+    : "medium";
 }

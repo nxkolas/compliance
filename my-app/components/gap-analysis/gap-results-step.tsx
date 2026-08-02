@@ -7,9 +7,17 @@ import { Button } from "@/components/ui/button";
 import { actionPlansClient } from "@/src/client/action-plans";
 import { gapAnalysisClient } from "@/src/client/gap-analysis";
 import { pollJob } from "@/src/client/job-polling";
+import {
+  countGapStatuses,
+  sortGapFindings,
+  type GapStatus,
+} from "@/src/server/gap-analysis/workflow-state";
 import { localizeGapError } from "./gap-error";
 import { GapCategoryIcon } from "./gap-category-icon";
+import { GapFindingSources } from "./gap-finding-sources";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
+
+type Filter = "all" | GapStatus;
 
 export function GapResultsStep({
   organizationId,
@@ -26,6 +34,7 @@ export function GapResultsStep({
 }) {
   void locale;
   const router = useRouter();
+  const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState(false);
   const [resolvingFindingId, setResolvingFindingId] = useState<string | null>(null);
   if (!workflow.revision) {
@@ -40,6 +49,10 @@ export function GapResultsStep({
     (row) => row.finding.materialContradiction && !row.finding.contradictionResolved,
   );
   const actionable = workflow.findings.filter((row) => row.finding.status !== "fulfilled");
+  const counts = countGapStatuses(workflow.findings);
+  const gaps = sortGapFindings(workflow.findings).filter(
+    (row) => filter === "all" || row.finding.status === filter,
+  );
 
   async function generateActionPlan() {
     if (!workflow.revision || unresolvedContradictions.length) return;
@@ -109,8 +122,28 @@ export function GapResultsStep({
           <p>{labels.reviewRequired}</p>
         </div>
       ) : null}
+      <div>
+        <h3 className="mb-3 font-semibold">{labels.statusSummary}</h3>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <FilterButton
+            active={filter === "all"}
+            label={labels.filterAll}
+            count={counts.all}
+            onClick={() => setFilter("all")}
+          />
+          {(["not_fulfilled", "partially_fulfilled", "insufficient_evidence", "fulfilled"] as const).map((status) => (
+            <FilterButton
+              key={status}
+              active={filter === status}
+              label={labels.statuses[status]}
+              count={counts[status]}
+              onClick={() => setFilter(status)}
+            />
+          ))}
+        </div>
+      </div>
       <div className="grid gap-3">
-        {workflow.findings.map((row) => (
+        {gaps.map((row) => (
           <article key={row.finding.id} className="rounded-lg border p-5">
             <div className="flex flex-wrap items-center gap-2">
               <GapCategoryIcon name={row.requirement.icon} />
@@ -119,7 +152,6 @@ export function GapResultsStep({
                 {labels.statuses[row.finding.status]}
               </span>
             </div>
-            <p className="mt-3 text-sm">{row.finding.summary}</p>
             <p className="mt-2 text-sm text-muted-foreground">{row.finding.guidance}</p>
             {row.finding.materialContradiction && !row.finding.contradictionResolved ? (
               <div className="mt-4 grid gap-3 rounded-md border border-warning/50 bg-warning/10 p-4">
@@ -153,11 +185,12 @@ export function GapResultsStep({
                 {row.finding.gaps.map((gap) => <li key={gap.id}>{gap.statement}</li>)}
               </ul>
             ) : null}
+            <GapFindingSources sources={row.sources} labels={labels} />
           </article>
         ))}
-        {!workflow.findings.length ? (
+        {!gaps.length ? (
           <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
-            {labels.noGapsIdentified}
+            {labels.noFilterResults}
           </p>
         ) : null}
       </div>
@@ -168,5 +201,24 @@ export function GapResultsStep({
         </Button>
       ) : null}
     </section>
+  );
+}
+
+function FilterButton({ label, count, active, onClick }: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      className={`rounded-lg border p-4 text-left ${active ? "border-primary bg-primary/5" : ""}`}
+      onClick={onClick}
+    >
+      <span className="block text-2xl font-semibold">{count}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
+    </button>
   );
 }

@@ -1,205 +1,152 @@
 import "dotenv/config";
-
 import postgres from "postgres";
 
 const databaseUrl =
   process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
-if (!databaseUrl)
+if (!databaseUrl) {
   throw new Error("DRIZZLE_DATABASE_URL or DATABASE_URL is required");
-
-const sql = postgres(databaseUrl, { max: 1, prepare: false });
-
-async function expectRejectedTransaction(name: string, statement: string) {
-  await sql.unsafe("begin");
-  let committing = false;
-  try {
-    await sql.unsafe(statement);
-    committing = true;
-    await sql.unsafe("commit");
-  } catch {
-    if (!committing) await sql.unsafe("rollback");
-    return;
-  }
-  throw new Error(`${name} unexpectedly committed`);
 }
+
+const expectedConstraints = [
+  "assessments_current_revision_identity_fk",
+  "assessment_revisions_assessment_tenant_fk",
+  "analysis_outputs_current_revision_identity_fk",
+  "analysis_output_revisions_output_tenant_fk",
+  "analysis_output_revisions_assessment_tenant_fk",
+  "gap_analysis_cycles_stage_lineage_check",
+  "ai_processing_runs_lifecycle_check",
+  "ai_processing_run_context_source_check",
+  "ai_processing_run_context_channel_check",
+  "gap_findings_resolution_check",
+  "action_plans_gap_revision_tenant_fk",
+  "reports_pdf_locator_check",
+] as const;
+
+const expectedIndexes = [
+  "assessments_organization_kind_unique",
+  "analysis_outputs_organization_kind_unique",
+  "gap_analysis_cycles_unfinished_unique",
+  "ai_processing_runs_operation_idempotency_unique",
+  "gap_findings_revision_requirement_unique",
+  "gap_items_finding_stable_key_unique",
+  "action_plans_organization_unique",
+  "action_plan_items_plan_position_unique",
+] as const;
 
 async function main() {
-  const expectedTriggers = [
-    "assessment_answers_datatype_trigger",
-    "organization_fact_values_datatype_trigger",
-    "artifact_revision_assessment_sources_integrity_trigger",
-    "ai_processing_run_artifact_inputs_owner_trigger",
-    "report_artifact_sources_owner_trigger",
-    "background_jobs_result_integrity_trigger",
-    "upload_sessions_result_integrity_trigger",
-    "idempotency_records_result_integrity_trigger",
-    "generated_artifact_revisions_finding_coverage_trigger",
-  ];
-  const triggers = await sql<{ tgname: string }[]>`
-    select tgname
-    from pg_trigger
-    where not tgisinternal
-      and tgname in ${sql(expectedTriggers)}
-  `;
-  const actualTriggers = new Set(triggers.map((row) => row.tgname));
-  for (const trigger of expectedTriggers) {
-    if (!actualTriggers.has(trigger))
-      throw new Error(`Missing trigger ${trigger}`);
-  }
-  const [coverageTriggerFunction] = await sql<{ definition: string }[]>`
-    select pg_get_functiondef(
-      'public.enforce_gap_revision_finding_coverage()'::regprocedure
-    ) as definition
-  `;
-  if (
-    !coverageTriggerFunction?.definition.includes("to_jsonb(old)") ||
-    !coverageTriggerFunction.definition.includes("to_jsonb(new)")
-  ) {
-    throw new Error(
-      "Gap coverage trigger must extract table-specific keys through JSON records",
-    );
-  }
-
-  const expectedConstraints = [
-    "generated_artifacts_current_revision_owner_fk",
-    "assessments_current_revision_owner_fk",
-    "documents_current_version_owner_fk",
-    "assessment_answer_options_answer_question_fk",
-    "organization_fact_value_options_value_fact_fk",
-    "gap_finding_review_resolutions_finding_revision_fk",
-    "generated_artifact_revisions_gap_metadata_check",
-    "background_job_results_exactly_one_check",
-    "upload_session_results_exactly_one_check",
-    "idempotency_record_results_exactly_one_check",
-  ];
-  const constraints = await sql<{ conname: string; definition: string }[]>`
-    select conname, pg_get_constraintdef(oid) as definition
-    from pg_constraint
-    where conname in ${sql(expectedConstraints)}
-  `;
-  const actualConstraints = new Set(constraints.map((row) => row.conname));
-  for (const constraint of expectedConstraints) {
-    if (!actualConstraints.has(constraint)) {
-      throw new Error(`Missing constraint ${constraint}`);
-    }
-  }
-  const jobResultConstraint = constraints.find(
-    (row) => row.conname === "background_job_results_exactly_one_check",
-  );
-  if (!jobResultConstraint?.definition.includes("action_plan_id")) {
-    throw new Error(
-      "Background-job typed-result constraint omits Action Plans",
-    );
-  }
-  const [jobResultFunction] = await sql<{ definition: string }[]>`
-    select pg_get_functiondef(
-      'public.validate_background_job_result(uuid)'::regprocedure
-    ) as definition
-  `;
-  if (
-    !jobResultFunction?.definition.includes("gap-generation-v9") ||
-    !jobResultFunction.definition.includes("gap-generation-v10") ||
-    !jobResultFunction.definition.includes("gap-generation-v11") ||
-    !jobResultFunction.definition.includes("gap-generation-v12") ||
-    !jobResultFunction.definition.includes("action-plan-generation-v3") ||
-    !jobResultFunction.definition.includes("action-plan-generation-v4") ||
-    !jobResultFunction.definition.includes("action-plan-generation-v5") ||
-    !jobResultFunction.definition.includes("action-plan-generation-v6")
-  ) {
-    throw new Error(
-      "Background-job result integrity does not recognize v9/v10/v11/v12/v3/v4/v5/v6 generation jobs",
-    );
-  }
-  const [actionPlanIndex] = await sql<{ definition: string }[]>`
-    select pg_get_indexdef(
-      'public.background_jobs_action_plan_generation_active_unique'::regclass
-    ) as definition
-  `;
-  if (
-    !actionPlanIndex?.definition.includes("action-plan-generation-v3") ||
-    !actionPlanIndex.definition.includes("action-plan-generation-v4") ||
-    !actionPlanIndex.definition.includes("action-plan-generation-v5") ||
-    !actionPlanIndex.definition.includes("action-plan-generation-v6")
-  ) {
-    throw new Error(
-      "Active Action Plan job uniqueness does not recognize v3/v4/v5/v6",
-    );
-  }
-
-  await expectRejectedTransaction(
-    "succeeded job without typed result",
-    `
-      insert into background_jobs (
-        kind, state, progress, finished_at, cancellable
-      ) values (
-        'gap-generation', 'succeeded', 100, now(), false
-      )
-    `,
-  );
-  await expectRejectedTransaction(
-    "completed upload without typed result",
-    `
-      insert into upload_sessions (
-        created_by_user_id, scope, bucket, object_path, file_name,
-        expected_mime_type, expected_size, state, expires_at, completed_at
-      ) values (
-        gen_random_uuid(), 'document', 'organization-evidence',
-        'rehearsal/missing-result', 'evidence.pdf', 'application/pdf',
-        1, 'completed', now() + interval '1 hour', now()
-      )
-    `,
-  );
-  await expectRejectedTransaction(
-    "successful idempotency record without typed result",
-    `
-      insert into idempotency_records (
-        actor_key, scope, operation, key, request_fingerprint,
-        state, response_status, expires_at
-      ) values (
-        'rehearsal', 'rehearsal', 'gap-generation', gen_random_uuid()::text,
-        'fingerprint', 'succeeded', 202, now() + interval '1 hour'
-      )
-    `,
-  );
-  await expectRejectedTransaction(
-    "empty job result",
-    `
-      with job as (
-        insert into background_jobs (kind, cancellable)
-        values ('cleanup', false)
-        returning id
-      )
-      insert into background_job_results (job_id)
-      select id from job
-    `,
-  );
-
-  await sql.unsafe("begin");
+  const sql = postgres(databaseUrl!, { max: 1, prepare: false });
   try {
-    const [job] = await sql<{ id: string }[]>`
-      insert into background_jobs (kind, cancellable)
-      values ('rehearsal-valid-queued', false)
-      returning id
+    const constraints = await sql<{ conname: string }[]>`
+      select conname
+      from pg_constraint
+      where connamespace = 'public'::regnamespace
+        and conname in ${sql(expectedConstraints)}
     `;
-    await sql`delete from background_jobs where id = ${job.id}`;
-    await sql.unsafe("commit");
-  } catch (error) {
-    await sql.unsafe("rollback");
-    throw error;
-  }
+    const indexes = await sql<{ indexname: string }[]>`
+      select indexname
+      from pg_indexes
+      where schemaname = 'public'
+        and indexname in ${sql(expectedIndexes)}
+    `;
+    const constraintNames = new Set(constraints.map((row) => row.conname));
+    const indexNames = new Set(indexes.map((row) => row.indexname));
+    const missing = [
+      ...expectedConstraints.flatMap((name) =>
+        constraintNames.has(name) ? [] : [`constraint ${name}`],
+      ),
+      ...expectedIndexes.flatMap((name) =>
+        indexNames.has(name) ? [] : [`index ${name}`],
+      ),
+    ];
+    if (missing.length) {
+      throw new Error(`Current-schema integrity objects are missing: ${missing.join(", ")}`);
+    }
 
-  console.log(
-    `Verified ${expectedConstraints.length} integrity constraints, ` +
-      `${expectedTriggers.length} deferred triggers, four rejected invalid ` +
-      "transactions, and one valid transaction.",
-  );
+    const [state] = await sql<{
+      invalidAssessmentPointers: number;
+      invalidOutputPointers: number;
+      duplicateUnfinishedCycles: number;
+      duplicateActionPlans: number;
+      incompleteActionPlans: number;
+      terminalProcessingRuns: number;
+    }[]>`
+      select
+        (select count(*)::int
+          from assessments assessment
+          join assessment_revisions revision
+            on revision.id = assessment.current_revision_id
+          where revision.assessment_id <> assessment.id
+             or revision.organization_id <> assessment.organization_id
+        ) as "invalidAssessmentPointers",
+        (select count(*)::int
+          from analysis_outputs output
+          join analysis_output_revisions revision
+            on revision.id = output.current_revision_id
+          where revision.output_id <> output.id
+             or revision.organization_id <> output.organization_id
+        ) as "invalidOutputPointers",
+        (select count(*)::int from (
+          select organization_id
+          from gap_analysis_cycles
+          where stage <> 'generated'
+          group by organization_id
+          having count(*) > 1
+        ) duplicate) as "duplicateUnfinishedCycles",
+        (select count(*)::int from (
+          select organization_id
+          from action_plans
+          group by organization_id
+          having count(*) > 1
+        ) duplicate) as "duplicateActionPlans",
+        (select count(*)::int
+          from action_plans plan
+          where exists (
+            select 1
+            from gap_items gap
+            where gap.output_revision_id = plan.source_gap_revision_id
+              and not exists (
+                select 1
+                from action_plan_item_gaps link
+                where link.action_plan_id = plan.id
+                  and link.gap_item_id = gap.id
+              )
+          ) or exists (
+            select 1
+            from action_plan_items item
+            where item.action_plan_id = plan.id
+              and not exists (
+                select 1
+                from action_plan_item_gaps link
+                where link.action_plan_id = plan.id
+                  and link.action_plan_item_id = item.id
+              )
+          )
+        ) as "incompleteActionPlans",
+        (select count(*)::int
+          from ai_processing_runs run
+          join background_jobs job on job.id = run.job_id
+          where run.status = 'processing'
+            and job.state in ('failed', 'cancelled', 'succeeded')
+        ) as "terminalProcessingRuns"
+    `;
+    if (!state) throw new Error("Current-schema integrity state is unavailable");
+    const failures = Object.entries(state).filter(([, count]) => count > 0);
+    if (failures.length) {
+      throw new Error(
+        `Current-schema persisted integrity checks failed: ${failures
+          .map(([name, count]) => `${name}=${count}`)
+          .join(", ")}`,
+      );
+    }
+    console.log(
+      `Verified ${expectedConstraints.length} constraints, ${expectedIndexes.length} indexes, current pointers, cycle/plan uniqueness, Action Plan coverage, and terminal AI-run lifecycle.`,
+    );
+  } finally {
+    await sql.end();
+  }
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await sql.end();
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

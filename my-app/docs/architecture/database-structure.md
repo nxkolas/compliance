@@ -24,8 +24,10 @@ AI provenance, evidence, durable operations, legal-source history, and audit.
 - Documents: `documents` is the stable identity, `document_versions` owns one
   indexing lifecycle, and `document_chunks` stores text, search data, and the
   vector directly.
-- AI: `ai_processing_runs` stores actual provider/model, prompt/build identity,
-  validated input manifest, claim validation, diagnostics, and lifecycle.
+- AI: `ai_processing_runs` stores the actual provider/model, a per-operation
+  idempotency key, attempt/token usage, prompt/build identity, validated input
+  and output, claim validation, diagnostics, and lifecycle. A validated run
+  remains `processing` until its business result publishes atomically.
   `ai_processing_run_context` is the canonical admitted evidence record.
 - Downstream products: one `action_plans` row per organization with immutable
   generated items and status-only mutation; immutable `reports` use direct
@@ -34,8 +36,9 @@ AI provenance, evidence, durable operations, legal-source history, and audit.
   hold small validated result locators inline; rate-limit windows are durable.
 - Legal evidence: corpus families point to immutable current snapshots.
   Snapshots pin exact successful source-version/rendition/processing members;
-  source versions, chunks, embeddings, and reviewed stable-provision bindings
-  remain independently versioned.
+  source versions, renditions, processing generations, chunks, embeddings, and
+  reviewed stable-provision bindings remain independently versioned. Operator
+  provisioning creates that lineage before snapshot activation.
 - Audit: organization and platform audit streams are append-only.
 
 ## Lifecycle rules
@@ -55,7 +58,7 @@ Owner must remain. Each organization can create one Action Plan ever.
 
 Every public application table is declared with RLS enabled. Browser roles have
 no policies; application access uses authenticated, capability-checked,
-organization-scoped server services. After every `drizzle-kit push`, run
+organization-scoped server services. After every `npm run db:push`, run
 `npm run db:verify:server-only` and require a second push explanation to show
 zero drift.
 

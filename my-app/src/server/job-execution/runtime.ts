@@ -7,6 +7,7 @@ import {
 import {
   failJob,
   finalizeJobCancellation,
+  heartbeatJob,
   leaseNextJob,
   monitorJobCancellation,
   succeedJob,
@@ -15,10 +16,16 @@ import {
 import { handleActionPlanGeneration } from "@/src/worker/handlers/action-plan-generation";
 import { handleReportRender } from "@/src/server/reports";
 import { executeLegalSourceProcessingJob } from "@/src/server/corpus";
+import {
+  classifyGenerationFailure,
+  isCancellationFailure,
+} from "@/src/server/ai/generation";
+import { ApiError } from "@/src/server/api/errors";
 import { createJobDrain } from "./drain";
 import type { DrainJobsInput, JobExecutionCycleResult } from "./contracts";
 
 const LEASE_SECONDS = 60;
+const HEARTBEAT_INTERVAL_MS = 20_000;
 const PORTABLE_JOB_KINDS: BackgroundJobRecord["kind"][] = [
   "gap_analysis",
   "gap_conflict_resolution",
@@ -55,6 +62,18 @@ async function executeOneJob(input: {
     leaseSeconds: LEASE_SECONDS,
   });
   if (!job) return { claimed: false };
+  const heartbeat = setInterval(() => {
+    void heartbeatJob({
+      jobId: job.id,
+      workerId: input.invocationId,
+      leaseSeconds: LEASE_SECONDS,
+    }).catch((error) => {
+      console.error("Worker heartbeat failed", {
+        jobId: job.id,
+        errorType: error instanceof Error ? error.name : "unknown",
+      });
+    });
+  }, HEARTBEAT_INTERVAL_MS);
   const monitor = monitorJobCancellation(job.id);
   const controller = new AbortController();
   const abort = (signal: AbortSignal) => {
@@ -73,15 +92,41 @@ async function executeOneJob(input: {
       await finalizeJobCancellation(job.id, input.invocationId);
       return { claimed: true, outcome: "cancelled" };
     }
+    const executionInterruption = input.deadlineSignal.aborted
+      ? { code: "JOB_EXECUTION_DEADLINE", retryable: true }
+      : input.callerSignal?.aborted
+        ? { code: "JOB_EXECUTION_ABORTED", retryable: true }
+        : null;
+    const generationFailure =
+      !executionInterruption &&
+      ["gap_analysis", "action_plan_generation"].includes(job.kind)
+        ? classifyGenerationFailure(error)
+        : null;
+    if (!executionInterruption && generationFailure && isCancellationFailure(generationFailure)) {
+      await finalizeJobCancellation(job.id, input.invocationId);
+      return { claimed: true, outcome: "cancelled" };
+    }
     await failJob({
       jobId: job.id,
       workerId: input.invocationId,
-      errorCode: error instanceof Error ? error.name : "JOB_FAILED",
-      safeMessage: error instanceof Error ? error.message : "Job failed",
-      retryable: true,
+      errorCode:
+        executionInterruption?.code ??
+        generationFailure?.safeCode ??
+        (error instanceof ApiError ? error.code : "JOB_FAILED"),
+      safeMessage: "The background operation failed.",
+      retryable:
+        executionInterruption?.retryable ??
+        (generationFailure
+          ? generationFailure.failureClass === "transient_provider"
+          : true),
+      retryDelaySeconds:
+        generationFailure?.failureClass === "transient_provider"
+          ? Math.ceil((generationFailure.retryAfterMs ?? 1_000) / 1_000)
+          : undefined,
     });
     return { claimed: true, outcome: "failed" };
   } finally {
+    clearInterval(heartbeat);
     monitor.stop();
   }
 }
@@ -102,7 +147,11 @@ async function executeHandler(job: BackgroundJobRecord, signal: AbortSignal) {
   }
   if (!job.organizationId) throw new Error("Job organization scope is missing");
   if (job.kind === "gap_analysis") {
-    const payload = job.payload as { cycleId?: string; locale?: "de" | "en" };
+    const payload = job.payload as {
+      cycleId?: string;
+      locale?: "de" | "en";
+      retryNonce?: string;
+    };
     if (!payload.cycleId || !payload.locale || !job.requestedBy) throw new Error("Gap job payload is incomplete");
     return executeGapGenerationJob({
       jobId: job.id,
@@ -111,6 +160,7 @@ async function executeHandler(job: BackgroundJobRecord, signal: AbortSignal) {
       userId: job.requestedBy,
       organizationId: job.organizationId,
       workerId: job.leaseOwner!,
+      retryNonce: payload.retryNonce,
       abortSignal: signal,
     });
   }

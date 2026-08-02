@@ -37,44 +37,100 @@ export function ActionPlanWorkflow({ organizationId, current, canContribute, lab
     try {
       await actionPlansClient.updateItem(organizationId, itemId, { status });
       router.refresh();
+      return true;
     } catch (caught) {
       setError(localizeUiError(caught, { fallback: labels.error }));
+      return false;
     } finally {
       setBusy(null);
     }
   }
   return (
-    <div className="grid gap-6">
-      <span className="w-fit rounded-full border px-3 py-1 text-xs">
-        {labels.resultLanguage}: {labels.resultLanguages[current.plan.locale as "de" | "en"]}
-      </span>
-      {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
-      {current.sourceStaleness.stale ? <Alert variant="warning"><AlertDescription>{labels.staleSources}</AlertDescription></Alert> : null}
-      {current.categories.map((category) => (
-        <section key={category.requirementVersionId} className="grid gap-3">
-          <h2 className="text-lg font-semibold">{category.title}</h2>
-          {category.actions.map((item) => (
-            <Card key={item.id}>
-              <CardHeader><CardTitle>{item.title}</CardTitle></CardHeader>
-              <CardContent className="grid gap-4">
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-                <label className="grid max-w-xs gap-1 text-sm">
-                  {labels.status}
-                  <select
-                    className="h-10 rounded-md border bg-background px-3"
-                    value={item.status}
-                    disabled={!canContribute || busy === item.id}
-                    onChange={(event) => void update(item.id, event.target.value as "open" | "in_progress" | "done")}
-                  >
-                    {(["open", "in_progress", "done"] as const).map((status) => <option key={status} value={status}>{labels.statuses[status]}</option>)}
-                  </select>
-                </label>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-      ))}
-      {!current.categories.length ? <p className="text-sm text-muted-foreground">{labels.empty}</p> : null}
+    <div className="flex flex-col gap-6">
+      <div>
+        <span className="inline-flex rounded-full border px-3 py-1 text-xs">
+          {labels.resultLanguage}: {labels.resultLanguages[current.plan.locale === "de" ? "de" : "en"]}
+        </span>
+      </div>
+      {error ? <Alert variant="destructive"><AlertDescription className="text-current">{error}</AlertDescription></Alert> : null}
+      {current.sourceStaleness.stale ? <Alert variant="warning"><AlertDescription className="text-current">{labels.staleSources}</AlertDescription></Alert> : null}
+      <div className="grid gap-4">
+        {!current.categories.length ? (
+          <Card><CardContent className="p-6 text-sm text-muted-foreground">{labels.empty}</CardContent></Card>
+        ) : current.categories.map((category) => (
+          <section key={category.requirementVersionId} className="grid gap-3">
+            <h2 className="text-lg font-semibold">{category.title}</h2>
+            {category.actions.map((item) => (
+              <ActionItem
+                key={item.id}
+                item={item}
+                labels={labels}
+                canContribute={canContribute}
+                busy={busy === item.id}
+                save={(status) => update(item.id, status)}
+              />
+            ))}
+          </section>
+        ))}
+      </div>
     </div>
+  );
+}
+
+function ActionItem({ item, labels, canContribute, busy, save }: {
+  item: NonNullable<CurrentPlan>["categories"][number]["actions"][number];
+  labels: Labels;
+  canContribute: boolean;
+  busy: boolean;
+  save: (status: "open" | "in_progress" | "done") => Promise<boolean>;
+}) {
+  const [status, setStatus] = useState(item.status);
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <CardTitle>{item.title}</CardTitle>
+          <span className="rounded-full border px-3 py-1 text-xs">
+            {labels.priorities[item.priority]}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-5">
+        <section aria-labelledby={`${item.id}-result`}>
+          <h3 id={`${item.id}-result`} className="text-sm font-semibold">{labels.result}</h3>
+          <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{item.result}</p>
+        </section>
+        <GuidanceList id={`${item.id}-evidence`} title={labels.recommendedEvidence} items={item.suggestedEvidence} />
+        <label className="grid max-w-xs gap-1 text-sm">
+          {labels.status}
+          <select
+            className="h-10 rounded-md border bg-background px-3"
+            value={status}
+            disabled={!canContribute || busy}
+            onChange={(event) => {
+              const previous = status;
+              const next = event.target.value as typeof status;
+              setStatus(next);
+              void save(next).then((saved) => {
+                if (!saved) setStatus(previous);
+              });
+            }}
+          >
+            {(["open", "in_progress", "done"] as const).map((value) => <option key={value} value={value}>{labels.statuses[value]}</option>)}
+          </select>
+        </label>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GuidanceList({ id, title, items }: { id: string; title: string; items: string[] }) {
+  return (
+    <section aria-labelledby={id}>
+      <h3 id={id} className="text-sm font-semibold">{title}</h3>
+      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+        {items.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}
+      </ul>
+    </section>
   );
 }

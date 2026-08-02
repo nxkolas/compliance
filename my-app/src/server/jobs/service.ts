@@ -1,6 +1,6 @@
 import type { JobDto, JobProgressPhase } from "@/src/contracts/common/jobs";
 import { db } from "@/src/db";
-import { backgroundJobs } from "@/src/db/schema";
+import { aiProcessingRuns, backgroundJobs } from "@/src/db/schema";
 import type { OrganizationCapability } from "../auth/capabilities";
 import { requireOrganizationCapability } from "../auth/capability-service";
 import { ApiError } from "../api/errors";
@@ -135,22 +135,35 @@ export async function failJob(input: {
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  const current = await db.query.backgroundJobs.findFirst({
-    where: { RAW: (table, operators) => and(eq(table.id, input.jobId), eq(table.leaseOwner, input.workerId), eq(table.state, "running")) ?? operators.sql`true` },
+  return db.transaction(async (tx) => {
+    const current = await tx.query.backgroundJobs.findFirst({
+      where: { RAW: (table, operators) => and(eq(table.id, input.jobId), eq(table.leaseOwner, input.workerId), eq(table.state, "running")) ?? operators.sql`true` },
+    });
+    if (!current) throw leaseLost();
+    const retry = input.retryable !== false && current.attemptCount < current.maxAttempts;
+    const [job] = await tx.update(backgroundJobs).set({
+      state: retry ? "queued" : "failed",
+      availableAt: retry ? new Date(now.getTime() + (input.retryDelaySeconds ?? 0) * 1000) : current.availableAt,
+      errorCode: input.errorCode,
+      errorMessage: input.safeMessage,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      finishedAt: retry ? null : now,
+      updatedAt: now,
+    }).where(eq(backgroundJobs.id, current.id)).returning();
+    if (!retry) {
+      await tx.update(aiProcessingRuns).set({
+        status: "failed",
+        failureCode: "GENERATION_JOB_FAILED",
+        failureMessage: "The generation job ended before publication.",
+        completedAt: now,
+      }).where(and(
+        eq(aiProcessingRuns.jobId, current.id),
+        eq(aiProcessingRuns.status, "processing"),
+      ));
+    }
+    return job!;
   });
-  if (!current) throw leaseLost();
-  const retry = input.retryable !== false && current.attemptCount < current.maxAttempts;
-  const [job] = await db.update(backgroundJobs).set({
-    state: retry ? "queued" : "failed",
-    availableAt: retry ? new Date(now.getTime() + (input.retryDelaySeconds ?? 0) * 1000) : current.availableAt,
-    errorCode: input.errorCode,
-    errorMessage: input.safeMessage,
-    leaseOwner: null,
-    leaseExpiresAt: null,
-    finishedAt: retry ? null : now,
-    updatedAt: now,
-  }).where(eq(backgroundJobs.id, current.id)).returning();
-  return job!;
 }
 
 export function monitorJobCancellation(jobId: string, intervalMs = 1_000) {
@@ -170,29 +183,54 @@ export async function requestJobCancellation(userId: string, jobId: string) {
     where: { RAW: (table, operators) => eq(table.id, jobId) ?? operators.sql`true` },
   });
   if (!job?.organizationId) throw new ApiError(404, "Job not found");
-  await requireOrganizationCapability(userId, job.organizationId, capabilityForJob(job.kind));
+  await requireOrganizationCapability(userId, job.organizationId, cancellationCapabilityForJob(job.kind));
   if (!["queued", "leased", "running"].includes(job.state)) return toJobDto(job);
   const now = new Date();
-  const [updated] = await db.update(backgroundJobs).set({
-    cancellationRequestedAt: now,
-    state: job.state === "queued" ? "cancelled" : job.state,
-    finishedAt: job.state === "queued" ? now : null,
-    updatedAt: now,
-  }).where(eq(backgroundJobs.id, job.id)).returning();
+  const [updated] = await db.transaction(async (tx) => {
+    const rows = await tx.update(backgroundJobs).set({
+      cancellationRequestedAt: now,
+      state: job.state === "queued" ? "cancelled" : job.state,
+      finishedAt: job.state === "queued" ? now : null,
+      updatedAt: now,
+    }).where(eq(backgroundJobs.id, job.id)).returning();
+    if (job.state === "queued") {
+      await tx.update(aiProcessingRuns).set({
+        status: "failed",
+        failureCode: "GENERATION_JOB_CANCELLED",
+        failureMessage: "The generation job was cancelled before publication.",
+        completedAt: now,
+      }).where(and(
+        eq(aiProcessingRuns.jobId, job.id),
+        eq(aiProcessingRuns.status, "processing"),
+      ));
+    }
+    return rows;
+  });
   return toJobDto(updated!);
 }
 
 export async function finalizeJobCancellation(jobId: string, workerId: string) {
   const now = new Date();
-  const [job] = await db.update(backgroundJobs).set({
-    state: "cancelled",
-    leaseOwner: null,
-    leaseExpiresAt: null,
-    finishedAt: now,
-    updatedAt: now,
-  }).where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.leaseOwner, workerId))).returning();
-  if (!job) throw leaseLost();
-  return job;
+  return db.transaction(async (tx) => {
+    const [job] = await tx.update(backgroundJobs).set({
+      state: "cancelled",
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      finishedAt: now,
+      updatedAt: now,
+    }).where(and(eq(backgroundJobs.id, jobId), eq(backgroundJobs.leaseOwner, workerId))).returning();
+    if (!job) throw leaseLost();
+    await tx.update(aiProcessingRuns).set({
+      status: "failed",
+      failureCode: "GENERATION_JOB_CANCELLED",
+      failureMessage: "The generation job was cancelled before publication.",
+      completedAt: now,
+    }).where(and(
+      eq(aiProcessingRuns.jobId, job.id),
+      eq(aiProcessingRuns.status, "processing"),
+    ));
+    return job;
+  });
 }
 
 export function toJobDto(job: BackgroundJobRecord): JobDto {
@@ -230,6 +268,15 @@ function capabilityForJob(kind: BackgroundJobRecord["kind"]): OrganizationCapabi
   if (kind === "report_render") return "reports:read";
   if (kind === "action_plan_generation") return "plans:read";
   return "gap:read";
+}
+
+function cancellationCapabilityForJob(
+  kind: BackgroundJobRecord["kind"],
+): OrganizationCapability {
+  if (kind === "document_indexing") return "documents:write";
+  if (kind === "report_render") return "reports:create";
+  if (kind === "action_plan_generation") return "plans:manage";
+  return "gap:contribute";
 }
 
 function isCancellableKind(kind: BackgroundJobRecord["kind"]) {

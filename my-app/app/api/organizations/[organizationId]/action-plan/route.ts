@@ -4,6 +4,7 @@ import { requireApiUser } from "@/src/server/api/auth";
 import { apiRoute } from "@/src/server/api/handler";
 import { runIdempotentCommand } from "@/src/server/api/idempotency";
 import { readJsonBody } from "@/src/server/api/request";
+import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
 import {
   enqueueActionPlanGeneration,
   getCurrentActionPlan,
@@ -40,6 +41,11 @@ export const POST = apiRoute(
   }) => {
     const user = await requireApiUser();
     const { organizationId } = await routeContext.params;
+    await enforceOperationRateLimit({
+      userId: user.id,
+      operation: "plans:generate",
+      scopeId: organizationId,
+    });
     const body = await readJsonBody(
       request,
       actionPlanGenerationRequestSchema,

@@ -9,12 +9,21 @@ const mocks = vi.hoisted(() => ({
   getLocale: vi.fn(),
   revalidatePath: vi.fn(),
   enforceOperationRateLimit: vi.fn(),
+  getAuthorizedJob: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/lib/i18n", () => ({ getLocale: mocks.getLocale }));
 vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
 vi.mock("@/src/server/api/operation-rate-limit", () => ({ enforceOperationRateLimit: mocks.enforceOperationRateLimit }));
+vi.mock("@/src/server/idempotency", () => ({
+  databaseIdempotencyRepository: {
+    create: vi.fn().mockResolvedValue(true),
+    find: vi.fn().mockResolvedValue(null),
+    save: vi.fn(),
+  },
+}));
+vi.mock("@/src/server/jobs", () => ({ getAuthorizedJob: mocks.getAuthorizedJob }));
 vi.mock("@/src/server/gap-analysis", () => ({
   enqueueGapAnalysisGeneration: mocks.enqueueGapAnalysisGeneration,
   retryGapAnalysisGeneration: mocks.retryGapAnalysisGeneration,

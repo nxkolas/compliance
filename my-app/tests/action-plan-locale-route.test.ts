@@ -5,11 +5,15 @@ const mocks = vi.hoisted(() => ({
   enqueue: vi.fn(),
   getAuthorizedJob: vi.fn(),
   revalidatePath: vi.fn(),
+  enforceOperationRateLimit: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/src/server/api/auth", () => ({
   requireApiUser: mocks.requireApiUser,
+}));
+vi.mock("@/src/server/api/operation-rate-limit", () => ({
+  enforceOperationRateLimit: mocks.enforceOperationRateLimit,
 }));
 vi.mock("@/src/server/api/idempotency", () => ({
   runIdempotentCommand: vi.fn(async (input) => ({
@@ -85,5 +89,10 @@ describe("asynchronous action-plan generation route", () => {
     expect(mocks.enqueue).toHaveBeenCalledWith(
       expect.not.objectContaining({ locale: expect.anything() }),
     );
+    expect(mocks.enforceOperationRateLimit).toHaveBeenCalledWith({
+      userId,
+      operation: "plans:generate",
+      scopeId: organizationId,
+    });
   });
 });

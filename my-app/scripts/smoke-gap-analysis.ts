@@ -1,82 +1,33 @@
 import "dotenv/config";
 import postgres from "postgres";
+import {
+  currentGapDefinitionHash,
+  getCurrentGapDefinition,
+} from "../src/server/definitions";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
-  const expectedReference =
-    readArgument("--release") ?? "nis2-gap/reliability-v1";
-  const [expectedCode, expectedVersion] = expectedReference.split("/");
-  const expectedContracts: Record<string, { gap: string; actionPlan: string }> =
-    {
-      "reliability-v1": { gap: "8", actionPlan: "2" },
-      "reliability-v2": { gap: "9", actionPlan: "3" },
-      "reliability-v3": { gap: "10", actionPlan: "3" },
-      "reliability-v4": { gap: "10", actionPlan: "4" },
-      "reliability-v5": { gap: "11", actionPlan: "4" },
-      "reliability-v6": { gap: "11", actionPlan: "5" },
-      "reliability-v7": { gap: "11", actionPlan: "6" },
-      "reliability-v8": { gap: "12", actionPlan: "6" },
-    };
-  const expectedContract = expectedContracts[expectedVersion ?? ""];
-  if (expectedCode !== "nis2-gap" || !expectedVersion || !expectedContract) {
-    throw new Error("--release must identify a supported nis2-gap release");
+  const expectedReference = readArgument("--release") ?? "nis2-gap/reliability-v8";
+  const release = getCurrentGapDefinition("en");
+  if (expectedReference !== `${release.releaseCode}/${release.versionLabel}`) {
+    throw new Error(
+      `--release must equal the deployed code-owned definition ${release.releaseCode}/${release.versionLabel}`,
+    );
   }
+  if (
+    release.id !== currentGapDefinitionHash ||
+    release.prompt.responseSchemaVersion !== "12" ||
+    release.actionPlanPrompt.responseSchemaVersion !== "6" ||
+    release.requirements.length !== 10 ||
+    release.questions.length !== 31 ||
+    release.questions.some((question) => question.legalProvisions.length === 0)
+  ) {
+    throw new Error("The deployed code-owned Gap definition is incomplete");
+  }
+
   const sql = postgres(databaseUrl, { prepare: false });
   try {
-    const [release] = await sql<
-      {
-        release_code: string;
-        version_label: string;
-        prompt_version: string;
-        response_schema_version: string;
-        action_plan_prompt_version: string;
-        action_plan_response_schema_version: string;
-        requirement_count: number;
-        question_count: number;
-        requirement_question_mapping_count: number;
-        legal_mapping_count: number;
-        rule_count: number;
-      }[]
-    >`
-      select r.release_code, r.version_label,
-        r.prompt_version,
-        r.response_schema_version,
-        r.action_plan_prompt_version,
-        r.action_plan_response_schema_version,
-        (select count(*)::int from gap_requirement_set_members m
-          where m.requirement_set_version_id = r.requirement_set_version_id) as requirement_count,
-        (select count(*)::int from questions q
-          where q.questionnaire_version_id = r.questionnaire_version_id) as question_count,
-        (select count(*)::int from gap_requirement_question_mappings m
-          where m.gap_analysis_release_id = r.id) as requirement_question_mapping_count,
-        (select count(*)::int
-          from gap_question_legal_provisions l
-          join questions q on q.id = l.question_id
-          where q.questionnaire_version_id = r.questionnaire_version_id) as legal_mapping_count,
-        (select count(*)::int from gap_analysis_release_applicability_rules ar
-          where ar.gap_analysis_release_id = r.id) as rule_count
-      from active_gap_analysis_releases a
-      join gap_analysis_releases r on r.id = a.gap_analysis_release_id
-      where a.release_code = 'nis2-gap'
-    `;
-    if (!release) throw new Error("No active nis2-gap release");
-    if (
-      release.release_code !== expectedCode ||
-      release.version_label !== expectedVersion ||
-      release.prompt_version !== expectedContract.gap ||
-      release.response_schema_version !== expectedContract.gap ||
-      release.action_plan_prompt_version !== expectedContract.actionPlan ||
-      release.action_plan_response_schema_version !==
-        expectedContract.actionPlan ||
-      release.requirement_count !== 10 ||
-      release.question_count !== 31 ||
-      release.requirement_question_mapping_count !== 31 ||
-      release.legal_mapping_count < 31 ||
-      release.rule_count !== 10
-    ) {
-      throw new Error(`The active ${expectedVersion} release is incomplete`);
-    }
     const [vector] = await sql<{ installed: boolean }[]>`
       select exists(select 1 from pg_extension where extname = 'vector') as installed
     `;
@@ -84,24 +35,29 @@ async function main() {
     const [bucket] = await sql<{ public: boolean }[]>`
       select public from storage.buckets where id = 'organization-evidence'
     `;
-    if (!bucket || bucket.public)
+    if (!bucket || bucket.public) {
       throw new Error("Private evidence bucket is unavailable");
+    }
+
     const protectedTables = [
-      "gap_analysis_releases",
-      "gap_requirement_question_mappings",
-      "gap_question_legal_provisions",
-      "gap_questionnaire_drafts",
-      "gap_questionnaire_draft_answers",
-      "assessment_requirement_evaluations",
-      "gap_requirements",
-      "gap_requirement_versions",
+      "analysis_outputs",
+      "analysis_output_revisions",
+      "assessment_answers",
+      "assessment_revisions",
+      "gap_analysis_cycles",
+      "gap_analysis_cycle_documents",
       "documents",
       "document_versions",
+      "document_chunks",
       "ai_processing_runs",
+      "ai_processing_run_context",
       "gap_findings",
-      "gap_reassessment_drafts",
-      "gap_reassessment_draft_documents",
+      "gap_items",
+      "gap_finding_context_links",
+      "gap_item_context_links",
       "action_plans",
+      "action_plan_items",
+      "action_plan_item_gaps",
       "audit_events",
     ];
     const rlsRows = await sql<{ relname: string; relrowsecurity: boolean }[]>`
@@ -117,54 +73,46 @@ async function main() {
       (table) => rlsByTable.get(table) !== true,
     );
     if (missingRls.length) {
-      throw new Error(
-        `Server-only RLS is incomplete for: ${missingRls.join(", ")}`,
-      );
+      throw new Error(`Server-only RLS is incomplete for: ${missingRls.join(", ")}`);
     }
-    const triggerRows = await sql<{ tgname: string }[]>`
-      select tgname from pg_trigger
-      where not tgisinternal
-        and tgname in (
-          'document_chunks_search_vector_trigger',
-          'audit_events_append_only_trigger'
-        )
-    `;
-    if (triggerRows.length !== 2) {
-      throw new Error("Gap-analysis database triggers are incomplete");
-    }
-    const [consistency] = await sql<
-      {
-        missing_stable_requirements: number;
-        invalid_accepted_revisions: number;
-        duplicate_open_drafts: number;
-        duplicate_active_plans: number;
-      }[]
-    >`
+
+    const [consistency] = await sql<{
+      invalid_output_pointers: number;
+      duplicate_unfinished_cycles: number;
+      duplicate_action_plans: number;
+    }[]>`
       select
-        (select count(*)::int from gap_requirement_versions
-          where requirement_id is null) as missing_stable_requirements,
         (select count(*)::int
-          from generated_artifacts artifact
-          join generated_artifact_revisions revision
-            on revision.id = artifact.accepted_revision_id
-          where revision.artifact_id <> artifact.id
-            or revision.status <> 'approved') as invalid_accepted_revisions,
+          from analysis_outputs output
+          join analysis_output_revisions revision on revision.id = output.current_revision_id
+          where revision.output_id <> output.id
+            or revision.organization_id <> output.organization_id) as invalid_output_pointers,
         (select count(*)::int from (
-          select assessment_id from gap_reassessment_drafts
-          where status = 'open'
-          group by assessment_id having count(*) > 1
-        ) duplicate) as duplicate_open_drafts,
+          select organization_id from gap_analysis_cycles
+          where stage <> 'generated'
+          group by organization_id having count(*) > 1
+        ) duplicate) as duplicate_unfinished_cycles,
         (select count(*)::int from (
           select organization_id from action_plans
-          where status = 'active'
           group by organization_id having count(*) > 1
-        ) duplicate) as duplicate_active_plans
+        ) duplicate) as duplicate_action_plans
     `;
     if (!consistency || Object.values(consistency).some((count) => count > 0)) {
-      throw new Error("Gap and action-plan workflow consistency checks failed");
+      throw new Error("Gap and Action Plan workflow consistency checks failed");
+    }
+    const [legacy] = await sql<{ misleadingAiRuns: number }[]>`
+      select count(*)::int as "misleadingAiRuns"
+      from ai_processing_runs
+      where status = 'succeeded'
+        and model like 'deterministic-%'
+    `;
+    if ((legacy?.misleadingAiRuns ?? 0) > 0) {
+      console.warn(
+        `Retained ${(legacy?.misleadingAiRuns ?? 0)} pre-recovery deterministic AI runs as invalid development history; no data was deleted.`,
+      );
     }
     console.log(
-      `Gap smoke test passed for ${release.release_code}/${release.version_label}.`,
+      `Gap smoke test passed for ${release.releaseCode}/${release.versionLabel} (${currentGapDefinitionHash}).`,
     );
   } finally {
     await sql.end();

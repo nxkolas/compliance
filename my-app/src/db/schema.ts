@@ -778,6 +778,9 @@ export const aiProcessingRuns = pgTable.withRLS(
     jobId: uuid("job_id").references(() => backgroundJobs.id, {
       onDelete: "set null",
     }),
+    idempotencyKey: text("idempotency_key")
+      .default(sql`gen_random_uuid()::text`)
+      .notNull(),
     operationKind: aiOperationKindEnum("operation_kind").notNull(),
     status: processingStatusEnum("status").default("pending").notNull(),
     provider: text("provider").notNull(),
@@ -791,8 +794,10 @@ export const aiProcessingRuns = pgTable.withRLS(
     claimValidation: jsonb("claim_validation").notNull(),
     validatedOutput: jsonb("validated_output"),
     outputLocale: varchar("output_locale", { length: 5 }).notNull(),
+    attemptCount: integer("attempt_count").default(0).notNull(),
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
+    cachedInputTokens: integer("cached_input_tokens"),
     costAmount: numeric("cost_amount", { precision: 14, scale: 6 }),
     costCurrency: varchar("cost_currency", { length: 3 }),
     failureCode: text("failure_code"),
@@ -805,6 +810,11 @@ export const aiProcessingRuns = pgTable.withRLS(
     uniqueIndex("ai_processing_runs_organization_id_identity_unique").on(
       table.organizationId,
       table.id,
+    ),
+    uniqueIndex("ai_processing_runs_operation_idempotency_unique").on(
+      table.organizationId,
+      table.operationKind,
+      table.idempotencyKey,
     ),
     index("ai_processing_runs_job_idx").on(table.jobId),
     check("ai_processing_runs_locale_check", sql`${table.outputLocale} in ('de', 'en')`),
