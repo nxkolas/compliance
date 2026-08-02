@@ -1,7 +1,9 @@
 import {
-  assemblePublishedComplianceRelease,
-  loadActiveReleasePointer,
-} from "./postgres-assembler";
+  CURRENT_APPLICABILITY_CHECK_CODE,
+  currentApplicabilityDefinition,
+  currentApplicabilityDefinitionHash,
+  getCurrentApplicabilityDefinition,
+} from "@/src/server/definitions/applicability";
 import type {
   ActiveReleasePointer,
   PublishedComplianceRelease,
@@ -35,7 +37,16 @@ export function createRuntimeReleaseReader(input: {
 }
 
 export const directRuntimeReleaseReader = createRuntimeReleaseReader({
-  loadPublished: ({ checkReleaseId, locale }) =>
-    assemblePublishedComplianceRelease(checkReleaseId, locale),
-  loadActivePointer: loadActiveReleasePointer,
+  loadPublished: async ({ checkReleaseId, locale }) =>
+    checkReleaseId === currentApplicabilityDefinitionHash
+      ? getCurrentApplicabilityDefinition(locale)
+      : null,
+  loadActivePointer: async (checkCode) =>
+    checkCode === CURRENT_APPLICABILITY_CHECK_CODE
+      ? {
+          checkCode: CURRENT_APPLICABILITY_CHECK_CODE,
+          checkReleaseId: currentApplicabilityDefinitionHash,
+          versionLabel: currentApplicabilityDefinition.versionLabel,
+        }
+      : null,
 });

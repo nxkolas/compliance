@@ -13,8 +13,7 @@ vi.mock("next/navigation", () => ({
 
 const questionnaire: ApplicabilityQuestionnaireDto = {
   id: "questionnaire-1",
-  moduleId: "module-1",
-  questionnaireVersionId: "version-1",
+  locale: "de",
   title: "Betroffenheitscheck",
   code: "nis2",
   versionLabel: "2026-v1",
@@ -72,13 +71,10 @@ const questionnaire: ApplicabilityQuestionnaireDto = {
   latestAnswers: {
     "question-1": "yes",
   },
-  release: {
-    id: "release-1",
+  definition: {
+    hash: "hash",
     versionLabel: "2026-v1",
-    aggregateHash: "hash",
-    isActive: true,
-    activeVersionLabel: "2026-v1",
-    supportedCountryCodes: ["DE"],
+    supportedJurisdictionCodes: ["DE"],
   },
 };
 

@@ -17,6 +17,7 @@ describe("gap questionnaire background saving", () => {
                   id: "requirement-1",
                   stableKey: "requirement-1",
                   title: "First category",
+                  icon: "KeyRound",
                   position: 1,
                   questionStableKeys: ["question-1"],
                 },
@@ -24,6 +25,7 @@ describe("gap questionnaire background saving", () => {
                   id: "requirement-2",
                   stableKey: "requirement-2",
                   title: "Second category",
+                  icon: "ShieldAlert",
                   position: 2,
                   questionStableKeys: [],
                 },
@@ -59,6 +61,7 @@ describe("gap questionnaire background saving", () => {
       /<button[^>]*type="submit"[^>]*>/,
     )?.[0];
     expect(html).not.toContain(labels.saving);
+    expect(html).toContain("lucide-key-round");
     expect(html).toContain("Next category");
     expect(submitButton).toBeDefined();
     expect(submitButton).not.toContain(" disabled=");

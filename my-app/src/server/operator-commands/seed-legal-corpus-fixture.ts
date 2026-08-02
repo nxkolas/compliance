@@ -1,43 +1,96 @@
-import "dotenv/config";
-import * as z from "zod";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { closeDbConnection, db } from "@/src/db";import { createCorpusFamily, createLegalSource } from "@/src/server/corpus";
-import { NIS2_CORPUS_BOOTSTRAP_FIXTURE, NIS2_CORPUS_BOOTSTRAP_NOTICE } from "@/src/server/corpus";
-import { enqueueLegalSourceUrlImport } from "@/src/server/corpus";
-
-const inputSchema = z.object({ actorUserId: z.uuid() });
+import { createHash } from "node:crypto";
+import { closeDbConnection } from "@/src/db";
+import {
+  LEGAL_CORPUS_BUCKET,
+  MAX_LEGAL_SOURCE_BYTES,
+  NIS2_CORPUS_BOOTSTRAP_FIXTURE,
+  NIS2_CORPUS_BOOTSTRAP_NOTICE,
+} from "@/src/server/corpus";
+import { createContentEmbedder } from "@/src/server/content-processing/defaults";
+import { provisionLegalCorpus } from "@/src/server/operator-commands/provision-legal-corpus";
+import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 
 async function main() {
-  const { actorUserId } = inputSchema.parse({ actorUserId: process.argv[2] });
-  console.log(NIS2_CORPUS_BOOTSTRAP_NOTICE);
-  for (const fixture of NIS2_CORPUS_BOOTSTRAP_FIXTURE) {
-    const existingFamily = await db.query.legalCorpusFamilies.findFirst({ columns: { id: true, code: true, frameworkCode: true, jurisdictionCode: true, title: true, archivedAt: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-      where: { RAW: (table, operators) => (eq(table.code, fixture.family.code)) ?? operators.sql`true` },
-    });
-    const family = existingFamily ?? await createCorpusFamily({ actorUserId, ...fixture.family });
-    const existingSource = await db.query.legalSources.findFirst({ columns: { id: true, familyId: true, stableCode: true, title: true, sourceKind: true, authorityTier: true, canonicalPublisher: true, legalInstrumentId: true, legalProvisionId: true, withdrawnAt: true, withdrawalReason: true, version: true, createdBy: true, createdAt: true, updatedAt: true },
-      where: { RAW: (table, operators) => (and(eq(table.familyId, family.id), eq(table.stableCode, fixture.source.stableCode))) ?? operators.sql`true` },
-    });
-    const source = existingSource ?? await createLegalSource({ actorUserId, familyId: family.id, ...fixture.source });
-    const version = await db.query.legalSourceVersions.findFirst({ columns: { id: true, sourceId: true, versionLabel: true, officialIdentifier: true, upstreamPublishedAt: true, retrievedAt: true, upstreamUrl: true, effectiveFrom: true, effectiveTo: true, contentHash: true, status: true, reviewedBy: true, reviewedAt: true, publishedAt: true, withdrawnBy: true, withdrawnAt: true, withdrawalReason: true, createdBy: true, createdAt: true },
-      where: { RAW: (table, operators) => (and(eq(table.sourceId, source.id), eq(table.versionLabel, fixture.import.versionLabel))) ?? operators.sql`true` },
-    });
-    const activeImport = await db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true },
-      where: { RAW: (table, operators) => (and(
-        eq(table.kind, "legal-source-import"),
-        inArray(table.state, ["queued", "running", "cancellation_requested"]),
-        sql`${table.payload}->>'sourceId' = ${source.id}`,
-        sql`${table.payload}->>'versionLabel' = ${fixture.import.versionLabel}`,
-      )) ?? operators.sql`true` },
-    });
-    if (version || activeImport) {
-      console.log(`Kept existing ${fixture.family.code}/${fixture.source.stableCode}.`);
-      continue;
-    }
-    const job = await enqueueLegalSourceUrlImport({ actorUserId, sourceId: source.id, ...fixture.import });
-    console.log(`Enqueued ${fixture.family.code}/${fixture.source.stableCode} as job ${job.id}.`);
+  const operatorIdentity = process.env.CORPUS_OPERATOR_IDENTITY?.trim();
+  if (!operatorIdentity) {
+    throw new Error("CORPUS_OPERATOR_IDENTITY is required");
   }
-  console.log("No corpus version was reviewed, published, evaluated, or activated by this script.");
+
+  console.log(NIS2_CORPUS_BOOTSTRAP_NOTICE);
+  const embeddingModel = createContentEmbedder().model;
+  for (const fixture of NIS2_CORPUS_BOOTSTRAP_FIXTURE) {
+    const bytes = await downloadOfficialPdf(fixture.import.exactUrl);
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    const storageKey = [
+      fixture.family.code,
+      fixture.source.stableCode,
+      fixture.import.versionLabel,
+      `${hash}.pdf`,
+    ].join("/");
+    const { error } = await getSupabaseAdminClient().storage
+      .from(LEGAL_CORPUS_BUCKET)
+      .upload(storageKey, bytes, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+    if (error) throw error;
+
+    const result = await provisionLegalCorpus({
+      operatorIdentity,
+      family: {
+        code: fixture.family.code,
+        title: fixture.family.title,
+      },
+      sources: [{
+        code: fixture.source.stableCode,
+        title: fixture.source.title,
+        jurisdictionCode: fixture.family.jurisdictionCode,
+        authorityTier: "official",
+        officialSourceUrl: fixture.import.exactUrl,
+        version: {
+          versionLabel: fixture.import.versionLabel,
+          contentHash: hash,
+          effectiveFrom: `${fixture.import.effectiveFrom}T00:00:00.000Z`,
+          sourceRetrievedAt: new Date().toISOString(),
+        },
+        rendition: {
+          locale: fixture.import.language,
+          translationStatus: "official",
+          storageBucket: LEGAL_CORPUS_BUCKET,
+          storageKey,
+          contentHash: hash,
+        },
+        processing: {
+          parser: "pdf-parse",
+          embeddingModel,
+        },
+      }],
+    });
+    const generation = result.generations[0]!;
+    console.log(
+      `${fixture.family.code}/${fixture.source.stableCode}: generation ${generation.processingGenerationId}, job ${generation.jobId ?? "already processed"}.`,
+    );
+  }
+  console.log("No corpus snapshot was activated by this script.");
+}
+
+async function downloadOfficialPdf(url: string) {
+  const response = await fetch(url, { redirect: "follow" });
+  if (!response.ok) {
+    throw new Error(`Official legal source returned HTTP ${response.status}: ${url}`);
+  }
+  const length = Number(response.headers.get("content-length") ?? 0);
+  if (length > MAX_LEGAL_SOURCE_BYTES) {
+    throw new Error(`Official legal source exceeds ${MAX_LEGAL_SOURCE_BYTES} bytes`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_LEGAL_SOURCE_BYTES) {
+    throw new Error(`Official legal source has an invalid size: ${bytes.byteLength}`);
+  }
+  if (new TextDecoder().decode(bytes.subarray(0, 5)) !== "%PDF-") {
+    throw new Error(`Official legal source is not a PDF: ${url}`);
+  }
+  return bytes;
 }
 
 main()
@@ -45,4 +98,4 @@ main()
     console.error(error);
     process.exitCode = 1;
   })
-  .finally(() => closeDbConnection());
+  .finally(closeDbConnection);

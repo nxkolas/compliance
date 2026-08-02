@@ -2,10 +2,9 @@ import {
   organizationProgressStepKeys,
   type OrganizationProgress,
   type OrganizationProgressStepKey,
-  type OrganizationProgressStepStatus,
 } from "@/src/contracts/organization-progress";
 
-const terminalActionPlanItemStatuses = new Set(["done", "cancelled"]);
+const terminalActionPlanItemStatuses = new Set(["done"]);
 
 export type OrganizationProgressSignals = {
   welcomeCompleted?: boolean;
@@ -57,64 +56,43 @@ export function deriveOrganizationProgress(
         ])
       : new Set<OrganizationProgressStepKey>();
 
-  return buildSequentialProgress(completed, notApplicable);
+  return buildProgress(completed, notApplicable);
 }
 
 export function applyWelcomeCompletion(
   progress: OrganizationProgress,
   completed: boolean,
 ): OrganizationProgress {
-  if (!completed || progress.steps[0].status === "completed") {
+  if (!completed || progress.steps[0].completed) {
     return progress;
   }
 
   const completedSteps = new Set<OrganizationProgressStepKey>(["welcome"]);
-  const notApplicableSteps = new Set<OrganizationProgressStepKey>();
 
   for (const step of progress.steps) {
-    if (step.status === "completed") completedSteps.add(step.key);
-    if (step.status === "not_applicable") notApplicableSteps.add(step.key);
+    if (step.completed) completedSteps.add(step.key);
   }
 
-  return buildSequentialProgress(completedSteps, notApplicableSteps);
+  return buildProgress(completedSteps, new Set());
 }
 
-function buildSequentialProgress(
+function buildProgress(
   completed: ReadonlySet<OrganizationProgressStepKey>,
   notApplicable: ReadonlySet<OrganizationProgressStepKey>,
 ): OrganizationProgress {
-  let prerequisiteComplete = true;
-  let currentStep: OrganizationProgressStepKey | null = null;
+  const steps = organizationProgressStepKeys.map((key) => ({
+    key,
+    completed: completed.has(key),
+  })) as OrganizationProgress["steps"];
 
-  const steps = organizationProgressStepKeys.map((key) => {
-    let status: OrganizationProgressStepStatus;
-
-    if (notApplicable.has(key)) {
-      status = "not_applicable";
-    } else if (prerequisiteComplete && completed.has(key)) {
-      status = "completed";
-    } else if (currentStep === null) {
-      status = "current";
-      currentStep = key;
-      prerequisiteComplete = false;
-    } else {
-      status = "upcoming";
-      prerequisiteComplete = false;
-    }
-
-    return { key, status };
-  }) as OrganizationProgress["steps"];
-
-  const applicableSteps = steps.filter(
-    (step) => step.status !== "not_applicable",
+  const applicableStepKeys = organizationProgressStepKeys.filter(
+    (key) => !notApplicable.has(key),
   );
 
   return {
-    currentStep,
-    completedCount: applicableSteps.filter(
-      (step) => step.status === "completed",
-    ).length,
-    totalCount: applicableSteps.length as 2 | 6,
+    completedCount: applicableStepKeys.filter((key) => completed.has(key))
+      .length,
+    totalCount: applicableStepKeys.length as 2 | 6,
     steps,
   };
 }

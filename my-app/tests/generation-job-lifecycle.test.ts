@@ -14,8 +14,26 @@ const liveParent = {
 describe("job-linked AI run lifecycle", () => {
   it("permits a live leased parent in the same organization", () => {
     expect(() =>
-      assertLiveParentForAiRun(liveParent, { now, organizationId }),
+      assertLiveParentForAiRun(liveParent, {
+        now,
+        organizationId,
+        expectedLeaseOwner: "worker-1",
+      }),
     ).not.toThrow();
+  });
+
+  it("rejects a stale worker after lease ownership transfers", () => {
+    expect(() =>
+      assertLiveParentForAiRun(
+        { ...liveParent, leaseOwner: "worker-2" },
+        { now, organizationId, expectedLeaseOwner: "worker-1" },
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        failureClass: "transient_provider",
+        safeCode: "GENERATION_JOB_LEASE_LOST",
+      }),
+    );
   });
 
   it.each([

@@ -1,37 +1,35 @@
 import * as z from "zod";
 import {
-  gapCorrectionInputSchema,
-  gapGuidanceRegenerationInputSchema,
   gapEntitySchema,
   gapGenerationEnqueueResponseSchema,
   gapQuestionnaireInputSchema,
   gapQuestionnaireDraftAnswerSchema,
   gapRevisionReadSchema,
   gapWorkflowReadSchema,
+  gapInputsReadSchema,
+  gapHistoryReadSchema,
 } from "@/src/contracts/gap-analysis/generation";
+import { jobDtoSchema } from "@/src/contracts/common/jobs";
 import { request } from "./api-client";
-
-const generationInputSchema = z.object({ draftId: z.uuid(), expectedLockVersion: z.number().int().positive() });
-const retryInputSchema = z.object({ draftId: z.uuid(), retryNonce: z.string().min(1).max(100) });
 
 function gapBase(organizationId: string) {
   return `/api/organizations/${encodeURIComponent(organizationId)}/gap-analysis`;
 }
 
-function reassessmentBase(organizationId: string) {
-  return `${gapBase(organizationId)}/reassessment`;
+function analysisCycleBase(organizationId: string) {
+  return `${gapBase(organizationId)}/cycles`;
 }
 
 export const gapAnalysisClient = {
-  prepareReassessment(organizationId: string, input: { assessmentId: string; selectedDocumentIds: string[] }) {
-    return request(reassessmentBase(organizationId), {
-      method: "POST", input, idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ reassessment: z.unknown() }),
+  prepareGapAnalysisCycle(organizationId: string, input: { assessmentId: string; selectedDocumentIds: string[] }) {
+    return request(analysisCycleBase(organizationId), {
+      method: "POST", input, idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ analysisCycle: z.unknown() }),
     });
   },
 
-  updateReassessmentEvidence(organizationId: string, input: { draftId: string; expectedLockVersion: number; selectedDocumentIds: string[] }) {
-    return request(`${reassessmentBase(organizationId)}/evidence`, {
-      method: "PATCH", input, ifMatch: input.expectedLockVersion, outputSchema: z.object({ draft: z.object({ id: z.uuid() }).loose() }),
+  replaceGapAnalysisEvidence(organizationId: string, input: { cycleId: string; selectedDocumentIds: string[] }) {
+    return request(`${analysisCycleBase(organizationId)}/${encodeURIComponent(input.cycleId)}/evidence`, {
+      method: "PUT", input: { selectedDocumentIds: input.selectedDocumentIds }, outputSchema: z.object({ analysisCycle: z.unknown() }),
     });
   },
 
@@ -45,6 +43,39 @@ export const gapAnalysisClient = {
     return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}`, {
       outputSchema: gapRevisionReadSchema, signal,
     });
+  },
+
+  getInputs(organizationId: string, revisionId: string, signal?: AbortSignal) {
+    return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/inputs`, {
+      outputSchema: gapInputsReadSchema,
+      signal,
+    });
+  },
+
+  getHistory(organizationId: string, signal?: AbortSignal) {
+    return request(`${gapBase(organizationId)}/history`, {
+      outputSchema: gapHistoryReadSchema,
+      signal,
+    });
+  },
+
+  resolveContradiction(
+    organizationId: string,
+    revisionId: string,
+    findingId: string,
+    sourceChoice: "questionnaire" | "document",
+    signal?: AbortSignal,
+  ) {
+    return request(
+      `${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/contradictions/${encodeURIComponent(findingId)}/resolve`,
+      {
+        method: "POST",
+        input: { sourceChoice },
+        idempotencyKey: crypto.randomUUID(),
+        outputSchema: z.object({ job: jobDtoSchema, reused: z.boolean() }),
+        signal,
+      },
+    );
   },
 
   createAssessment(organizationId: string, signal?: AbortSignal) {
@@ -71,59 +102,23 @@ export const gapAnalysisClient = {
       {
         method: "PATCH",
         input: gapQuestionnaireDraftAnswerSchema.parse(input),
-        ifMatch: input.expectedVersion,
         outputSchema: z.object({
           answer: z.object({
             draftId: z.uuid(),
             version: z.number().int().positive(),
-            questionId: z.uuid(),
-            optionId: z.uuid(),
-            updatedAt: z.string(),
+            questionId: z.string(),
+            optionId: z.string(),
           }),
-        }),
+        }).loose(),
         signal,
       },
     );
   },
 
-  correctRevision(organizationId: string, revisionId: string, input: z.infer<typeof gapCorrectionInputSchema>, signal?: AbortSignal) {
-    return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/correct`, {
-      method: "POST", input: gapCorrectionInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ revision: gapEntitySchema }), signal,
-    });
-  },
-
-  regenerateGuidance(
-    organizationId: string,
-    revisionId: string,
-    input: z.infer<typeof gapGuidanceRegenerationInputSchema>,
-    signal?: AbortSignal,
-  ) {
-    return request(
-      `${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/regenerate-guidance`,
-      {
-        method: "POST",
-        input: gapGuidanceRegenerationInputSchema.parse(input),
-        idempotencyKey: crypto.randomUUID(),
-        outputSchema: z.object({ revision: gapEntitySchema }),
-        signal,
-      },
-    );
-  },
-
-  generate(organizationId: string, input: z.infer<typeof generationInputSchema>, idempotencyKey: string, signal?: AbortSignal) {
-    return request(`${reassessmentBase(organizationId)}/generate`, {
+  enqueueGapAnalysisGeneration(organizationId: string, cycleId: string, input: { operation: "start" } | { operation: "retry"; retryNonce: string }, idempotencyKey: string, signal?: AbortSignal) {
+    return request(`${analysisCycleBase(organizationId)}/${encodeURIComponent(cycleId)}/generation-jobs`, {
       method: "POST",
-      input: generationInputSchema.parse(input),
-      idempotencyKey,
-      outputSchema: gapGenerationEnqueueResponseSchema,
-      signal,
-    });
-  },
-
-  retry(organizationId: string, input: z.infer<typeof retryInputSchema>, idempotencyKey: string, signal?: AbortSignal) {
-    return request(`${reassessmentBase(organizationId)}/retry`, {
-      method: "POST",
-      input: retryInputSchema.parse(input),
+      input,
       idempotencyKey,
       outputSchema: gapGenerationEnqueueResponseSchema,
       signal,

@@ -1,13 +1,13 @@
 import * as z from "zod";
 import { jobDtoSchema } from "../common/jobs";
 
-export const retryableGapReassessmentStatuses = ["failed", "cancelled"] as const;
+export const retryableGapAnalysisCycleStatuses = ["failed", "cancelled"] as const;
 
-export function isRetryableGapReassessmentStatus(status: string) {
-  return (retryableGapReassessmentStatuses as readonly string[]).includes(status);
+export function isRetryableGapAnalysisCycleStatus(status: string) {
+  return (retryableGapAnalysisCycleStatuses as readonly string[]).includes(status);
 }
 
-export const gapGenerationDraftSchema = z.object({
+export const gapAnalysisCycleGenerationSchema = z.object({
   id: z.uuid(),
   status: z.enum(["locked", "generated", "failed", "cancelled"]),
   outputLocale: z.enum(["de", "en"]),
@@ -18,10 +18,13 @@ export const gapGenerationDraftSchema = z.object({
 });
 
 export const gapGenerationEnqueueResponseSchema = z.object({
-  draft: gapGenerationDraftSchema,
   job: jobDtoSchema,
   reused: z.boolean(),
 });
+
+export const gapContradictionResolutionSchema = z.object({
+  sourceChoice: z.enum(["questionnaire", "document"]),
+}).strict();
 
 export type GapGenerationEnqueueResponse = z.infer<typeof gapGenerationEnqueueResponseSchema>;
 
@@ -29,50 +32,41 @@ export const gapEntitySchema = z.object({ id: z.uuid() }).loose();
 export const gapQuestionnaireInputSchema = z.object({
   assessmentId: z.uuid(),
   draftId: z.uuid(),
-  expectedVersion: z.number().int().positive(),
 });
 export const gapQuestionnaireDraftAnswerSchema = z.object({
   draftId: z.uuid(),
-  optionId: z.uuid(),
-  expectedVersion: z.number().int().positive(),
+  optionId: z.string().trim().min(1),
 });
-export const gapCorrectionInputSchema = z.object({
-  corrections: z.array(z.object({
-    findingId: z.uuid(),
-    status: z.enum(["fulfilled", "partially_fulfilled", "not_fulfilled", "insufficient_evidence"]).optional(),
-    evidenceSufficiency: z.enum(["sufficient", "partial", "none"]).optional(),
-    requiresReview: z.boolean().optional(),
-    reason: z.string().trim().min(1),
-    resolutionReason: z.string().trim().min(1).optional(),
-  }).strict()).length(1),
-});
-export const gapGuidanceRegenerationInputSchema = z.object({
-  findingId: z.uuid(),
-  reason: z.string().trim().min(1),
-  retryNonce: z.string().trim().min(1).max(100).optional(),
-}).strict();
-export const gapReassessmentQuerySchema = z.object({ assessmentId: z.uuid() });
-export const gapReassessmentPrepareSchema = z
+export const gapAnalysisCycleQuerySchema = z.object({ assessmentId: z.uuid() });
+export const gapAnalysisCyclePrepareSchema = z
   .object({
     assessmentId: z.uuid(),
     selectedDocumentIds: z.array(z.uuid()),
   })
   .strict();
-export const gapReassessmentEvidenceSchema = z
+export const gapAnalysisCycleEvidenceSchema = z
   .object({
     draftId: z.uuid(),
-    expectedLockVersion: z.number().int().positive(),
     selectedDocumentIds: z.array(z.uuid()),
   })
   .strict();
-export const gapReassessmentGenerateSchema = z.object({
+export const gapAnalysisEvidenceReplaceSchema = gapAnalysisCycleEvidenceSchema.omit({ draftId: true });
+export const gapAnalysisCycleGenerateSchema = z.object({
   draftId: z.uuid(),
-  expectedLockVersion: z.number().int().positive(),
 });
-export const gapReassessmentRetrySchema = z.object({
+export const gapAnalysisCycleRetrySchema = z.object({
   draftId: z.uuid(),
   retryNonce: z.string().trim().min(1).max(100),
 });
+export const gapAnalysisGenerationJobSchema = z.discriminatedUnion("operation", [
+  z.object({
+    operation: z.literal("start"),
+  }).strict(),
+  z.object({
+    operation: z.literal("retry"),
+    retryNonce: z.string().trim().min(1).max(100),
+  }).strict(),
+]);
 
 export const gapWorkflowReadSchema = z.object({
   workflow: z.object({
@@ -81,7 +75,7 @@ export const gapWorkflowReadSchema = z.object({
     release: z.unknown().nullable(),
     assessment: z.unknown().nullable(),
     run: z.unknown().nullable(),
-    reassessment: z.unknown().nullable(),
+    analysisCycle: z.unknown().nullable(),
     acceptedRevision: z.unknown().nullable(),
     candidateRevision: z.unknown().nullable(),
     acceptedFindings: z.array(z.unknown()),
@@ -96,8 +90,7 @@ export const gapWorkflowReadSchema = z.object({
         satisfied: z.literal(false),
         status: z.enum([
           "missing",
-          "release_incompatible",
-          "not_approved",
+          "definition_incompatible",
           "invalid",
           "not_eligible",
         ]),
@@ -147,3 +140,5 @@ export const gapRevisionReadSchema = z.object({
   findings: z.array(z.unknown()),
   staleness: z.unknown().nullable(),
 });
+export const gapInputsReadSchema = z.object({ inputs: z.unknown() });
+export const gapHistoryReadSchema = z.object({ history: z.array(z.unknown()) });

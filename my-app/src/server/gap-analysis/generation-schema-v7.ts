@@ -63,6 +63,7 @@ export type ValidatedCategoryGapResult = {
   assumptions: string[];
   citationIds: string[];
   contradictions: string[];
+  conflictingOrganizationCitationIds?: string[];
   requiresReview: boolean;
   legalCitationId: string;
 };

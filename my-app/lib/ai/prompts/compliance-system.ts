@@ -69,7 +69,7 @@ export function renderComplianceSystemPrompt({
     "Organization profile:",
     `Name: ${organization.name}`,
     `Legal name: ${organization.legalName ?? "not set"}`,
-    `Country: ${organization.country ?? "DE"}`,
+    `Country: ${organization.countryCode}`,
     "",
     "Conversation summary:",
     chatSummary?.trim() || "No durable summary is available yet.",

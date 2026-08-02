@@ -6,9 +6,9 @@ const organization = {
   id: "00000000-0000-4000-8000-000000000001",
   name: "Example GmbH",
   legalName: "Example GmbH",
-  country: "DE",
+      countryCode: "DE",
+      aiProviderMode: "company_hosted",
   archivedAt: null,
-  version: 1,
   createdAt: new Date(),
   updatedAt: new Date(),
 } as const;

@@ -27,6 +27,7 @@ export function localizeGapFinding<
       stableRequirementId: catalogue.stableRequirementId,
       code: catalogue.code,
       position: catalogue.position,
+      icon: catalogue.icon,
       criticality: catalogue.criticality,
       title: catalogue.title,
       requirementText: catalogue.requirementText,

@@ -111,7 +111,7 @@ async function upload(
   }
   const { error } = await createClient()
     .storage.from(bucket)
-    .uploadToSignedUrl(session.objectPath, session.uploadToken, file, {
+    .uploadToSignedUrl(session.storageKey, session.uploadToken, file, {
       contentType: file.type,
     });
   if (error) throw error;

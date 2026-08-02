@@ -6,6 +6,7 @@ import { getWorkerEnvironment } from "@/src/config/env/worker";
 const productionEnvironment: NodeJS.ProcessEnv = {
   NODE_ENV: "production",
   APP_ENV: "production",
+  DEPLOYMENT_TOPOLOGY: "private_self_hosted",
   APP_PUBLIC_URL: "https://app.example.com",
   NEXT_PUBLIC_SUPABASE_URL: "https://supabase.example.com",
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_example",
@@ -36,6 +37,26 @@ describe("deployment environment contracts", () => {
     );
   });
 
+  it("accepts benchmark category concurrency and validates both AI limits", () => {
+    const configured = getWebEnvironment({
+      ...productionEnvironment,
+      AI_CATEGORY_CONCURRENCY: "5",
+      AI_PROVIDER_MAX_CONCURRENCY: "4",
+    });
+    expect(configured.AI_CATEGORY_CONCURRENCY).toBe(5);
+    expect(configured.AI_PROVIDER_MAX_CONCURRENCY).toBe(4);
+
+    expect(() =>
+      getWebEnvironment({
+        ...productionEnvironment,
+        AI_CATEGORY_CONCURRENCY: "6",
+        AI_PROVIDER_MAX_CONCURRENCY: "101",
+      }),
+    ).toThrow(
+      "Invalid environment variables: AI_CATEGORY_CONCURRENCY, AI_PROVIDER_MAX_CONCURRENCY",
+    );
+  });
+
   it("rejects public production database and AI endpoints", () => {
     const values = {
       ...productionEnvironment,
@@ -47,6 +68,53 @@ describe("deployment environment contracts", () => {
     expect(() => getWebEnvironment(values)).toThrow(
       "Invalid environment variables: DATABASE_URL, SELF_HOSTED_AI_BASE_URL",
     );
+  });
+
+  it("accepts authenticated TLS endpoints in managed cloud", () => {
+    const managed = {
+      ...productionEnvironment,
+      DEPLOYMENT_TOPOLOGY: "managed_cloud",
+      DATABASE_URL:
+        "postgresql://app:secret@database.example.com:5432/postgres?sslmode=require",
+      SELF_HOSTED_AI_BASE_URL: "https://ai.example.com/v1",
+      NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
+      JOB_RECOVERY_ENABLED: "true",
+      CRON_SECRET: "cron-secret-with-enough-entropy",
+    };
+
+    expect(getWebEnvironment(managed).DEPLOYMENT_TOPOLOGY).toBe(
+      "managed_cloud",
+    );
+  });
+
+  it("rejects ambiguous or plaintext managed production topology", () => {
+    expect(() =>
+      getWebEnvironment({
+        ...productionEnvironment,
+        DEPLOYMENT_TOPOLOGY: undefined,
+      }),
+    ).toThrow("Invalid environment variables: DEPLOYMENT_TOPOLOGY");
+
+    expect(() =>
+      getWebEnvironment({
+        ...productionEnvironment,
+        DEPLOYMENT_TOPOLOGY: "managed_cloud",
+        DATABASE_URL:
+          "postgresql://app:secret@database.example.com:5432/postgres",
+        SELF_HOSTED_AI_BASE_URL: "http://ai.example.com/v1",
+      }),
+    ).toThrow(
+      "Invalid environment variables: DATABASE_URL, SELF_HOSTED_AI_BASE_URL",
+    );
+  });
+
+  it("requires a recovery secret only when production recovery is enabled", () => {
+    expect(() =>
+      getWebEnvironment({
+        ...productionEnvironment,
+        JOB_RECOVERY_ENABLED: "true",
+      }),
+    ).toThrow("Invalid environment variables: CRON_SECRET");
   });
 
   it("rejects unsafe production web defaults without printing values", () => {

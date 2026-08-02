@@ -376,7 +376,7 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  migrate:
+  database-bootstrap:
     <<: [*app-security, *app-environment]
     image: ${COMPLIANCETOOL_WORKER_IMAGE}
     build:
@@ -392,7 +392,7 @@ services:
         condition: service_healthy
       storage:
         condition: service_healthy
-    command: [node, node_modules/tsx/dist/cli.mjs, scripts/migrate.ts]
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/bootstrap-disposable-schema.ts]
     networks: [data]
     mem_limit: 1g
     cpus: 1
@@ -402,7 +402,7 @@ services:
     image: ${COMPLIANCETOOL_WORKER_IMAGE}
     restart: "no"
     depends_on:
-      migrate:
+      database-bootstrap:
         condition: service_completed_successfully
       kong:
         condition: service_healthy

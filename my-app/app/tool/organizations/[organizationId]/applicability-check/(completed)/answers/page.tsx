@@ -29,7 +29,6 @@ export default async function ApplicabilityAnswersPage({
   const answers = await getApplicabilityAnswersForUser(
     user.id,
     organizationId,
-    locale,
   );
 
   if (!answers) {

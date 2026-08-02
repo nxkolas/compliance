@@ -1,6 +1,8 @@
 import * as z from "zod";
 import {
   commonApplicationEnvironmentSchema,
+  booleanFromEnvironment,
+  optionalString,
   parseEnvironment,
 } from "./common";
 
@@ -12,6 +14,8 @@ export const webEnvironmentSchema = commonApplicationEnvironmentSchema
     SUPABASE_INTERNAL_URL: z.url().optional(),
     SUPABASE_SECRET_KEY: z.string().trim().min(1),
     API_CURSOR_SECRET: z.string().trim().min(16).optional(),
+    JOB_RECOVERY_ENABLED: booleanFromEnvironment.default(false),
+    CRON_SECRET: optionalString,
   })
   .superRefine((environment, context) => {
     if (environment.APP_ENV !== "production") {
@@ -36,6 +40,34 @@ export const webEnvironmentSchema = commonApplicationEnvironmentSchema
         path: ["API_CURSOR_SECRET"],
         message: "is required in production",
       });
+    }
+
+    if (environment.JOB_RECOVERY_ENABLED && !environment.CRON_SECRET) {
+      context.addIssue({
+        code: "custom",
+        path: ["CRON_SECRET"],
+        message: "is required when recovery execution is enabled",
+      });
+    }
+
+    if (environment.DEPLOYMENT_TOPOLOGY === "managed_cloud") {
+      for (const [name, value] of [
+        ["NEXT_PUBLIC_SUPABASE_URL", environment.NEXT_PUBLIC_SUPABASE_URL],
+        ["SUPABASE_INTERNAL_URL", environment.SUPABASE_INTERNAL_URL],
+      ] as const) {
+        if (!value) continue;
+        const url = new URL(value);
+        if (
+          url.protocol !== "https:" ||
+          ["localhost", "127.0.0.1", "::1"].includes(url.hostname)
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: [name],
+            message: "must use a non-local HTTPS endpoint in managed cloud",
+          });
+        }
+      }
     }
 
     if (

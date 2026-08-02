@@ -1,72 +1,44 @@
 # Drizzle schema-change workflow
 
-Use this workflow for ordinary application-schema changes. Drizzle owns the
-application tables, primary and foreign keys, unique and check constraints,
-ordinary indexes, the two vector HNSW indexes, and RLS enablement.
+Status: disposable pre-production workflow as of 2 August 2026.
 
-Supabase/operator SQL owns database extensions, scheduled jobs, and explicitly
-audited triggers. It must not duplicate Drizzle-owned objects.
+`src/db/schema.ts` owns every ordinary public table, column, generated search
+vector, constraint, index, enum, and RLS setting. Operator SQL is allowlisted to
+the vector extension and two append-only audit triggers.
 
-## 1. Verify the database target
+## Verify the target
 
-Confirm which URL Drizzle will use before running either command.
-`DRIZZLE_DATABASE_URL` takes precedence over `DATABASE_URL`. Inspect only the
-host, port, and database name; do not print credentials.
+Inspect only host, port, and database name; never print a URL or credentials.
+Stop if `DATABASE_URL` and `DRIZZLE_DATABASE_URL` identify different targets.
 
 ```powershell
-node -e "require('dotenv').config({ quiet: true }); const value=process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL; if (!value) throw new Error('Database URL is not configured'); const u=new URL(value); console.log({ host:u.hostname, port:u.port, database:u.pathname });"
+node -e "require('dotenv').config({quiet:true}); const v=process.env.DRIZZLE_DATABASE_URL??process.env.DATABASE_URL; if(!v) throw Error('database URL missing'); const u=new URL(v); console.log({host:u.hostname,port:u.port||'5432',database:u.pathname.slice(1)})"
 ```
 
-Stop if the target is not the intended environment.
-
-## 2. Preview the change
+## Four ordered stages
 
 ```powershell
-npm.cmd run db:push -- --explain
+npm run db:apply-operator-sql -- pre-push
+npm run db:push -- --explain
+npm run db:push
+npm run db:apply-operator-sql -- post-push
+npm run storage:bootstrap
 ```
 
-## 3. Review the DDL
+Review the explanation before applying it. `--force` is not part of the normal
+workflow. Both SQL stages are fixed allowlists and idempotent; the command does
+not discover arbitrary SQL files.
 
-Verify that the preview contains only the intended changes. Reject table,
-column, constraint, or index drops unless they are explicitly part of the
-reviewed change. Reject RLS disablement and any change outside the filtered
-`public` application tables.
-
-## 4. Apply the reviewed change
+Verify the exact public-table inventory, RLS/default deny, generated columns,
+indexes, extension, constraints, and audit triggers, then check for zero drift:
 
 ```powershell
-npm.cmd run db:push
+npm run db:verify:server-only
+npm run db:verify:integrity
+npm run storage:verify
+npm run db:push -- --explain
 ```
 
-Drizzle v1 confirms changes by default; the old `--strict` flag no longer
-exists. `--force` is not part of the normal workflow.
-
-## 5. Verify RLS
-
-```powershell
-npm.cmd run db:verify:server-only
-```
-
-Every managed table must have RLS enabled and remain without browser policies.
-
-## 6. Confirm zero drift
-
-```powershell
-npm.cmd run db:push -- --explain
-```
-
-The second preview must report no schema drift.
-
-Ordinary schema changes do not require `db:clear`, reset, reseed, a pre-push
-constraint pass, an identity-FK pass, or a post-push RLS pass.
-# Migration policy
-
-Production and staging schema changes are applied only by the locked
-`npm run db:migrate` command from committed SQL. The runner verifies the target
-database name and application environment, holds a PostgreSQL advisory lock,
-and refuses modified migration or operator SQL that was already recorded.
-
-`npm run db:push` is a disposable local-development convenience only. It must
-never appear in a staging or production procedure, container command, or
-deployment workflow. Production rollback is a forward fix or a verified
-restore; it is not an automatic schema downgrade.
+The last explanation must report no changes. There is no migration runner or
+checked-in migration chain for this disposable environment. Production rollout
+is out of scope and requires a separately reviewed clean baseline procedure.

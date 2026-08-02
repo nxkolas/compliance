@@ -1,2 +1,0 @@
-import { requireApiUser } from "@/src/server/api/auth"; import { apiRoute } from "@/src/server/api/handler"; import { getLegalChunk } from "@/src/server/corpus";
-export const GET = apiRoute(async ({ routeContext }: { request: Request; routeContext: { params: Promise<{ chunkId: string }> } }) => { const user = await requireApiUser(); const { chunkId } = await routeContext.params; return { data: { chunk: await getLegalChunk(user.id, chunkId) } }; });

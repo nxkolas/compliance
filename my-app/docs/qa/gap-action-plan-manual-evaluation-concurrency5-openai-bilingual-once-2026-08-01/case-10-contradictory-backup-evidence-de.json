@@ -1,0 +1,2301 @@
+{
+  "case": {
+    "number": 10,
+    "slug": "contradictory-backup-evidence-de",
+    "title": "Widersprüchlicher Backup-Nachweis (DE)",
+    "locale": "de",
+    "expectedGenerated": {
+      "NIS2-GOV-01": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-RISK-02": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-IAM-03": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-IR-04": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-BC-05": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-SC-06": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-VM-07": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-ASSURE-08": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-AWARE-09": {
+        "status": "fulfilled",
+        "severity": "low"
+      },
+      "NIS2-PROTECT-10": {
+        "status": "fulfilled",
+        "severity": "low"
+      }
+    },
+    "expectedGeneratedActionItemCount": 0,
+    "expectedFinalActionItemCount": 1
+  },
+  "organization": {
+    "id": "3a6fbbdb-fbb1-4981-935b-2cdfc5b378af",
+    "name": "QA Gap Eval concurrency5-openai-bilingual-once-2026-08-01 10 — Widersprüchlicher Backup-Nachweis (DE)",
+    "legalName": "QA Gap Evaluation concurrency5-openai-bilingual-once-2026-08-01 Case 10 GmbH",
+    "country": "DE"
+  },
+  "inputs": {
+    "applicabilityOutcome": "essential_entity",
+    "applicabilityRevisionId": "edf23c10-0961-4223-85a6-ee0fe270dcad",
+    "gapAssessmentId": "0644863c-634f-4f58-8dde-d3e7bed33704",
+    "gapQuestionnaireRevisionId": "8b4a7b3f-4994-44e5-83bd-7f779826daef",
+    "answers": [
+      {
+        "questionNumber": 1,
+        "stableKey": "gap.governance.security_owner",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 2,
+        "stableKey": "gap.governance.management_oversight",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 3,
+        "stableKey": "gap.governance.management_training",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 4,
+        "stableKey": "gap.risk.written_analysis",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 5,
+        "stableKey": "gap.risk.analysis_updates",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 6,
+        "stableKey": "gap.risk.critical_dependencies",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 7,
+        "stableKey": "gap.risk.asset_inventory",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 8,
+        "stableKey": "gap.iam.least_privilege",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 9,
+        "stableKey": "gap.iam.joiner_mover_leaver",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 10,
+        "stableKey": "gap.iam.multi_factor_authentication",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 11,
+        "stableKey": "gap.incident.written_response_plan",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 12,
+        "stableKey": "gap.incident.roles_and_contacts",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 13,
+        "stableKey": "gap.incident.detection_and_records",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 14,
+        "stableKey": "gap.incident.reporting_timeline",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 15,
+        "stableKey": "gap.continuity.regular_backups",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 16,
+        "stableKey": "gap.continuity.protected_backups",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 17,
+        "stableKey": "gap.continuity.restore_tests",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 18,
+        "stableKey": "gap.continuity.recovery_plan",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 19,
+        "stableKey": "gap.supply_chain.provider_risk",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 20,
+        "stableKey": "gap.supply_chain.contract_requirements",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 21,
+        "stableKey": "gap.supply_chain.provider_contingency",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 22,
+        "stableKey": "gap.secure_systems.security_by_design",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 23,
+        "stableKey": "gap.secure_systems.patch_management",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 24,
+        "stableKey": "gap.secure_systems.vulnerability_management",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 25,
+        "stableKey": "gap.assurance.effectiveness_reviews",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 26,
+        "stableKey": "gap.assurance.remediation_tracking",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 27,
+        "stableKey": "gap.awareness.employee_training",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 28,
+        "stableKey": "gap.awareness.cyber_hygiene_rules",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 29,
+        "stableKey": "gap.protection.encryption",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 30,
+        "stableKey": "gap.protection.secure_communications",
+        "answer": "fully_implemented"
+      },
+      {
+        "questionNumber": 31,
+        "stableKey": "gap.protection.physical_security",
+        "answer": "fully_implemented"
+      }
+    ],
+    "document": {
+      "title": "Synthetischer Nachweis zu Backup und Wiederherstellung",
+      "fileName": "synthetischer-backup-wiederherstellungsnachweis.txt",
+      "mimeType": "text/plain",
+      "text": "SYNTHETISCHER QA-NACHWEIS — STATUS DER BACKUP- UND WIEDERHERSTELLUNGSKONTROLLE\n\nGeltungsbereich: alle Produktivsysteme und wichtigen Geschäftsdaten.\nPrüfdatum: 26.07.2026.\n\nBackups werden regelmäßig erstellt. Für kein Produktivsystem wurde\njedoch jemals ein Wiederherstellungstest durchgeführt. Es gibt keine\ndokumentierten Testergebnisse, keinen Nachweis der Wiederherstellbarkeit\nund weder Verantwortliche noch einen Zeitplan für solche Tests.\n\nDie Fragebogenangabe, Wiederherstellungen würden regelmäßig getestet,\nist falsch und darf nicht herangezogen werden. Die Wiederherstellbarkeit\nbleibt ungeklärt, bis ein vollständiger Test durchgeführt und dokumentiert ist.",
+      "documentId": "4c238a1b-48ac-47c8-8543-96f11e0613e4",
+      "documentVersionId": "8bb246a9-30cb-4a1e-9f94-ec2b7d0ea6dc",
+      "extractionId": "1b0dc999-b67c-4995-a609-3599c7b90544",
+      "embeddingGenerationId": "3ea353b3-6307-4a48-bb51-8cd2df2cfb05"
+    }
+  },
+  "workflow": {
+    "generationJobId": "10532123-fdd6-41aa-8227-fedd06e8d241",
+    "aiProcessingRunId": "4b272ed1-d528-4297-920d-938823222708",
+    "generatedRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+    "finalRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+    "correction": {
+      "sourceRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+      "correctedRevisionId": "afd86a62-c8e2-4ec4-ade2-2c0a1e1acee4",
+      "requirementCode": "NIS2-BC-05",
+      "status": "not_fulfilled",
+      "evidenceSufficiency": "sufficient",
+      "reason": "Der synthetische QA-Nachweis widerspricht direkt der Angabe eines vollständig umgesetzten Wiederherstellungstests.",
+      "resolutionReason": "Die manuelle Prüfung bewertet den spezifischen aktuellen Nachweis als maßgeblich und stuft die Backup-Kontinuität als nicht erfüllt ein.",
+      "guidanceOnlyRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3"
+    },
+    "expectedFinalizationBlock": {
+      "attempted": false,
+      "blocked": false,
+      "error": null
+    }
+  },
+  "generatedRevision": {
+    "revision": {
+      "id": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+      "artifactId": "7a233548-6581-4877-b039-43e4169e1cd9",
+      "revisionNumber": 1,
+      "parentRevisionId": null,
+      "status": "generated",
+      "result": {
+        "schemaKind": "gap_revision_metadata_v1",
+        "outputLocale": "de",
+        "findingDiagnostics": [
+          {
+            "contradictions": [],
+            "requirementVersionId": "942611f4-2bfb-40f5-8bdc-7d221ef7d3f6",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "3abf06dc-9405-464d-99ca-4f973d01a147",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "18ee0506-7b0b-4cdd-ba00-2d3ce62c5488",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "460c86f3-89f0-44a4-bb82-63304ae6f3ca",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [
+              "Die Fragebogenangabe zu regelmäßigen Wiederherstellungstests widerspricht dem Organisationsdokument, das fehlende Tests und fehlende Testnachweise festhält."
+            ],
+            "requirementVersionId": "c81eb803-f8da-475f-870d-dd10dba78f4a",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "e2d326f6-0968-4f1a-a3bc-dab16deb49ee",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "8ff60a6b-140b-4645-9026-bf6a376114ca",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "5eee1786-1124-4aee-8545-9b50ccb1551e",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "c5113479-e605-4bce-ad48-b38412280b27",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "738953bf-9d1c-4c53-9b51-95b0aff789b3",
+            "questionnaireDisagreements": []
+          }
+        ],
+        "correctedFromRevisionId": null,
+        "correctedRequirementVersionIds": []
+      },
+      "outputLocale": "de",
+      "modelName": "gpt-5.6-luna",
+      "promptVersion": "12",
+      "ruleSetId": null,
+      "checkReleaseId": null,
+      "gapAnalysisReleaseId": "75986eef-422c-488c-9f73-be6b40d250a6",
+      "evaluatorKind": "nis2_gap_category_v1",
+      "outcomeCode": null,
+      "evaluatedAt": "2026-08-01T22:20:20.412Z",
+      "inputHash": "8584fcd7e623ffd3a4445c9d6b6be3ab4565111c9c104bee3d96d406950db740",
+      "generatedBy": "ai",
+      "createdBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "approvedBy": null,
+      "approvedAt": null,
+      "createdAt": "2026-08-01T22:20:20.006Z"
+    },
+    "findings": [
+      {
+        "id": "4cb94024-b873-4382-9e55-2ddbd08f5ba5",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "942611f4-2bfb-40f5-8bdc-7d221ef7d3f6",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.governance.security_owner",
+            "gap.governance.management_oversight",
+            "gap.governance.management_training"
+          ]
+        },
+        "statementBasisHash": "c0b8b14ea8a53144526be003d28f9e59c4a117a957a6456fc8c26282764faadb",
+        "reviewNotice": null,
+        "generationRunId": "4b272ed1-d528-4297-920d-938823222708",
+        "assumptions": [
+          "Die Erfüllung basiert auf den angegebenen Fragebogenangaben; diese wurden nicht unabhängig durch Organisationsdokumente verifiziert."
+        ],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-GOV-01",
+        "requirementTitle": "Verantwortung und Organisation",
+        "requirementText": "Die Organisation weist die Verantwortung für Informationssicherheit nachvollziehbar zu; die Geschäftsleitung beschließt und überwacht die Maßnahmen zum Umgang mit Cybersicherheitsrisiken und nimmt an geeigneten Schulungen teil.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "4124d503-41ad-4251-84c5-42ef564a0b52",
+            "citationId": "LEGAL:NIS2-GOV-01:ff8c0957-2f4b-4d85-a0ff-9a927b0613ca",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "ff8c0957-2f4b-4d85-a0ff-9a927b0613ca",
+            "excerpt": "hen.\n(2) Geschäftsleitungen, die ihre Pflichten nach Absatz 1 verletzen, haften ihrer Einrichtung für einen schuldhaft\nverursachten Schaden nach den auf die Rechtsform der Einrichtung anwendbaren Regeln des Gesellschaftsrechts.\nNach diesem Gesetz haften sie nur, wenn die für die Einrichtung maßgeblichen gesellschaftsrechtlichen\nBestimmungen keine Haftungsregelung nach Satz 1 enthalten.\n(3) Die Geschäftsleitungen besonders wichtiger Einrichtungen und wichtiger Einrichtungen müssen regelmäßig an\nSchulungen teilnehmen, um ausreichende Kenntnisse und Fähigkeiten zur Erkennung und Bewertung von Risiken\nund von Risikomanagementpraktiken im Bereich der Sicherheit in der Informationstechnik zu erlangen sowie um\ndie Auswirkungen von Risiken sowie Risikomanagementpraktiken auf die von der Einrichtung erbrachten Dienste\nbeurteilen zu können.\n§ 39 Nachweispflichten für Betreiber kritischer Anlagen\n(1) Betreiber kritischer Anlagen haben die Umsetzung der Maßnahmen in Bezug auf kritische Anlagen nach §\n30 Absatz 1 Satz 1 in Verbindung mit § 31 Absatz 1 und 2 Satz 1 zu einem vom Bundesamt im Benehmen mit\ndem Bundesamt für Bevölkerungsschutz und Katastrophenhilfe festgelegten Zeitpunkt, frühestens",
+            "pageNumber": 29,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "f96c77d0-80f0-4945-820e-a0039b46900c",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "3abf06dc-9405-464d-99ca-4f973d01a147",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.risk.written_analysis",
+            "gap.risk.analysis_updates",
+            "gap.risk.critical_dependencies",
+            "gap.risk.asset_inventory"
+          ]
+        },
+        "statementBasisHash": "1bdf6b11b9f2152e66ff9fe284f5e32e8fd5b3ee5d013ba89d00d8da7faa0a3c",
+        "reviewNotice": null,
+        "generationRunId": "fde3e3ba-13e2-4af7-b5dd-461057d54d67",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-RISK-02",
+        "requirementTitle": "Risiken und Überblick",
+        "requirementText": "Die Organisation hält eine aktuelle, dokumentierte Risikoanalyse sowie einen Überblick über kritische Prozesse, Systeme, Daten, Dienste, Konten und Abhängigkeiten vor.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "2a5267a6-1648-45ca-80b3-c0e514c0101b",
+            "citationId": "LEGAL:NIS2-RISK-02:b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "excerpt": "nstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten. Bei der Bewertung der Verhältnismäßigkeit der Maßnahmen\nnach Satz 1 sind das Ausmaß der Risikoexposition, die Größe der Einrichtung, die Umsetzungskosten und\ndie Eintrittswahrscheinlichkeit und Schwere von Sicherheitsvorfällen sowie ihre gesellschaftlichen und\nwirtschaftlichen Auswirkungen zu berücksichtigen. Die Einhaltung der Verpflichtung nach Satz 1 ist durch die\nEinrichtungen zu dokumentieren.\n(2) Maßnahmen nach Absatz 1 sollen den Stand der Technik einhalten, die einschlägigen europäischen und\ninternationalen Normen berücksichtigen und müssen auf einem gefahrenübergreifenden Ansatz beruhen. Die\nMaßnahmen müssen zumindest Folgendes umfassen:\n1. Konzepte in Bezug auf die Risikoanalyse und auf die Sicherheit in der Informationstechnik,\n2. Bewältigung von Sicherheitsvorfällen,\n3. Aufrechterhaltung des Betriebs, wie Backup-Management und Wiederherstellung nach einem Notfall, und\nKrisenmanagement,\n- Seite 24 von 54 -",
+            "pageNumber": 24,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "113c8d5e-09b0-45ac-a425-bd28946a37fb",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "18ee0506-7b0b-4cdd-ba00-2d3ce62c5488",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.iam.least_privilege",
+            "gap.iam.joiner_mover_leaver",
+            "gap.iam.multi_factor_authentication"
+          ]
+        },
+        "statementBasisHash": "390bc15af5526c6cdbacd64aa4ce7b9a74f9adb9ec51a57be5ed54f61a9837c5",
+        "reviewNotice": null,
+        "generationRunId": "a61c49a0-9519-4014-a1fd-a18d904faefa",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-IAM-03",
+        "requirementTitle": "Zugriffe und Personal",
+        "requirementText": "Zugriffsrechte folgen während des gesamten Personalzyklus dem Prinzip der geringsten Rechte; sensible, administrative und entfernte Zugriffe werden stark authentifiziert.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "38e91776-4c3b-4568-91c5-9cd6733325c4",
+            "citationId": "LEGAL:NIS2-IAM-03:3bf1a5d5-b336-45e1-abbf-f10220b92706",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "3bf1a5d5-b336-45e1-abbf-f10220b92706",
+            "excerpt": "tographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10. Verwendung von Lösungen zur Multi-Faktor-Authentifizierung oder kontinuierlichen Authentifizierung,\ngesicherte Sprach-, Video- und Textkommunikation sowie gegebenenfalls gesicherte\nNotfallkommunikationssysteme innerhalb der Einrichtung.\n(3) Der von der Europäischen Kommission gemäß Artikel 21 Absatz 5 Unterabsatz 1 der NIS-2-Richtlinie erlassene\nDurchführungsrechtsakt zur Festlegung der technischen und methodischen Anforderungen an die in Absatz 1\ngenannten Maßnahmen in Bezug auf DNS-Diensteanbieter, Top Level Domain Name Registries, Cloud-Computing-\nDienstleister, Anbieter von Rechenzentrumsdiensten, Betreiber von Content Delivery Networks, Managed\nService Provider, Managed Security Service Provider, Anbieter von Online-Marktplätzen, Online-Suchmaschinen\nund Plattformen für Dienste sozialer Netzwerke und Vertrauensdiensteanbieter hat für die vorgenannten\nEinrichtungsarten Vorrang.\n(4) Sofern die Europäische Kommission einen Durchführungsrechtsakt gemäß Artikel 21 Absatz 5 Unterabsatz 2\nder NIS-2-Richtli",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "2ece056a-e4aa-498c-ac28-4c508c357d38",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "460c86f3-89f0-44a4-bb82-63304ae6f3ca",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.incident.written_response_plan",
+            "gap.incident.roles_and_contacts",
+            "gap.incident.detection_and_records",
+            "gap.incident.reporting_timeline"
+          ]
+        },
+        "statementBasisHash": "89ac3a6d3ff0754f856b48d7da0fa3c40ab737f860ccff6df9aaa818241dca76",
+        "reviewNotice": null,
+        "generationRunId": "852536e1-0172-4270-975f-169ad72a0af5",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-IR-04",
+        "requirementTitle": "Sicherheitsvorfälle und Meldung",
+        "requirementText": "Die Organisation kann erhebliche Sicherheitsvorfälle vorbereiten, erkennen, dokumentieren, eindämmen, bewältigen und innerhalb der geltenden Fristen melden.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "a0ff5321-2941-4eaa-9e46-989f94d52de3",
+            "citationId": "LEGAL:NIS2-IR-04:cca3bbc8-b812-4c2d-8d6d-aefd7d100672",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "cca3bbc8-b812-4c2d-8d6d-aefd7d100672",
+            "excerpt": "end Bedrohungen zu identifizieren und zu vermeiden sowie für eingetretene\nStörungen geeignete Beseitigungsmaßnahmen vorzusehen. Dabei soll der Stand der Technik eingehalten\nwerden. Der hierfür erforderliche Aufwand soll nicht außer Verhältnis zu den Folgen eines Ausfalls oder einer\nBeeinträchtigung der betroffenen kritischen Anlage stehen.\n§ 32 Meldepflichten\n(1) Besonders wichtige Einrichtungen und wichtige Einrichtungen sind verpflichtet, folgende Informationen\nan eine vom Bundesamt und dem Bundesamt für Bevölkerungsschutz und Katastrophenhilfe eingerichtete\ngemeinsame Meldestelle zu melden:\n1. unverzüglich, spätestens jedoch innerhalb von 24 Stunden nach Kenntniserlangung von einem\nerheblichen Sicherheitsvorfall, eine frühe Erstmeldung, in der angegeben wird, ob der Verdacht besteht,\ndass der erhebliche Sicherheitsvorfall auf rechtswidrige oder böswillige Handlungen zurückzuführen ist\noder grenzüberschreitende Auswirkungen haben könnte;\n2.",
+            "pageNumber": 26,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "a66aed4e-1581-463f-ba1d-3d34cef59b57",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "c81eb803-f8da-475f-870d-dd10dba78f4a",
+        "status": "fulfilled",
+        "evidenceSufficiency": "partial",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.continuity.regular_backups",
+            "gap.continuity.protected_backups",
+            "gap.continuity.restore_tests",
+            "gap.continuity.recovery_plan"
+          ]
+        },
+        "statementBasisHash": "5e8aad9185e574a471361cef30e0a4936cd5e4aaa52d9a825f56297a10f160d6",
+        "reviewNotice": "Die Angabe zu regelmäßig getesteten Wiederherstellungen widerspricht dem vorliegenden Nachweis, wonach solche Tests bislang nicht durchgeführt wurden.",
+        "generationRunId": "d1660e4d-59fb-45eb-856c-5f32d9173a72",
+        "assumptions": [],
+        "requiresReview": true,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-BC-05",
+        "requirementTitle": "Backups und Notfallvorsorge",
+        "requirementText": "Wichtige Daten und Systeme werden sicher und wiederherstellbar gesichert; getestete Notfall- und Wiederanlaufziele sowie Zuständigkeiten unterstützen die Kontinuität.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "efcbc177-d0d5-45df-b47e-251d545613ec",
+            "citationId": "LEGAL:NIS2-BC-05:b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "excerpt": "nstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten. Bei der Bewertung der Verhältnismäßigkeit der Maßnahmen\nnach Satz 1 sind das Ausmaß der Risikoexposition, die Größe der Einrichtung, die Umsetzungskosten und\ndie Eintrittswahrscheinlichkeit und Schwere von Sicherheitsvorfällen sowie ihre gesellschaftlichen und\nwirtschaftlichen Auswirkungen zu berücksichtigen. Die Einhaltung der Verpflichtung nach Satz 1 ist durch die\nEinrichtungen zu dokumentieren.\n(2) Maßnahmen nach Absatz 1 sollen den Stand der Technik einhalten, die einschlägigen europäischen und\ninternationalen Normen berücksichtigen und müssen auf einem gefahrenübergreifenden Ansatz beruhen. Die\nMaßnahmen müssen zumindest Folgendes umfassen:\n1. Konzepte in Bezug auf die Risikoanalyse und auf die Sicherheit in der Informationstechnik,\n2. Bewältigung von Sicherheitsvorfällen,\n3. Aufrechterhaltung des Betriebs, wie Backup-Management und Wiederherstellung nach einem Notfall, und\nKrisenmanagement,\n- Seite 24 von 54 -",
+            "pageNumber": 24,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "43ff8d30-69c8-4abd-8afa-ac224ad8f607",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "e2d326f6-0968-4f1a-a3bc-dab16deb49ee",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.supply_chain.provider_risk",
+            "gap.supply_chain.contract_requirements",
+            "gap.supply_chain.provider_contingency"
+          ]
+        },
+        "statementBasisHash": "9af7bb98e0d89adbda71b90ff0465e3870571918f824003c109d896f6765be53",
+        "reviewNotice": null,
+        "generationRunId": "a5b21374-8ab3-4d71-b996-3d1209036e22",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-SC-06",
+        "requirementTitle": "Lieferkette",
+        "requirementText": "Die Organisation identifiziert und bewertet wichtige Lieferanten, vereinbart Sicherheitsanforderungen und bereitet sich auf Vorfälle, Ausfälle und den Anbieterwechsel vor.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "db2c006f-e295-40b5-9e7a-1afc249ece61",
+            "citationId": "LEGAL:NIS2-SC-06:be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "excerpt": "Ein Service des Bundesministerium der Justiz und für Verbraucherschutz\nsowie des Bundesamts für Justiz ‒ www.gesetze-im-internet.de\n4. Sicherheit der Lieferkette einschließlich sicherheitsbezogener Aspekte der Beziehungen zu unmittelbaren\nAnbietern oder Diensteanbietern,\n5. Sicherheitsmaßnahmen bei Erwerb, Entwicklung und Wartung von informationstechnischen Systemen,\nKomponenten und Prozessen, einschließlich Management und Offenlegung von Schwachstellen,\n6. Konzepte und Verfahren zur Bewertung der Wirksamkeit von Risikomanagementmaßnahmen im Bereich\nder Sicherheit in der Informationstechnik,\n7. grundlegende Schulungen und Sensibilisierungsmaßnahmen im Bereich der Sicherheit in der\nInformationstechnik,\n8. Konzepte und Prozesse für den Einsatz von kryptographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10.",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "723bafa7-4339-483b-b497-b80452626ad5",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "8ff60a6b-140b-4645-9026-bf6a376114ca",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.secure_systems.security_by_design",
+            "gap.secure_systems.patch_management",
+            "gap.secure_systems.vulnerability_management"
+          ]
+        },
+        "statementBasisHash": "dd24807bfa86b802aab0af355e23e8093eaea495e8f11bcdbafbc0f1d804566b",
+        "reviewNotice": null,
+        "generationRunId": "3fc12d61-230d-49d8-9cf4-e03fee1888a3",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-VM-07",
+        "requirementTitle": "Sichere Systeme und Schwachstellen",
+        "requirementText": "Sicherheit wird in Beschaffung, Entwicklung und Änderungen integriert; Patches und Schwachstellen werden über den Systemlebenszyklus geregelt behandelt.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "7665c26e-f071-4908-b7d6-5810514c5cc0",
+            "citationId": "LEGAL:NIS2-VM-07:be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "excerpt": "Ein Service des Bundesministerium der Justiz und für Verbraucherschutz\nsowie des Bundesamts für Justiz ‒ www.gesetze-im-internet.de\n4. Sicherheit der Lieferkette einschließlich sicherheitsbezogener Aspekte der Beziehungen zu unmittelbaren\nAnbietern oder Diensteanbietern,\n5. Sicherheitsmaßnahmen bei Erwerb, Entwicklung und Wartung von informationstechnischen Systemen,\nKomponenten und Prozessen, einschließlich Management und Offenlegung von Schwachstellen,\n6. Konzepte und Verfahren zur Bewertung der Wirksamkeit von Risikomanagementmaßnahmen im Bereich\nder Sicherheit in der Informationstechnik,\n7. grundlegende Schulungen und Sensibilisierungsmaßnahmen im Bereich der Sicherheit in der\nInformationstechnik,\n8. Konzepte und Prozesse für den Einsatz von kryptographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10.",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "7f7fe199-21d8-45da-84cf-af4c0c2dcb72",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "5eee1786-1124-4aee-8545-9b50ccb1551e",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.assurance.effectiveness_reviews",
+            "gap.assurance.remediation_tracking"
+          ]
+        },
+        "statementBasisHash": "4a01b2f5c8f8cfd9e547e998f58532fd8195f7968da63794a9192d56ba943760",
+        "reviewNotice": null,
+        "generationRunId": "ebcd8f1f-f3d9-4451-84ba-422c29653505",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-ASSURE-08",
+        "requirementTitle": "Wirksamkeitsprüfung",
+        "requirementText": "Die Organisation prüft die Wirksamkeit ihrer Sicherheitsmaßnahmen und verfolgt erkannte Lücken verantwortlich, fristgerecht und mit Umsetzungsnachweisen.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "9e4a0408-47ff-4d8a-bdbf-131e13709147",
+            "citationId": "LEGAL:NIS2-ASSURE-08:91789da7-4793-4957-b857-ed1a57912ce0",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "91789da7-4793-4957-b857-ed1a57912ce0",
+            "excerpt": "d zusätzlich zu den Regelungen gemäß\nAbsatz 2 von den Regelungen des § 7 Absatz 5 Satz 4, der §§ 10, 13 Absatz 1 Satz 1 Nummer 1 Buchstabe e sowie\nder §§ 30, 33 und 35 ausgenommen. Das Auswärtige Amt erlässt im Einvernehmen mit dem Bundesministerium\nfür Digitales und Staatsmodernisierung eine allgemeine Verwaltungsvorschrift, um die Ziele der NIS-2-Richtlinie\nim Geschäftsbereich des Auswärtigen Amts durch ergebnisäquivalente Maßnahmen umzusetzen.\nKapitel 2\nRisikomanagement, Melde-, Registrierungs-, Nachweis- und Unterrichtungspflichten\n§ 30 Risikomanagementmaßnahmen besonders wichtiger Einrichtungen und wichtiger Einrichtungen\n(1) Besonders wichtige Einrichtungen und wichtige Einrichtungen sind verpflichtet, geeignete, verhältnismäßige\nund wirksame technische und organisatorische Maßnahmen, die in Absatz 2 konkretisiert werden, zu ergreifen,\num Störungen der Verfügbarkeit, Integrität und Vertraulichkeit der informationstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten.",
+            "pageNumber": 24,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "bde301f4-cf54-4817-9077-5239bddfc948",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "c5113479-e605-4bce-ad48-b38412280b27",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.awareness.employee_training",
+            "gap.awareness.cyber_hygiene_rules"
+          ]
+        },
+        "statementBasisHash": "bdbc8e51e05b9efc18c4b2f1d976631b540e78bfa4a368238515ca60d4f637a0",
+        "reviewNotice": null,
+        "generationRunId": "8b088574-1f8e-490f-9ed4-bb31a5b00888",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-AWARE-09",
+        "requirementTitle": "Schulung und Cyberhygiene",
+        "requirementText": "Beschäftigte erhalten wiederkehrende, rollenbezogene Sensibilisierung und befolgen zugängliche, verbindliche Regeln zur Cyberhygiene.",
+        "criticality": "medium",
+        "evidence": [
+          {
+            "id": "8d5807e6-2ec3-4145-bbc1-2bed679a0209",
+            "citationId": "LEGAL:NIS2-AWARE-09:be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "excerpt": "Ein Service des Bundesministerium der Justiz und für Verbraucherschutz\nsowie des Bundesamts für Justiz ‒ www.gesetze-im-internet.de\n4. Sicherheit der Lieferkette einschließlich sicherheitsbezogener Aspekte der Beziehungen zu unmittelbaren\nAnbietern oder Diensteanbietern,\n5. Sicherheitsmaßnahmen bei Erwerb, Entwicklung und Wartung von informationstechnischen Systemen,\nKomponenten und Prozessen, einschließlich Management und Offenlegung von Schwachstellen,\n6. Konzepte und Verfahren zur Bewertung der Wirksamkeit von Risikomanagementmaßnahmen im Bereich\nder Sicherheit in der Informationstechnik,\n7. grundlegende Schulungen und Sensibilisierungsmaßnahmen im Bereich der Sicherheit in der\nInformationstechnik,\n8. Konzepte und Prozesse für den Einsatz von kryptographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10.",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "55241843-1ea2-429a-b6ed-5dab60d8f79f",
+        "artifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+        "requirementVersionId": "738953bf-9d1c-4c53-9b51-95b0aff789b3",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.protection.encryption",
+            "gap.protection.secure_communications",
+            "gap.protection.physical_security"
+          ]
+        },
+        "statementBasisHash": "1e59342e5798d8ef0ec03392f385eb5536d6fdc07f274c3175b605ba914d5bb1",
+        "reviewNotice": null,
+        "generationRunId": "07d6c530-717b-486c-a906-47ac9019f55c",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:20:20.006Z",
+        "requirementCode": "NIS2-PROTECT-10",
+        "requirementTitle": "Verschlüsselung, Kommunikation und physischer Schutz",
+        "requirementText": "Die Organisation schützt wichtige Systeme und Daten durch angemessene Verschlüsselung, ausfallsichere Kommunikation sowie physischen und umgebungsbezogenen Schutz.",
+        "criticality": "medium",
+        "evidence": [
+          {
+            "id": "0888c747-6dca-40d8-bb2f-9dee607a6a82",
+            "citationId": "LEGAL:NIS2-PROTECT-10:b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "excerpt": "nstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten. Bei der Bewertung der Verhältnismäßigkeit der Maßnahmen\nnach Satz 1 sind das Ausmaß der Risikoexposition, die Größe der Einrichtung, die Umsetzungskosten und\ndie Eintrittswahrscheinlichkeit und Schwere von Sicherheitsvorfällen sowie ihre gesellschaftlichen und\nwirtschaftlichen Auswirkungen zu berücksichtigen. Die Einhaltung der Verpflichtung nach Satz 1 ist durch die\nEinrichtungen zu dokumentieren.\n(2) Maßnahmen nach Absatz 1 sollen den Stand der Technik einhalten, die einschlägigen europäischen und\ninternationalen Normen berücksichtigen und müssen auf einem gefahrenübergreifenden Ansatz beruhen. Die\nMaßnahmen müssen zumindest Folgendes umfassen:\n1. Konzepte in Bezug auf die Risikoanalyse und auf die Sicherheit in der Informationstechnik,\n2. Bewältigung von Sicherheitsvorfällen,\n3. Aufrechterhaltung des Betriebs, wie Backup-Management und Wiederherstellung nach einem Notfall, und\nKrisenmanagement,\n- Seite 24 von 54 -",
+            "pageNumber": 24,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      }
+    ]
+  },
+  "finalRevision": {
+    "revision": {
+      "id": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+      "artifactId": "7a233548-6581-4877-b039-43e4169e1cd9",
+      "revisionNumber": 3,
+      "parentRevisionId": "afd86a62-c8e2-4ec4-ade2-2c0a1e1acee4",
+      "status": "approved",
+      "result": {
+        "schemaKind": "gap_revision_metadata_v1",
+        "outputLocale": "de",
+        "findingDiagnostics": [
+          {
+            "contradictions": [],
+            "requirementVersionId": "942611f4-2bfb-40f5-8bdc-7d221ef7d3f6",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "3abf06dc-9405-464d-99ca-4f973d01a147",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "18ee0506-7b0b-4cdd-ba00-2d3ce62c5488",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "460c86f3-89f0-44a4-bb82-63304ae6f3ca",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "c81eb803-f8da-475f-870d-dd10dba78f4a",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "e2d326f6-0968-4f1a-a3bc-dab16deb49ee",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "8ff60a6b-140b-4645-9026-bf6a376114ca",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "5eee1786-1124-4aee-8545-9b50ccb1551e",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "c5113479-e605-4bce-ad48-b38412280b27",
+            "questionnaireDisagreements": []
+          },
+          {
+            "contradictions": [],
+            "requirementVersionId": "738953bf-9d1c-4c53-9b51-95b0aff789b3",
+            "questionnaireDisagreements": []
+          }
+        ],
+        "correctedFromRevisionId": "afd86a62-c8e2-4ec4-ade2-2c0a1e1acee4",
+        "correctedRequirementVersionIds": [
+          "c81eb803-f8da-475f-870d-dd10dba78f4a"
+        ]
+      },
+      "outputLocale": "de",
+      "modelName": "gpt-5.6-luna",
+      "promptVersion": "12",
+      "ruleSetId": null,
+      "checkReleaseId": null,
+      "gapAnalysisReleaseId": "75986eef-422c-488c-9f73-be6b40d250a6",
+      "evaluatorKind": "nis2_gap_category_v1",
+      "outcomeCode": null,
+      "evaluatedAt": "2026-08-01T22:20:20.412Z",
+      "inputHash": "77fac423304da3214da3a58cad165056941cfd5b4289942e7d78e0aa5cbb91ff",
+      "generatedBy": "ai",
+      "createdBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "approvedBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "approvedAt": "2026-08-01T22:23:04.683Z",
+      "createdAt": "2026-08-01T22:22:52.310Z"
+    },
+    "findings": [
+      {
+        "id": "8e28c174-a4ed-4951-87b9-9d9f2b808e8c",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "942611f4-2bfb-40f5-8bdc-7d221ef7d3f6",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.governance.security_owner",
+            "gap.governance.management_oversight",
+            "gap.governance.management_training"
+          ]
+        },
+        "statementBasisHash": "c0b8b14ea8a53144526be003d28f9e59c4a117a957a6456fc8c26282764faadb",
+        "reviewNotice": null,
+        "generationRunId": "4b272ed1-d528-4297-920d-938823222708",
+        "assumptions": [
+          "Die Erfüllung basiert auf den angegebenen Fragebogenangaben; diese wurden nicht unabhängig durch Organisationsdokumente verifiziert."
+        ],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-GOV-01",
+        "requirementTitle": "Verantwortung und Organisation",
+        "requirementText": "Die Organisation weist die Verantwortung für Informationssicherheit nachvollziehbar zu; die Geschäftsleitung beschließt und überwacht die Maßnahmen zum Umgang mit Cybersicherheitsrisiken und nimmt an geeigneten Schulungen teil.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "0ecab9fc-f773-453c-9dc9-a7accd820c72",
+            "citationId": "LEGAL:NIS2-GOV-01:ff8c0957-2f4b-4d85-a0ff-9a927b0613ca",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "ff8c0957-2f4b-4d85-a0ff-9a927b0613ca",
+            "excerpt": "hen.\n(2) Geschäftsleitungen, die ihre Pflichten nach Absatz 1 verletzen, haften ihrer Einrichtung für einen schuldhaft\nverursachten Schaden nach den auf die Rechtsform der Einrichtung anwendbaren Regeln des Gesellschaftsrechts.\nNach diesem Gesetz haften sie nur, wenn die für die Einrichtung maßgeblichen gesellschaftsrechtlichen\nBestimmungen keine Haftungsregelung nach Satz 1 enthalten.\n(3) Die Geschäftsleitungen besonders wichtiger Einrichtungen und wichtiger Einrichtungen müssen regelmäßig an\nSchulungen teilnehmen, um ausreichende Kenntnisse und Fähigkeiten zur Erkennung und Bewertung von Risiken\nund von Risikomanagementpraktiken im Bereich der Sicherheit in der Informationstechnik zu erlangen sowie um\ndie Auswirkungen von Risiken sowie Risikomanagementpraktiken auf die von der Einrichtung erbrachten Dienste\nbeurteilen zu können.\n§ 39 Nachweispflichten für Betreiber kritischer Anlagen\n(1) Betreiber kritischer Anlagen haben die Umsetzung der Maßnahmen in Bezug auf kritische Anlagen nach §\n30 Absatz 1 Satz 1 in Verbindung mit § 31 Absatz 1 und 2 Satz 1 zu einem vom Bundesamt im Benehmen mit\ndem Bundesamt für Bevölkerungsschutz und Katastrophenhilfe festgelegten Zeitpunkt, frühestens",
+            "pageNumber": 29,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "0a261ee8-45be-4da2-82e0-9d645bf3c4d8",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "3abf06dc-9405-464d-99ca-4f973d01a147",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.risk.written_analysis",
+            "gap.risk.analysis_updates",
+            "gap.risk.critical_dependencies",
+            "gap.risk.asset_inventory"
+          ]
+        },
+        "statementBasisHash": "1bdf6b11b9f2152e66ff9fe284f5e32e8fd5b3ee5d013ba89d00d8da7faa0a3c",
+        "reviewNotice": null,
+        "generationRunId": "fde3e3ba-13e2-4af7-b5dd-461057d54d67",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-RISK-02",
+        "requirementTitle": "Risiken und Überblick",
+        "requirementText": "Die Organisation hält eine aktuelle, dokumentierte Risikoanalyse sowie einen Überblick über kritische Prozesse, Systeme, Daten, Dienste, Konten und Abhängigkeiten vor.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "817a0467-e628-47f8-8a2b-493997b61d7b",
+            "citationId": "LEGAL:NIS2-RISK-02:b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "excerpt": "nstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten. Bei der Bewertung der Verhältnismäßigkeit der Maßnahmen\nnach Satz 1 sind das Ausmaß der Risikoexposition, die Größe der Einrichtung, die Umsetzungskosten und\ndie Eintrittswahrscheinlichkeit und Schwere von Sicherheitsvorfällen sowie ihre gesellschaftlichen und\nwirtschaftlichen Auswirkungen zu berücksichtigen. Die Einhaltung der Verpflichtung nach Satz 1 ist durch die\nEinrichtungen zu dokumentieren.\n(2) Maßnahmen nach Absatz 1 sollen den Stand der Technik einhalten, die einschlägigen europäischen und\ninternationalen Normen berücksichtigen und müssen auf einem gefahrenübergreifenden Ansatz beruhen. Die\nMaßnahmen müssen zumindest Folgendes umfassen:\n1. Konzepte in Bezug auf die Risikoanalyse und auf die Sicherheit in der Informationstechnik,\n2. Bewältigung von Sicherheitsvorfällen,\n3. Aufrechterhaltung des Betriebs, wie Backup-Management und Wiederherstellung nach einem Notfall, und\nKrisenmanagement,\n- Seite 24 von 54 -",
+            "pageNumber": 24,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "bfed4489-b9f3-4079-86aa-73e5ca967c81",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "18ee0506-7b0b-4cdd-ba00-2d3ce62c5488",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.iam.least_privilege",
+            "gap.iam.joiner_mover_leaver",
+            "gap.iam.multi_factor_authentication"
+          ]
+        },
+        "statementBasisHash": "390bc15af5526c6cdbacd64aa4ce7b9a74f9adb9ec51a57be5ed54f61a9837c5",
+        "reviewNotice": null,
+        "generationRunId": "a61c49a0-9519-4014-a1fd-a18d904faefa",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-IAM-03",
+        "requirementTitle": "Zugriffe und Personal",
+        "requirementText": "Zugriffsrechte folgen während des gesamten Personalzyklus dem Prinzip der geringsten Rechte; sensible, administrative und entfernte Zugriffe werden stark authentifiziert.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "2307c1e7-3c79-4e94-a023-98fe0759717f",
+            "citationId": "LEGAL:NIS2-IAM-03:3bf1a5d5-b336-45e1-abbf-f10220b92706",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "3bf1a5d5-b336-45e1-abbf-f10220b92706",
+            "excerpt": "tographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10. Verwendung von Lösungen zur Multi-Faktor-Authentifizierung oder kontinuierlichen Authentifizierung,\ngesicherte Sprach-, Video- und Textkommunikation sowie gegebenenfalls gesicherte\nNotfallkommunikationssysteme innerhalb der Einrichtung.\n(3) Der von der Europäischen Kommission gemäß Artikel 21 Absatz 5 Unterabsatz 1 der NIS-2-Richtlinie erlassene\nDurchführungsrechtsakt zur Festlegung der technischen und methodischen Anforderungen an die in Absatz 1\ngenannten Maßnahmen in Bezug auf DNS-Diensteanbieter, Top Level Domain Name Registries, Cloud-Computing-\nDienstleister, Anbieter von Rechenzentrumsdiensten, Betreiber von Content Delivery Networks, Managed\nService Provider, Managed Security Service Provider, Anbieter von Online-Marktplätzen, Online-Suchmaschinen\nund Plattformen für Dienste sozialer Netzwerke und Vertrauensdiensteanbieter hat für die vorgenannten\nEinrichtungsarten Vorrang.\n(4) Sofern die Europäische Kommission einen Durchführungsrechtsakt gemäß Artikel 21 Absatz 5 Unterabsatz 2\nder NIS-2-Richtli",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "40239ce2-276c-4e90-89b7-dbc11238d17e",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "460c86f3-89f0-44a4-bb82-63304ae6f3ca",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.incident.written_response_plan",
+            "gap.incident.roles_and_contacts",
+            "gap.incident.detection_and_records",
+            "gap.incident.reporting_timeline"
+          ]
+        },
+        "statementBasisHash": "89ac3a6d3ff0754f856b48d7da0fa3c40ab737f860ccff6df9aaa818241dca76",
+        "reviewNotice": null,
+        "generationRunId": "852536e1-0172-4270-975f-169ad72a0af5",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-IR-04",
+        "requirementTitle": "Sicherheitsvorfälle und Meldung",
+        "requirementText": "Die Organisation kann erhebliche Sicherheitsvorfälle vorbereiten, erkennen, dokumentieren, eindämmen, bewältigen und innerhalb der geltenden Fristen melden.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "a010f998-98c6-45d6-9964-30ced38fa720",
+            "citationId": "LEGAL:NIS2-IR-04:cca3bbc8-b812-4c2d-8d6d-aefd7d100672",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "cca3bbc8-b812-4c2d-8d6d-aefd7d100672",
+            "excerpt": "end Bedrohungen zu identifizieren und zu vermeiden sowie für eingetretene\nStörungen geeignete Beseitigungsmaßnahmen vorzusehen. Dabei soll der Stand der Technik eingehalten\nwerden. Der hierfür erforderliche Aufwand soll nicht außer Verhältnis zu den Folgen eines Ausfalls oder einer\nBeeinträchtigung der betroffenen kritischen Anlage stehen.\n§ 32 Meldepflichten\n(1) Besonders wichtige Einrichtungen und wichtige Einrichtungen sind verpflichtet, folgende Informationen\nan eine vom Bundesamt und dem Bundesamt für Bevölkerungsschutz und Katastrophenhilfe eingerichtete\ngemeinsame Meldestelle zu melden:\n1. unverzüglich, spätestens jedoch innerhalb von 24 Stunden nach Kenntniserlangung von einem\nerheblichen Sicherheitsvorfall, eine frühe Erstmeldung, in der angegeben wird, ob der Verdacht besteht,\ndass der erhebliche Sicherheitsvorfall auf rechtswidrige oder böswillige Handlungen zurückzuführen ist\noder grenzüberschreitende Auswirkungen haben könnte;\n2.",
+            "pageNumber": 26,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "aa3a47b9-beb4-408b-9988-b22f3d051b5c",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "c81eb803-f8da-475f-870d-dd10dba78f4a",
+        "status": "not_fulfilled",
+        "evidenceSufficiency": "sufficient",
+        "severity": "high",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [
+            {
+              "kind": "missing",
+              "stableKey": "gap.continuity.restore_tests",
+              "sourceAssessmentAnswerId": "3033e763-0ea9-469e-8583-059b169b1a03"
+            }
+          ],
+          "satisfiedQuestionStableKeys": [
+            "gap.continuity.regular_backups",
+            "gap.continuity.protected_backups",
+            "gap.continuity.recovery_plan"
+          ]
+        },
+        "statementBasisHash": "23c08182cb355300a139154f5008415165d6271289aa8777aeeca4b83f627817",
+        "reviewNotice": null,
+        "generationRunId": "5f0200e5-9f6a-4333-83a4-bc2430089d32",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-BC-05",
+        "requirementTitle": "Backups und Notfallvorsorge",
+        "requirementText": "Wichtige Daten und Systeme werden sicher und wiederherstellbar gesichert; getestete Notfall- und Wiederanlaufziele sowie Zuständigkeiten unterstützen die Kontinuität.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "9b435919-1c9f-4cc6-ac2f-b0026aa53953",
+            "citationId": "LEGAL:NIS2-BC-05:b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "excerpt": "nstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten. Bei der Bewertung der Verhältnismäßigkeit der Maßnahmen\nnach Satz 1 sind das Ausmaß der Risikoexposition, die Größe der Einrichtung, die Umsetzungskosten und\ndie Eintrittswahrscheinlichkeit und Schwere von Sicherheitsvorfällen sowie ihre gesellschaftlichen und\nwirtschaftlichen Auswirkungen zu berücksichtigen. Die Einhaltung der Verpflichtung nach Satz 1 ist durch die\nEinrichtungen zu dokumentieren.\n(2) Maßnahmen nach Absatz 1 sollen den Stand der Technik einhalten, die einschlägigen europäischen und\ninternationalen Normen berücksichtigen und müssen auf einem gefahrenübergreifenden Ansatz beruhen. Die\nMaßnahmen müssen zumindest Folgendes umfassen:\n1. Konzepte in Bezug auf die Risikoanalyse und auf die Sicherheit in der Informationstechnik,\n2. Bewältigung von Sicherheitsvorfällen,\n3. Aufrechterhaltung des Betriebs, wie Backup-Management und Wiederherstellung nach einem Notfall, und\nKrisenmanagement,\n- Seite 24 von 54 -",
+            "pageNumber": 24,
+            "sectionLabel": null
+          },
+          {
+            "id": "c829a9b2-52c9-4f0d-ac62-664e10f29809",
+            "citationId": "DOC:NIS2-BC-05:8a1156e7-4a80-4856-b3eb-9b256c375b66",
+            "sourceType": "document_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": "8a1156e7-4a80-4856-b3eb-9b256c375b66",
+            "legalSourceChunkId": null,
+            "excerpt": "SYNTHETISCHER QA-NACHWEIS — STATUS DER BACKUP- UND WIEDERHERSTELLUNGSKONTROLLE\n\nGeltungsbereich: alle Produktivsysteme und wichtigen Geschäftsdaten.\nPrüfdatum: 26.07.2026.\n\nBackups werden regelmäßig erstellt. Für kein Produktivsystem wurde\njedoch jemals ein Wiederherstellungstest durchgeführt. Es gibt keine\ndokumentierten Testergebnisse, keinen Nachweis der Wiederherstellbarkeit\nund weder Verantwortliche noch einen Zeitplan für solche Tests.\n\nDie Fragebogenangabe, Wiederherstellungen würden regelmäßig getestet,\nist falsch und darf nicht herangezogen werden. Die Wiederherstellbarkeit\nbleibt ungeklärt, bis ein vollständiger Test durchgeführt und dokumentiert ist.",
+            "pageNumber": null,
+            "sectionLabel": null
+          },
+          {
+            "id": "94c1ccee-2f97-4af7-9878-f0d1a81456bc",
+            "citationId": "Q:NIS2-BC-05:3033e763-0ea9-469e-8583-059b169b1a03",
+            "sourceType": "assessment_answer",
+            "assessmentAnswerId": "3033e763-0ea9-469e-8583-059b169b1a03",
+            "documentChunkId": null,
+            "legalSourceChunkId": null,
+            "excerpt": "Wird regelmäßig getestet, ob Daten und Systeme aus den Backups wirklich wiederhergestellt werden können?: fully_implemented",
+            "pageNumber": null,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": [
+          {
+            "id": "1dc64ba3-745a-4e91-b01f-1b63b62d4a8c",
+            "questionStableKey": "gap.continuity.restore_tests",
+            "sourceAssessmentAnswerId": "3033e763-0ea9-469e-8583-059b169b1a03",
+            "kind": "missing",
+            "statement": "Die Wiederherstellbarkeit von Daten und Systemen aus Backups wird derzeit nicht regelmäßig getestet und dokumentiert.",
+            "position": 1
+          }
+        ]
+      },
+      {
+        "id": "09efd991-7fdc-4551-bd5b-4a6ecad9fa3a",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "e2d326f6-0968-4f1a-a3bc-dab16deb49ee",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.supply_chain.provider_risk",
+            "gap.supply_chain.contract_requirements",
+            "gap.supply_chain.provider_contingency"
+          ]
+        },
+        "statementBasisHash": "9af7bb98e0d89adbda71b90ff0465e3870571918f824003c109d896f6765be53",
+        "reviewNotice": null,
+        "generationRunId": "a5b21374-8ab3-4d71-b996-3d1209036e22",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-SC-06",
+        "requirementTitle": "Lieferkette",
+        "requirementText": "Die Organisation identifiziert und bewertet wichtige Lieferanten, vereinbart Sicherheitsanforderungen und bereitet sich auf Vorfälle, Ausfälle und den Anbieterwechsel vor.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "b294e996-ecb5-4a93-b2f3-427788a66591",
+            "citationId": "LEGAL:NIS2-SC-06:be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "excerpt": "Ein Service des Bundesministerium der Justiz und für Verbraucherschutz\nsowie des Bundesamts für Justiz ‒ www.gesetze-im-internet.de\n4. Sicherheit der Lieferkette einschließlich sicherheitsbezogener Aspekte der Beziehungen zu unmittelbaren\nAnbietern oder Diensteanbietern,\n5. Sicherheitsmaßnahmen bei Erwerb, Entwicklung und Wartung von informationstechnischen Systemen,\nKomponenten und Prozessen, einschließlich Management und Offenlegung von Schwachstellen,\n6. Konzepte und Verfahren zur Bewertung der Wirksamkeit von Risikomanagementmaßnahmen im Bereich\nder Sicherheit in der Informationstechnik,\n7. grundlegende Schulungen und Sensibilisierungsmaßnahmen im Bereich der Sicherheit in der\nInformationstechnik,\n8. Konzepte und Prozesse für den Einsatz von kryptographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10.",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "42f12929-a0e7-4c90-aae0-608a282475b7",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "8ff60a6b-140b-4645-9026-bf6a376114ca",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.secure_systems.security_by_design",
+            "gap.secure_systems.patch_management",
+            "gap.secure_systems.vulnerability_management"
+          ]
+        },
+        "statementBasisHash": "dd24807bfa86b802aab0af355e23e8093eaea495e8f11bcdbafbc0f1d804566b",
+        "reviewNotice": null,
+        "generationRunId": "3fc12d61-230d-49d8-9cf4-e03fee1888a3",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-VM-07",
+        "requirementTitle": "Sichere Systeme und Schwachstellen",
+        "requirementText": "Sicherheit wird in Beschaffung, Entwicklung und Änderungen integriert; Patches und Schwachstellen werden über den Systemlebenszyklus geregelt behandelt.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "9275b5aa-34e1-4a7a-87ee-75c06374ecf0",
+            "citationId": "LEGAL:NIS2-VM-07:be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "excerpt": "Ein Service des Bundesministerium der Justiz und für Verbraucherschutz\nsowie des Bundesamts für Justiz ‒ www.gesetze-im-internet.de\n4. Sicherheit der Lieferkette einschließlich sicherheitsbezogener Aspekte der Beziehungen zu unmittelbaren\nAnbietern oder Diensteanbietern,\n5. Sicherheitsmaßnahmen bei Erwerb, Entwicklung und Wartung von informationstechnischen Systemen,\nKomponenten und Prozessen, einschließlich Management und Offenlegung von Schwachstellen,\n6. Konzepte und Verfahren zur Bewertung der Wirksamkeit von Risikomanagementmaßnahmen im Bereich\nder Sicherheit in der Informationstechnik,\n7. grundlegende Schulungen und Sensibilisierungsmaßnahmen im Bereich der Sicherheit in der\nInformationstechnik,\n8. Konzepte und Prozesse für den Einsatz von kryptographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10.",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "3c324418-ecb8-4f80-a237-45a7d7552fd2",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "5eee1786-1124-4aee-8545-9b50ccb1551e",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.assurance.effectiveness_reviews",
+            "gap.assurance.remediation_tracking"
+          ]
+        },
+        "statementBasisHash": "4a01b2f5c8f8cfd9e547e998f58532fd8195f7968da63794a9192d56ba943760",
+        "reviewNotice": null,
+        "generationRunId": "ebcd8f1f-f3d9-4451-84ba-422c29653505",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-ASSURE-08",
+        "requirementTitle": "Wirksamkeitsprüfung",
+        "requirementText": "Die Organisation prüft die Wirksamkeit ihrer Sicherheitsmaßnahmen und verfolgt erkannte Lücken verantwortlich, fristgerecht und mit Umsetzungsnachweisen.",
+        "criticality": "high",
+        "evidence": [
+          {
+            "id": "1367a7e8-a4d5-4af0-b54a-479bb06d473e",
+            "citationId": "LEGAL:NIS2-ASSURE-08:91789da7-4793-4957-b857-ed1a57912ce0",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "91789da7-4793-4957-b857-ed1a57912ce0",
+            "excerpt": "d zusätzlich zu den Regelungen gemäß\nAbsatz 2 von den Regelungen des § 7 Absatz 5 Satz 4, der §§ 10, 13 Absatz 1 Satz 1 Nummer 1 Buchstabe e sowie\nder §§ 30, 33 und 35 ausgenommen. Das Auswärtige Amt erlässt im Einvernehmen mit dem Bundesministerium\nfür Digitales und Staatsmodernisierung eine allgemeine Verwaltungsvorschrift, um die Ziele der NIS-2-Richtlinie\nim Geschäftsbereich des Auswärtigen Amts durch ergebnisäquivalente Maßnahmen umzusetzen.\nKapitel 2\nRisikomanagement, Melde-, Registrierungs-, Nachweis- und Unterrichtungspflichten\n§ 30 Risikomanagementmaßnahmen besonders wichtiger Einrichtungen und wichtiger Einrichtungen\n(1) Besonders wichtige Einrichtungen und wichtige Einrichtungen sind verpflichtet, geeignete, verhältnismäßige\nund wirksame technische und organisatorische Maßnahmen, die in Absatz 2 konkretisiert werden, zu ergreifen,\num Störungen der Verfügbarkeit, Integrität und Vertraulichkeit der informationstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten.",
+            "pageNumber": 24,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "c834ec0b-4468-4d68-8c9f-d1dec87a4fef",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "c5113479-e605-4bce-ad48-b38412280b27",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.awareness.employee_training",
+            "gap.awareness.cyber_hygiene_rules"
+          ]
+        },
+        "statementBasisHash": "bdbc8e51e05b9efc18c4b2f1d976631b540e78bfa4a368238515ca60d4f637a0",
+        "reviewNotice": null,
+        "generationRunId": "8b088574-1f8e-490f-9ed4-bb31a5b00888",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-AWARE-09",
+        "requirementTitle": "Schulung und Cyberhygiene",
+        "requirementText": "Beschäftigte erhalten wiederkehrende, rollenbezogene Sensibilisierung und befolgen zugängliche, verbindliche Regeln zur Cyberhygiene.",
+        "criticality": "medium",
+        "evidence": [
+          {
+            "id": "d93b54d8-1250-496f-a2ed-43b903e03c26",
+            "citationId": "LEGAL:NIS2-AWARE-09:be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "be94ae90-907f-49c5-8564-3daad3ccdee4",
+            "excerpt": "Ein Service des Bundesministerium der Justiz und für Verbraucherschutz\nsowie des Bundesamts für Justiz ‒ www.gesetze-im-internet.de\n4. Sicherheit der Lieferkette einschließlich sicherheitsbezogener Aspekte der Beziehungen zu unmittelbaren\nAnbietern oder Diensteanbietern,\n5. Sicherheitsmaßnahmen bei Erwerb, Entwicklung und Wartung von informationstechnischen Systemen,\nKomponenten und Prozessen, einschließlich Management und Offenlegung von Schwachstellen,\n6. Konzepte und Verfahren zur Bewertung der Wirksamkeit von Risikomanagementmaßnahmen im Bereich\nder Sicherheit in der Informationstechnik,\n7. grundlegende Schulungen und Sensibilisierungsmaßnahmen im Bereich der Sicherheit in der\nInformationstechnik,\n8. Konzepte und Prozesse für den Einsatz von kryptographischen Verfahren,\n9. Erstellung von Konzepten für die Sicherheit des Personals, die Zugriffskontrolle und für die Verwaltung von\nIKT-Systemen, -Produkten und -Prozessen,\n10.",
+            "pageNumber": 25,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      },
+      {
+        "id": "d0209425-b265-443e-bf33-ecb228681d3c",
+        "artifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+        "requirementVersionId": "738953bf-9d1c-4c53-9b51-95b0aff789b3",
+        "status": "fulfilled",
+        "evidenceSufficiency": "none",
+        "severity": "low",
+        "statementBasis": {
+          "version": "1",
+          "triggeringQuestions": [],
+          "satisfiedQuestionStableKeys": [
+            "gap.protection.encryption",
+            "gap.protection.secure_communications",
+            "gap.protection.physical_security"
+          ]
+        },
+        "statementBasisHash": "1e59342e5798d8ef0ec03392f385eb5536d6fdc07f274c3175b605ba914d5bb1",
+        "reviewNotice": null,
+        "generationRunId": "07d6c530-717b-486c-a906-47ac9019f55c",
+        "assumptions": [],
+        "requiresReview": false,
+        "createdAt": "2026-08-01T22:22:52.310Z",
+        "requirementCode": "NIS2-PROTECT-10",
+        "requirementTitle": "Verschlüsselung, Kommunikation und physischer Schutz",
+        "requirementText": "Die Organisation schützt wichtige Systeme und Daten durch angemessene Verschlüsselung, ausfallsichere Kommunikation sowie physischen und umgebungsbezogenen Schutz.",
+        "criticality": "medium",
+        "evidence": [
+          {
+            "id": "97f6617f-6f01-4cd3-8e30-468a95cf5bb1",
+            "citationId": "LEGAL:NIS2-PROTECT-10:b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "sourceType": "legal_source_chunk",
+            "assessmentAnswerId": null,
+            "documentChunkId": null,
+            "legalSourceChunkId": "b21555eb-7118-42c1-af14-d73e5d3c6512",
+            "excerpt": "nstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten. Bei der Bewertung der Verhältnismäßigkeit der Maßnahmen\nnach Satz 1 sind das Ausmaß der Risikoexposition, die Größe der Einrichtung, die Umsetzungskosten und\ndie Eintrittswahrscheinlichkeit und Schwere von Sicherheitsvorfällen sowie ihre gesellschaftlichen und\nwirtschaftlichen Auswirkungen zu berücksichtigen. Die Einhaltung der Verpflichtung nach Satz 1 ist durch die\nEinrichtungen zu dokumentieren.\n(2) Maßnahmen nach Absatz 1 sollen den Stand der Technik einhalten, die einschlägigen europäischen und\ninternationalen Normen berücksichtigen und müssen auf einem gefahrenübergreifenden Ansatz beruhen. Die\nMaßnahmen müssen zumindest Folgendes umfassen:\n1. Konzepte in Bezug auf die Risikoanalyse und auf die Sicherheit in der Informationstechnik,\n2. Bewältigung von Sicherheitsvorfällen,\n3. Aufrechterhaltung des Betriebs, wie Backup-Management und Wiederherstellung nach einem Notfall, und\nKrisenmanagement,\n- Seite 24 von 54 -",
+            "pageNumber": 24,
+            "sectionLabel": null
+          }
+        ],
+        "gaps": []
+      }
+    ]
+  },
+  "aiRun": {
+    "run": {
+      "id": "4b272ed1-d528-4297-920d-938823222708",
+      "organizationId": "3a6fbbdb-fbb1-4981-935b-2cdfc5b378af",
+      "assessmentRevisionId": "8b4a7b3f-4994-44e5-83bd-7f779826daef",
+      "operationKind": "gap_analysis",
+      "status": "succeeded",
+      "outputLocale": "de",
+      "attemptCount": 1,
+      "languageValidation": {
+        "version": 1,
+        "attempts": [
+          {
+            "attempt": 1,
+            "confidence": 1,
+            "disposition": "match",
+            "detectedLocale": "de",
+            "retryTriggered": false
+          }
+        ],
+        "detector": {
+          "version": "1",
+          "implementation": "complyx-local-stopword-detector"
+        },
+        "expectedLocale": "de"
+      },
+      "inputHash": "8e1df0cf3520a8db637057a4a701419beb9fc44917f4d82774f1e1f98a155360",
+      "idempotencyKey": "8d3c144c276f8b3a21b263109a97ad37ad38b2f9577a0de8e51dde6c985ab61e",
+      "provider": "openai",
+      "model": "gpt-5.6-luna",
+      "promptName": "nis2_atomic_gap_analysis",
+      "promptVersion": "12",
+      "promptTemplateHash": "7faf55dfca018c9fc1cc60dabdc02ca3ca2b6671f0844936ebc6fcc8b740fa26",
+      "renderedInputHash": "6e35deab05dd72fccb4a25e6f7429c1717288ee3068f0729dcc7781008ae1b40",
+      "responseSchemaVersion": "12",
+      "inputTokens": 17673,
+      "outputTokens": 5953,
+      "cachedInputTokens": 0,
+      "validatedOutput": {
+        "gaps": {},
+        "assumptions": [
+          "Die Erfüllung basiert auf den angegebenen Fragebogenangaben; diese wurden nicht unabhängig durch Organisationsdokumente verifiziert."
+        ],
+        "reviewNotice": null,
+        "contradictions": [],
+        "requiresReview": false,
+        "evidenceSufficiency": "none"
+      },
+      "jobId": "10532123-fdd6-41aa-8227-fedd06e8d241",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "9d7d2ccdb22c6a7a2e068ed1799f0295ff68a6ef01cbb905c64196318a0de597",
+      "provenanceStatus": "complete",
+      "cancellationRequestedAt": null,
+      "outputArtifactRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+      "errorCode": null,
+      "errorMessage": null,
+      "createdBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "createdAt": "2026-08-01T22:19:54.148Z",
+      "startedAt": "2026-08-01T22:19:54.195Z",
+      "completedAt": "2026-08-01T22:20:21.551Z"
+    },
+    "context": [
+      {
+        "id": "c625642a-535f-4826-8939-bc4693cdc6f3",
+        "runId": "4b272ed1-d528-4297-920d-938823222708",
+        "channel": "legal",
+        "citationId": "LEGAL:NIS2-GOV-01:ff8c0957-2f4b-4d85-a0ff-9a927b0613ca",
+        "queryUnitId": "NIS2-GOV-01",
+        "queryHash": "faeada672413b30b40613c7f0ea4fc640ef424074461f1305f23ebc6d041b1ee",
+        "retrievalRank": 1,
+        "retrievalScore": "0.73805498409599",
+        "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+        "lexicalScore": "0",
+        "semanticScore": "0.597007667839985",
+        "combinedScore": "0.73805498409599",
+        "selectionRole": "mapped_primary",
+        "preferredMappedProvision": true,
+        "mappedLegalProvisionId": "d0803af8-8e5f-43d0-a74a-b8298450502e",
+        "retrievalDiagnostics": {
+          "version": 1,
+          "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+          "mappedLegalProvisionKey": "de_bsig.section_38_3"
+        },
+        "legalChunkId": "ff8c0957-2f4b-4d85-a0ff-9a927b0613ca",
+        "documentChunkId": null,
+        "assessmentAnswerId": null,
+        "excerptHash": "095321052440014b80fbdea1f19e19cb1274511c68258386944665ce1a2b7184",
+        "excerptSnapshot": "hen.\n(2) Geschäftsleitungen, die ihre Pflichten nach Absatz 1 verletzen, haften ihrer Einrichtung für einen schuldhaft\nverursachten Schaden nach den auf die Rechtsform der Einrichtung anwendbaren Regeln des Gesellschaftsrechts.\nNach diesem Gesetz haften sie nur, wenn die für die Einrichtung maßgeblichen gesellschaftsrechtlichen\nBestimmungen keine Haftungsregelung nach Satz 1 enthalten.\n(3) Die Geschäftsleitungen besonders wichtiger Einrichtungen und wichtiger Einrichtungen müssen regelmäßig an\nSchulungen teilnehmen, um ausreichende Kenntnisse und Fähigkeiten zur Erkennung und Bewertung von Risiken\nund von Risikomanagementpraktiken im Bereich der Sicherheit in der Informationstechnik zu erlangen sowie um\ndie Auswirkungen von Risiken sowie Risikomanagementpraktiken auf die von der Einrichtung erbrachten Dienste\nbeurteilen zu können.\n§ 39 Nachweispflichten für Betreiber kritischer Anlagen\n(1) Betreiber kritischer Anlagen haben die Umsetzung der Maßnahmen in Bezug auf kritische Anlagen nach §\n30 Absatz 1 Satz 1 in Verbindung mit § 31 Absatz 1 und 2 Satz 1 zu einem vom Bundesamt im Benehmen mit\ndem Bundesamt für Bevölkerungsschutz und Katastrophenhilfe festgelegten Zeitpunkt, frühestens",
+        "disclosedExternally": true,
+        "promptPosition": 0,
+        "createdAt": "2026-08-01T22:20:05.415Z"
+      },
+      {
+        "id": "650ea415-d710-446b-a231-740c27ce2c6d",
+        "runId": "4b272ed1-d528-4297-920d-938823222708",
+        "channel": "legal",
+        "citationId": "LEGAL:NIS2-GOV-01:c5c42b04-3d11-4027-9ae7-69a08835777a",
+        "queryUnitId": "NIS2-GOV-01",
+        "queryHash": "faeada672413b30b40613c7f0ea4fc640ef424074461f1305f23ebc6d041b1ee",
+        "retrievalRank": 2,
+        "retrievalScore": "0.693846717110081",
+        "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+        "lexicalScore": "0",
+        "semanticScore": "0.528994949400125",
+        "combinedScore": "0.693846717110081",
+        "selectionRole": "mapped_primary",
+        "preferredMappedProvision": true,
+        "mappedLegalProvisionId": "c1ee2f8f-fbd3-4593-9226-fc1c79eabf27",
+        "retrievalDiagnostics": {
+          "version": 1,
+          "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+          "mappedLegalProvisionKey": "eu_nis2.article_20_2"
+        },
+        "legalChunkId": "c5c42b04-3d11-4027-9ae7-69a08835777a",
+        "documentChunkId": null,
+        "assessmentAnswerId": null,
+        "excerptHash": "9795ba5b229da111f737bc94574a6ebdd4a0d4911b03508fba2342d302234d51",
+        "excerptSnapshot": "2. \tMember States shall ensure that the members of the management bodies of essential and important entities are\nrequired to follow training, and shall encourage essential and important entities to offer similar training to their employees\non a regular basis, in order that they gain sufficient knowledge and skills to enable them to identify risks and assess\ncybersecurity risk-management practices and their impact on the services provided by the entity.\nArticle 21\nCybersecurity risk-management measures\n1. \tMember States shall ensure that essential and important entities take appropriate and proportionate technical,\noperational and organisational measures to manage the risks posed to the security of network and information systems\nwhich those entities use for their operations or for the provision of their services, and to prevent or minimise the impact\nof incidents on recipients of their services and on other services.\nTaking into account the state-of-the-art and, where applicable, relevant European and international standards, as well as the\ncost of implementation, the measures referred to in the first subparagraph shall ensure a level of security of network and\ninformation systems",
+        "disclosedExternally": true,
+        "promptPosition": 1,
+        "createdAt": "2026-08-01T22:20:05.415Z"
+      },
+      {
+        "id": "5ba12892-cadd-4840-a1e0-81e7e789ae91",
+        "runId": "4b272ed1-d528-4297-920d-938823222708",
+        "channel": "questionnaire_assertion",
+        "citationId": "Q:NIS2-GOV-01:9cd94634-411c-4831-918d-82213488ebd6",
+        "queryUnitId": "NIS2-GOV-01",
+        "queryHash": "61a53d86b87abdcdadb21e57c7eeba4134a38be46aaf39709101dd91f6c681b4",
+        "retrievalRank": 1,
+        "retrievalScore": "1",
+        "retrievalPolicyVersion": null,
+        "lexicalScore": null,
+        "semanticScore": null,
+        "combinedScore": null,
+        "selectionRole": "questionnaire_assertion",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1
+        },
+        "legalChunkId": null,
+        "documentChunkId": null,
+        "assessmentAnswerId": "9cd94634-411c-4831-918d-82213488ebd6",
+        "excerptHash": "19b62ca2c9c3740a40efc23a9768a5a0c2c1f6f251cc1260b725b9b5fa4dbff2",
+        "excerptSnapshot": "Gibt es eine klar benannte Person oder ein Team, das für IT-Sicherheit verantwortlich ist?: Vollständig umgesetzt",
+        "disclosedExternally": true,
+        "promptPosition": 2,
+        "createdAt": "2026-08-01T22:20:05.415Z"
+      },
+      {
+        "id": "71425b48-ae88-4ba2-9374-cd1637511ad0",
+        "runId": "4b272ed1-d528-4297-920d-938823222708",
+        "channel": "questionnaire_assertion",
+        "citationId": "Q:NIS2-GOV-01:9164bd1d-6ffb-43f3-b045-2ead8f84ca6a",
+        "queryUnitId": "NIS2-GOV-01",
+        "queryHash": "61a53d86b87abdcdadb21e57c7eeba4134a38be46aaf39709101dd91f6c681b4",
+        "retrievalRank": 2,
+        "retrievalScore": "1",
+        "retrievalPolicyVersion": null,
+        "lexicalScore": null,
+        "semanticScore": null,
+        "combinedScore": null,
+        "selectionRole": "questionnaire_assertion",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1
+        },
+        "legalChunkId": null,
+        "documentChunkId": null,
+        "assessmentAnswerId": "9164bd1d-6ffb-43f3-b045-2ead8f84ca6a",
+        "excerptHash": "5eddeebeea1d925665f23ff32be7f16c8303b268e4ce345687d62152d49b35d2",
+        "excerptSnapshot": "Beschließt und überwacht die Geschäftsleitung wichtige Maßnahmen zur IT-Sicherheit?: Vollständig umgesetzt",
+        "disclosedExternally": true,
+        "promptPosition": 3,
+        "createdAt": "2026-08-01T22:20:05.415Z"
+      },
+      {
+        "id": "bcde3d8b-8dd4-4b45-99c3-60add701b00d",
+        "runId": "4b272ed1-d528-4297-920d-938823222708",
+        "channel": "questionnaire_assertion",
+        "citationId": "Q:NIS2-GOV-01:090dfc0a-30f9-41ae-8a43-7fb0fe4d903b",
+        "queryUnitId": "NIS2-GOV-01",
+        "queryHash": "61a53d86b87abdcdadb21e57c7eeba4134a38be46aaf39709101dd91f6c681b4",
+        "retrievalRank": 3,
+        "retrievalScore": "1",
+        "retrievalPolicyVersion": null,
+        "lexicalScore": null,
+        "semanticScore": null,
+        "combinedScore": null,
+        "selectionRole": "questionnaire_assertion",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1
+        },
+        "legalChunkId": null,
+        "documentChunkId": null,
+        "assessmentAnswerId": "090dfc0a-30f9-41ae-8a43-7fb0fe4d903b",
+        "excerptHash": "f8abfddc71ec3997e22eabb1d9eaa5f85463bd9354bc9a761611e1974016fbd4",
+        "excerptSnapshot": "Nimmt die Geschäftsleitung regelmäßig an Schulungen zu Cyberrisiken und IT-Sicherheit teil?: Vollständig umgesetzt",
+        "disclosedExternally": true,
+        "promptPosition": 4,
+        "createdAt": "2026-08-01T22:20:05.415Z"
+      }
+    ],
+    "claims": [
+      {
+        "id": "f0931c9b-baa0-4557-845c-b590f3fb5888",
+        "runId": "4b272ed1-d528-4297-920d-938823222708",
+        "queryUnitId": "NIS2-GOV-01",
+        "claimKey": "atomic-gap:NIS2-GOV-01:no-gap",
+        "claimTextHash": "94891e0546464035d8bc5c57bf7e23c6d1275dc1906f0d3ac687ba71eeb9e371",
+        "validation": "supported",
+        "safeFailureReason": null,
+        "createdAt": "2026-08-01T22:20:05.415Z"
+      }
+    ]
+  },
+  "actionAiRun": {
+    "run": {
+      "id": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+      "organizationId": "3a6fbbdb-fbb1-4981-935b-2cdfc5b378af",
+      "assessmentRevisionId": "8b4a7b3f-4994-44e5-83bd-7f779826daef",
+      "operationKind": "action_plan_generation",
+      "status": "succeeded",
+      "outputLocale": "de",
+      "attemptCount": 1,
+      "languageValidation": {
+        "version": 1,
+        "attempts": [
+          {
+            "attempt": 1,
+            "confidence": 1,
+            "disposition": "match",
+            "detectedLocale": "de",
+            "retryTriggered": false
+          }
+        ],
+        "detector": {
+          "version": "1",
+          "implementation": "complyx-local-stopword-detector"
+        },
+        "expectedLocale": "de"
+      },
+      "inputHash": "35b22aa46055fc5b8a00138960ce1bf069086f99992cc53f7dae5373b4f58d5d",
+      "idempotencyKey": "a32c5a5da0547aea2fec10a801cf0a71e1ee1e233f17f1ff152a347dd6f0ecf5",
+      "provider": "openai",
+      "model": "gpt-5.6-luna",
+      "promptName": "nis2_action_plan",
+      "promptVersion": "6",
+      "promptTemplateHash": "b977318ddbe274dc29555ee24c971d1802f9f8c29159a73621135a016b6d8627",
+      "renderedInputHash": "f4b1b4a906c177161ad849ab72999c87fa3e75d6e6466ca2bbad7a8a87295352",
+      "responseSchemaVersion": "6",
+      "inputTokens": 2248,
+      "outputTokens": 391,
+      "cachedInputTokens": 0,
+      "validatedOutput": {
+        "actions": [
+          {
+            "mode": "remediation",
+            "title": "Wiederherstellbarkeit regelmäßig testen und dokumentieren",
+            "result": "Führe für alle wichtigen Daten und Systeme regelmäßige Wiederherstellungstests durch. Dokumentiere Ergebnisse, Verantwortlichkeiten, Testplan und festgestellte Abweichungen nachvollziehbar.",
+            "gapKeys": [
+              "G1"
+            ],
+            "suggestedEvidence": [
+              "Wiederherstellungstest-Protokolle",
+              "Testplan mit Verantwortlichkeiten",
+              "Dokumentierte Abweichungsmaßnahmen"
+            ],
+            "supportingOrganizationCitationIds": [
+              "DOC:NIS2-BC-05:8a1156e7-4a80-4856-b3eb-9b256c375b66"
+            ]
+          }
+        ]
+      },
+      "jobId": "48d75c3b-06fe-4885-afe6-c4082e2de24d",
+      "providerPolicyVersion": 2,
+      "corpusReleaseSetHash": "9d7d2ccdb22c6a7a2e068ed1799f0295ff68a6ef01cbb905c64196318a0de597",
+      "provenanceStatus": "complete",
+      "cancellationRequestedAt": null,
+      "outputArtifactRevisionId": null,
+      "errorCode": null,
+      "errorMessage": null,
+      "createdBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "createdAt": "2026-08-01T22:22:58.335Z",
+      "startedAt": "2026-08-01T22:22:58.385Z",
+      "completedAt": "2026-08-01T22:23:04.683Z"
+    },
+    "context": [
+      {
+        "id": "69819b9f-7854-4bc4-a5ad-66a4d4d747f1",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "channel": "legal",
+        "citationId": "LEGAL:NIS2-BC-05:b21555eb-7118-42c1-af14-d73e5d3c6512",
+        "queryUnitId": "NIS2-BC-05",
+        "queryHash": "6ce89463998d64c24bbc41b8b37a3900dcc99a25b3db76ec61952c714d5b8661",
+        "retrievalRank": 1,
+        "retrievalScore": "0.748702085018158",
+        "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+        "lexicalScore": "0",
+        "semanticScore": "0.613387823104858",
+        "combinedScore": "0.748702085018158",
+        "selectionRole": "mapped_primary",
+        "preferredMappedProvision": true,
+        "mappedLegalProvisionId": "58573ef1-6c04-412d-8216-28863bc3a585",
+        "retrievalDiagnostics": {
+          "version": 1,
+          "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+          "mappedLegalProvisionKey": "de_bsig.section_30_2_3"
+        },
+        "legalChunkId": "b21555eb-7118-42c1-af14-d73e5d3c6512",
+        "documentChunkId": null,
+        "assessmentAnswerId": null,
+        "excerptHash": "168428539be43428e1b801d2d6c939a2c0e320b98ffff51fe2d2a5d1f781ab8e",
+        "excerptSnapshot": "nstechnischen Systeme,\nKomponenten und Prozesse, die sie für die Erbringung ihrer Dienste nutzen, zu vermeiden und Auswirkungen\nvon Sicherheitsvorfällen möglichst gering zu halten. Bei der Bewertung der Verhältnismäßigkeit der Maßnahmen\nnach Satz 1 sind das Ausmaß der Risikoexposition, die Größe der Einrichtung, die Umsetzungskosten und\ndie Eintrittswahrscheinlichkeit und Schwere von Sicherheitsvorfällen sowie ihre gesellschaftlichen und\nwirtschaftlichen Auswirkungen zu berücksichtigen. Die Einhaltung der Verpflichtung nach Satz 1 ist durch die\nEinrichtungen zu dokumentieren.\n(2) Maßnahmen nach Absatz 1 sollen den Stand der Technik einhalten, die einschlägigen europäischen und\ninternationalen Normen berücksichtigen und müssen auf einem gefahrenübergreifenden Ansatz beruhen. Die\nMaßnahmen müssen zumindest Folgendes umfassen:\n1. Konzepte in Bezug auf die Risikoanalyse und auf die Sicherheit in der Informationstechnik,\n2. Bewältigung von Sicherheitsvorfällen,\n3. Aufrechterhaltung des Betriebs, wie Backup-Management und Wiederherstellung nach einem Notfall, und\nKrisenmanagement,\n- Seite 24 von 54 -",
+        "disclosedExternally": true,
+        "promptPosition": 0,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      },
+      {
+        "id": "3790a36b-d337-4b0a-a87b-d530164a882a",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "channel": "legal",
+        "citationId": "LEGAL:NIS2-BC-05:a3b2d137-701d-433c-9f92-00628c4bdabe",
+        "queryUnitId": "NIS2-BC-05",
+        "queryHash": "6ce89463998d64c24bbc41b8b37a3900dcc99a25b3db76ec61952c714d5b8661",
+        "retrievalRank": 2,
+        "retrievalScore": "0.625663532356235",
+        "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+        "lexicalScore": "0",
+        "semanticScore": "0.424097742086515",
+        "combinedScore": "0.625663532356235",
+        "selectionRole": "mapped_primary",
+        "preferredMappedProvision": true,
+        "mappedLegalProvisionId": "40ab2d47-04ff-4ea9-b8e8-e5777a6e0e12",
+        "retrievalDiagnostics": {
+          "version": 1,
+          "retrievalPolicyVersion": "gap_mapped_legal_authority_v1",
+          "mappedLegalProvisionKey": "eu_nis2.article_21_2_c"
+        },
+        "legalChunkId": "a3b2d137-701d-433c-9f92-00628c4bdabe",
+        "documentChunkId": null,
+        "assessmentAnswerId": null,
+        "excerptHash": "5e9c5568c6073f3307f015d3bfbdddbd810ecc601495b36bd58d1270952def69",
+        "excerptSnapshot": "ernational standards, as well as the\ncost of implementation, the measures referred to in the first subparagraph shall ensure a level of security of network and\ninformation systems appropriate to the risks posed. When assessing the proportionality of those measures, due account\nshall be taken of the degree of the entity’s exposure to risks, the entity’s size and the likelihood of occurrence of incidents\nand their severity, including their societal and economic impact.\n2. \tThe measures referred to in paragraph 1 shall be based on an all-hazards approach that aims to protect network and\ninformation systems and the physical environment of those systems from incidents, and shall include at least the following:\n(a) policies on risk analysis and information system security;\n(b) incident handling;\n(c) business continuity, such as backup management and disaster recovery, and crisis management;\n(d) supply chain security, including security-related aspects concerning the relationships between each entity and its direct\nsuppliers or service providers;\n(e) security in network and information systems acquisition, development and maintenance, including vulnerability\nhandling and disclosure;\n(f)",
+        "disclosedExternally": true,
+        "promptPosition": 1,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      },
+      {
+        "id": "d1e617a5-cb3e-4a1a-99d8-c8f717f9e821",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "channel": "organization_document",
+        "citationId": "DOC:NIS2-BC-05:8a1156e7-4a80-4856-b3eb-9b256c375b66",
+        "queryUnitId": "NIS2-BC-05",
+        "queryHash": "6ce89463998d64c24bbc41b8b37a3900dcc99a25b3db76ec61952c714d5b8661",
+        "retrievalRank": 1,
+        "retrievalScore": "0.452881150033508",
+        "retrievalPolicyVersion": "gap_org_evidence_relevance_v1",
+        "lexicalScore": "0",
+        "semanticScore": "0.696740230820782",
+        "combinedScore": "0.452881150033508",
+        "selectionRole": "admitted_organization_evidence",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1,
+          "retrievalPolicyVersion": "gap_org_evidence_relevance_v1"
+        },
+        "legalChunkId": null,
+        "documentChunkId": "8a1156e7-4a80-4856-b3eb-9b256c375b66",
+        "assessmentAnswerId": null,
+        "excerptHash": "32a4e02292ac5600ee04615ea175e129d975253cbab477dedd9ce366c036ac48",
+        "excerptSnapshot": "SYNTHETISCHER QA-NACHWEIS — STATUS DER BACKUP- UND WIEDERHERSTELLUNGSKONTROLLE\n\nGeltungsbereich: alle Produktivsysteme und wichtigen Geschäftsdaten.\nPrüfdatum: 26.07.2026.\n\nBackups werden regelmäßig erstellt. Für kein Produktivsystem wurde\njedoch jemals ein Wiederherstellungstest durchgeführt. Es gibt keine\ndokumentierten Testergebnisse, keinen Nachweis der Wiederherstellbarkeit\nund weder Verantwortliche noch einen Zeitplan für solche Tests.\n\nDie Fragebogenangabe, Wiederherstellungen würden regelmäßig getestet,\nist falsch und darf nicht herangezogen werden. Die Wiederherstellbarkeit\nbleibt ungeklärt, bis ein vollständiger Test durchgeführt und dokumentiert ist.",
+        "disclosedExternally": true,
+        "promptPosition": 2,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      },
+      {
+        "id": "279498ff-4f89-4daf-968d-8793e0f03aa6",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "channel": "questionnaire_assertion",
+        "citationId": "Q:NIS2-BC-05:8a18a42b-ad94-4111-a5de-edb730e0c920",
+        "queryUnitId": "NIS2-BC-05",
+        "queryHash": "f3bad837e25dc5e908be9d9e0307a9c41bf50507873d31a521f87d40c46cd88b",
+        "retrievalRank": 1,
+        "retrievalScore": "1",
+        "retrievalPolicyVersion": null,
+        "lexicalScore": null,
+        "semanticScore": null,
+        "combinedScore": null,
+        "selectionRole": "questionnaire_assertion",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1
+        },
+        "legalChunkId": null,
+        "documentChunkId": null,
+        "assessmentAnswerId": "8a18a42b-ad94-4111-a5de-edb730e0c920",
+        "excerptHash": "feb7fa80e4ddcfdb62201122b8247c5130a7d5459ea3bc45b1fe0772e08bfb0b",
+        "excerptSnapshot": "Werden wichtige Daten und Systeme regelmäßig gesichert?: fully_implemented",
+        "disclosedExternally": true,
+        "promptPosition": 3,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      },
+      {
+        "id": "b914e7ec-af70-4fe2-81a8-985efa1dc12f",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "channel": "questionnaire_assertion",
+        "citationId": "Q:NIS2-BC-05:3b6f1ade-0c53-4a75-a81d-bd0b59115c27",
+        "queryUnitId": "NIS2-BC-05",
+        "queryHash": "f3bad837e25dc5e908be9d9e0307a9c41bf50507873d31a521f87d40c46cd88b",
+        "retrievalRank": 2,
+        "retrievalScore": "1",
+        "retrievalPolicyVersion": null,
+        "lexicalScore": null,
+        "semanticScore": null,
+        "combinedScore": null,
+        "selectionRole": "questionnaire_assertion",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1
+        },
+        "legalChunkId": null,
+        "documentChunkId": null,
+        "assessmentAnswerId": "3b6f1ade-0c53-4a75-a81d-bd0b59115c27",
+        "excerptHash": "abae6ae3741c47565653d2c762833d949d37a736d33a4f33ba3f029922f90b72",
+        "excerptSnapshot": "Sind Backups vor Veränderung oder Löschung geschützt und getrennt vom normalen System gespeichert?: fully_implemented",
+        "disclosedExternally": true,
+        "promptPosition": 4,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      },
+      {
+        "id": "995bcd20-0d4b-4c51-a213-680adb16f945",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "channel": "questionnaire_assertion",
+        "citationId": "Q:NIS2-BC-05:9fcfd92f-82ce-4e49-b178-4e6c64f3a599",
+        "queryUnitId": "NIS2-BC-05",
+        "queryHash": "f3bad837e25dc5e908be9d9e0307a9c41bf50507873d31a521f87d40c46cd88b",
+        "retrievalRank": 3,
+        "retrievalScore": "1",
+        "retrievalPolicyVersion": null,
+        "lexicalScore": null,
+        "semanticScore": null,
+        "combinedScore": null,
+        "selectionRole": "questionnaire_assertion",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1
+        },
+        "legalChunkId": null,
+        "documentChunkId": null,
+        "assessmentAnswerId": "9fcfd92f-82ce-4e49-b178-4e6c64f3a599",
+        "excerptHash": "a518ff34d5e4ed05f707c34f0c1a37c8629a3855be082001bca84202ef79bae6",
+        "excerptSnapshot": "Gibt es einen Notfall- und Wiederanlaufplan, der wichtige Prozesse, Zuständigkeiten und Wiederherstellungsziele festlegt?: fully_implemented",
+        "disclosedExternally": true,
+        "promptPosition": 5,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      },
+      {
+        "id": "afed9930-c75e-4e2a-93c2-7c635a2079cb",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "channel": "questionnaire_assertion",
+        "citationId": "Q:NIS2-BC-05:3033e763-0ea9-469e-8583-059b169b1a03",
+        "queryUnitId": "NIS2-BC-05",
+        "queryHash": "f3bad837e25dc5e908be9d9e0307a9c41bf50507873d31a521f87d40c46cd88b",
+        "retrievalRank": 4,
+        "retrievalScore": "1",
+        "retrievalPolicyVersion": null,
+        "lexicalScore": null,
+        "semanticScore": null,
+        "combinedScore": null,
+        "selectionRole": "questionnaire_assertion",
+        "preferredMappedProvision": false,
+        "mappedLegalProvisionId": null,
+        "retrievalDiagnostics": {
+          "version": 1
+        },
+        "legalChunkId": null,
+        "documentChunkId": null,
+        "assessmentAnswerId": "3033e763-0ea9-469e-8583-059b169b1a03",
+        "excerptHash": "5dd6e249b50111315b2d2b1c74c510b843af1d0b3e0b79483e6bd0108899a56d",
+        "excerptSnapshot": "Wird regelmäßig getestet, ob Daten und Systeme aus den Backups wirklich wiederhergestellt werden können?: fully_implemented",
+        "disclosedExternally": true,
+        "promptPosition": 6,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      }
+    ],
+    "claims": [
+      {
+        "id": "9a3e7572-62fc-47f0-b13e-fcc7289bd163",
+        "runId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "queryUnitId": "NIS2-BC-05",
+        "claimKey": "action-plan:NIS2-BC-05:1",
+        "claimTextHash": "e8774cb34409123b7f1079d08a5a5b1467cf14b322b11a7dee888c66821f52e8",
+        "validation": "supported",
+        "safeFailureReason": null,
+        "createdAt": "2026-08-01T22:23:02.542Z"
+      }
+    ]
+  },
+  "actionPlan": {
+    "plan": {
+      "id": "1a9d19db-c6ed-4901-afc0-209aee6ebcc6",
+      "organizationId": "3a6fbbdb-fbb1-4981-935b-2cdfc5b378af",
+      "sourceGapArtifactRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+      "outputLocale": "de",
+      "generationRunId": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+      "generationJobId": "48d75c3b-06fe-4885-afe6-c4082e2de24d",
+      "status": "active",
+      "revisionNumber": 1,
+      "activatedBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "activatedAt": "2026-08-01T22:23:04.683Z",
+      "createdBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "createdAt": "2026-08-01T22:23:04.318Z",
+      "updatedAt": "2026-08-01T22:23:04.318Z",
+      "archivedAt": null,
+      "version": 1
+    },
+    "job": {
+      "id": "48d75c3b-06fe-4885-afe6-c4082e2de24d",
+      "organizationId": "3a6fbbdb-fbb1-4981-935b-2cdfc5b378af",
+      "requestedByUserId": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+      "kind": "action-plan-generation-v6",
+      "state": "succeeded",
+      "payload": {
+        "locale": "de",
+        "publishedReleaseQa": true,
+        "sourceGapRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3"
+      },
+      "progress": 100,
+      "progressPhase": null,
+      "completedUnits": null,
+      "totalUnits": null,
+      "attemptCount": 1,
+      "maxAttempts": 3,
+      "cancellable": true,
+      "cancellationCapability": "plans:activate",
+      "safeErrorCode": null,
+      "safeErrorMessage": null,
+      "runAfter": "2026-08-01T22:22:55.664Z",
+      "leaseOwner": null,
+      "leaseExpiresAt": null,
+      "heartbeatAt": "2026-08-01T22:22:55.773Z",
+      "cancellationRequestedAt": null,
+      "startedAt": "2026-08-01T22:22:55.773Z",
+      "finishedAt": "2026-08-01T22:23:04.683Z",
+      "createdAt": "2026-08-01T22:22:55.664Z",
+      "updatedAt": "2026-08-01T22:23:04.683Z"
+    },
+    "jobResult": {
+      "jobId": "48d75c3b-06fe-4885-afe6-c4082e2de24d",
+      "generatedArtifactRevisionId": null,
+      "reportId": null,
+      "legalSourceRenditionId": null,
+      "legalProcessingGenerationId": null,
+      "legalSourceMonitorId": null,
+      "legalCorpusEvaluationId": null,
+      "actionPlanId": "1a9d19db-c6ed-4901-afc0-209aee6ebcc6",
+      "createdAt": "2026-08-01T22:23:04.318Z"
+    },
+    "items": [
+      {
+        "id": "48a4e98a-bc85-46a5-aeb3-56b5b48aae5f",
+        "actionPlanId": "1a9d19db-c6ed-4901-afc0-209aee6ebcc6",
+        "sourceFindingId": "aa3a47b9-beb4-408b-9988-b22f3d051b5c",
+        "title": "Wiederherstellbarkeit regelmäßig testen und dokumentieren",
+        "result": "Führe für alle wichtigen Daten und Systeme regelmäßige Wiederherstellungstests durch. Dokumentiere Ergebnisse, Verantwortlichkeiten, Testplan und festgestellte Abweichungen nachvollziehbar.",
+        "suggestedEvidence": [
+          "Wiederherstellungstest-Protokolle",
+          "Testplan mit Verantwortlichkeiten",
+          "Dokumentierte Abweichungsmaßnahmen"
+        ],
+        "position": 1,
+        "executionNotes": "",
+        "priority": "high",
+        "status": "open",
+        "ownerUserId": null,
+        "dueDate": null,
+        "createdAt": "2026-08-01T22:23:04.318Z",
+        "updatedAt": "2026-08-01T22:23:04.318Z",
+        "version": 1,
+        "requirementCode": "NIS2-BC-05",
+        "sourceFindingStatus": "not_fulfilled",
+        "sourceFindingSeverity": "high",
+        "linkedGapIds": [
+          "1dc64ba3-745a-4e91-b01f-1b63b62d4a8c"
+        ]
+      }
+    ]
+  },
+  "lifecycleInvariants": {
+    "terminalJobsWithProcessingRuns": 0
+  },
+  "automaticChecks": [
+    {
+      "name": "NIS2-GOV-01 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-GOV-01 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-GOV-01 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-GOV-01 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-RISK-02 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-RISK-02 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-RISK-02 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-RISK-02 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-IAM-03 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-IAM-03 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-IAM-03 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-IAM-03 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-IR-04 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-IR-04 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-IR-04 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-IR-04 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-BC-05 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-BC-05 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-BC-05 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-BC-05 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-SC-06 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-SC-06 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-SC-06 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-SC-06 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-VM-07 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-VM-07 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-VM-07 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-VM-07 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-ASSURE-08 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-ASSURE-08 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-ASSURE-08 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-ASSURE-08 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-AWARE-09 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-AWARE-09 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-AWARE-09 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-AWARE-09 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "NIS2-PROTECT-10 deterministic status",
+      "passed": true,
+      "expected": "fulfilled",
+      "actual": "fulfilled"
+    },
+    {
+      "name": "NIS2-PROTECT-10 deterministic severity",
+      "passed": true,
+      "expected": "low",
+      "actual": "low"
+    },
+    {
+      "name": "NIS2-PROTECT-10 mapped legal source",
+      "passed": true,
+      "expected": "at least one legal_source_chunk",
+      "actual": [
+        "legal_source_chunk"
+      ]
+    },
+    {
+      "name": "NIS2-PROTECT-10 atomic Gap contract",
+      "passed": true,
+      "expected": "no atomic gaps",
+      "actual": []
+    },
+    {
+      "name": "Gap prompt and response contract",
+      "passed": true,
+      "expected": {
+        "promptVersion": "12",
+        "responseSchemaVersion": "12"
+      },
+      "actual": {
+        "promptVersion": "12",
+        "responseSchemaVersion": "12"
+      }
+    },
+    {
+      "name": "Independent Action Plan prompt and response contract",
+      "passed": true,
+      "expected": {
+        "operationKind": "action_plan_generation",
+        "promptVersion": "6",
+        "responseSchemaVersion": "6"
+      },
+      "actual": {
+        "id": "6b2238b8-fecd-460f-b915-79c4a3c4830e",
+        "organizationId": "3a6fbbdb-fbb1-4981-935b-2cdfc5b378af",
+        "assessmentRevisionId": "8b4a7b3f-4994-44e5-83bd-7f779826daef",
+        "operationKind": "action_plan_generation",
+        "status": "succeeded",
+        "outputLocale": "de",
+        "attemptCount": 1,
+        "languageValidation": {
+          "version": 1,
+          "attempts": [
+            {
+              "attempt": 1,
+              "confidence": 1,
+              "disposition": "match",
+              "detectedLocale": "de",
+              "retryTriggered": false
+            }
+          ],
+          "detector": {
+            "version": "1",
+            "implementation": "complyx-local-stopword-detector"
+          },
+          "expectedLocale": "de"
+        },
+        "inputHash": "35b22aa46055fc5b8a00138960ce1bf069086f99992cc53f7dae5373b4f58d5d",
+        "idempotencyKey": "a32c5a5da0547aea2fec10a801cf0a71e1ee1e233f17f1ff152a347dd6f0ecf5",
+        "provider": "openai",
+        "model": "gpt-5.6-luna",
+        "promptName": "nis2_action_plan",
+        "promptVersion": "6",
+        "promptTemplateHash": "b977318ddbe274dc29555ee24c971d1802f9f8c29159a73621135a016b6d8627",
+        "renderedInputHash": "f4b1b4a906c177161ad849ab72999c87fa3e75d6e6466ca2bbad7a8a87295352",
+        "responseSchemaVersion": "6",
+        "inputTokens": 2248,
+        "outputTokens": 391,
+        "cachedInputTokens": 0,
+        "validatedOutput": {
+          "actions": [
+            {
+              "mode": "remediation",
+              "title": "Wiederherstellbarkeit regelmäßig testen und dokumentieren",
+              "result": "Führe für alle wichtigen Daten und Systeme regelmäßige Wiederherstellungstests durch. Dokumentiere Ergebnisse, Verantwortlichkeiten, Testplan und festgestellte Abweichungen nachvollziehbar.",
+              "gapKeys": [
+                "G1"
+              ],
+              "suggestedEvidence": [
+                "Wiederherstellungstest-Protokolle",
+                "Testplan mit Verantwortlichkeiten",
+                "Dokumentierte Abweichungsmaßnahmen"
+              ],
+              "supportingOrganizationCitationIds": [
+                "DOC:NIS2-BC-05:8a1156e7-4a80-4856-b3eb-9b256c375b66"
+              ]
+            }
+          ]
+        },
+        "jobId": "48d75c3b-06fe-4885-afe6-c4082e2de24d",
+        "providerPolicyVersion": 2,
+        "corpusReleaseSetHash": "9d7d2ccdb22c6a7a2e068ed1799f0295ff68a6ef01cbb905c64196318a0de597",
+        "provenanceStatus": "complete",
+        "cancellationRequestedAt": null,
+        "outputArtifactRevisionId": null,
+        "errorCode": null,
+        "errorMessage": null,
+        "createdBy": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+        "createdAt": "2026-08-01T22:22:58.335Z",
+        "startedAt": "2026-08-01T22:22:58.385Z",
+        "completedAt": "2026-08-01T22:23:04.683Z"
+      }
+    },
+    {
+      "name": "Generated category coverage",
+      "passed": true,
+      "expected": 10,
+      "actual": 10
+    },
+    {
+      "name": "Action coverage",
+      "passed": true,
+      "expected": "every gap covered and every action linked",
+      "actual": {
+        "gapCount": 1,
+        "linkedGapCount": 1,
+        "actionCount": 1
+      }
+    },
+    {
+      "name": "NIS2-BC-05 simplified action",
+      "passed": true,
+      "expected": "title, result, evidence, and same-category gap links only",
+      "actual": {
+        "title": "Wiederherstellbarkeit regelmäßig testen und dokumentieren",
+        "result": "Führe für alle wichtigen Daten und Systeme regelmäßige Wiederherstellungstests durch. Dokumentiere Ergebnisse, Verantwortlichkeiten, Testplan und festgestellte Abweichungen nachvollziehbar.",
+        "suggestedEvidence": [
+          "Wiederherstellungstest-Protokolle",
+          "Testplan mit Verantwortlichkeiten",
+          "Dokumentierte Abweichungsmaßnahmen"
+        ],
+        "linkedGapIds": [
+          "1dc64ba3-745a-4e91-b01f-1b63b62d4a8c"
+        ]
+      }
+    },
+    {
+      "name": "NIS2-BC-05 server-owned priority",
+      "passed": true,
+      "expected": "high",
+      "actual": "high"
+    },
+    {
+      "name": "Contradiction remains visible without blocking generation",
+      "passed": true,
+      "expected": true,
+      "actual": {
+        "requiresReview": true,
+        "reviewNotice": "Die Angabe zu regelmäßig getesteten Wiederherstellungen widerspricht dem vorliegenden Nachweis, wonach solche Tests bislang nicht durchgeführt wurden.",
+        "finalization": {
+          "attempted": false,
+          "blocked": false,
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "Correction has distinct atomic generation lineage",
+      "passed": true,
+      "expected": "different non-null generation run IDs",
+      "actual": {
+        "generated": "d1660e4d-59fb-45eb-856c-5f32d9173a72",
+        "final": "5f0200e5-9f6a-4333-83a4-bc2430089d32"
+      }
+    }
+  ]
+}

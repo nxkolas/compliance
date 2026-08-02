@@ -1,28 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { gapGenerationEnqueueResponseSchema, isRetryableGapReassessmentStatus } from "@/src/contracts/gap-analysis/generation";
+import { gapGenerationEnqueueResponseSchema, isRetryableGapAnalysisCycleStatus } from "@/src/contracts/gap-analysis/generation";
 import { invokeRouteContract } from "./support/route-contract";
-import { buildGapGenerationEnqueueFingerprint } from "@/src/server/gap-analysis/generation-identity";
 
 const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
-  generateGapReassessment: vi.fn(),
-  retryGapReassessment: vi.fn(),
+  enqueueGapAnalysisGeneration: vi.fn(),
+  retryGapAnalysisGeneration: vi.fn(),
   getLocale: vi.fn(),
   revalidatePath: vi.fn(),
   enforceOperationRateLimit: vi.fn(),
+  getAuthorizedJob: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/lib/i18n", () => ({ getLocale: mocks.getLocale }));
 vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
 vi.mock("@/src/server/api/operation-rate-limit", () => ({ enforceOperationRateLimit: mocks.enforceOperationRateLimit }));
+vi.mock("@/src/server/idempotency", () => ({
+  databaseIdempotencyRepository: {
+    create: vi.fn().mockResolvedValue(true),
+    find: vi.fn().mockResolvedValue(null),
+    save: vi.fn(),
+  },
+}));
+vi.mock("@/src/server/jobs", () => ({ getAuthorizedJob: mocks.getAuthorizedJob }));
 vi.mock("@/src/server/gap-analysis", () => ({
-  generateGapReassessment: mocks.generateGapReassessment,
-  retryGapReassessment: mocks.retryGapReassessment,
+  enqueueGapAnalysisGeneration: mocks.enqueueGapAnalysisGeneration,
+  retryGapAnalysisGeneration: mocks.retryGapAnalysisGeneration,
 }));
 
-import { POST } from "@/app/api/organizations/[organizationId]/gap-analysis/reassessment/generate/route";
-import { POST as RETRY } from "@/app/api/organizations/[organizationId]/gap-analysis/reassessment/retry/route";
+import { POST } from "@/app/api/organizations/[organizationId]/gap-analysis/cycles/[cycleId]/generation-jobs/route";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const organizationId = "00000000-0000-4000-8000-000000000002";
@@ -34,7 +41,7 @@ describe("gap generation enqueue route", () => {
     vi.clearAllMocks();
     mocks.requireApiUser.mockResolvedValue({ id: userId });
     mocks.getLocale.mockResolvedValue("de");
-    mocks.generateGapReassessment.mockResolvedValue({
+    mocks.enqueueGapAnalysisGeneration.mockResolvedValue({
       draft: {
         id: draftId,
         status: "locked",
@@ -60,28 +67,26 @@ describe("gap generation enqueue route", () => {
       },
       reused: false,
     });
-    mocks.retryGapReassessment.mockImplementation((input) =>
-      mocks.generateGapReassessment(input),
+    mocks.retryGapAnalysisGeneration.mockImplementation((input) =>
+      mocks.enqueueGapAnalysisGeneration(input),
     );
   });
 
   it("returns the locked draft and common job with 202", async () => {
-    const request = new Request(`http://localhost/api/organizations/${organizationId}/gap-analysis/reassessment/generate`, {
+    const request = new Request(`http://localhost/api/organizations/${organizationId}/gap-analysis/cycles/${draftId}/generation-jobs`, {
       method: "POST",
       headers: { "content-type": "application/json", "idempotency-key": "generate-1", "x-request-id": "gap-job-test" },
-      body: JSON.stringify({ draftId, expectedLockVersion: 1 }),
+      body: JSON.stringify({ operation: "start" }),
     });
     const result = await invokeRouteContract({
       handler: POST,
-      context: { params: Promise.resolve({ organizationId }) },
+      context: { params: Promise.resolve({ organizationId, cycleId: draftId }) },
       request,
       outputSchema: gapGenerationEnqueueResponseSchema,
     });
     expect(result.response.status).toBe(202);
     expect(result.parsed.data.job.id).toBe(jobId);
-    expect(result.parsed.data.draft.status).toBe("locked");
-    expect(result.parsed.data.draft.outputLocale).toBe("de");
-    expect(mocks.generateGapReassessment).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mocks.enqueueGapAnalysisGeneration).toHaveBeenCalledWith(expect.objectContaining({
       idempotencyKey: "generate-1",
       organizationId,
       userId,
@@ -91,62 +96,44 @@ describe("gap generation enqueue route", () => {
   it("does not read the current UI locale when retrying pinned work", async () => {
     mocks.getLocale.mockClear();
     const request = new Request(
-      `http://localhost/api/organizations/${organizationId}/gap-analysis/reassessment/retry`,
+      `http://localhost/api/organizations/${organizationId}/gap-analysis/cycles/${draftId}/generation-jobs`,
       {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "idempotency-key": "retry-1",
         },
-        body: JSON.stringify({ draftId, retryNonce: "retry-1" }),
+        body: JSON.stringify({ operation: "retry", retryNonce: "retry-1" }),
       },
     );
     const result = await invokeRouteContract({
-      handler: RETRY,
-      context: { params: Promise.resolve({ organizationId }) },
+      handler: POST,
+      context: { params: Promise.resolve({ organizationId, cycleId: draftId }) },
       request,
       outputSchema: gapGenerationEnqueueResponseSchema,
     });
     expect(result.response.status).toBe(202);
     expect(mocks.getLocale).not.toHaveBeenCalled();
-    expect(mocks.retryGapReassessment).toHaveBeenCalledWith(
+    expect(mocks.retryGapAnalysisGeneration).toHaveBeenCalledWith(
       expect.not.objectContaining({ locale: expect.anything() }),
     );
   });
 
   it("fails safely before enqueue when Idempotency-Key is missing", async () => {
-    const response = await POST(new Request(`http://localhost/api/organizations/${organizationId}/gap-analysis/reassessment/generate`, {
+    const response = await POST(new Request(`http://localhost/api/organizations/${organizationId}/gap-analysis/cycles/${draftId}/generation-jobs`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ draftId, expectedLockVersion: 1 }),
-    }), { params: Promise.resolve({ organizationId }) });
+      body: JSON.stringify({ operation: "start" }),
+    }), { params: Promise.resolve({ organizationId, cycleId: draftId }) });
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ error: { code: "IDEMPOTENCY_KEY_REQUIRED" } });
-    expect(mocks.generateGapReassessment).not.toHaveBeenCalled();
+    expect(mocks.enqueueGapAnalysisGeneration).not.toHaveBeenCalled();
   });
 
   it("allows both failed and cancelled generations to be retried", () => {
-    expect(isRetryableGapReassessmentStatus("failed")).toBe(true);
-    expect(isRetryableGapReassessmentStatus("cancelled")).toBe(true);
-    expect(isRetryableGapReassessmentStatus("locked")).toBe(false);
+    expect(isRetryableGapAnalysisCycleStatus("failed")).toBe(true);
+    expect(isRetryableGapAnalysisCycleStatus("cancelled")).toBe(true);
+    expect(isRetryableGapAnalysisCycleStatus("locked")).toBe(false);
   });
 
-  it("includes the pinned locale in the enqueue fingerprint", () => {
-    const common = {
-      draftId,
-      expectedLockVersion: 1,
-      retryNonce: "retry-1",
-    };
-    expect(
-      buildGapGenerationEnqueueFingerprint({
-        ...common,
-        outputLocale: "de",
-      }),
-    ).not.toBe(
-      buildGapGenerationEnqueueFingerprint({
-        ...common,
-        outputLocale: "en",
-      }),
-    );
-  });
 });

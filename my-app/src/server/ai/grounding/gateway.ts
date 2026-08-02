@@ -2,16 +2,23 @@ import { createHash } from "node:crypto";
 import type * as z from "zod";
 import type { AiProviderMode } from "@/lib/ai/types";
 import { db } from "@/src/db";
-import { aiProcessingRuns } from "@/src/db/schema";
+import { aiProcessingRunContext, aiProcessingRuns } from "@/src/db/schema";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../../api/errors";
+import {
+  GAP_GROUNDING_INSTRUCTION,
+  gapOutputLocaleInstruction,
+} from "@/src/server/gap-analysis/grounding-instruction";
 import { buildGroundedPrompt } from "./context-builder";
-import { retrievePinnedLegalContext } from "./legal-retrieval";
+import {
+  resolvePinnedLegalScope,
+  retrievePinnedLegalContext,
+  type PinnedLegalSnapshot,
+} from "./legal-retrieval";
 import { retrieveOrganizationContext } from "./organization-retrieval";
 import { resolveGroundingPolicy } from "./policy";
 import { selectGroundedProvider } from "./provider-policy";
 import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
-import { persistGroundingProvenance } from "./provenance";
 import {
   resolveGroundingRetrievalQuery,
   type GroundedOutputContract,
@@ -26,26 +33,61 @@ import {
   validateGroundedClaims,
 } from "./validation";
 import {
+  executeLanguageValidatedProvider,
+} from "./language-policy";
+import {
   localAggregateLanguageDetector,
   type LanguageDetector,
 } from "./language-detector";
+import type { DocumentEmbeddingProvider } from "@/src/server/documents";
+import { withProviderPermit } from "./provider-limiter";
 import {
-  assertOutputLocaleMatches,
-  executeLanguageValidatedProvider,
-  LanguagePolicyError,
-  type LanguageValidationDiagnostic,
-} from "./language-policy";
-import {
-  GAP_GROUNDING_INSTRUCTION,
-  gapOutputLocaleInstruction,
-} from "@/src/server/gap-analysis";
-import { createAiProcessingRunWithLiveJobGate } from "../generation/job-run-lifecycle";
+  assertLiveParentJobForAiRun,
+  createAiProcessingRunWithLiveJobGate,
+} from "../generation/job-run-lifecycle";
+import { hashExactPrompt } from "../generation/prompt-provenance";
+
+export type PreparedGroundingOperation = {
+  policy: Awaited<ReturnType<typeof resolveGroundingPolicy>>;
+  provider: GroundedProvider;
+  pinnedSnapshots: PinnedLegalSnapshot[];
+};
+
+export type GroundingExecutionDependencies = {
+  providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
+  languageDetector?: LanguageDetector;
+  embeddingProvider?: DocumentEmbeddingProvider;
+};
+
+export async function prepareGroundingOperation(
+  input: {
+    operation: "gap_analysis";
+    organizationId: string;
+    workflowReleaseId: string;
+  },
+  dependencies: Pick<GroundingExecutionDependencies, "providers"> = {},
+): Promise<PreparedGroundingOperation> {
+  const policy = await resolveGroundingPolicy({
+    operation: input.operation,
+    organizationId: input.organizationId,
+  });
+  const provider = selectGroundedProvider({
+    selectedMode: policy.providerPolicy.selectedProviderMode,
+    providers: dependencies.providers ?? configuredProviders(),
+  });
+  const pinnedSnapshots = await resolvePinnedLegalScope({
+    familyCodes: policy.familyCodes,
+  });
+  return { policy, provider, pinnedSnapshots };
+}
 
 export async function runGroundedOperation<T>(
   input: {
     operation: "gap_analysis";
     runOperationKind?:
-      "gap_analysis" | "gap_guidance_regeneration" | "action_plan_generation";
+      | "gap_analysis"
+      | "gap_conflict_resolution"
+      | "action_plan_generation";
     actor: { userId: string };
     organizationId: string;
     outputLocale: "de" | "en";
@@ -63,6 +105,8 @@ export async function runGroundedOperation<T>(
     idempotencyKey: string;
     assessmentRevisionId?: string;
     jobId?: string;
+    expectedLeaseOwner?: string;
+    definitionHash?: string;
     promptMetadata?: {
       name: string;
       version: string;
@@ -70,331 +114,200 @@ export async function runGroundedOperation<T>(
       responseSchemaVersion: string;
     };
     abortSignal?: AbortSignal;
+    precomputedQueryEmbeddings?: {
+      legal?: number[];
+      organizationDocument?: number[];
+    };
+    preparedGrounding?: PreparedGroundingOperation;
   },
-  dependencies: {
-    providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
-    languageDetector?: LanguageDetector;
-  } = {},
+  dependencies: GroundingExecutionDependencies = {},
 ) {
+  const operationKind = input.runOperationKind ?? "gap_analysis";
+  if (input.jobId && input.expectedLeaseOwner) {
+    await assertLiveParentJobForAiRun({
+      jobId: input.jobId,
+      organizationId: input.organizationId,
+      expectedLeaseOwner: input.expectedLeaseOwner,
+    });
+  }
   const existing = await db.query.aiProcessingRuns.findFirst({
-    columns: {
-      id: true,
-      organizationId: true,
-      assessmentRevisionId: true,
-      operationKind: true,
-      status: true,
-      outputLocale: true,
-      attemptCount: true,
-      languageValidation: true,
-      inputHash: true,
-      idempotencyKey: true,
-      provider: true,
-      model: true,
-      promptName: true,
-      promptVersion: true,
-      promptTemplateHash: true,
-      renderedInputHash: true,
-      responseSchemaVersion: true,
-      inputTokens: true,
-      outputTokens: true,
-      cachedInputTokens: true,
-      validatedOutput: true,
-      jobId: true,
-      providerPolicyVersion: true,
-      corpusReleaseSetHash: true,
-      provenanceStatus: true,
-      cancellationRequestedAt: true,
-      outputArtifactRevisionId: true,
-      errorCode: true,
-      errorMessage: true,
-      createdBy: true,
-      createdAt: true,
-      startedAt: true,
-      completedAt: true,
-    },
     where: {
       RAW: (table, operators) =>
         and(
           eq(table.organizationId, input.organizationId),
-          eq(table.operationKind, input.runOperationKind ?? "gap_analysis"),
+          eq(table.operationKind, operationKind),
           eq(table.idempotencyKey, input.idempotencyKey),
         ) ?? operators.sql`true`,
     },
   });
-  if (existing) {
-    assertOutputLocaleMatches(existing.outputLocale, input.outputLocale, {
-      runId: existing.id,
-    });
+  if (existing?.status === "succeeded") {
+    throw new ApiError(
+      409,
+      "This grounded result was already published",
+      { runId: existing.id },
+      "GROUNDING_RUN_ALREADY_PUBLISHED",
+    );
   }
   if (existing?.status === "processing" && existing.validatedOutput !== null) {
-    const rows = await db.query.aiProcessingRunContext.findMany({
-      columns: {
-        id: true,
-        runId: true,
-        channel: true,
-        citationId: true,
-        queryUnitId: true,
-        queryHash: true,
-        retrievalRank: true,
-        retrievalScore: true,
-        retrievalPolicyVersion: true,
-        lexicalScore: true,
-        semanticScore: true,
-        combinedScore: true,
-        selectionRole: true,
-        preferredMappedProvision: true,
-        mappedLegalProvisionId: true,
-        retrievalDiagnostics: true,
-        legalChunkId: true,
-        documentChunkId: true,
-        assessmentAnswerId: true,
-        excerptHash: true,
-        excerptSnapshot: true,
-        disclosedExternally: true,
-        promptPosition: true,
-        createdAt: true,
-      },
+    const persisted = await db.query.aiProcessingRunContext.findMany({
       where: {
         RAW: (table, operators) =>
           eq(table.runId, existing.id) ?? operators.sql`true`,
       },
-      orderBy: { promptPosition: "asc" },
+      orderBy: { position: "asc" },
     });
-    const context = rows.map((row): GroundingContextItem => {
-      const sourceId =
-        row.legalChunkId ?? row.documentChunkId ?? row.assessmentAnswerId;
-      if (!sourceId)
-        throw new ApiError(
-          409,
-          "Grounding recovery context is incomplete",
-          undefined,
-          "GROUNDING_RECOVERY_INCOMPLETE",
-        );
-      return {
-        channel: row.channel,
-        citationId: row.citationId,
-        queryUnitId: row.queryUnitId,
-        sourceId,
-        excerpt: row.excerptSnapshot,
-        excerptHash: row.excerptHash,
-        rank: row.retrievalRank,
-        score: Number(row.retrievalScore),
-        metadata: {
-          queryHash: row.queryHash,
-          recovered: true,
-          retrievalPolicyVersion: row.retrievalPolicyVersion,
-          lexicalScore:
-            row.lexicalScore === null ? undefined : Number(row.lexicalScore),
-          semanticScore:
-            row.semanticScore === null ? undefined : Number(row.semanticScore),
-          combinedScore:
-            row.combinedScore === null ? undefined : Number(row.combinedScore),
-          selectionRole: row.selectionRole,
-          preferredMappedProvision: row.preferredMappedProvision,
-          legalProvisionId: row.mappedLegalProvisionId,
-          retrievalDiagnostics: row.retrievalDiagnostics,
-        },
-      };
-    });
-    const output = input.outputContract
-      .schema(context)
-      .parse(existing.validatedOutput);
+    const context = [
+      ...persisted.map(fromPersistedContext),
+      ...questionnaireContext(input.queryUnits, input.questionnaireAssertions),
+    ];
     return {
       runId: existing.id,
-      output,
+      output: input.outputContract.schema(context).parse(existing.validatedOutput),
       outputLocale: existing.outputLocale,
       context,
       claims: [],
       recovered: true,
+      pinnedSnapshots: snapshotPinsFromManifest(existing.inputManifest),
     };
   }
-  if (existing)
+  if (existing) {
     throw new ApiError(
       409,
       "Grounded operation already exists",
       { runId: existing.id },
       "GROUNDING_RUN_EXISTS",
     );
-  const policy = await resolveGroundingPolicy({
-    operation: input.operation,
-    organizationId: input.organizationId,
+  }
+
+  const prepared =
+    input.preparedGrounding ??
+    (await prepareGroundingOperation(
+      {
+        operation: input.operation,
+        organizationId: input.organizationId,
+        workflowReleaseId: input.workflowReleaseId,
+      },
+      dependencies,
+    ));
+  const provider = withProviderPermit(prepared.provider, {
+    jobId: input.jobId,
+    categoryCode:
+      input.queryUnits.length === 1 ? input.queryUnits[0]?.id : undefined,
   });
-  const providers = dependencies.providers ?? configuredProviders();
-  const provider = selectGroundedProvider({
-    allowedModes: policy.providerPolicy.allowedProviderModes,
-    externalDisclosureAllowed: policy.providerPolicy.externalDisclosureAllowed,
-    providers,
-    preferredMode: process.env.AI_DEFAULT_PROVIDER,
-  });
-  const retrievedContext = (
+  const retrieved = (
     await Promise.all(
       input.queryUnits.map(async (unit) => {
-        const legalRetrievalQuery = resolveGroundingRetrievalQuery(
-          unit,
-          "legal",
-        );
-        const organizationRetrievalQuery = resolveGroundingRetrievalQuery(
-          unit,
-          "organization_document",
-        );
-        const legal = await retrievePinnedLegalContext({
-          workflowKind: policy.workflowKind,
-          workflowReleaseId: input.workflowReleaseId,
-          familyCodes: policy.familyCodes,
-          frameworkCode: policy.frameworkCode,
-          jurisdictionCodes: policy.jurisdictionCodes,
-          asOfDate: input.asOfDate,
-          language: "de",
-          queryUnitId: unit.id,
-          query: legalRetrievalQuery,
-          preferredMappedLegalProvisionIds:
-            unit.preferredMappedLegalProvisionIds,
-          preferredMappedLegalProvisionKeys:
-            unit.preferredMappedLegalProvisionKeys,
-          tierLimits: unit.legalTierLimits,
-        });
-        const organization = input.organizationEvidenceVersionIds.length
-          ? await retrieveOrganizationContext({
-              userId: input.actor.userId,
-              organizationId: input.organizationId,
-              documentVersionIds: input.organizationEvidenceVersionIds,
+        const [legal, organization] = await Promise.all([
+          retrievePinnedLegalContext(
+            {
               queryUnitId: unit.id,
-              query: organizationRetrievalQuery,
-            })
-          : [];
+              query: resolveGroundingRetrievalQuery(unit, "legal"),
+              asOfDate: input.asOfDate,
+              language: input.outputLocale,
+              preferredMappedLegalProvisionKeys:
+                unit.preferredMappedLegalProvisionKeys,
+              tierLimits: unit.legalTierLimits,
+              pinnedSnapshots: prepared.pinnedSnapshots,
+            },
+            {
+              queryEmbedding: input.precomputedQueryEmbeddings?.legal,
+              embeddingProvider: dependencies.embeddingProvider,
+            },
+          ),
+          input.organizationEvidenceVersionIds.length
+            ? retrieveOrganizationContext({
+                userId: input.actor.userId,
+                organizationId: input.organizationId,
+                documentVersionIds: input.organizationEvidenceVersionIds,
+                queryUnitId: unit.id,
+                query: resolveGroundingRetrievalQuery(
+                  unit,
+                  "organization_document",
+                ),
+                queryEmbedding:
+                  input.precomputedQueryEmbeddings?.organizationDocument,
+              })
+            : Promise.resolve([] as GroundingContextItem[]),
+        ]);
         return [...legal, ...organization];
       }),
     )
   ).flat();
-  const queryIds = new Set(input.queryUnits.map((unit) => unit.id));
-  const assertions: GroundingContextItem[] = (
-    input.questionnaireAssertions ?? []
-  ).map((assertion, index) => {
-    if (!queryIds.has(assertion.queryUnitId)) {
-      throw new ApiError(
-        400,
-        "Questionnaire assertion query unit is invalid",
-        undefined,
-        "GROUNDING_ASSERTION_INVALID",
-      );
-    }
-    return {
-      channel: "questionnaire_assertion" as const,
-      citationId: `Q:${assertion.queryUnitId}:${assertion.answerId}`,
-      queryUnitId: assertion.queryUnitId,
-      sourceId: assertion.answerId,
-      excerpt: assertion.excerpt,
-      excerptHash: createHash("sha256").update(assertion.excerpt).digest("hex"),
-      rank: index + 1,
-      score: 1,
-      metadata: {
-        queryHash: createHash("sha256")
-          .update(
-            input.queryUnits.find((unit) => unit.id === assertion.queryUnitId)!
-              .query,
-          )
-          .digest("hex"),
-        selectionRole: "questionnaire_assertion",
-      },
-    };
-  });
-  const context = [...retrievedContext, ...assertions];
-  const outputSchema = input.outputContract.schema(context);
+  const context = [
+    ...retrieved,
+    ...questionnaireContext(input.queryUnits, input.questionnaireAssertions),
+  ];
+  const schema = input.outputContract.schema(context);
   const prompt = buildGroundedPrompt(input.queryUnits, context);
-  if (input.operation === "gap_analysis") {
-    prompt.system += ` ${GAP_GROUNDING_INSTRUCTION} ${gapOutputLocaleInstruction(input.outputLocale)}`;
-  }
-  if (input.systemInstruction) {
-    prompt.system += ` ${input.systemInstruction}`;
-  }
-  const promptHash = createHash("sha256")
+  prompt.system += ` ${GAP_GROUNDING_INSTRUCTION} ${gapOutputLocaleInstruction(input.outputLocale)}`;
+  if (input.systemInstruction) prompt.system += ` ${input.systemInstruction}`;
+  const renderedInputHash = createHash("sha256")
     .update(`${prompt.system}\n${prompt.prompt}`)
     .digest("hex");
-  const corpusReleaseSetHash = createHash("sha256")
-    .update(
-      context
-        .filter((item) => item.channel === "legal")
-        .map((item) => item.metadata.corpusReleaseId)
-        .sort()
-        .join("\n"),
-    )
-    .digest("hex");
-  const run = await createAiProcessingRunWithLiveJobGate({
-    organizationId: input.organizationId,
-    assessmentRevisionId: input.assessmentRevisionId,
-    operationKind: input.runOperationKind ?? "gap_analysis",
-    status: "processing",
-    outputLocale: input.outputLocale,
-    attemptCount: 0,
-    languageValidation: initialLanguageValidation(
-      input.outputLocale,
-      dependencies.languageDetector ?? localAggregateLanguageDetector,
-    ),
-    inputHash: createHash("sha256")
-      .update(JSON.stringify(input.queryUnits))
-      .digest("hex"),
-    idempotencyKey: input.idempotencyKey,
-    provider: provider.provider,
-    model: provider.model,
-    promptName: input.promptMetadata?.name ?? "grounded-gap-analysis",
-    promptVersion: input.promptMetadata?.version ?? "v4",
-    promptTemplateHash: input.promptMetadata?.templateHash ?? promptHash,
-    renderedInputHash: promptHash,
-    responseSchemaVersion:
-      input.promptMetadata?.responseSchemaVersion ?? "grounding-v4",
-    providerPolicyVersion: policy.providerPolicy.version,
-    corpusReleaseSetHash,
-    provenanceStatus: "complete",
-    jobId: input.jobId,
-    createdBy: input.actor.userId,
-    startedAt: new Date(),
+  const promptHash = hashExactPrompt({
+    messages: [
+      { role: "system", content: prompt.system },
+      { role: "user", content: prompt.prompt },
+    ],
+    responseSchema: input.promptMetadata
+      ? {
+          name: input.promptMetadata.name,
+          version: input.promptMetadata.version,
+          templateHash: input.promptMetadata.templateHash,
+          schemaVersion: input.promptMetadata.responseSchemaVersion,
+        }
+      : { name: "grounded-generation", version: "1" },
   });
+  const manifest = {
+    version: 1,
+    assessmentRevisionId: input.assessmentRevisionId ?? null,
+    queryUnits: input.queryUnits,
+    organizationEvidenceVersionIds: input.organizationEvidenceVersionIds,
+    pinnedSnapshots: prepared.pinnedSnapshots,
+    renderedInputHash,
+  };
+  const run = await createAiProcessingRunWithLiveJobGate({
+      organizationId: input.organizationId,
+      jobId: input.jobId,
+      idempotencyKey: input.idempotencyKey,
+      operationKind,
+      status: "processing",
+      provider: provider.provider,
+      model: provider.model,
+      promptName: input.promptMetadata?.name ?? "grounded-generation",
+      promptVersion: input.promptMetadata?.version ?? "1",
+      promptHash,
+      definitionHash: input.definitionHash ?? input.workflowReleaseId,
+      buildHash: process.env.APP_BUILD_SHA ?? input.workflowReleaseId,
+      inputManifest: manifest,
+      claimValidation: { version: 1, status: "pending" },
+      outputLocale: input.outputLocale,
+      startedAt: new Date(),
+    }, new Date(), input.expectedLeaseOwner);
+
   try {
     const result =
       input.outputContract.languagePolicy === "localized"
         ? await executeLanguageValidatedProvider({
             provider,
             prompt,
-            schema: outputSchema,
+            schema,
             expectedLocale: input.outputLocale,
             generatedProse: input.outputContract.generatedProse,
             detector:
               dependencies.languageDetector ?? localAggregateLanguageDetector,
             abortSignal: input.abortSignal,
-            async onProviderAttempt(progress) {
-              await db
-                .update(aiProcessingRuns)
-                .set({
-                  attemptCount: progress.attemptCount,
-                  inputTokens: progress.usage.inputTokens,
-                  outputTokens: progress.usage.outputTokens,
-                  cachedInputTokens: progress.usage.cachedInputTokens,
-                })
-                .where(eq(aiProcessingRuns.id, run.id));
-            },
           })
         : await runLanguageNeutralProvider({
             provider,
             prompt,
-            schema: outputSchema,
-            outputLocale: input.outputLocale,
+            schema,
             abortSignal: input.abortSignal,
           });
-    const parsed = result.output;
-    await db
-      .update(aiProcessingRuns)
-      .set({
-        attemptCount: result.attemptCount,
-        languageValidation: result.languageValidation,
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens,
-        cachedInputTokens: result.usage.cachedInputTokens,
-      })
-      .where(eq(aiProcessingRuns.id, run.id));
     const claims = validateGroundedClaims({
       queryUnits: input.queryUnits,
       context,
-      claims: input.outputContract.claims(parsed),
+      claims: input.outputContract.claims(result.output),
     });
     if (!hasCompleteQueryUnitCoverage(input.queryUnits, claims)) {
       throw new ApiError(
@@ -409,7 +322,7 @@ export async function runGroundedOperation<T>(
         claim.validation !== "supported" &&
         !(
           claim.validation === "conflicting" &&
-          input.outputContract.allowConflictingClaim?.(parsed, claim)
+          input.outputContract.allowConflictingClaim?.(result.output, claim)
         ),
     );
     if (invalid.length) {
@@ -420,46 +333,81 @@ export async function runGroundedOperation<T>(
         "GROUNDING_VALIDATION_FAILED",
       );
     }
-    await persistGroundingProvenance({
-      runId: run.id,
-      context,
-      claims,
-      disclosedExternally: provider.mode === "openai",
+    await db.transaction(async (tx) => {
+      const persistable = context.filter(
+        (item) => item.channel !== "questionnaire_assertion",
+      );
+      if (persistable.length) {
+        await tx.insert(aiProcessingRunContext).values(
+          persistable.map((item, position) => ({
+            organizationId: input.organizationId,
+            runId: run.id,
+            channel:
+              item.channel === "legal"
+                ? ("legal_authority" as const)
+                : ("organization_evidence" as const),
+            documentChunkId:
+              item.channel === "organization_document" ? item.sourceId : null,
+            legalSourceChunkId:
+              item.channel === "legal" ? item.sourceId : null,
+            contextRole:
+              typeof item.metadata.selectionRole === "string"
+                ? item.metadata.selectionRole
+                : "admitted",
+            exactText: item.excerpt,
+            vectorScore: numericScore(item.metadata.semanticScore),
+            keywordScore: numericScore(item.metadata.lexicalScore),
+            fusedScore: numericScore(item.metadata.combinedScore ?? item.score),
+            metadata: {
+              ...item.metadata,
+              citationId: item.citationId,
+              queryUnitId: item.queryUnitId,
+              excerptHash: item.excerptHash,
+              rank: item.rank,
+              authorityTier: item.authorityTier,
+              translationStatus: item.translationStatus,
+            },
+            position,
+          })),
+        );
+      }
+      await tx
+        .update(aiProcessingRuns)
+        .set({
+          attemptCount: result.attemptCount,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          cachedInputTokens: result.usage.cachedInputTokens,
+          claimValidation: { version: 1, status: "validated", claims },
+          validatedOutput: result.output,
+        })
+        .where(
+          and(
+            eq(aiProcessingRuns.id, run.id),
+            eq(aiProcessingRuns.status, "processing"),
+          ),
+        );
     });
-    await db
-      .update(aiProcessingRuns)
-      .set({
-        validatedOutput: parsed,
-      })
-      .where(eq(aiProcessingRuns.id, run.id));
     return {
       runId: run.id,
-      output: parsed,
+      output: result.output,
       outputLocale: input.outputLocale,
       context,
       claims,
+      pinnedSnapshots: prepared.pinnedSnapshots,
     };
   } catch (error) {
     await db
       .update(aiProcessingRuns)
       .set({
         status: "failed",
-        errorCode:
+        failureCode:
           error instanceof ApiError
             ? error.code
             : error instanceof Error && error.name === "AbortError"
               ? "GENERATION_CANCELLED"
               : "GROUNDING_FAILED",
-        errorMessage: safeGroundingFailureMessage(error),
-        ...(error instanceof LanguagePolicyError
-          ? {
-              attemptCount: error.attemptCount,
-              languageValidation: error.languageValidation,
-              inputTokens: error.usage.inputTokens,
-              outputTokens: error.usage.outputTokens,
-              cachedInputTokens: error.usage.cachedInputTokens,
-            }
-          : {}),
+        failureMessage: safeGroundingFailureMessage(error),
         completedAt: new Date(),
       })
       .where(eq(aiProcessingRuns.id, run.id));
@@ -467,26 +415,107 @@ export async function runGroundedOperation<T>(
   }
 }
 
-function initialLanguageValidation(
-  outputLocale: "de" | "en",
-  detector: LanguageDetector,
-): LanguageValidationDiagnostic {
+function questionnaireContext(
+  queryUnits: QueryUnit[],
+  assertions: Array<{
+    answerId: string;
+    queryUnitId: string;
+    excerpt: string;
+  }> = [],
+): GroundingContextItem[] {
+  const queryById = new Map(queryUnits.map((unit) => [unit.id, unit.query]));
+  return assertions.map((assertion, index) => {
+    const query = queryById.get(assertion.queryUnitId);
+    if (!query) {
+      throw new ApiError(
+        400,
+        "Questionnaire assertion query unit is invalid",
+        undefined,
+        "GROUNDING_ASSERTION_INVALID",
+      );
+    }
+    return {
+      channel: "questionnaire_assertion",
+      citationId: `Q:${assertion.queryUnitId}:${assertion.answerId}`,
+      queryUnitId: assertion.queryUnitId,
+      sourceId: assertion.answerId,
+      excerpt: assertion.excerpt,
+      excerptHash: createHash("sha256").update(assertion.excerpt).digest("hex"),
+      rank: index + 1,
+      score: 1,
+      metadata: {
+        queryHash: createHash("sha256").update(query).digest("hex"),
+        selectionRole: "questionnaire_assertion",
+      },
+    };
+  });
+}
+
+function fromPersistedContext(
+  row: typeof aiProcessingRunContext.$inferSelect,
+): GroundingContextItem {
+  const metadata = isRecord(row.metadata) ? row.metadata : {};
+  const channel =
+    row.channel === "legal_authority" ? "legal" : "organization_document";
+  const sourceId = row.legalSourceChunkId ?? row.documentChunkId;
+  if (!sourceId) throw new Error("Persisted grounding context has no source");
   return {
-    version: 1,
-    detector: {
-      implementation: detector.implementation,
-      version: detector.version,
-    },
-    expectedLocale: outputLocale,
-    attempts: [],
+    channel,
+    citationId:
+      typeof metadata.citationId === "string"
+        ? metadata.citationId
+        : `${channel === "legal" ? "LEGAL" : "DOC"}:${row.id}`,
+    queryUnitId:
+      typeof metadata.queryUnitId === "string" ? metadata.queryUnitId : "",
+    sourceId,
+    excerpt: row.exactText,
+    excerptHash:
+      typeof metadata.excerptHash === "string"
+        ? metadata.excerptHash
+        : createHash("sha256").update(row.exactText).digest("hex"),
+    rank: typeof metadata.rank === "number" ? metadata.rank : row.position + 1,
+    score: Number(row.fusedScore ?? 0),
+    authorityTier:
+      metadata.authorityTier === "primary_authority" ||
+      metadata.authorityTier === "official_guidance" ||
+      metadata.authorityTier === "curated_secondary"
+        ? metadata.authorityTier
+        : undefined,
+    translationStatus:
+      metadata.translationStatus === "official" ||
+      metadata.translationStatus === "reviewed_internal" ||
+      metadata.translationStatus === "machine_assisted"
+        ? metadata.translationStatus
+        : undefined,
+    metadata,
   };
+}
+
+function snapshotPinsFromManifest(value: unknown): PinnedLegalSnapshot[] {
+  if (!isRecord(value) || !Array.isArray(value.pinnedSnapshots)) return [];
+  return value.pinnedSnapshots.filter(isPinnedSnapshot);
+}
+
+function isPinnedSnapshot(value: unknown): value is PinnedLegalSnapshot {
+  return (
+    isRecord(value) &&
+    typeof value.familyId === "string" &&
+    typeof value.familyCode === "string" &&
+    typeof value.snapshotId === "string" &&
+    typeof value.snapshotHash === "string"
+  );
+}
+
+function numericScore(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value.toFixed(8)
+    : null;
 }
 
 async function runLanguageNeutralProvider<T>(input: {
   provider: GroundedProvider;
   prompt: { system: string; prompt: string };
   schema: z.ZodType<T>;
-  outputLocale: "de" | "en";
   abortSignal?: AbortSignal;
 }) {
   const result = await input.provider.run({
@@ -497,12 +526,6 @@ async function runLanguageNeutralProvider<T>(input: {
   return {
     output: input.schema.parse(result.output),
     attemptCount: 1,
-    languageValidation: {
-      version: 1 as const,
-      detector: { implementation: "not_applicable", version: "1" },
-      expectedLocale: input.outputLocale,
-      attempts: [],
-    },
     usage: result.usage,
   };
 }
@@ -513,8 +536,12 @@ function configuredProviders() {
     try {
       providers[mode] = createAiSdkGroundedProvider(mode);
     } catch {
-      // Missing provider configuration remains unavailable; policy fails closed.
+      // Provider configuration is validated by the selection policy.
     }
   }
   return providers;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

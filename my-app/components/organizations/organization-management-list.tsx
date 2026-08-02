@@ -12,9 +12,15 @@ import {
 import { Loader2, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,22 +50,16 @@ import type {
 } from "@/src/server/organizations/types";
 import { localizeUiError } from "@/lib/i18n/errors";
 
-type SerializedItem = Omit<OrganizationListItem, "archivedAt"> & {
-  archivedAt: string | null;
-};
-type SerializedMember = Omit<OrganizationMemberDto, "createdAt" | "updatedAt"> & {
-  createdAt: string;
-  updatedAt: string;
-};
-type SerializedInvitation = Omit<
-  OrganizationInvitationDto,
-  "expiresAt" | "acceptedAt" | "createdAt" | "updatedAt"
-> & {
-  expiresAt: string;
-  acceptedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+type SerializeDates<T> = T extends Date
+  ? string
+  : T extends Array<infer U>
+    ? SerializeDates<U>[]
+    : T extends object
+      ? { [K in keyof T]: SerializeDates<T[K]> }
+      : T;
+type SerializedItem = SerializeDates<OrganizationListItem>;
+type SerializedMember = SerializeDates<OrganizationMemberDto>;
+type SerializedInvitation = SerializeDates<OrganizationInvitationDto>;
 type Stream = {
   items: SerializedItem[];
   cursor?: string;
@@ -178,8 +178,8 @@ export function OrganizationManagementList({
     const restoring = Boolean(confirming.archivedAt);
     try {
       const result = restoring
-        ? await organizationsClient.restore(confirming.id, confirming.version)
-        : await organizationsClient.archive(confirming.id, confirming.version);
+        ? await organizationsClient.restore(confirming.id)
+        : await organizationsClient.archive(confirming.id);
       const updated = {
         ...confirming,
         ...result.data.organization,
@@ -381,7 +381,7 @@ function OrganizationRow({
   onManageMembers: (item: SerializedItem) => void;
   onArchive: (item: SerializedItem) => void;
 }) {
-  const country = localizedCountries(locale).find((candidate) => candidate.code === item.country)?.name ?? item.country;
+  const country = localizedCountries(locale).find((candidate) => candidate.code === item.countryCode)?.name ?? item.countryCode;
   const contents = (
     <>
       <OrganizationAvatar id={item.id} name={item.name} className="size-10 rounded-full text-sm leading-5" />
@@ -612,8 +612,8 @@ function OrganizationEditDialog({
   const [form, setForm] = useState({
     name: "",
     legalName: "",
-    country: "DE",
-    openAiDisclosureApproved: false,
+    countryCode: "DE",
+    aiProviderMode: "company_hosted" as SerializedItem["aiProviderMode"],
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -646,10 +646,8 @@ function OrganizationEditDialog({
       setForm({
         name: data.settings.organization.name,
         legalName: data.settings.organization.legalName ?? "",
-        country: data.settings.organization.country,
-        openAiDisclosureApproved:
-          data.settings.policy.externalDisclosureAllowed &&
-          data.settings.policy.allowedProviderModes.includes("openai"),
+        countryCode: data.settings.organization.countryCode,
+        aiProviderMode: data.settings.organization.aiProviderMode,
       });
     }).catch((caught) => {
       if (!controller.signal.aborted) setError(localizeUiError(caught, { fallback: labels.loadError }));
@@ -664,17 +662,19 @@ function OrganizationEditDialog({
     setError(null);
     try {
       const result = await organizationsClient.updateSettings(item.id, {
-        organization: { name: form.name, legalName: form.legalName || null, country: form.country },
-        policy: {
-          openAiDisclosureApproved: form.openAiDisclosureApproved,
+        organization: {
+          name: form.name,
+          legalName: form.legalName || null,
+          countryCode: form.countryCode,
+          aiProviderMode: form.aiProviderMode,
         },
-      }, settings.concurrencyToken);
+      });
       onSaved({
         ...item,
         name: result.data.settings.organization.name,
         legalName: result.data.settings.organization.legalName,
-        country: result.data.settings.organization.country,
-        version: result.data.settings.organization.version,
+        countryCode: result.data.settings.organization.countryCode,
+        aiProviderMode: result.data.settings.organization.aiProviderMode,
       });
     } catch (caught) {
       setError(localizeUiError(caught, { fallback: labels.mutationError }));
@@ -817,31 +817,38 @@ function OrganizationEditDialog({
                 >
                   <CountrySelector
                     id="edit-country"
-                    value={form.country}
-                    onChange={(country) => setForm({ ...form, country })}
+                    value={form.countryCode}
+                    onChange={(countryCode) => setForm({ ...form, countryCode })}
                     locale={locale}
                     openDownward
                   />
                 </div>
               </div>
               <div className={fieldBlockClassName}>
-                <div className="flex min-h-5 items-center gap-3">
-                  <Checkbox
-                    id="edit-openai-policy"
-                    checked={form.openAiDisclosureApproved}
-                    disabled={saving}
-                    onCheckedChange={(value) => setForm({
-                      ...form,
-                      openAiDisclosureApproved: value === true,
-                    })}
-                  />
-                  <Label htmlFor="edit-openai-policy" className={fieldLabelClassName}>
-                    {labels.aiPolicy}
-                  </Label>
-                </div>
+                <Label htmlFor="edit-ai-provider" className={fieldLabelClassName}>{labels.aiPolicy}</Label>
                 <p className="mt-[5px] max-w-2xl text-xs leading-5 font-normal text-foreground-subtle">
                   {labels.aiPolicyDescription}
                 </p>
+                <Select
+                  value={form.aiProviderMode}
+                  disabled={saving}
+                  onValueChange={(aiProviderMode) => setForm({
+                    ...form,
+                    aiProviderMode: aiProviderMode as SerializedItem["aiProviderMode"],
+                  })}
+                >
+                  <SelectTrigger
+                    id="edit-ai-provider"
+                    className="mt-3 h-12 w-full rounded-lg border-[1.5px] border-border-strong !bg-foreground/[0.06] px-5 font-['Space_Grotesk'] text-base font-normal text-foreground shadow-sm focus-visible:border-primary focus-visible:ring-primary/40 sm:w-72"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["company_hosted", "openai", "self_hosted"] as const).map((mode) => (
+                      <SelectItem key={mode} value={mode}>{labels.providerModes[mode]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

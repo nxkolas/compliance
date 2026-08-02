@@ -3,12 +3,14 @@ import type { GapLabels, GapWorkflow } from "./types";
 
 export function GapInputsUsed({
   workflow,
+  snapshot: providedSnapshot,
   labels,
 }: {
   workflow: GapWorkflow;
+  snapshot?: GapWorkflow["generatedInputs"];
   labels: GapLabels;
 }) {
-  const snapshot = workflow.generatedInputs;
+  const snapshot = providedSnapshot ?? workflow.generatedInputs;
   if (!snapshot) {
     return (
       <p className="text-sm text-muted-foreground">

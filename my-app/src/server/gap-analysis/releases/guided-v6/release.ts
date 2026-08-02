@@ -382,6 +382,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     1,
     "NIS2-GOV-01",
+    "Building2",
     "Responsibility and organization",
     "Verantwortung und Organisation",
     "The organization assigns and documents information-security responsibility, and management approves, oversees, and receives appropriate training for cybersecurity risk-management measures.",
@@ -392,6 +393,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     2,
     "NIS2-RISK-02",
+    "ShieldAlert",
     "Risks and overview",
     "Risiken und Überblick",
     "The organization maintains an up-to-date, documented risk analysis and an overview of critical processes, systems, data, services, accounts, and dependencies.",
@@ -402,6 +404,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     3,
     "NIS2-IAM-03",
+    "KeyRound",
     "Access and personnel",
     "Zugriffe und Personal",
     "Access rights follow least privilege throughout personnel changes, with strong authentication for sensitive, administrative, and remote access.",
@@ -412,6 +415,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     4,
     "NIS2-IR-04",
+    "Siren",
     "Security incidents and reporting",
     "Sicherheitsvorfälle und Meldung",
     "The organization can prepare for, detect, document, contain, recover from, and report significant security incidents within applicable deadlines.",
@@ -422,6 +426,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     5,
     "NIS2-BC-05",
+    "DatabaseBackup",
     "Backups and emergency preparedness",
     "Backups und Notfallvorsorge",
     "Important data and systems are backed up securely and restorably, supported by tested continuity and recovery objectives and responsibilities.",
@@ -432,6 +437,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     6,
     "NIS2-SC-06",
+    "Link",
     "Supply chain",
     "Lieferkette",
     "The organization identifies and assesses important suppliers, sets contractual security expectations, and prepares for provider incidents, outages, and exit.",
@@ -442,6 +448,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     7,
     "NIS2-VM-07",
+    "Bug",
     "Secure systems and vulnerabilities",
     "Sichere Systeme und Schwachstellen",
     "Security is integrated into acquisition, development, and change, with controlled patch and vulnerability management throughout system lifecycles.",
@@ -452,6 +459,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     8,
     "NIS2-ASSURE-08",
+    "ClipboardCheck",
     "Effectiveness review",
     "Wirksamkeitsprüfung",
     "The organization reviews whether security measures work and tracks identified deficiencies to accountable, evidenced, and timely remediation.",
@@ -462,6 +470,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     9,
     "NIS2-AWARE-09",
+    "GraduationCap",
     "Training and cyber hygiene",
     "Schulung und Cyberhygiene",
     "Personnel receive recurring, role-appropriate awareness training and follow accessible, binding cyber-hygiene rules.",
@@ -472,6 +481,7 @@ const requirements: GapRequirementDefinition[] = [
   category(
     10,
     "NIS2-PROTECT-10",
+    "LockKeyhole",
     "Encryption, communication, and physical protection",
     "Verschlüsselung, Kommunikation und physischer Schutz",
     "The organization applies appropriate encryption, resilient secure communications, and physical and environmental protection to important systems and data.",
@@ -556,6 +566,7 @@ function q(
 function category(
   position: number,
   code: string,
+  icon: GapRequirementDefinition["icon"],
   en: string,
   de: string,
   requirementTextEn: string,
@@ -566,6 +577,7 @@ function category(
   return {
     code,
     versionLabel: "guided-v6",
+    icon,
     position,
     criticality,
     title: { de, en },

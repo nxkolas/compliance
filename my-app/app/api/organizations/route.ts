@@ -29,5 +29,5 @@ export const POST = apiRoute(async ({ request }) => {
       return organization;
     },
   });
-  return { status: 201, data: { organization: result.value, reused: result.reused }, meta: { version: result.value.version } };
+  return { status: 201, data: { organization: result.value, reused: result.reused } };
 });

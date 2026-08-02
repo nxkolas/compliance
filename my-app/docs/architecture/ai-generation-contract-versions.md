@@ -1,63 +1,46 @@
-# AI generation contract versions
+# Current AI generation contracts
 
-Gap and Action Plan prompt text, response schema, normalization, and objective
-validation are code-defined immutable release inputs. Published releases keep
-their original hashes and continue to load historically.
+Status: current as of 2 August 2026.
 
-| Release          | Gap contract | Action contract | Qualification state                            |
-| ---------------- | ------------ | --------------- | ---------------------------------------------- |
-| `reliability-v1` | v8           | v2              | Historical; previously active                  |
-| `reliability-v2` | v9           | v3              | Inactive; qualification failed                 |
-| `reliability-v3` | v10          | v3              | Inactive; qualification failed                 |
-| `reliability-v4` | v10          | v4              | Inactive; offline content qualification failed |
-| `reliability-v5` | v11          | v4              | Inactive; offline content qualification failed |
-| `reliability-v6` | v11          | v5              | Inactive; offline content qualification failed |
-| `reliability-v7` | v11          | v6              | Historical; previously active                  |
-| `reliability-v8` | v12          | v6              | Active; contradiction-only review policy       |
+The deployed application has one executable Gap contract and one executable
+Action Plan contract. They are code-owned and exposed only through:
 
-Gap v9 removed lexical Gap-kind inference from live validation. Gap v10 is its
-immutable successor and adds targeted URL and raw-identifier issue codes and
-repair guidance. Action Plan v3 removed lexical style and semantic gates.
-Action Plan v4 is its immutable successor and explicitly prevents URLs, UUIDs,
-database keys, and citation IDs in customer-visible prose and explains the
-objective `action_raw_identifier` repair code.
+- `src/server/gap-analysis/current-contract.ts`; and
+- `src/server/action-plans/current-contract.ts`.
 
-Gap v11 is the immutable prompt-only successor to v10. It retains v10's
-objective validator and explicitly requires each Gap statement to be one
-standalone sentence of at most 20 words, state the control fact directly, and
-omit law, directive, article, section, obligation, citation, and source-framing
-prose. These remain offline writing constraints rather than live lexical
-rejection gates.
+The current behavior is the behavior formerly named Gap v12 and Action Plan
+v6. Those labels describe compatibility history; they are not runtime release
+selectors. No database release lookup, publication, activation, or inheritance
+chooses an executable definition.
 
-Gap v12 is the immutable successor to v11. It explicitly excludes missing,
-insufficient, irrelevant, or uncited Organization Evidence from contradiction
-review. Its normalizer clears `requiresReview` and `reviewNotice` whenever the
-structured contradiction list is empty. Actual contradictions retain their
-warning, but they no longer block Action Plan generation.
+## Provenance
 
-Action Plan v5 is the immutable prompt-only successor to v4. It retains v4's
-objective validator and explicitly limits titles to 12 words, results to one
-or two sentences and 40 words, and evidence names to 12 words. It also requires
-operational-only prose without named laws, directives, statutes, articles,
-sections, obligations, regulators, or citations. These remain offline writing
-constraints rather than runtime regex gates.
+A definition hash is the canonical, key-sorted fingerprint of the code-owned
+inputs for its product domain. Gap and Action Plan use separate hashes so an
+unrelated definition change does not stale work. Drafts, jobs, generated
+outputs, and AI runs retain the applicable hashes. Unfinished work with a
+different deployed definition is rejected or restarted; completed normalized
+snapshots remain readable and are reported as outdated where appropriate.
 
-Action Plan v6 is the immutable prompt-only successor to v5. A bilingual
-uncertainty qualification found that v5 could place a conditional lead-in in
-the model-authored verification result before the server added its own
-localized condition. V6 makes the two field responsibilities explicit:
-`verificationResult` contains only verification work and its documented
-outcome, while `conditionalRemediation` contains only remediation work. It
-also budgets those fields at 18 and 16 words respectively. The objective
-runtime validator remains unchanged.
+An AI run's prompt hash is computed from the exact normalized system and user
+messages plus response-schema metadata sent to the provider. It is not a
+release ID. Provider, model, usage, admitted context, validated output, build
+hash, and domain definition hash complete the run provenance.
 
-The server continues to own Gap kind, Action mode, category identity, Gap
-coverage, priority, ordering, mandatory citations, locale, and persistence
-metadata. Runtime validation remains hard for structured correctness,
-grounding, authorization, citations, locale, URLs, and internal identifiers.
-Concision, preferred sentence shape, imperative titles, legal exposition, and
-verification-first language are prompt and offline qualification dimensions,
-not live lexical rejection gates.
+## Server-owned semantics
 
-The compatibility tests snapshot the active v8/v2 hashes. Do not route old
-artifacts through a successor validator or repin existing assessments.
+The server owns category identity, Gap kinds, triggering and satisfied
+questions, statement cardinality, Action mode, Gap coverage, priority,
+ordering, mandatory citations, locale, and persistence metadata. Provider
+output supplies only the bounded prose and optional organization citations
+allowed by the strict current schemas.
+
+Material Gap contradictions must return the exact unique allowlisted
+organization citation IDs involved. Missing, weak, irrelevant, or uncited
+optional evidence is not a contradiction. Action Plan generation is a distinct
+grounded provider operation with complete category-scoped many-to-many Gap
+coverage.
+
+Historical numeric contract modules remain only as compatibility fixtures
+while their tests are retained. Runtime code must import the current-contract
+boundaries and must never select a numeric contract dynamically.

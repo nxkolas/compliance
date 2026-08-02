@@ -122,7 +122,12 @@ describe("gap result presentation", () => {
     position: number,
   ) => ({
     finding: { status },
-    requirement: { stableRequirementId: id, title: id, position },
+    requirement: {
+      stableRequirementId: id,
+      title: id,
+      position,
+      icon: "KeyRound",
+    },
   });
 
   it("counts and orders gap statuses with catalogue order inside a group", () => {

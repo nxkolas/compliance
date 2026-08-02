@@ -55,6 +55,10 @@ export async function coordinateCategoryGeneration<
   transientRetries?: number;
   backoffMs?: (retryNumber: number) => number;
   onDiagnostic?(diagnostic: GenerationDiagnostic): Promise<void> | void;
+  onAcceptedCategory?(
+    output: TOutput,
+    task: CategoryTask<TInput>,
+  ): Promise<void> | void;
 }): Promise<CategoryCoordinatorResult<TOutput>> {
   const concurrency = Math.max(1, Math.min(10, input.concurrency ?? 3));
   const diagnostics: GenerationDiagnostic[] = [];
@@ -116,6 +120,7 @@ export async function coordinateCategoryGeneration<
         if (recovered !== null && recovered !== undefined) {
           results[index] = recovered;
           recoveredCategoryCount += 1;
+          await input.onAcceptedCategory?.(recovered, task);
           await record(
             createGenerationDiagnostic({
               stage: "persistence",
@@ -127,7 +132,9 @@ export async function coordinateCategoryGeneration<
           );
           continue;
         }
-        results[index] = await executeTask(task, record);
+        const output = await executeTask(task, record);
+        results[index] = output;
+        await input.onAcceptedCategory?.(output, task);
       } catch (error) {
         const failure = classifyGenerationFailure(error);
         if (
@@ -258,6 +265,12 @@ export async function coordinateCategoryGeneration<
           signal: workerSignal,
           providerAttempt,
         });
+        emitGenerationMetric({
+          name: "provider_attempt_ms",
+          value: Date.now() - providerStartedAt,
+          categoryCode: options.task.categoryCode,
+          phase: options.phase,
+        });
         await record(
           createGenerationDiagnostic({
             stage: "provider",
@@ -267,7 +280,14 @@ export async function coordinateCategoryGeneration<
             durationMs: Date.now() - providerStartedAt,
           }),
         );
+        const validationStartedAt = Date.now();
         const result = await input.validate(candidate, options.task);
+        emitGenerationMetric({
+          name: "validation_ms",
+          value: Date.now() - validationStartedAt,
+          categoryCode: options.task.categoryCode,
+          phase: options.phase,
+        });
         if (!result.valid) issues = result.issues;
         return { candidate, result };
       } catch (error) {

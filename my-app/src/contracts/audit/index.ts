@@ -12,4 +12,4 @@ export const auditQuerySchema = z.object({
   message: "dateFrom must be before dateTo",
   path: ["dateTo"],
 });
-export const auditEventSchema = z.object({ id: z.uuid(), organizationId: z.uuid(), actorUserId: z.uuid().nullable(), eventType: z.string(), entityType: z.string(), entityId: z.uuid(), metadata: z.unknown(), createdAt: z.iso.datetime() });
+export const auditEventSchema = z.object({ id: z.uuid(), organizationId: z.uuid(), actorUserId: z.uuid().nullable(), eventType: z.string(), entityType: z.string(), entityId: z.string(), metadata: z.unknown(), occurredAt: z.iso.datetime() });

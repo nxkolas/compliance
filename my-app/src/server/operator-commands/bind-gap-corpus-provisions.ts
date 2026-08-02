@@ -1,23 +1,13 @@
-import "dotenv/config";
+import { and, eq } from "drizzle-orm";
+import { closeDbConnection, db } from "@/src/db";
 import {
-  activeLegalCorpusReleases,
   legalCorpusFamilies,
-  legalCorpusReleaseMembers,
-  legalInstrumentVersions,
-  legalProvisions,
-  legalSourceChunkProvisions,
   legalSourceChunks,
   legalSourceProcessingGenerations,
-  legalSourceRenditions,
   legalSources,
   legalSourceVersions,
 } from "@/src/db/schema";
-import { closeDatabaseConnection } from "@/src/server/database-lifecycle";
-import { db } from "@/src/db";
-import { and, eq } from "drizzle-orm";
-import * as z from "zod";
-
-const inputSchema = z.object({ actorUserId: z.uuid() });
+import { bindLegalProvisions } from "./provision-legal-corpus";
 
 type BindingDefinition = {
   familyCode: "nis2-eu-primary" | "nis2-de-primary";
@@ -136,154 +126,51 @@ const bindings: BindingDefinition[] = [
 ];
 
 async function main() {
-  const { actorUserId } = inputSchema.parse({
-    actorUserId: process.argv[2],
-  });
-  const rows = await db
-    .select({
-      familyCode: legalCorpusFamilies.code,
-      sourceId: legalSources.id,
-      chunkId: legalSourceChunks.id,
-      chunkPosition: legalSourceChunks.position,
-      text: legalSourceChunks.text,
-    })
-    .from(activeLegalCorpusReleases)
+  const operatorIdentity = process.env.CORPUS_OPERATOR_IDENTITY?.trim();
+  if (!operatorIdentity) throw new Error("CORPUS_OPERATOR_IDENTITY is required");
+
+  const rows = await db.select({
+    familyCode: legalCorpusFamilies.code,
+    chunkId: legalSourceChunks.id,
+    chunkPosition: legalSourceChunks.position,
+    text: legalSourceChunks.text,
+  }).from(legalSourceChunks)
     .innerJoin(
-      legalCorpusFamilies,
-      eq(
-        legalCorpusFamilies.id,
-        activeLegalCorpusReleases.familyId,
-      ),
-    )
-    .innerJoin(
-      legalCorpusReleaseMembers,
-      eq(
-        legalCorpusReleaseMembers.releaseId,
-        activeLegalCorpusReleases.releaseId,
+      legalSourceProcessingGenerations,
+      and(
+        eq(legalSourceChunks.processingGenerationId, legalSourceProcessingGenerations.id),
+        eq(legalSourceProcessingGenerations.status, "succeeded"),
       ),
     )
     .innerJoin(
       legalSourceVersions,
-      eq(
-        legalSourceVersions.id,
-        legalCorpusReleaseMembers.sourceVersionId,
-      ),
+      eq(legalSourceProcessingGenerations.sourceVersionId, legalSourceVersions.id),
     )
-    .innerJoin(
-      legalSources,
-      eq(legalSources.id, legalSourceVersions.sourceId),
-    )
-    .innerJoin(
-      legalSourceRenditions,
-      eq(
-        legalSourceRenditions.id,
-        legalCorpusReleaseMembers.renditionId,
-      ),
-    )
-    .innerJoin(
-      legalSourceProcessingGenerations,
-      and(
-        eq(
-          legalSourceProcessingGenerations.id,
-          legalCorpusReleaseMembers.processingGenerationId,
-        ),
-        eq(legalSourceProcessingGenerations.state, "reviewed"),
-      ),
-    )
-    .innerJoin(
-      legalSourceChunks,
-      eq(
-        legalSourceChunks.generationId,
-        legalSourceProcessingGenerations.id,
-      ),
-    );
+    .innerJoin(legalSources, eq(legalSourceVersions.sourceId, legalSources.id))
+    .innerJoin(legalCorpusFamilies, eq(legalSources.familyId, legalCorpusFamilies.id));
 
-  await db.transaction(async (tx) => {
-    for (const definition of bindings) {
-      const matches = rows
-        .filter(
-          (row) =>
-            row.familyCode === definition.familyCode &&
-            definition.fragments.every((fragment) =>
-              row.text.includes(fragment),
-            ),
-        )
-        .sort(
-          (left, right) =>
-            left.chunkPosition - right.chunkPosition ||
-            left.chunkId.localeCompare(right.chunkId),
-        );
-      if (matches.length === 0) {
-        throw new Error(
-          `${definition.instrumentCode}.${definition.provisionCode} matched no reviewed chunk`,
-        );
-      }
-      const instrument =
-        await tx.query.legalInstruments.findFirst({
-          columns: { id: true },
-          where: {
-            RAW: (table, operators) =>
-              eq(table.code, definition.instrumentCode) ??
-              operators.sql`true`,
-          },
-        });
-      if (!instrument) {
-        throw new Error(
-          `Legal instrument ${definition.instrumentCode} is missing`,
-        );
-      }
-      const provision = await tx
-        .select({ id: legalProvisions.id })
-        .from(legalProvisions)
-        .innerJoin(
-          legalInstrumentVersions,
-          eq(
-            legalInstrumentVersions.id,
-            legalProvisions.legalInstrumentVersionId,
-          ),
-        )
-        .where(
-          and(
-            eq(
-              legalInstrumentVersions.legalInstrumentId,
-              instrument.id,
-            ),
-            eq(
-              legalProvisions.provisionCode,
-              definition.provisionCode,
-            ),
-          ),
-        )
-        .limit(1);
-      if (!provision[0]) {
-        throw new Error(
-          `Legal provision ${definition.instrumentCode}.${definition.provisionCode} is missing`,
-        );
-      }
-      const match = matches[0]!;
-      await tx
-        .update(legalSources)
-        .set({ legalInstrumentId: instrument.id })
-        .where(eq(legalSources.id, match.sourceId));
-      await tx
-        .delete(legalSourceChunkProvisions)
-        .where(
-          eq(
-            legalSourceChunkProvisions.legalProvisionId,
-            provision[0].id,
-          ),
-        );
-      await tx
-        .insert(legalSourceChunkProvisions)
-        .values({
-          chunkId: match.chunkId,
-          legalProvisionId: provision[0].id,
-          bindingMethod: "reviewed_exact_anchor_v1",
-          boundBy: actorUserId,
-        })
-        .onConflictDoNothing();
+  const resolved = bindings.map((definition) => {
+    const matches = rows
+      .filter((row) =>
+        row.familyCode === definition.familyCode &&
+        definition.fragments.every((fragment) => row.text.includes(fragment)))
+      .sort((left, right) =>
+        left.chunkPosition - right.chunkPosition ||
+        left.chunkId.localeCompare(right.chunkId));
+    if (!matches[0]) {
+      throw new Error(
+        `${definition.instrumentCode}.${definition.provisionCode} matched no processed chunk`,
+      );
     }
+    return {
+      stableProvisionKey: `${definition.instrumentCode}.${definition.provisionCode}`,
+      chunkId: matches[0].chunkId,
+      position: 0,
+    };
   });
+
+  const result = await bindLegalProvisions({ operatorIdentity, bindings: resolved });
+  console.log(`Bound ${result.count} legal provisions using the recovered exact anchors.`);
 }
 
 function binding(
@@ -292,16 +179,12 @@ function binding(
   provisionCode: string,
   fragments: string[],
 ): BindingDefinition {
-  return {
-    familyCode,
-    instrumentCode,
-    provisionCode,
-    fragments,
-  };
+  return { familyCode, instrumentCode, provisionCode, fragments };
 }
 
 main()
-  .catch(() => {
+  .catch((error) => {
+    console.error(error);
     process.exitCode = 1;
   })
-  .finally(() => closeDatabaseConnection());
+  .finally(closeDbConnection);

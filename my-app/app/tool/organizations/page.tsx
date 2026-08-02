@@ -11,10 +11,11 @@ export default async function OrganizationsPage({
 }) {
   await connection();
   const user = await requireAuth();
-  const [dictionary, locale, active] = await Promise.all([
+  const [dictionary, locale, active, archived] = await Promise.all([
     getDictionary(),
     getLocale(),
     listOrganizationsForUserPage({ userId: user.id, status: "active", limit: 25 }),
+    listOrganizationsForUserPage({ userId: user.id, status: "archived", limit: 25 }),
   ]);
   const notice = (await searchParams)?.notice;
 
@@ -38,7 +39,7 @@ export default async function OrganizationsPage({
       <div className="mt-16">
         <OrganizationManagementList
           initialActive={{ items: serialize(active.organizations), cursor: active.nextCursor }}
-          initialArchived={{ items: [], cursor: undefined }}
+          initialArchived={{ items: serialize(archived.organizations), cursor: archived.nextCursor }}
           locale={locale}
           labels={dictionary.organizationManagement}
           teamLabels={dictionary.teamManagement}

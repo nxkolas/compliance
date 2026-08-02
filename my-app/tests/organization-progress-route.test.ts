@@ -22,22 +22,21 @@ import { GET } from "@/app/api/organizations/[organizationId]/progress/route";
 const userId = "00000000-0000-4000-8000-000000000001";
 const organizationId = "00000000-0000-4000-8000-000000000002";
 const progress = {
-  currentStep: "gap_analysis" as const,
   completedCount: 2,
   totalCount: 6 as const,
   steps: [
-    { key: "welcome" as const, status: "completed" as const },
+    { key: "welcome" as const, completed: true },
     {
       key: "applicability_check" as const,
-      status: "completed" as const,
+      completed: true,
     },
-    { key: "gap_analysis" as const, status: "current" as const },
+    { key: "gap_analysis" as const, completed: false },
     {
       key: "documents_uploaded" as const,
-      status: "upcoming" as const,
+      completed: false,
     },
-    { key: "action_plan" as const, status: "upcoming" as const },
-    { key: "next_steps" as const, status: "upcoming" as const },
+    { key: "action_plan" as const, completed: false },
+    { key: "next_steps" as const, completed: false },
   ],
 };
 

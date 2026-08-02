@@ -1,176 +1,43 @@
-# Supabase server-only data, evidence infrastructure, and guest-retention runbook
+# Supabase server-only security runbook
 
-This runbook applies the Supabase-specific part of the immutable NIS2 release
-cutover. Ordinary tables, constraints, indexes, and relations remain owned by
-Drizzle, except for the explicitly audited integrity
-functions/triggers and the existing Supabase infrastructure SQL.
+Status: current simplified schema as of 2 August 2026.
 
-Use the current [Drizzle schema-change workflow](drizzle-workflow.md) for
-ordinary table, constraint, index, and RLS changes.
+Every public application table is declared with RLS enabled by Drizzle and has
+no browser policy. Application access uses server-only credentials after
+capability and organization-scope checks. Do not disable RLS or grant blanket
+browser access.
 
-## Preconditions
+## Bootstrap order
 
-1. Confirm the direct server connection role:
+1. `npm run db:apply-operator-sql -- pre-push` creates `extensions.vector`.
+2. `npm run db:push` creates the ordinary schema and generated search vectors.
+3. `npm run db:apply-operator-sql -- post-push` installs only the organization
+   and platform append-only audit triggers.
+4. `npm run storage:bootstrap` creates/verifies private legal-corpus, document,
+   and report buckets and policies.
 
-   ```sql
-   select current_user,
-          rolname,
-          rolsuper,
-          rolbypassrls
-   from pg_roles
-   where rolname = current_user;
-   ```
-
-2. `src/db/schema.ts` enables RLS without browser policies on every Drizzle
-   table. It deliberately does not use `FORCE ROW LEVEL SECURITY`; do not add
-   it unless the direct server role has been proven safe.
-3. On a new database, `004_gap_evidence_infrastructure.sql` must run once
-   before the first `db:push` so the `extensions.vector` type exists. Its
-   table-dependent pass installs the search trigger, private storage bucket,
-   and append-only audit trigger. The HNSW indexes are owned by Drizzle.
-
-## Execution order
-
-Run the schema and SQL Editor files in this order:
-
-1. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql`. Before the
-   Drizzle tables exist, it creates the vector extension and reports that its
-   table-dependent work is deferred.
-2. Follow the preview, review, apply, RLS verification, and zero-drift steps in
-   the [Drizzle workflow](drizzle-workflow.md).
-3. Run `supabase/sql-editor/004_gap_evidence_infrastructure.sql` again.
-4. Run `supabase/sql-editor/003_guest_retention_cleanup.sql`.
-5. Run the API/corpus integrity and append-only SQL files, then
-   `scripts/sql/database-integrity-triggers.sql`.
-
-All SQL files above are idempotent. RLS is not installed or modified by an
-operator SQL file; Drizzle is its only source of truth.
-
-The database-remediation pre-push and identity-FK sequence belongs only to the
-historical coordinated cutover record. It is not executable through the
-approved operator-SQL runner and is not part of the normal `db:push` workflow.
-
-After the SQL files succeed, publish and activate the repository release separately:
-
-```powershell
-npm.cmd run db:publish:compliance -- --release nis2/2026-v2
-npm.cmd run db:activate:compliance -- --release nis2/2026-v2
-```
-
-Publishing never changes the active pointer.
-
-Publish and activate the separate demo Gap-Analyse release when that workflow
-is required:
-
-```powershell
-npm.cmd run db:publish:gap -- --release nis2-gap/guided-v6
-npm.cmd run db:activate:gap -- --release nis2-gap/guided-v6
-npm.cmd run db:smoke:gap
-```
+No SQL Editor migration chain, guest cleanup function, search-vector trigger,
+release publisher, or schema-discovery runner is part of this workflow.
 
 ## Verification
 
-Verify RLS and the absence of browser policies:
-
-```sql
-select c.relname, c.relrowsecurity, c.relforcerowsecurity
-from pg_class c
-join pg_namespace n on n.oid = c.relnamespace
-where n.nspname = 'public'
-  and c.relkind = 'r'
-order by c.relname;
-
-select schemaname, tablename, policyname, roles, cmd
-from pg_policies
-where schemaname = 'public'
-order by tablename, policyname;
-```
-
-When permitted, simulate the browser roles. With Supabase's default table
-privileges, both selects must return no rows because no permissive policy
-exists. A permission error is also safe.
-
-```sql
-begin;
-set local role anon;
-select * from public.compliance_check_releases limit 1;
-rollback;
-
-begin;
-set local role authenticated;
-select * from public.organizations limit 1;
-rollback;
-```
-
-Then smoke-test through server APIs only: login, organization access, authenticated questionnaire load/submission/result, guest load/submission/result, guest claim, and organization-fact reuse.
-
-Run the automated verifiers:
-
 ```powershell
-npm.cmd run db:verify:server-only
-npm.cmd run db:verify:integrity
-npm.cmd run storage:verify
+npm run db:verify:server-only
+npm run db:verify:integrity
+npm run storage:verify
 ```
 
-The integrity verifier exercises both valid and deliberately invalid
-transactions. It proves composite owner/identity foreign keys, typed-value
-checks, metadata-only Gap JSON, and the deferred trigger that requires exactly
-one normalized finding per applicable requirement.
+The first command requires the exact Drizzle table inventory, RLS on every
+table, zero browser policies, and both audit triggers. The integrity command
+checks current constraints/indexes, both stored generated search expressions,
+the vector extension schema, exactly the two non-internal public triggers, and
+persisted current-pointer/job/Action Plan invariants.
 
-For the organization-only evidence workflow, also verify:
+When separately authorized, a direct `anon` or `authenticated` table query
+should return no rows or a permission error. Server API smoke must cover login,
+organization capability boundaries, questionnaire submission, grounded Gap and
+Action Plan work, report download, and private document access.
 
-- `organization-evidence` exists and remains private;
-- members can upload a supported document and a new immutable version through
-  the server API;
-- direct browser-role reads of documents, reassessment drafts, findings,
-  action plans, and audit events fail;
-- preparing a reassessment does not call AI;
-- generation pins the selected immutable inputs; and
-- plan creation permanently locks the generated Gap Analysis.
-
-## Cleanup job
-
-Generation-run reconciliation is part of the application cleanup handler. See
-the [generation reconciliation and orphan repair
-runbook](../runbooks/generation-job-reconciliation.md) before applying any
-historical repair. The repair command is dry-run-first and must not be applied
-when its selected set exceeds the reviewed incident scope.
-
-Inspect the optional cron job:
-
-```sql
-select jobid, jobname, schedule, command, active
-from cron.job
-where jobname = 'compliance-guest-retention-daily';
-```
-
-If `pg_cron` is unavailable, schedule this daily through an external trusted server job:
-
-```sql
-select public.cleanup_expired_guest_applicability_checks();
-```
-
-Before using controlled fixtures, confirm that only `started` rows past 24 hours and `submitted` rows past their 14-day claim expiry are deleted. `claimed`, active, and unexpired rows must remain.
-
-## Rollback
-
-Rollback the cron/function without changing the Drizzle schema:
-
-```sql
-do $block$
-declare job_id bigint;
-begin
-  if exists (select 1 from pg_extension where extname = 'pg_cron') then
-    select jobid into job_id from cron.job where jobname = 'compliance-guest-retention-daily';
-    if job_id is not null then perform cron.unschedule(job_id); end if;
-  end if;
-end
-$block$;
-
-drop function if exists public.cleanup_expired_guest_applicability_checks();
-```
-
-If browser access must be introduced, add an explicitly reviewed Drizzle policy
-for only the affected table and operation. Do not disable RLS or add blanket
-policies. The previous code revision and schema can be restored with a reviewed
-Drizzle push; do not use `db:reset`.
+Browser access changes require an explicit Drizzle policy reviewed for the one
+table and operation. Production rollout or rollback requires its own reviewed
+baseline/restore procedure; never use the disposable recreation command there.
