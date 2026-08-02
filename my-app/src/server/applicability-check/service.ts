@@ -607,7 +607,7 @@ async function persistSubmission(
       outputId: output.id,
       previousRevisionId: output.currentRevisionId,
       assessmentRevisionId: revision.id,
-      sourceApplicabilityRevisionId: revision.id,
+      sourceApplicabilityRevisionId: null,
       definitionHash: currentApplicabilityDefinitionHash,
       buildHash: BUILD_HASH,
       locale: prepared.locale,

@@ -84,9 +84,14 @@ export const ruleEvaluationResultSchema = z.discriminatedUnion("evaluatorKind", 
   v3EvaluationResultSchema,
 ]);
 
+const storedDefinitionReferenceSchema = z.union([
+  z.uuid(),
+  z.string().regex(/^[a-f0-9]{64}$/),
+]);
+
 const storedFieldsSchema = z.object({
-  checkReleaseId: z.uuid(),
-  ruleSetId: z.uuid(),
+  checkReleaseId: storedDefinitionReferenceSchema,
+  ruleSetId: storedDefinitionReferenceSchema,
   inputHash: z.string().length(64),
   evaluatedAt: z.string().datetime(),
   assessmentRevisionId: z.uuid().optional(),

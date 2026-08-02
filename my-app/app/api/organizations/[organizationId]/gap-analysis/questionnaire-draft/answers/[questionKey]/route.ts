@@ -12,11 +12,11 @@ export const PATCH = apiRoute(
   }: {
     request: Request;
     routeContext: {
-      params: Promise<{ organizationId: string; questionId: string }>;
+      params: Promise<{ organizationId: string; questionKey: string }>;
     };
   }) => {
     const user = await requireApiUser();
-    const { organizationId, questionId } = await routeContext.params;
+    const { organizationId, questionKey } = await routeContext.params;
     const body = await readJsonBody(
       request,
       gapQuestionnaireDraftAnswerSchema,
@@ -24,7 +24,7 @@ export const PATCH = apiRoute(
     const result = await saveQuestionnaireDraftAnswer({
       userId: user.id,
       organizationId,
-      questionId,
+      questionId: questionKey,
       ...body,
     });
     revalidatePath(`/tool/organizations/${organizationId}/gap-analysis`);
