@@ -42,6 +42,11 @@ export const organizationsClient = {
     return request(`${base(organizationId)}/members?limit=100`, {
       outputSchema: z.object({
         members: z.array(organizationMemberSchema),
+        controls: z.object({
+          actorUserId: z.uuid(),
+          canManage: z.boolean(),
+          canManageOwners: z.boolean(),
+        }),
       }),
       signal,
     });

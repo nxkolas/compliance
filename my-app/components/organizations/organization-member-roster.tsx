@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Loader2, LogOut, UserMinus } from "lucide-react";
+import { Loader2, LogOut, Trash2, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -99,8 +99,57 @@ export function OrganizationMemberRoster({
     }
   }
 
+  if (presentation === "dialog") {
+    return (
+      <section className="grid">
+        {notice ? (
+          <div role="status" className="mb-3 rounded-lg border border-border-strong bg-foreground/5 px-4 py-3 text-sm text-muted-foreground">
+            {notice}
+          </div>
+        ) : null}
+        {!members.length ? (
+          <p className="border-t border-border-strong/50 px-3 py-6 text-sm text-foreground-subtle">
+            {labels.noActiveMembers}
+          </p>
+        ) : members.map((member) => {
+          const isSelf = member.userId === controls.actorUserId;
+          const busy = pending === member.userId;
+          const canManageMember = controls.canManage && (member.role !== "owner" || controls.canManageOwners);
+          return (
+            <article key={member.userId} className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_176px_32px] items-center gap-4 border-t border-border-strong/50 px-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <OrganizationAvatar id={member.userId} name={member.displayName || member.email || labels.unresolvedMember} className="size-10" />
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold text-foreground">{member.displayName || member.email || labels.unresolvedMember}</p>
+                  <p className="truncate text-sm text-foreground-subtle">{member.email}</p>
+                </div>
+              </div>
+              {canManageMember ? (
+                <Select value={member.role} disabled={busy} onValueChange={(value) => void updateRole(member, value as OrganizationRole)}>
+                  <SelectTrigger aria-label={labels.role} className="h-12 w-44 rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base shadow-none"><SelectValue /></SelectTrigger>
+                  <SelectContent className="w-44 rounded-2xl border-surface bg-surface p-0 shadow-popover">
+                    {(["owner", "contributor", "viewer"] as const).map((role) => <SelectItem key={role} value={role} className="h-12 rounded-lg px-5 text-base">{labels.roles[role]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="flex h-12 w-44 items-center rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base">{labels.roles[member.role]}</div>
+              )}
+              <div className="flex size-8 items-center justify-center">
+                {busy ? <Loader2 className="size-4 animate-spin text-foreground-subtle" /> : isSelf ? (
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label={labels.leave} title={labels.leave} onClick={() => void leave()} className="size-8 rounded-[10px] text-foreground-subtle"><LogOut className="size-4" /></Button>
+                ) : canManageMember ? (
+                  <Button type="button" variant="ghost" size="icon-sm" aria-label={labels.remove} title={labels.remove} onClick={() => void remove(member)} className="size-8 rounded-[10px] text-foreground-subtle hover:bg-destructive/20 hover:text-destructive-muted-foreground"><Trash2 className="size-5" /></Button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    );
+  }
+
   return (
-    <section className={presentation === "dialog" ? "grid gap-3" : "grid gap-4 rounded-lg border bg-card p-5"}>
+    <section className="grid gap-4 rounded-lg border bg-card p-5">
       <div>
         <h2 className="text-lg font-semibold">{labels.title}</h2>
         <p className="text-sm text-muted-foreground">

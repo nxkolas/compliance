@@ -23,6 +23,7 @@ import { ApiError } from "../api/errors";
 import { getCursorCodec } from "../api/pagination";
 import {
   requireOrganizationCapability,
+  resolveOrganizationCapabilities,
 } from "../auth/capability-service";
 import { organizationActionsForRole } from "./workflow-permissions";
 import type {
@@ -344,8 +345,17 @@ export async function listOrganizationMembersPage(input: {
     identityResolved: row.email !== null,
   }));
   const last = members.at(-1);
+  const authorization = await resolveOrganizationCapabilities(
+    input.userId,
+    input.organizationId,
+  );
   return {
     members,
+    controls: {
+      actorUserId: input.userId,
+      canManage: authorization.capabilities.has("members:manage"),
+      canManageOwners: authorization.membership?.role === "owner",
+    },
     nextCursor:
       rows.length > input.limit && last
         ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.userId])
