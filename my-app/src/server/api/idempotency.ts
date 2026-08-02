@@ -26,6 +26,7 @@ export type IdempotencyResultType =
   | "assessment"
   | "assessment_revision"
   | "gap_reassessment_draft"
+  | "gap_analysis_cycle"
   | "organization_invitation"
   | "organization"
   | "action_plan"

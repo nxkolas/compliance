@@ -288,7 +288,6 @@ export function GapAnalysisWorkflow({
       await gapAnalysisClient.submitQuestionnaire(organizationId, {
         assessmentId: workflow.assessment.id,
         draftId: workflow.questionnaireDraft.id,
-        expectedVersion: questionnaireVersionRef.current,
       });
       setSavedAnswers({ ...answers });
       navigate("documents");
@@ -314,7 +313,6 @@ export function GapAnalysisWorkflow({
           {
             draftId: draft.id,
             optionId,
-            expectedVersion: questionnaireVersionRef.current,
           },
         );
         questionnaireVersionRef.current = result.data.answer.version;
@@ -344,7 +342,6 @@ export function GapAnalysisWorkflow({
       if (workflow.analysisCycle?.draft.status === "open") {
         await gapAnalysisClient.replaceGapAnalysisEvidence(organizationId, {
           cycleId: workflow.analysisCycle.draft.id,
-          expectedLockVersion: workflow.analysisCycle.draft.lockVersion,
           selectedDocumentIds: selectedDocuments,
         });
       } else {
@@ -384,7 +381,6 @@ export function GapAnalysisWorkflow({
         kind === "generate"
           ? {
               operation: "start",
-              expectedLockVersion: analysisCycle.draft.lockVersion,
             }
           : { operation: "retry", retryNonce: idempotencyKey },
         idempotencyKey,

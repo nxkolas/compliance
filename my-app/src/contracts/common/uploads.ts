@@ -3,7 +3,7 @@ import { uploadSessionIdSchema } from "./ids";
 
 export const uploadSessionStateSchema = z.enum([
   "pending",
-  "verified",
+  "uploaded",
   "completed",
   "expired",
   "failed",
@@ -13,9 +13,9 @@ export const uploadSessionDtoSchema = z.object({
   id: uploadSessionIdSchema,
   state: uploadSessionStateSchema,
   fileName: z.string(),
-  expectedMimeType: z.string(),
-  expectedSize: z.number().int().positive(),
-  objectPath: z.string().min(1),
+  mimeType: z.string(),
+  expectedByteSize: z.number().int().positive(),
+  storageKey: z.string().min(1),
   expiresAt: z.iso.datetime(),
   uploadToken: z.string().optional(),
 });

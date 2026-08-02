@@ -23,7 +23,6 @@ import { ApiError } from "../api/errors";
 import { getCursorCodec } from "../api/pagination";
 import {
   requireOrganizationCapability,
-  resolveOrganizationCapabilities,
 } from "../auth/capability-service";
 import { organizationActionsForRole } from "./workflow-permissions";
 import type {
@@ -761,8 +760,15 @@ async function assertAnotherOwner(
 function withoutTokenHash(
   invitation: typeof organizationInvitations.$inferSelect,
 ): OrganizationInvitationDto {
-  const { tokenHash: _tokenHash, ...dto } = invitation;
-  return dto;
+  return {
+    id: invitation.id,
+    organizationId: invitation.organizationId,
+    email: invitation.email,
+    role: invitation.role as "contributor" | "viewer",
+    invitedBy: invitation.invitedBy,
+    expiresAt: invitation.expiresAt,
+    createdAt: invitation.createdAt,
+  };
 }
 
 function hashToken(token: string) {

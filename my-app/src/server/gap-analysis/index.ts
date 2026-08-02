@@ -25,57 +25,24 @@ export type {
   GapStatementBasis,
   ValidatedCategoryGapResult,
 } from "./generation-schema-v7";
-export type {
-  DeterministicGapStatus,
-  GapAnswerValue,
-} from "./deterministic-evaluator";
-export {
-  correctGapRevision,
-  regenerateAndCorrectGapFinding,
-  regenerateGapFindingGuidance,
-  assertGapRevisionApprovable,
-} from "./review-service";
+export type { DeterministicGapStatus, GapAnswerValue } from "./deterministic-evaluator";
 export {
   executeGapGenerationJob,
   enqueueGapAnalysisGeneration,
+  finalizeGapCycleQuestionnaire,
   getGapAnalysisCycle,
   prepareGapAnalysisCycle,
   retryGapAnalysisGeneration,
   replaceGapAnalysisEvidence,
 } from "./analysis-cycle-service";
-export {
-  getGapQuestionnaireRevision,
-  submitGapQuestionnaire,
-} from "./questionnaire-service";
+export { getGapQuestionnaireRevision, submitGapQuestionnaire } from "./questionnaire-service";
 export { saveQuestionnaireDraftAnswer } from "./questionnaire-draft-service";
+export { getGapHistory, getGapInputs, getGapResults, getGapWorkflowSummary } from "./read-models";
+export { getGapAnalysisRevision, getGapAnalysisRevisionRecord, getGapAnalysisWorkflow } from "./workflow-reader";
 export {
-  enqueueGapRevisionMutation,
-  executeGapRevisionMutation,
-} from "./revision-mutation-service";
-export { getGapRevisionStaleness } from "./staleness";
-export { readGapRevisionMetadata } from "./gap-revision-metadata";
-export { createDatabaseGapPageReader } from "./page-reader";
-export { readGeneratedGapInputs } from "./generated-inputs-reader";
-export { loadGapHistoryPreauthorized } from "./history-reader";
-export { postgresGapPageData } from "./postgres-page-data";
-export {
-  getGapHistory,
-  getGapInputs,
-  getGapResults,
-  getGapWorkflowSummary,
-} from "./read-models";
-export {
-  GAP_GROUNDING_INSTRUCTION,
-  gapOutputLocaleInstruction,
-} from "./grounding-instruction";
-export { activateGapAnalysisRelease } from "./publishing/activate-release";
-export { publishGapAnalysisRelease } from "./publishing/publish-release";
-export { getRepositoryGapRelease } from "./publishing/release-registry";
-export {
-  getGapAnalysisRevision,
-  getGapAnalysisRevisionRecord,
-  getGapAnalysisWorkflow,
-} from "./workflow-reader";
+  enqueueGapContradictionResolution,
+  executeGapContradictionResolutionJob,
+} from "./contradiction-resolution-service";
 export {
   compareGapFindings,
   countGapStatuses,
@@ -86,3 +53,4 @@ export {
   resolveGapPostGenerationView,
   sortGapFindings,
 } from "./workflow-state";
+export { GAP_GROUNDING_INSTRUCTION, gapOutputLocaleInstruction } from "./grounding-instruction";

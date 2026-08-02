@@ -8,5 +8,5 @@ export const GET = apiRoute(async ({ routeContext }: {
 }) => {
   const user = await requireApiUser();
   const { organizationId, revisionId } = await routeContext.params;
-  return { data: { inputs: await getGapInputs({ userId: user.id, organizationId, revisionId, locale: await getLocale() }) } };
+  return { data: { inputs: await getGapInputs(user.id, organizationId, revisionId, await getLocale()) } };
 });

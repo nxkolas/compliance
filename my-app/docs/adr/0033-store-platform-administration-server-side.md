@@ -1,3 +1,7 @@
-# Store platform administration server-side
+# Superseded: stored platform administrators
 
-Platform Administrator authority will be held in a server-only registry keyed by Supabase Auth user ID, independent of editable user metadata and organization membership. The first administrator is bootstrapped through an explicit operator script, and later changes require an existing administrator or controlled operator process with full audit attribution.
+Status: superseded 2 August 2026.
+
+Platform-administrator accounts and APIs are removed. Deployment-authorized
+operator commands receive an external operator identity and append it to the
+server-only platform audit stream.

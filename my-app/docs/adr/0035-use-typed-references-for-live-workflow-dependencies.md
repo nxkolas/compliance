@@ -1,9 +1,9 @@
 # Use typed references for live workflow dependencies
 
-Live lineage, report sources, and operational results will use use-case-owned
-tables with typed foreign keys instead of `type + UUID` references, so target
-existence, identity, and tenant ownership can be enforced by PostgreSQL.
-Append-only audit events retain polymorphic entity identifiers because they
-are historical statements that must remain readable independently of target
-lifetime.
+Status: amended 2 August 2026.
 
+Business lineage uses direct typed foreign keys owned by each use case. Small,
+validated replay/result locators live directly on jobs, uploads, and idempotency
+records and are resolved only after authorization. Append-only audit events keep
+polymorphic entity identifiers because historical statements outlive temporary
+targets.

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { gapGenerationEnqueueResponseSchema, isRetryableGapAnalysisCycleStatus } from "@/src/contracts/gap-analysis/generation";
 import { invokeRouteContract } from "./support/route-contract";
-import { buildGapGenerationEnqueueFingerprint } from "@/src/server/gap-analysis/generation-identity";
 
 const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
@@ -68,7 +67,7 @@ describe("gap generation enqueue route", () => {
     const request = new Request(`http://localhost/api/organizations/${organizationId}/gap-analysis/cycles/${draftId}/generation-jobs`, {
       method: "POST",
       headers: { "content-type": "application/json", "idempotency-key": "generate-1", "x-request-id": "gap-job-test" },
-      body: JSON.stringify({ operation: "start", expectedLockVersion: 1 }),
+      body: JSON.stringify({ operation: "start" }),
     });
     const result = await invokeRouteContract({
       handler: POST,
@@ -115,7 +114,7 @@ describe("gap generation enqueue route", () => {
     const response = await POST(new Request(`http://localhost/api/organizations/${organizationId}/gap-analysis/cycles/${draftId}/generation-jobs`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ operation: "start", expectedLockVersion: 1 }),
+      body: JSON.stringify({ operation: "start" }),
     }), { params: Promise.resolve({ organizationId, cycleId: draftId }) });
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ error: { code: "IDEMPOTENCY_KEY_REQUIRED" } });
@@ -128,22 +127,4 @@ describe("gap generation enqueue route", () => {
     expect(isRetryableGapAnalysisCycleStatus("locked")).toBe(false);
   });
 
-  it("includes the pinned locale in the enqueue fingerprint", () => {
-    const common = {
-      draftId,
-      expectedLockVersion: 1,
-      retryNonce: "retry-1",
-    };
-    expect(
-      buildGapGenerationEnqueueFingerprint({
-        ...common,
-        outputLocale: "de",
-      }),
-    ).not.toBe(
-      buildGapGenerationEnqueueFingerprint({
-        ...common,
-        outputLocale: "en",
-      }),
-    );
-  });
 });

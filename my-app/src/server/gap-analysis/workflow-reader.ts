@@ -1,538 +1,260 @@
+import type { Locale } from "@/lib/i18n-config";
 import { db } from "@/src/db";
 import {
-  generatedArtifactRevisions,
-  generatedArtifacts,
+  analysisOutputDocumentSources,
+  assessmentAnswers,
+  auditEvents,
+  documentVersions,
+  documents,
+  gapFindings,
+  gapItems,
+  userProfiles,
 } from "@/src/db/schema";
-import { and, eq } from "drizzle-orm";
+import {
+  currentApplicabilityDefinitionHash,
+  currentGapDefinitionHash,
+  getCurrentGapDefinition,
+  SUPPORTED_JURISDICTION_CODES,
+} from "@/src/server/definitions";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { hasOrganizationCapability } from "../auth/capabilities";
 import { requireOrganizationCapability } from "../auth/capability-service";
 import {
-  gapPageReader,
-  type GapPageReadInput,
-  type GapPageReader,
-} from "./page-reader";
-import {
-  loadActiveGapAnalysisReleasePointer,
-  type GapReleaseReader,
-  type LoadedGapRelease,
-} from "./release-loader";
-import { getGapRevisionStalenessBatchPreauthorized } from "./staleness";
-import {
-  compareGapFindings,
-  countGapStatuses,
-  deriveGapLifecycleCapabilities,
-  deriveGapLifecycleMode,
-} from "./workflow-state";
-import { loadGapAnalysisRelease } from "./release-loader";
-import { localizeGapFinding } from "./finding-localization";
-import { nextCachedGapReleaseReader } from "./next-cached-release-loader";
-import { readGapRevisionMetadata } from "./gap-revision-metadata";
-import {
-  projectGapFindingSources,
-  type GapFindingSourceEvidence,
-} from "./finding-source-projection";
-import { loadFindingsForRevisionIds } from "./postgres-page-data";
-import { readQuestionnaireDraft } from "./questionnaire-draft-service";
+  evaluateGapApplicabilityPrerequisite,
+  projectGapPrerequisiteView,
+} from "./applicability-eligibility";
+import { getGapAnalysisCyclePreauthorized } from "./analysis-cycle-service";
+import { deriveGapLifecycleCapabilities, deriveGapLifecycleMode } from "./workflow-state";
 
-export async function getGapAnalysisWorkflow(
-  input: GapPageReadInput,
-  reader: Pick<GapPageReader, "readGap"> = gapPageReader,
-  releaseReader: Pick<GapReleaseReader, "getPublished"> =
-    nextCachedGapReleaseReader,
-) {
-  const workflow = await reader.readGap(input);
-  const questionnaireDraft = workflow.assessment
-    ? await readQuestionnaireDraft(
-        workflow.assessment.id,
-        input.organizationId,
-      )
-    : null;
-  const currentAnswers: Record<string, string> =
-    questionnaireDraft?.answers ??
-    (workflow.answers as Record<string, string>);
-  const metadata = (result: unknown | undefined) =>
-    result === undefined ? null : readGapRevisionMetadata(result);
-  const currentMetadata = metadata(workflow.revision?.result);
-  const acceptedMetadata = metadata(workflow.acceptedRevision?.result);
-  const candidateMetadata = metadata(workflow.candidateRevision?.result);
-  const currentCorrectedIds = new Set(currentMetadata?.correctedRequirementVersionIds ?? []);
-  const acceptedCorrectedIds = new Set(acceptedMetadata?.correctedRequirementVersionIds ?? []);
-  const candidateCorrectedIds = new Set(candidateMetadata?.correctedRequirementVersionIds ?? []);
-  const releasePromiseById = new Map<
-    string,
-    Promise<LoadedGapRelease | null>
-  >();
-  if (workflow.release) {
-    releasePromiseById.set(
-      workflow.release.id,
-      Promise.resolve(workflow.release),
-    );
-  }
-  const loadPinnedCatalogue = async (
-    revision: typeof workflow.revision,
-    label: string,
-  ) => {
-    if (!revision) return new Map();
-    if (!revision.gapAnalysisReleaseId) {
-      throw new Error(`${label} Gap revision ${revision.id} has no pinned release`);
-    }
-    let releasePromise = releasePromiseById.get(
-      revision.gapAnalysisReleaseId,
-    );
-    if (!releasePromise) {
-      releasePromise = releaseReader.getPublished({
-        releaseId: revision.gapAnalysisReleaseId,
-        locale: input.locale,
-      });
-      releasePromiseById.set(revision.gapAnalysisReleaseId, releasePromise);
-    }
-    const release = await releasePromise;
-    if (!release) {
-      throw new Error(
-        `${label} pinned Gap release ${revision.gapAnalysisReleaseId} is unavailable`,
-      );
-    }
-    return new Map(
-      release.requirements.map((requirement) => [
-        requirement.id,
-        requirement,
-      ]),
-    );
-  };
-  const [currentCatalogue, acceptedCatalogue, candidateCatalogue] =
-    await Promise.all([
-      loadPinnedCatalogue(workflow.revision, "Current"),
-      loadPinnedCatalogue(workflow.acceptedRevision, "Accepted"),
-      loadPinnedCatalogue(workflow.candidateRevision, "Candidate"),
-    ]);
-  const enrich = <T extends (typeof workflow.findings)[number]>(
-    row: T,
-    manuallyChangedIds: Set<string>,
-    metadataRows: Array<{
-      requirementVersionId: string;
-      contradictions: string[];
-      questionnaireDisagreements: string[];
-    }>,
-    catalogueByVersionId: Map<
-      string,
-      NonNullable<typeof workflow.release>["requirements"][number]
-    >,
-  ) => {
-    const localizedRow = localizeGapFinding(row, catalogueByVersionId);
-    const metadata = metadataRows.find(
-      (item) =>
-        item.requirementVersionId === row.finding.requirementVersionId,
-    );
-    const contradictions = Array.isArray(metadata?.contradictions)
-      ? metadata.contradictions.filter(
-          (value): value is string => typeof value === "string",
-        )
-      : [];
-    const questionnaireDisagreements =
-      !manuallyChangedIds.has(row.finding.requirementVersionId) &&
-      Array.isArray(metadata?.questionnaireDisagreements)
-        ? metadata.questionnaireDisagreements.filter(
-            (value): value is string => typeof value === "string",
-          )
-        : [];
-    return {
-      ...localizedRow,
-      hasOrganizationDocument: row.evidence.some(
-        (evidence) => evidence.sourceType === "document_chunk",
-      ),
-      manuallyChanged: manuallyChangedIds.has(
-        row.finding.requirementVersionId,
-      ),
-      contradictions,
-      questionnaireDisagreements,
-      sources: projectGapFindingSources({
-        organizationId: input.organizationId,
-        locale: input.locale,
-        evidence: row.evidence as GapFindingSourceEvidence[],
-      }),
-    };
-  };
-  const findings = workflow.findings.map((row) =>
-    enrich(row, currentCorrectedIds, currentMetadata?.findingDiagnostics ?? [], currentCatalogue),
-  );
-  const acceptedFindings = workflow.acceptedFindings.map((row) =>
-    enrich(row, acceptedCorrectedIds, acceptedMetadata?.findingDiagnostics ?? [], acceptedCatalogue),
-  );
-  const candidateFindings = workflow.candidateFindings.map((row) =>
-    enrich(row, candidateCorrectedIds, candidateMetadata?.findingDiagnostics ?? [], candidateCatalogue),
-  );
-  const selectedDocumentIds = new Set(
-    workflow.analysisCycle?.selected.map(
-      (selection) => selection.documentId,
-    ) ?? [],
-  );
-  const selectedDocuments = projectDocumentLibrary(
-    workflow.documentLibrary,
-  ).documents.filter((document) => selectedDocumentIds.has(document.id));
-  const answerSummary = workflow.release
-    ? workflow.release.questions.map((question) => {
-        const option = question.options.find(
-          (candidate) => candidate.id === currentAnswers[question.id],
-        );
-        return {
-          questionId: question.id,
-          question: question.questionText,
-          optionId: option?.id ?? null,
-          answer: option?.label ?? null,
-          required: question.required,
-        };
+export type GapPageReadInput = {
+  userId: string;
+  organizationId: string;
+  locale: Locale;
+  view?: "results" | "inputs" | "history";
+};
+
+export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
+  const membership = await requireOrganizationCapability(input.userId, input.organizationId, "gap:read");
+  const release = getCurrentGapDefinition(input.locale);
+  const [assessment, applicabilityOutput, gapOutput, plan, documentRows] = await Promise.all([
+    db.query.assessments.findFirst({
+      where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
+    }),
+    db.query.analysisOutputs.findFirst({
+      where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), eq(table.kind, "applicability")) ?? operators.sql`true` },
+    }),
+    db.query.analysisOutputs.findFirst({
+      where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
+    }),
+    db.query.actionPlans.findFirst({
+      where: { RAW: (table, operators) => eq(table.organizationId, input.organizationId) ?? operators.sql`true` },
+    }),
+    db.select({ document: documents, version: documentVersions })
+      .from(documents)
+      .leftJoin(documentVersions, eq(documentVersions.id, documents.currentVersionId))
+      .where(eq(documents.organizationId, input.organizationId))
+      .orderBy(desc(documents.createdAt)),
+  ]);
+  const applicabilityRevision = applicabilityOutput?.currentRevisionId
+    ? await db.query.analysisOutputRevisions.findFirst({
+        where: { RAW: (table, operators) => eq(table.id, applicabilityOutput.currentRevisionId!) ?? operators.sql`true` },
       })
-    : [];
-  const lifecycleMode = deriveGapLifecycleMode({
-    hasGeneratedRevision: Boolean(workflow.revision),
-    hasActiveActionPlan: Boolean(workflow.activePlan),
-    generationActive:
-      !workflow.revision &&
-      (workflow.analysisCycle?.draft.status === "locked" ||
-        workflow.run?.status === "pending" ||
-        workflow.run?.status === "processing"),
+    : null;
+  const prerequisite = projectGapPrerequisiteView({
+    prerequisite: evaluateGapApplicabilityPrerequisite(
+      currentApplicabilityDefinitionHash,
+      applicabilityRevision,
+    ),
+    supportedCountryCodes: [...SUPPORTED_JURISDICTION_CODES],
+    destination: `/tool/organizations/${input.organizationId}/applicability-check`,
   });
-  const comparison =
-    workflow.candidateRevision && workflow.acceptedRevision
-      ? compareGapFindings(acceptedFindings, candidateFindings)
-      : [];
-  const projectedFindings = findings.map(projectCustomerFinding);
-
+  const revision = gapOutput?.currentRevisionId
+    ? await db.query.analysisOutputRevisions.findFirst({
+        where: { RAW: (table, operators) => eq(table.id, gapOutput.currentRevisionId!) ?? operators.sql`true` },
+      })
+    : null;
+  const cycle = assessment
+    ? await getGapAnalysisCyclePreauthorized({
+        organizationId: input.organizationId,
+        assessmentId: assessment.id,
+        locale: input.locale,
+      })
+    : null;
+  const draftAnswers = cycle?.cycle.draftAnswers ?? {};
+  const answers = answerIds(release, draftAnswers);
+  const questionnaireDraft = cycle
+    ? {
+        id: cycle.cycle.id,
+        status: cycle.cycle.stage === "questions" ? "open" : "submitted",
+        version: 1,
+        answers,
+      }
+    : null;
+  const findings = revision ? await loadFindings(input.organizationId, revision.id) : [];
+  const generationRun = revision?.aiProcessingRunId
+    ? await db.query.aiProcessingRuns.findFirst({
+        where: { RAW: (table, operators) => eq(table.id, revision.aiProcessingRunId!) ?? operators.sql`true` },
+      })
+    : null;
+  const generationActive = cycle?.cycle.stage === "generating";
+  const lifecycleMode = deriveGapLifecycleMode({
+    hasGeneratedRevision: Boolean(revision),
+    hasActiveActionPlan: Boolean(plan),
+    generationActive,
+  });
+  const history = input.view === "history" ? await loadHistory(input.organizationId) : [];
+  const generatedInputs = input.view === "inputs" && revision
+    ? await loadInputs(input.organizationId, revision.assessmentRevisionId, revision.id)
+    : null;
   return {
-    role: workflow.role,
-    canContribute: workflow.canContribute,
-    canManage: workflow.canManage,
-    release: workflow.release
-      ? {
-          id: workflow.release.id,
-          versionLabel: workflow.release.versionLabel,
-          questions: workflow.release.questions,
-          requirements: workflow.release.requirements.map((requirement) => ({
-            id: requirement.id,
-            position: requirement.position,
-            icon: requirement.icon,
-            title: requirement.title,
-            questionStableKeys: requirement.questionStableKeys,
-          })),
-        }
-      : null,
-    assessment: workflow.assessment
-      ? {
-          id: workflow.assessment.id,
-          currentRevisionId: workflow.assessment.currentRevisionId,
-        }
-      : null,
-    answers: currentAnswers,
+    role: membership.role,
+    canContribute: hasOrganizationCapability(membership.role, "gap:contribute") && !plan,
+    canManage: hasOrganizationCapability(membership.role, "plans:manage"),
+    release: {
+      id: release.id,
+      versionLabel: release.versionLabel,
+      questions: release.questions,
+      requirements: release.requirements,
+    },
+    assessment: assessment ? { id: assessment.id, currentRevisionId: assessment.currentRevisionId } : null,
+    answers,
     questionnaireDraft,
-    documentLibrary: projectDocumentLibrary(workflow.documentLibrary),
-    run: workflow.run ? { errorCode: workflow.run.errorCode } : null,
-    revision: projectRevisionIdentity(workflow.revision),
-    acceptedRevision: projectRevisionIdentity(workflow.acceptedRevision),
-    candidateRevision: projectRevisionIdentity(workflow.candidateRevision),
-    activePlan: workflow.activePlan
-      ? {
-          sourceGapArtifactRevisionId:
-            workflow.activePlan.sourceGapArtifactRevisionId,
-        }
-      : null,
-    analysisCycle: workflow.analysisCycle
-      ? {
-          draft: {
-            id: workflow.analysisCycle.draft.id,
-            status: workflow.analysisCycle.draft.status,
-            outputLocale: workflow.analysisCycle.draft.outputLocale,
-            generationJobId:
-              workflow.analysisCycle.draft.generationJobId,
-            lockVersion: workflow.analysisCycle.draft.lockVersion,
-          },
-          selected: workflow.analysisCycle.selected.map((selection) => ({
-            documentId: selection.documentId,
-          })),
-          summary: {
-            baseAcceptedGapRevisionNumber:
-              workflow.analysisCycle.summary.baseAcceptedGapRevisionNumber,
-            assessmentRevisionNumber:
-              workflow.analysisCycle.summary.assessmentRevisionNumber,
-            requirementCount: workflow.analysisCycle.summary.requirementCount,
-          },
-        }
-      : null,
-    prerequisite: projectPrerequisite(workflow.prerequisite),
-    history: workflow.history,
-    generatedInputs: workflow.generatedInputs,
-    reviewBlockers: workflow.reviewBlockers,
-    planUpdateAvailable: workflow.planUpdateAvailable,
-    acceptedStaleness: workflow.acceptedStaleness,
-    candidateStaleness: workflow.candidateStaleness,
-    staleness: workflow.staleness,
+    documentLibrary: {
+      documents: documentRows.map(({ document, version }) => ({
+        id: document.id,
+        title: document.name,
+        mimeType: version?.mimeType ?? "application/octet-stream",
+        archivedAt: document.archivedAt?.toISOString() ?? null,
+        eligibleForAnalysis: !document.archivedAt && version?.indexingStatus === "succeeded",
+      })),
+    },
+    run: generationRun ? { errorCode: generationRun.failureCode } : null,
+    revision: revision ? { id: revision.id, outputLocale: revision.locale, createdAt: revision.createdAt } : null,
+    acceptedRevision: revision ? { id: revision.id, outputLocale: revision.locale, createdAt: revision.createdAt } : null,
+    candidateRevision: null,
+    activePlan: plan ? { sourceGapArtifactRevisionId: plan.sourceGapRevisionId } : null,
+    analysisCycle: cycle,
+    prerequisite,
+    history,
+    generatedInputs,
+    reviewBlockers: findings.filter((row) => row.finding.materialContradiction && !row.finding.contradictionResolved).map((row) => row.finding.id),
+    planUpdateAvailable: Boolean(plan && revision && plan.sourceGapRevisionId !== revision.id),
+    acceptedStaleness: null,
+    candidateStaleness: null,
+    staleness: revision?.definitionHash === release.id ? null : { outdated: true },
     lifecycleMode,
     lifecycle: deriveGapLifecycleCapabilities(lifecycleMode),
-    answerSummary,
-    selectedDocuments,
-    findings: projectedFindings,
-    gapCounts: countGapStatuses(projectedFindings),
-    comparison,
-    lastWorkflowChange: workflow.history[0] ?? null,
+    findings,
+    acceptedFindings: findings,
+    candidateFindings: [],
+    comparison: [],
+    gapCounts: countStatuses(findings),
+    lastWorkflowChange: history[0] ?? null,
   };
 }
 
-function projectPrerequisite<
-  T extends {
-    satisfied: boolean;
-    status: string;
-    destination: string;
-    supportedCountryCodes?: string[];
-    reason?: string;
-    outcome?: string;
-    countryCode?: string | null;
-  },
->(prerequisite: T | null | undefined) {
-  if (!prerequisite) {
-    return {
-      satisfied: false as const,
-      status: "missing" as const,
-      supportedCountryCodes: [],
-      destination: "",
-    };
-  }
-  if (prerequisite.satisfied) {
-    return {
-      satisfied: true as const,
-      status: "eligible" as const,
-      destination: prerequisite.destination,
-    };
-  }
-  return {
-    satisfied: false as const,
-    status: prerequisite.status as
-      | "missing"
-      | "release_incompatible"
-      | "not_approved"
-      | "invalid"
-      | "not_eligible",
-    ...(prerequisite.reason
-      ? {
-          reason: prerequisite.reason as
-            | "unsupported_country"
-            | "clarification_required"
-            | "not_directly_in_scope",
-        }
-      : {}),
-    ...(prerequisite.outcome
-      ? { outcome: prerequisite.outcome }
-      : {}),
-    ...("countryCode" in prerequisite
-      ? { countryCode: prerequisite.countryCode }
-      : {}),
-    supportedCountryCodes: prerequisite.supportedCountryCodes ?? [],
-    destination: prerequisite.destination,
-  };
-}
-
-export async function getGapAnalysisRevision(input: {
-  userId: string;
-  organizationId: string;
-  revisionId: string;
-  locale: "de" | "en";
-}) {
-  const revision = await getGapAnalysisRevisionRecord(input);
-  if (!revision) return null;
-  if (!revision.gapAnalysisReleaseId) {
-    throw new Error(`Gap revision ${revision.id} has no pinned release`);
-  }
-  const [findings, pinnedRelease, activeRelease] = await Promise.all([
-    loadFindings(revision.id),
-    loadGapAnalysisRelease(revision.gapAnalysisReleaseId, input.locale),
-    loadActiveGapAnalysisReleasePointer("nis2-gap"),
-  ]);
-  if (!pinnedRelease) {
-    throw new Error(
-      `Pinned Gap release ${revision.gapAnalysisReleaseId} is unavailable`,
-    );
-  }
-  const catalogueByVersionId = new Map(
-    pinnedRelease.requirements.map((requirement) => [
-      requirement.id,
-      requirement,
-    ]),
-  );
-  const metadata = readGapRevisionMetadata(revision.result);
-  const correctedIds = new Set(metadata.correctedRequirementVersionIds);
-  const localizedFindings = findings.map((finding) => {
-    const localized = localizeGapFinding(
-      finding,
-      catalogueByVersionId,
-      pinnedRelease.id,
-    );
-    const diagnostics = metadata.findingDiagnostics.find(
-      (item) =>
-        item.requirementVersionId === finding.finding.requirementVersionId,
-    );
-    return projectCustomerFinding({
-      ...localized,
-      hasOrganizationDocument: finding.evidence.some(
-        (evidence) => evidence.sourceType === "document_chunk",
-      ),
-      manuallyChanged: correctedIds.has(
-        finding.finding.requirementVersionId,
-      ),
-      questionnaireDisagreements:
-        correctedIds.has(finding.finding.requirementVersionId)
-          ? []
-          : (diagnostics?.questionnaireDisagreements ?? []),
-      sources: projectGapFindingSources({
-        organizationId: input.organizationId,
-        locale: input.locale,
-        evidence: finding.evidence as GapFindingSourceEvidence[],
-      }),
-    });
+export async function getGapAnalysisRevisionRecord(
+  userId: string,
+  organizationId: string,
+  revisionId: string,
+) {
+  await requireOrganizationCapability(userId, organizationId, "gap:read");
+  return db.query.analysisOutputRevisions.findFirst({
+    where: { RAW: (table, operators) => and(eq(table.id, revisionId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
-  const staleness = (
-    await getGapRevisionStalenessBatchPreauthorized({
-      organizationId: input.organizationId,
-      acceptedRevisionId: revision.id,
-      candidateRevisionId: null,
-      activeGapReleaseId: activeRelease?.gapAnalysisReleaseId ?? null,
-    })
-  ).accepted;
-  return {
-    revision: projectRevisionIdentity(revision),
-    findings: localizedFindings,
-    staleness,
-  };
 }
 
-export async function getGapAnalysisRevisionRecord(input: {
-  userId: string;
-  organizationId: string;
-  revisionId: string;
-}) {
-  await requireOrganizationCapability(
-    input.userId,
-    input.organizationId,
-    "gap:read",
-  );
-  const [row] = await db
-    .select({ revision: generatedArtifactRevisions })
-    .from(generatedArtifactRevisions)
-    .innerJoin(
-      generatedArtifacts,
-      eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id),
-    )
-    .where(
-      and(
-        eq(generatedArtifactRevisions.id, input.revisionId),
-        eq(generatedArtifacts.organizationId, input.organizationId),
-        eq(generatedArtifacts.artifactType, "gap_analysis_result"),
-      ),
-    )
-    .limit(1);
-  return row?.revision ?? null;
+export async function getGapAnalysisRevision(
+  userId: string,
+  organizationId: string,
+  revisionId: string,
+) {
+  const revision = await getGapAnalysisRevisionRecord(userId, organizationId, revisionId);
+  if (!revision) return null;
+  return { revision, findings: await loadFindings(organizationId, revision.id), staleness: revision.definitionHash === currentGapDefinitionHash ? null : { outdated: true } };
 }
 
-async function loadFindings(revisionId: string) {
-  return loadFindingsForRevisionIds([revisionId]);
-}
-
-function projectCustomerFinding<
-  T extends {
+async function loadFindings(organizationId: string, revisionId: string) {
+  const rows = await db.select().from(gapFindings)
+    .where(and(eq(gapFindings.organizationId, organizationId), eq(gapFindings.outputRevisionId, revisionId)))
+    .orderBy(asc(gapFindings.position));
+  const items = rows.length ? await db.select().from(gapItems)
+    .where(inArray(gapItems.findingId, rows.map((row) => row.id)))
+    .orderBy(asc(gapItems.position)) : [];
+  return rows.map((finding) => ({
     finding: {
-      id: string;
-      status:
-        | "fulfilled"
-        | "partially_fulfilled"
-        | "not_fulfilled"
-        | "insufficient_evidence";
-      severity: "low" | "medium" | "high" | "critical";
-      requiresReview: boolean;
-      reviewNotice: string | null;
-    };
-    gaps: Array<{ id: string; statement: string; position: number }>;
-    requirement: { title: unknown; position: number; icon: string };
-    hasOrganizationDocument: boolean;
-    manuallyChanged: boolean;
-    questionnaireDisagreements: string[];
-    sources: ReturnType<typeof projectGapFindingSources>;
-  },
->(row: T) {
-  return {
-    finding: {
-      id: row.finding.id,
-      status: row.finding.status,
-      severity: row.finding.severity,
-      requiresReview: row.finding.requiresReview,
-      reviewNotice: row.finding.reviewNotice,
-      gaps: (row.gaps ?? [])
-        .sort((left, right) => left.position - right.position)
-        .map((gap) => ({ id: gap.id, statement: gap.statement })),
+      ...finding,
+      requiresReview: finding.materialContradiction && !finding.contradictionResolved,
+      reviewNotice: finding.materialContradiction ? finding.summary : null,
+      gaps: items.filter((item) => item.findingId === finding.id),
     },
     requirement: {
-      title: row.requirement.title,
-      position: row.requirement.position,
-      icon: row.requirement.icon,
+      id: finding.requirementKey,
+      stableRequirementId: finding.requirementKey,
+      title: finding.requirementTitle,
+      requirementText: finding.requirementText,
+      icon: finding.icon,
+      criticality: finding.criticality,
+      position: finding.position,
     },
-    hasOrganizationDocument: row.hasOrganizationDocument,
-    manuallyChanged: row.manuallyChanged,
-    hasQuestionnaireDisagreement: row.questionnaireDisagreements.length > 0,
-    sources: row.sources,
-  };
+    sources: [],
+    hasOrganizationDocument: false,
+    manuallyChanged: Boolean(finding.sourceChoice),
+  }));
 }
 
-function projectRevisionIdentity<
-  T extends { id: string; outputLocale?: string | null } | null,
->(revision: T) {
-  return revision
-    ? { id: revision.id, outputLocale: revision.outputLocale ?? null }
-    : null;
-}
-
-function projectDocumentLibrary<
-  T extends {
-    canContribute: boolean;
-    documents: Array<{
-      document: {
-        id: string;
-        title: string;
-        status: string;
-        currentVersionId: string | null;
-      };
-      versions: Array<{
-        version: {
-          id: string;
-          mimeType: string;
-        };
-        extraction: { status: string } | null;
-        embedding: { status: string } | null;
-        eligibleForAnalysisCycle: boolean;
-      }>;
-    }>;
-  },
->(library: T) {
+async function loadInputs(organizationId: string, assessmentRevisionId: string, outputRevisionId: string) {
+  const [answerRows, sourceRows] = await Promise.all([
+    db.select().from(assessmentAnswers).where(eq(assessmentAnswers.assessmentRevisionId, assessmentRevisionId)).orderBy(asc(assessmentAnswers.position)),
+    db.select({ document: documents, version: documentVersions })
+      .from(analysisOutputDocumentSources)
+      .innerJoin(documentVersions, eq(documentVersions.id, analysisOutputDocumentSources.documentVersionId))
+      .innerJoin(documents, eq(documents.id, documentVersions.documentId))
+      .where(and(eq(analysisOutputDocumentSources.organizationId, organizationId), eq(analysisOutputDocumentSources.outputRevisionId, outputRevisionId))),
+  ]);
   return {
-    canContribute: library.canContribute,
-    documents: library.documents.flatMap((entry) => {
-      const current = entry.versions.find(
-        (item) => item.version.id === entry.document.currentVersionId,
-      );
-      if (!current) return [];
-      const indexStatus =
-        current.extraction?.status === "failed" ||
-        current.embedding?.status === "failed"
-          ? ("failed" as const)
-          : current.extraction?.status === "succeeded" &&
-              current.embedding?.status === "succeeded"
-            ? ("indexed" as const)
-            : ("processing" as const);
-      return [
-        {
-          id: entry.document.id,
-          title: entry.document.title,
-          mimeType: current.version.mimeType,
-          indexStatus,
-          eligibleForAnalysis:
-            entry.document.status === "active" &&
-            current.eligibleForAnalysisCycle,
-        },
-      ];
-    }),
+    questions: answerRows.map((answer) => ({
+      questionId: answer.questionKey,
+      question: answer.questionText,
+      displayAnswer: answer.selectedOptionLabels.join(", "),
+    })),
+    documents: sourceRows.map(({ document }) => ({
+      documentId: document.id,
+      title: document.name,
+      archived: Boolean(document.archivedAt),
+      unavailable: false,
+    })),
   };
+}
+
+async function loadHistory(organizationId: string) {
+  const rows = await db.select({ event: auditEvents, profile: userProfiles })
+    .from(auditEvents)
+    .leftJoin(userProfiles, eq(userProfiles.userId, auditEvents.actorUserId))
+    .where(and(eq(auditEvents.organizationId, organizationId), eq(auditEvents.entityType, "analysis_output_revision")))
+    .orderBy(desc(auditEvents.occurredAt));
+  return rows.map(({ event, profile }) => ({
+    id: event.id,
+    label: event.eventType,
+    occurredAt: event.occurredAt.toISOString(),
+    actor: profile?.displayName ?? profile?.email ?? "System",
+    reason: null,
+  }));
+}
+
+function answerIds(release: ReturnType<typeof getCurrentGapDefinition>, answers: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(answers).flatMap(([key, value]) => {
+    if (typeof value !== "string") return [];
+    const question = release.questions.find((item) => item.stableKey === key);
+    const option = question?.options.find((item) => item.stableValue === value);
+    return question && option ? [[question.id, option.id]] : [];
+  }));
+}
+
+function countStatuses(findings: Array<{ finding: { status: string } }>) {
+  return findings.reduce<Record<string, number>>((counts, row) => {
+    counts.all = (counts.all ?? 0) + 1;
+    counts[row.finding.status] = (counts[row.finding.status] ?? 0) + 1;
+    return counts;
+  }, { all: 0 });
 }

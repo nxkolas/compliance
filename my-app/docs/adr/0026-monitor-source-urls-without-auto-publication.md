@@ -1,3 +1,7 @@
-# Monitor source URLs without automatic publication
+# Superseded: automatic legal-source monitoring
 
-Scheduled checks may detect checksum, redirect, or availability changes for administrator-supplied source URLs and create review alerts or candidate versions. Monitoring never mutates a published source, publishes a corpus release, or changes an active workflow automatically; failures and upstream changes remain visible to the Platform Administrator.
+Status: superseded 2 August 2026.
+
+The application has no source monitor, scheduled check, or change-alert model.
+Operators deliberately import/process new immutable source versions and select a
+validated corpus snapshot through deployment tooling.

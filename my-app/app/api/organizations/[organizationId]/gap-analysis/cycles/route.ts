@@ -25,7 +25,7 @@ export const POST = apiRoute(async ({ request, routeContext }: {
     scope: organizationId,
     operation: "gap-analysis-cycle.prepare",
     requestInput: body,
-    resultType: "gap_reassessment_draft",
+    resultType: "gap_analysis_cycle",
     responseStatus: 201,
     execute: async () => {
       const cycle = await prepareGapAnalysisCycle({ userId: user.id, organizationId, locale, ...body });

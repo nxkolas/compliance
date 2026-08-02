@@ -1,9 +1,10 @@
-# Make normalized Gap Findings authoritative
+# Make normalized Gap findings authoritative
 
-Gap Finding business state will exist only in `gap_findings` and
-`gap_finding_evidence`; a Gap Artifact Revision's generic JSON result will hold
-only versioned revision and model-diagnostic metadata. This removes the
-unconstrained dual write while retaining the flexibility of the generic
-artifact revision model without introducing a Gap-specific revision subtype
-table.
+Status: amended 2 August 2026.
 
+Gap business content exists only in `gap_findings` and `gap_items`; narrow
+analysis revision JSON contains versioned metadata, not duplicated findings.
+Requirement keys and localized customer-facing metadata are snapshotted from
+code. Exact citations are lightweight links to admitted AI context. A material
+contradiction decision is stored on a new immutable finding/revision with source
+choice, citation IDs, actor/time, and original lineage.

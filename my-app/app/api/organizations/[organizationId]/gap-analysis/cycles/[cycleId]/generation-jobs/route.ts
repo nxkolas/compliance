@@ -18,7 +18,7 @@ export const POST = apiRoute(async ({ request, routeContext }: {
   const body = await readJsonBody(request, gapAnalysisGenerationJobSchema);
   const idempotencyKey = requireIdempotencyKey(request);
   const result = body.operation === "start"
-    ? await enqueueGapAnalysisGeneration({ userId: user.id, organizationId, draftId: cycleId, expectedLockVersion: body.expectedLockVersion, locale: await getLocale(), idempotencyKey })
+    ? await enqueueGapAnalysisGeneration({ userId: user.id, organizationId, draftId: cycleId, locale: await getLocale(), idempotencyKey })
     : await retryGapAnalysisGeneration({ userId: user.id, organizationId, draftId: cycleId, retryNonce: body.retryNonce, idempotencyKey });
   revalidatePath(`/tool/organizations/${organizationId}/gap-analysis`);
   return {

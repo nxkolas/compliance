@@ -74,12 +74,24 @@ export const relations = defineRelations(schema, (r) => ({
       to: r.assessmentRevisions.id,
       optional: false,
     }),
-    sourceApplicabilityRevision: r.one.assessmentRevisions({
+    sourceApplicabilityRevision: r.one.analysisOutputRevisions({
       from: r.analysisOutputRevisions.sourceApplicabilityRevisionId,
-      to: r.assessmentRevisions.id,
+      to: r.analysisOutputRevisions.id,
     }),
     documents: r.many.analysisOutputDocumentSources(),
     findings: r.many.gapFindings(),
+  },
+  analysisOutputDocumentSources: {
+    outputRevision: r.one.analysisOutputRevisions({
+      from: r.analysisOutputDocumentSources.outputRevisionId,
+      to: r.analysisOutputRevisions.id,
+      optional: false,
+    }),
+    documentVersion: r.one.documentVersions({
+      from: r.analysisOutputDocumentSources.documentVersionId,
+      to: r.documentVersions.id,
+      optional: false,
+    }),
   },
   gapAnalysisCycles: {
     organization: r.one.organizations({
@@ -88,6 +100,18 @@ export const relations = defineRelations(schema, (r) => ({
       optional: false,
     }),
     documents: r.many.gapAnalysisCycleDocuments(),
+  },
+  gapAnalysisCycleDocuments: {
+    cycle: r.one.gapAnalysisCycles({
+      from: r.gapAnalysisCycleDocuments.cycleId,
+      to: r.gapAnalysisCycles.id,
+      optional: false,
+    }),
+    documentVersion: r.one.documentVersions({
+      from: r.gapAnalysisCycleDocuments.documentVersionId,
+      to: r.documentVersions.id,
+      optional: false,
+    }),
   },
   documents: {
     organization: r.one.organizations({
@@ -162,6 +186,30 @@ export const relations = defineRelations(schema, (r) => ({
     }),
     contextLinks: r.many.gapItemContextLinks(),
   },
+  gapFindingContextLinks: {
+    finding: r.one.gapFindings({
+      from: r.gapFindingContextLinks.findingId,
+      to: r.gapFindings.id,
+      optional: false,
+    }),
+    context: r.one.aiProcessingRunContext({
+      from: r.gapFindingContextLinks.contextId,
+      to: r.aiProcessingRunContext.id,
+      optional: false,
+    }),
+  },
+  gapItemContextLinks: {
+    item: r.one.gapItems({
+      from: r.gapItemContextLinks.gapItemId,
+      to: r.gapItems.id,
+      optional: false,
+    }),
+    context: r.one.aiProcessingRunContext({
+      from: r.gapItemContextLinks.contextId,
+      to: r.aiProcessingRunContext.id,
+      optional: false,
+    }),
+  },
   actionPlans: {
     organization: r.one.organizations({
       from: r.actionPlans.organizationId,
@@ -188,6 +236,18 @@ export const relations = defineRelations(schema, (r) => ({
     }),
     gaps: r.many.actionPlanItemGaps(),
   },
+  actionPlanItemGaps: {
+    item: r.one.actionPlanItems({
+      from: r.actionPlanItemGaps.actionPlanItemId,
+      to: r.actionPlanItems.id,
+      optional: false,
+    }),
+    gap: r.one.gapItems({
+      from: r.actionPlanItemGaps.gapItemId,
+      to: r.gapItems.id,
+      optional: false,
+    }),
+  },
   reports: {
     organization: r.one.organizations({
       from: r.reports.organizationId,
@@ -195,6 +255,18 @@ export const relations = defineRelations(schema, (r) => ({
       optional: false,
     }),
     documents: r.many.reportDocumentSources(),
+  },
+  reportDocumentSources: {
+    report: r.one.reports({
+      from: r.reportDocumentSources.reportId,
+      to: r.reports.id,
+      optional: false,
+    }),
+    documentVersion: r.one.documentVersions({
+      from: r.reportDocumentSources.documentVersionId,
+      to: r.documentVersions.id,
+      optional: false,
+    }),
   },
   legalCorpusFamilies: {
     sources: r.many.legalSources(),
@@ -217,7 +289,24 @@ export const relations = defineRelations(schema, (r) => ({
     renditions: r.many.legalSourceRenditions(),
     processingGenerations: r.many.legalSourceProcessingGenerations(),
   },
+  legalSourceRenditions: {
+    sourceVersion: r.one.legalSourceVersions({
+      from: r.legalSourceRenditions.sourceVersionId,
+      to: r.legalSourceVersions.id,
+      optional: false,
+    }),
+  },
   legalSourceProcessingGenerations: {
+    sourceVersion: r.one.legalSourceVersions({
+      from: r.legalSourceProcessingGenerations.sourceVersionId,
+      to: r.legalSourceVersions.id,
+      optional: false,
+    }),
+    rendition: r.one.legalSourceRenditions({
+      from: r.legalSourceProcessingGenerations.renditionId,
+      to: r.legalSourceRenditions.id,
+      optional: false,
+    }),
     chunks: r.many.legalSourceChunks(),
   },
   legalSourceChunks: {
@@ -229,6 +318,20 @@ export const relations = defineRelations(schema, (r) => ({
     embeddings: r.many.legalSourceChunkEmbeddings(),
     provisionBindings: r.many.legalProvisionChunkBindings(),
   },
+  legalSourceChunkEmbeddings: {
+    chunk: r.one.legalSourceChunks({
+      from: r.legalSourceChunkEmbeddings.chunkId,
+      to: r.legalSourceChunks.id,
+      optional: false,
+    }),
+  },
+  legalProvisionChunkBindings: {
+    chunk: r.one.legalSourceChunks({
+      from: r.legalProvisionChunkBindings.chunkId,
+      to: r.legalSourceChunks.id,
+      optional: false,
+    }),
+  },
   legalCorpusSnapshots: {
     family: r.one.legalCorpusFamilies({
       from: r.legalCorpusSnapshots.familyId,
@@ -236,5 +339,27 @@ export const relations = defineRelations(schema, (r) => ({
       optional: false,
     }),
     members: r.many.legalCorpusSnapshotMembers(),
+  },
+  legalCorpusSnapshotMembers: {
+    snapshot: r.one.legalCorpusSnapshots({
+      from: r.legalCorpusSnapshotMembers.snapshotId,
+      to: r.legalCorpusSnapshots.id,
+      optional: false,
+    }),
+    sourceVersion: r.one.legalSourceVersions({
+      from: r.legalCorpusSnapshotMembers.sourceVersionId,
+      to: r.legalSourceVersions.id,
+      optional: false,
+    }),
+    rendition: r.one.legalSourceRenditions({
+      from: r.legalCorpusSnapshotMembers.renditionId,
+      to: r.legalSourceRenditions.id,
+      optional: false,
+    }),
+    processingGeneration: r.one.legalSourceProcessingGenerations({
+      from: r.legalCorpusSnapshotMembers.processingGenerationId,
+      to: r.legalSourceProcessingGenerations.id,
+      optional: false,
+    }),
   },
 }));

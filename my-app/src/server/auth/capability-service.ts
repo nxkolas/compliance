@@ -91,6 +91,7 @@ const archivedOrganizationCapabilities = new Set<OrganizationCapability>([
 
 /** Platform corpus operations are deployment-authorized, never user-authorized. */
 export async function resolvePlatformCapabilities(_userId: string) {
+  void _userId;
   return new Set<PlatformCapability>();
 }
 
@@ -98,6 +99,8 @@ export async function requirePlatformCapability(
   _userId: string,
   _capability: PlatformCapability,
 ): Promise<never> {
+  void _userId;
+  void _capability;
   throw new ApiError(
     403,
     "Corpus operations require deployment credentials",

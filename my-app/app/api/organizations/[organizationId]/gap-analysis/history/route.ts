@@ -8,5 +8,5 @@ export const GET = apiRoute(async ({ routeContext }: {
 }) => {
   const user = await requireApiUser();
   const { organizationId } = await routeContext.params;
-  return { data: { history: await getGapHistory({ userId: user.id, organizationId, locale: await getLocale() }) } };
+  return { data: { history: await getGapHistory(user.id, organizationId, await getLocale()) } };
 });

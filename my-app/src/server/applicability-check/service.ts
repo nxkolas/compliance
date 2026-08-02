@@ -9,7 +9,6 @@ import {
   assessments,
   auditEvents,
   guestApplicabilityChecks,
-  organizations,
 } from "@/src/db/schema";
 import {
   currentApplicabilityDefinitionHash,
@@ -212,7 +211,6 @@ export async function getApplicabilityOverviewForUser(
 export async function getApplicabilityAnswersForUser(
   userId: string,
   organizationId: string,
-  _locale: Locale,
 ): Promise<ApplicabilityAnswersDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
   const current = await getCurrentAssessmentRevision(organizationId);
@@ -405,7 +403,10 @@ function toQuestionnaire(
   organizationCountry: string | null,
 ): ApplicabilityQuestionnaireDto {
   const definition = getCurrentApplicabilityDefinition(locale);
-  const questions = definition.questions.map(({ factMappings: _, ...question }) => question);
+  const questions = definition.questions.map(({ factMappings, ...question }) => {
+    void factMappings;
+    return question;
+  });
   return {
     id: definition.questionnaireId,
     locale,

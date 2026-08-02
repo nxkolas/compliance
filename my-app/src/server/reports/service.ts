@@ -1,83 +1,115 @@
-import { db } from "@/src/db";
-import { auditEvents, backgroundJobs, generatedArtifactRevisions, generatedArtifacts, reportActionPlanSources, reportArtifactSources, reportDocumentSources, reports } from "@/src/db/schema";
+import { randomUUID } from "node:crypto";
+import * as z from "zod";
+import { and, asc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import type { Locale } from "@/lib/i18n-config";
 import { localizedFilename } from "@/lib/i18n/format";
 import { reportsMessages } from "@/lib/i18n/messages/reports";
-import { and, eq, inArray, lt, or, sql } from "drizzle-orm";
-import { contentHash } from "@/src/server/compliance";
-import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
+import { db } from "@/src/db";
+import {
+  analysisOutputDocumentSources,
+  auditEvents,
+  backgroundJobs,
+  reportDocumentSources,
+  reports,
+} from "@/src/db/schema";
 import { ApiError } from "@/src/server/api/errors";
+import { getCursorCodec } from "@/src/server/api/pagination";
+import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
+import { contentHash } from "@/src/server/compliance";
 import { toJobDto } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
-import { getCursorCodec } from "@/src/server/api/pagination";
-import * as z from "zod";
 import { assertReportConcurrency } from "./quota";
 
 export const REPORT_STORAGE_BUCKET = "compliance-reports";
-type Source = { sourceType: string; sourceId: string };
 
-export async function createReport(input: { userId: string; organizationId: string; locale: Locale; kind: "compliance_summary" }) {
+export async function createReport(input: { userId: string; organizationId: string; locale: Locale }) {
   await requireOrganizationCapability(input.userId, input.organizationId, "reports:create");
-  const [active] = await db.select({ count: sql<number>`count(*)::int` }).from(reports).where(and(
-    eq(reports.organizationId, input.organizationId),
-    inArray(reports.state, ["queued", "rendering"]),
-  ));
-  assertReportConcurrency(active.count);
-  const artifacts = await db.query.generatedArtifacts.findMany({ columns: { id: true, organizationId: true, moduleId: true, artifactType: true, currentRevisionId: true, acceptedRevisionId: true, createdAt: true }, where: { RAW: (table, operators) => (and(
-    eq(table.organizationId, input.organizationId),
-    inArray(table.artifactType, ["affectedness_result", "gap_analysis_result"]),
-  )) ?? operators.sql`true` } });
-  const plan = await db.query.actionPlans.findFirst({ columns: { id: true, organizationId: true, sourceGapArtifactRevisionId: true, outputLocale: true, status: true, revisionNumber: true, activatedBy: true, activatedAt: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true, version: true }, where: { RAW: (table, operators) => (and(eq(table.organizationId, input.organizationId), eq(table.status, "active"))) ?? operators.sql`true` } });
-  const documentRows = await db.query.documents.findMany({ columns: { id: true, organizationId: true, title: true, status: true, version: true, currentVersionId: true, createdBy: true, createdAt: true, updatedAt: true, archivedAt: true }, where: { RAW: (table, operators) => (eq(table.organizationId, input.organizationId)) ?? operators.sql`true` } });
-  const sources: Source[] = [
-    ...artifacts.flatMap((artifact) => artifact.acceptedRevisionId ? [{ sourceType: artifact.artifactType, sourceId: artifact.acceptedRevisionId }] : []),
-    ...(plan ? [{ sourceType: "action_plan", sourceId: plan.id }] : []),
-    ...documentRows.flatMap((document) => document.currentVersionId ? [{ sourceType: "document_version", sourceId: document.currentVersionId }] : []),
-  ];
-  const snapshot = {
-    capturedAt: new Date().toISOString(), kind: input.kind, locale: input.locale,
-    applicabilityRevisionId: sources.find((source) => source.sourceType === "affectedness_result")?.sourceId ?? null,
-    gapRevisionId: sources.find((source) => source.sourceType === "gap_analysis_result")?.sourceId ?? null,
+  const [active] = await db.select({ count: sql<number>`count(*)::int` })
+    .from(backgroundJobs)
+    .where(and(
+      eq(backgroundJobs.organizationId, input.organizationId),
+      eq(backgroundJobs.kind, "report_render"),
+      inArray(backgroundJobs.state, ["queued", "leased", "running"]),
+    ));
+  assertReportConcurrency(active?.count ?? 0);
+
+  const [applicability, gap, plan] = await Promise.all([
+    db.query.analysisOutputs.findFirst({
+      columns: { currentRevisionId: true },
+      where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), eq(table.kind, "applicability")) ?? operators.sql`true` },
+    }),
+    db.query.analysisOutputs.findFirst({
+      columns: { currentRevisionId: true },
+      where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
+    }),
+    db.query.actionPlans.findFirst({
+      columns: { id: true },
+      where: { RAW: (table, operators) => eq(table.organizationId, input.organizationId) ?? operators.sql`true` },
+    }),
+  ]);
+  if (!applicability?.currentRevisionId || !gap?.currentRevisionId) {
+    throw new ApiError(409, "Complete applicability and Gap analysis before creating a report", undefined, "REPORT_INPUTS_INCOMPLETE");
+  }
+  const applicabilityRevisionId = applicability.currentRevisionId;
+  const gapRevisionId = gap.currentRevisionId;
+  const documentSources = await db.select({
+    documentVersionId: analysisOutputDocumentSources.documentVersionId,
+    position: analysisOutputDocumentSources.position,
+  }).from(analysisOutputDocumentSources)
+    .where(and(
+      eq(analysisOutputDocumentSources.organizationId, input.organizationId),
+      eq(analysisOutputDocumentSources.outputRevisionId, gapRevisionId),
+    ))
+    .orderBy(asc(analysisOutputDocumentSources.position));
+
+  const reportId = randomUUID();
+  const jobId = randomUUID();
+  const source = {
+    applicabilityRevisionId,
+    gapRevisionId,
     actionPlanId: plan?.id ?? null,
-    documentVersionIds: sources.filter((source) => source.sourceType === "document_version").map((source) => source.sourceId).sort(),
+    documentVersionIds: documentSources.map((row) => row.documentVersionId),
+    locale: input.locale,
   };
   return db.transaction(async (tx) => {
-    const [report] = await tx.insert(reports).values({
-      organizationId: input.organizationId, kind: input.kind, locale: input.locale,
-      inputSnapshot: snapshot, inputHash: contentHash(snapshot), createdBy: input.userId,
-    }).returning();
-    if (!report) throw new ApiError(500, "Could not create report", undefined, "REPORT_CREATE_FAILED");
     const [job] = await tx.insert(backgroundJobs).values({
-      organizationId: input.organizationId, requestedByUserId: input.userId, kind: "report-render",
-      payload: { reportId: report.id }, cancellable: true, cancellationCapability: "reports:create",
+      id: jobId,
+      organizationId: input.organizationId,
+      requestedBy: input.userId,
+      kind: "report_render",
+      payload: { reportId },
     }).returning();
-    if (!job) throw new ApiError(500, "Could not enqueue report", undefined, "REPORT_CREATE_FAILED");
-    const [linked] = await tx.update(reports).set({ jobId: job.id, updatedAt: new Date() }).where(eq(reports.id, report.id)).returning();
-    const artifactSources = sources.filter((source) =>
-      source.sourceType === "affectedness_result" || source.sourceType === "gap_analysis_result"
-    );
-    const actionPlanSources = sources.filter((source) => source.sourceType === "action_plan");
-    const documentSources = sources.filter((source) => source.sourceType === "document_version");
-    if (artifactSources.length) {
-      await tx.insert(reportArtifactSources).values(
-        artifactSources.map((source) => ({ reportId: report.id, artifactRevisionId: source.sourceId })),
-      );
-    }
-    if (actionPlanSources.length) {
-      await tx.insert(reportActionPlanSources).values(
-        actionPlanSources.map((source) => ({ reportId: report.id, actionPlanId: source.sourceId })),
-      );
-    }
+    const [report] = await tx.insert(reports).values({
+      id: reportId,
+      organizationId: input.organizationId,
+      applicabilityRevisionId,
+      gapRevisionId,
+      actionPlanId: plan?.id ?? null,
+      renderingJobId: jobId,
+      locale: input.locale,
+      inputHash: contentHash(source),
+      createdBy: input.userId,
+    }).returning();
+    if (!job || !report) throw new ApiError(500, "Could not create report", undefined, "REPORT_CREATE_FAILED");
     if (documentSources.length) {
-      await tx.insert(reportDocumentSources).values(
-        documentSources.map((source) => ({ reportId: report.id, documentVersionId: source.sourceId })),
-      );
+      await tx.insert(reportDocumentSources).values(documentSources.map((document) => ({
+        organizationId: input.organizationId,
+        reportId,
+        documentVersionId: document.documentVersionId,
+        position: document.position,
+      })));
     }
-    await tx.insert(auditEvents).values({ organizationId: input.organizationId, actorUserId: input.userId, eventType: "report.created", entityType: "report", entityId: report.id, metadata: { inputHash: report.inputHash, sourceCount: sources.length } });
-    return { report: toReportDto(linked!), job: toJobDto(job) };
+    await tx.insert(auditEvents).values({
+      organizationId: input.organizationId,
+      actorUserId: input.userId,
+      eventType: "report.created",
+      entityType: "report",
+      entityId: reportId,
+      metadata: { inputHash: report.inputHash, documentCount: documentSources.length },
+    });
+    return { report: toReportDto(report, job), job: toJobDto(job) };
   });
 }
-
 
 export async function listReports(userId: string, organizationId: string) {
   return (await listReportsPage({ userId, organizationId, limit: 50 })).reports;
@@ -88,66 +120,82 @@ export async function listReportsPage(input: { userId: string; organizationId: s
   await requireOrganizationCapability(input.userId, input.organizationId, "reports:read");
   const scope = `reports:${input.organizationId}`;
   const cursor = input.cursor ? reportCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
-  const rows = await db.query.reports.findMany({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.organizationId, input.organizationId),
-      cursor ? or(lt(table.createdAt, new Date(cursor[0])), and(eq(table.createdAt, new Date(cursor[0])), lt(table.id, cursor[1]))) : undefined,
-    )) ?? operators.sql`true` },
-    orderBy: { createdAt: "desc", id: "desc" },
-    limit: input.limit + 1,
-  });
+  const rows = await db.select({ report: reports, job: backgroundJobs })
+    .from(reports)
+    .innerJoin(backgroundJobs, eq(reports.renderingJobId, backgroundJobs.id))
+    .where(and(
+      eq(reports.organizationId, input.organizationId),
+      cursor ? or(lt(reports.createdAt, new Date(cursor[0])), and(eq(reports.createdAt, new Date(cursor[0])), lt(reports.id, cursor[1]))) : undefined,
+    ))
+    .orderBy(sql`${reports.createdAt} desc`, sql`${reports.id} desc`)
+    .limit(input.limit + 1);
   const page = rows.slice(0, input.limit);
-  const last = page.at(-1);
+  const last = page.at(-1)?.report;
   return {
-    reports: page.map(toReportDto),
+    reports: page.map(({ report, job }) => toReportDto(report, job)),
     nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined,
   };
 }
 
 export async function getReportDetail(userId: string, organizationId: string, reportId: string) {
   await requireOrganizationCapability(userId, organizationId, "reports:read");
-  const report = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: { RAW: (table, operators) => (and(eq(table.id, reportId), eq(table.organizationId, organizationId))) ?? operators.sql`true` } });
-  if (!report) throw new ApiError(404, "Report not found", undefined, "REPORT_NOT_FOUND");
-  const [artifactSources, actionPlanSources, documentSources, job] = await Promise.all([
-    db.select({
-      sourceType: generatedArtifacts.artifactType,
-      sourceId: reportArtifactSources.artifactRevisionId,
-    }).from(reportArtifactSources)
-      .innerJoin(generatedArtifactRevisions, eq(reportArtifactSources.artifactRevisionId, generatedArtifactRevisions.id))
-      .innerJoin(generatedArtifacts, eq(generatedArtifactRevisions.artifactId, generatedArtifacts.id))
-      .where(eq(reportArtifactSources.reportId, report.id)),
-    db.select({ sourceId: reportActionPlanSources.actionPlanId })
-      .from(reportActionPlanSources)
-      .where(eq(reportActionPlanSources.reportId, report.id)),
-    db.select({ sourceId: reportDocumentSources.documentVersionId })
-      .from(reportDocumentSources)
-      .where(eq(reportDocumentSources.reportId, report.id)),
-    report.jobId ? db.query.backgroundJobs.findFirst({ columns: { id: true, organizationId: true, requestedByUserId: true, kind: true, state: true, payload: true, progress: true, attemptCount: true, maxAttempts: true, cancellable: true, cancellationCapability: true, safeErrorCode: true, safeErrorMessage: true, runAfter: true, leaseOwner: true, leaseExpiresAt: true, heartbeatAt: true, cancellationRequestedAt: true, startedAt: true, finishedAt: true, createdAt: true, updatedAt: true }, where: { RAW: (table, operators) => (eq(table.id, report.jobId!)) ?? operators.sql`true` } }) : null,
-  ]);
-  const sources: Source[] = [
-    ...artifactSources,
-    ...actionPlanSources.map(({ sourceId }) => ({ sourceType: "action_plan", sourceId })),
-    ...documentSources.map(({ sourceId }) => ({ sourceType: "document_version", sourceId })),
-  ];
-  return { report: toReportDto(report), sources, job: job ? toJobDto(job) : null };
+  const [row] = await db.select({ report: reports, job: backgroundJobs })
+    .from(reports)
+    .innerJoin(backgroundJobs, eq(reports.renderingJobId, backgroundJobs.id))
+    .where(and(eq(reports.id, reportId), eq(reports.organizationId, organizationId)))
+    .limit(1);
+  if (!row) throw new ApiError(404, "Report not found", undefined, "REPORT_NOT_FOUND");
+  const sources = await db.select({
+    documentVersionId: reportDocumentSources.documentVersionId,
+    position: reportDocumentSources.position,
+  }).from(reportDocumentSources)
+    .where(and(eq(reportDocumentSources.organizationId, organizationId), eq(reportDocumentSources.reportId, reportId)))
+    .orderBy(asc(reportDocumentSources.position));
+  return { report: toReportDto(row.report, row.job), sources, job: toJobDto(row.job) };
 }
 
 export async function createReportDownload(userId: string, organizationId: string, reportId: string) {
   await requireOrganizationCapability(userId, organizationId, "reports:read");
-  const report = await db.query.reports.findFirst({ columns: { id: true, organizationId: true, kind: true, locale: true, state: true, inputSnapshot: true, inputHash: true, jobId: true, storageBucket: true, storagePath: true, outputHash: true, fileSize: true, safeErrorCode: true, createdBy: true, createdAt: true, updatedAt: true, completedAt: true }, where: { RAW: (table, operators) => (and(eq(table.id, reportId), eq(table.organizationId, organizationId), eq(table.state, "ready"))) ?? operators.sql`true` } });
-  if (!report?.storageBucket || !report.storagePath) throw new ApiError(409, "Report is not ready", undefined, "REPORT_NOT_READY");
+  const report = await db.query.reports.findFirst({
+    where: { RAW: (table, operators) => and(eq(table.id, reportId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
+  });
+  if (!report?.pdfBucket || !report.pdfKey) throw new ApiError(409, "Report is not ready", undefined, "REPORT_NOT_READY");
   const locale = report.locale as Locale;
-  const fileName = localizedFilename(
-    reportsMessages[locale].reports.pdf.fileName,
-    locale,
-    "pdf",
-  );
-  const { data, error } = await getSupabaseAdminClient().storage.from(report.storageBucket).createSignedUrl(report.storagePath, 120, { download: fileName });
+  const fileName = localizedFilename(reportsMessages[locale].reports.pdf.fileName, locale, "pdf");
+  const { data, error } = await getSupabaseAdminClient().storage.from(report.pdfBucket)
+    .createSignedUrl(report.pdfKey, 120, { download: fileName });
   if (error || !data) throw new ApiError(503, "Report download is unavailable", undefined, "REPORT_DOWNLOAD_UNAVAILABLE");
-  await db.insert(auditEvents).values({ organizationId, actorUserId: userId, eventType: "report.downloaded", entityType: "report", entityId: report.id, metadata: {} });
+  await db.insert(auditEvents).values({
+    organizationId,
+    actorUserId: userId,
+    eventType: "report.downloaded",
+    entityType: "report",
+    entityId: report.id,
+    metadata: {},
+  });
   return { url: data.signedUrl, expiresInSeconds: 120 };
 }
 
-function toReportDto(report: typeof reports.$inferSelect) {
-  return { ...report, locale: report.locale as Locale, createdAt: report.createdAt.toISOString(), updatedAt: report.updatedAt.toISOString(), completedAt: report.completedAt?.toISOString() ?? null };
+function toReportDto(report: typeof reports.$inferSelect, job: typeof backgroundJobs.$inferSelect) {
+  return {
+    id: report.id,
+    organizationId: report.organizationId,
+    applicabilityRevisionId: report.applicabilityRevisionId,
+    gapRevisionId: report.gapRevisionId,
+    actionPlanId: report.actionPlanId,
+    renderingJobId: report.renderingJobId,
+    locale: report.locale as Locale,
+    inputHash: report.inputHash,
+    pdfHash: report.pdfHash,
+    pdfByteSize: report.pdfByteSize,
+    state: report.pdfKey ? "ready" as const : deriveReportState(job.state),
+    createdAt: report.createdAt.toISOString(),
+  };
+}
+
+function deriveReportState(state: typeof backgroundJobs.$inferSelect.state) {
+  if (state === "failed") return "failed" as const;
+  if (state === "cancelled") return "cancelled" as const;
+  if (state === "running" || state === "leased") return "rendering" as const;
+  return "queued" as const;
 }

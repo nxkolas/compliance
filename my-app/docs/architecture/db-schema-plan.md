@@ -1,4 +1,10 @@
-> Status update (2026-07-17): this historical design is now implemented and
+> Status update (2026-08-02): historical and superseded by
+> `docs/plans/pending/schema-simplification-refactor.md` and the current
+> `docs/architecture/database-structure.md`. The catalogs, publication,
+> activation, approval, and generic artifact model described below no longer
+> represent the application. This file is retained only as design history.
+>
+> Earlier status (2026-07-17): this historical design was implemented and
 > refined by two approved plans. The NIS2 applicability portion uses the
 > immutable compliance-release architecture in
 > `docs/plans/done/immutable-compliance-release-architecture.md`; Gap-Analyse,

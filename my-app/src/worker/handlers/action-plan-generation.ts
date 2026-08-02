@@ -13,13 +13,13 @@ export async function handleActionPlanGeneration(
   abortSignal?: AbortSignal,
 ) {
   const payload = payloadSchema.parse(job.payload);
-  if (!job.organizationId || !job.requestedByUserId) {
+  if (!job.organizationId || !job.requestedBy) {
     throw new Error("Action Plan generation job scope is incomplete");
   }
   return executeActionPlanGenerationJob({
     jobId: job.id,
     organizationId: job.organizationId,
-    userId: job.requestedByUserId,
+    userId: job.requestedBy,
     attemptCount: job.attemptCount,
     abortSignal,
     ...payload,

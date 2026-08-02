@@ -1,29 +1,25 @@
 import type { Locale } from "@/lib/i18n-config";
-import { requireOrganizationCapability } from "../auth/capability-service";
-import { loadGapHistoryPreauthorized } from "./history-reader";
-import { readGeneratedGapInputs } from "./generated-inputs-reader";
 import { getGapAnalysisRevision, getGapAnalysisWorkflow } from "./workflow-reader";
 
-type ReadInput = { userId: string; organizationId: string; locale: Locale };
-
-export function getGapWorkflowSummary(input: ReadInput) {
-  return getGapAnalysisWorkflow({ ...input, view: "results" });
+export async function getGapHistory(userId: string, organizationId: string, locale: Locale = "de") {
+  return (await getGapAnalysisWorkflow({ userId, organizationId, locale, view: "history" })).history;
 }
 
-export function getGapResults(input: ReadInput & { revisionId: string }) {
-  return getGapAnalysisRevision(input);
+export async function getGapInputs(
+  userId: string,
+  organizationId: string,
+  revisionId: string,
+  locale: Locale = "de",
+) {
+  const workflow = await getGapAnalysisWorkflow({ userId, organizationId, locale, view: "inputs" });
+  return workflow.revision?.id === revisionId ? workflow.generatedInputs : null;
 }
 
-export async function getGapInputs(input: ReadInput & { revisionId: string }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:read");
-  return readGeneratedGapInputs(input);
+export function getGapResults(userId: string, organizationId: string, revisionId: string, locale: Locale = "de") {
+  void locale;
+  return getGapAnalysisRevision(userId, organizationId, revisionId);
 }
 
-export async function getGapHistory(input: ReadInput) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:read");
-  return loadGapHistoryPreauthorized({
-    organizationId: input.organizationId,
-    currentUserId: input.userId,
-    locale: input.locale,
-  });
+export function getGapWorkflowSummary(userId: string, organizationId: string, locale: Locale = "de") {
+  return getGapAnalysisWorkflow({ userId, organizationId, locale });
 }

@@ -4,63 +4,34 @@ import {
 } from "../applicability-check/domain";
 import { ApiError } from "../api/errors";
 
-export const GAP_ELIGIBLE_OUTCOMES = [
-  "essential_entity",
-  "important_entity",
-] as const;
-
+export const GAP_ELIGIBLE_OUTCOMES = ["essential_entity", "important_entity"] as const;
 export type GapEligibleOutcome = (typeof GAP_ELIGIBLE_OUTCOMES)[number];
 
 export type GapApplicabilityArtifactCandidate = {
   id: string;
-  checkReleaseId: string | null;
-  status: string;
+  definitionHash: string;
+  gapEligible: boolean | null;
   result: unknown;
 };
 
 export type GapApplicabilityPrerequisite =
-  | {
-      status: "eligible";
-      artifactRevisionId: string;
-      outcome: GapEligibleOutcome;
-    }
-  | {
-      status:
-        | "missing"
-        | "release_incompatible"
-        | "not_approved"
-        | "invalid";
-    }
+  | { status: "eligible"; outputRevisionId: string; outcome: GapEligibleOutcome }
+  | { status: "missing" | "definition_incompatible" | "invalid" }
   | {
       status: "not_eligible";
-      reason:
-        | "unsupported_country"
-        | "clarification_required"
-        | "not_directly_in_scope";
-      artifactRevisionId: string;
+      reason: "unsupported_country" | "clarification_required" | "not_directly_in_scope";
+      outputRevisionId: string;
       outcome: "clarification_required" | "not_directly_in_scope";
       countryCode: string | null;
       unresolvedFactCodes: string[];
     };
 
 export type GapPrerequisiteView =
-  | {
-      satisfied: true;
-      status: "eligible";
-      destination: string;
-    }
+  | { satisfied: true; status: "eligible"; destination: string }
   | {
       satisfied: false;
-      status:
-        | "missing"
-        | "release_incompatible"
-        | "not_approved"
-        | "invalid"
-        | "not_eligible";
-      reason?:
-        | "unsupported_country"
-        | "clarification_required"
-        | "not_directly_in_scope";
+      status: "missing" | "definition_incompatible" | "invalid" | "not_eligible";
+      reason?: "unsupported_country" | "clarification_required" | "not_directly_in_scope";
       outcome?: string;
       countryCode?: string | null;
       supportedCountryCodes: string[];
@@ -68,39 +39,28 @@ export type GapPrerequisiteView =
     };
 
 export function evaluateGapApplicabilityPrerequisite(
-  compatibleCheckReleaseId: string,
+  compatibleDefinitionHash: string,
   candidate: GapApplicabilityArtifactCandidate | null | undefined,
 ): GapApplicabilityPrerequisite {
   if (!candidate) return { status: "missing" };
-  if (candidate.checkReleaseId !== compatibleCheckReleaseId) {
-    return { status: "release_incompatible" };
+  if (candidate.definitionHash !== compatibleDefinitionHash) {
+    return { status: "definition_incompatible" };
   }
-  if (candidate.status !== "approved") return { status: "not_approved" };
-
   let result: StoredRuleEvaluationResult;
   try {
-    result = parseStoredRuleEvaluationResult(candidate.result);
+    const stored = candidate.result as { evidence?: unknown };
+    result = parseStoredRuleEvaluationResult(stored?.evidence ?? candidate.result);
   } catch {
     return { status: "invalid" };
   }
-  if (
-    result.checkReleaseId !== compatibleCheckReleaseId ||
-    result.checkReleaseId !== candidate.checkReleaseId
-  ) {
-    return { status: "invalid" };
+  if (candidate.gapEligible && isGapEligibleOutcome(result.outcome)) {
+    return { status: "eligible", outputRevisionId: candidate.id, outcome: result.outcome };
   }
-  if (isGapEligibleOutcome(result.outcome)) {
-    return {
-      status: "eligible",
-      artifactRevisionId: candidate.id,
-      outcome: result.outcome,
-    };
-  }
-
+  if (isGapEligibleOutcome(result.outcome)) return { status: "invalid" };
   return {
     status: "not_eligible",
     reason: getIneligibilityReason(result),
-    artifactRevisionId: candidate.id,
+    outputRevisionId: candidate.id,
     outcome: result.outcome,
     countryCode: result.jurisdiction.countryCode,
     unresolvedFactCodes: [...result.unresolvedFactCodes],
@@ -112,39 +72,14 @@ export function assertGapApplicabilityEligible(
 ): Extract<GapApplicabilityPrerequisite, { status: "eligible" }> {
   if (prerequisite.status === "eligible") return prerequisite;
   if (prerequisite.status === "not_eligible") {
-    throw new ApiError(
-      409,
-      "The applicability result is not eligible for Gap Analysis",
-      {
-        outcome: prerequisite.outcome,
-        countryCode: prerequisite.countryCode,
-        unresolvedFactCodes: prerequisite.unresolvedFactCodes,
-      },
-      "GAP_APPLICABILITY_NOT_ELIGIBLE",
-    );
+    throw new ApiError(409, "The applicability result is not eligible for Gap Analysis", prerequisite, "GAP_APPLICABILITY_NOT_ELIGIBLE");
   }
-
-  const failures = {
-    missing: {
-      message: "An applicability result is required for Gap Analysis",
-      code: "GAP_APPLICABILITY_MISSING",
-    },
-    release_incompatible: {
-      message:
-        "The applicability result is incompatible with the active Gap release",
-      code: "GAP_APPLICABILITY_RELEASE_INCOMPATIBLE",
-    },
-    not_approved: {
-      message: "An approved applicability result is required for Gap Analysis",
-      code: "GAP_APPLICABILITY_NOT_APPROVED",
-    },
-    invalid: {
-      message: "The stored applicability result is invalid",
-      code: "GAP_APPLICABILITY_INVALID",
-    },
+  const failure = {
+    missing: ["An applicability result is required for Gap Analysis", "GAP_APPLICABILITY_MISSING"],
+    definition_incompatible: ["The applicability result uses an obsolete definition", "GAP_APPLICABILITY_DEFINITION_INCOMPATIBLE"],
+    invalid: ["The stored applicability result is invalid", "GAP_APPLICABILITY_INVALID"],
   } as const;
-  const failure = failures[prerequisite.status];
-  throw new ApiError(409, failure.message, undefined, failure.code);
+  throw new ApiError(409, failure[prerequisite.status][0], undefined, failure[prerequisite.status][1]);
 }
 
 export function projectGapPrerequisiteView(input: {
@@ -152,69 +87,43 @@ export function projectGapPrerequisiteView(input: {
   supportedCountryCodes: string[];
   destination: string;
 }): GapPrerequisiteView {
-  if (input.prerequisite.status === "eligible") {
-    return {
-      satisfied: true,
-      status: "eligible",
-      destination: input.destination,
-    };
-  }
-  if (input.prerequisite.status === "not_eligible") {
-    return {
-      satisfied: false,
-      status: "not_eligible",
-      reason: input.prerequisite.reason,
-      outcome: input.prerequisite.outcome,
-      countryCode: input.prerequisite.countryCode,
-      supportedCountryCodes: [...input.supportedCountryCodes],
-      destination: input.destination,
-    };
+  const prerequisite = input.prerequisite;
+  if (prerequisite.status === "eligible") {
+    return { satisfied: true, status: "eligible", destination: input.destination };
   }
   return {
     satisfied: false,
-    status: input.prerequisite.status,
+    status: prerequisite.status,
+    ...(prerequisite.status === "not_eligible"
+      ? { reason: prerequisite.reason, outcome: prerequisite.outcome, countryCode: prerequisite.countryCode }
+      : {}),
     supportedCountryCodes: [...input.supportedCountryCodes],
     destination: input.destination,
   };
 }
 
-export function assertGapRequirementsAvailable<T>(
-  requirements: T[],
-): [T, ...T[]] {
-  if (requirements.length > 0) return requirements as [T, ...T[]];
-  throw new ApiError(
-    409,
-    "No Gap requirements are available for the applicability outcome",
-    undefined,
-    "GAP_REQUIREMENTS_UNAVAILABLE",
-  );
+export function assertGapRequirementsAvailable<T>(requirements: T[]): [T, ...T[]] {
+  if (requirements.length) return requirements as [T, ...T[]];
+  throw new ApiError(409, "No Gap requirements are available for the applicability outcome", undefined, "GAP_REQUIREMENTS_UNAVAILABLE");
 }
 
 export function resolveGapGenerationPrerequisites<
   A extends GapApplicabilityArtifactCandidate,
   T extends { applicabilityOutcomeCodes: string[] },
 >(input: {
-  compatibleCheckReleaseId: string;
+  compatibleDefinitionHash: string;
   artifact: A | null | undefined;
   requirements: T[];
 }) {
   const applicability = assertGapApplicabilityEligible(
-    evaluateGapApplicabilityPrerequisite(
-      input.compatibleCheckReleaseId,
-      input.artifact,
-    ),
-  );
-  const requirements = assertGapRequirementsAvailable(
-    input.requirements.filter((requirement) =>
-      requirement.applicabilityOutcomeCodes.includes(
-        applicability.outcome,
-      ),
-    ),
+    evaluateGapApplicabilityPrerequisite(input.compatibleDefinitionHash, input.artifact),
   );
   return {
     applicability,
     artifact: input.artifact as A,
-    requirements,
+    requirements: assertGapRequirementsAvailable(
+      input.requirements.filter((item) => item.applicabilityOutcomeCodes.includes(applicability.outcome)),
+    ),
   };
 }
 
@@ -222,19 +131,8 @@ function isGapEligibleOutcome(outcome: string): outcome is GapEligibleOutcome {
   return (GAP_ELIGIBLE_OUTCOMES as readonly string[]).includes(outcome);
 }
 
-function getIneligibilityReason(
-  result: StoredRuleEvaluationResult,
-):
-  | "unsupported_country"
-  | "clarification_required"
-  | "not_directly_in_scope" {
-  if (
-    result.unresolvedFactCodes.includes("unresolved_unsupported_profile")
-  ) {
-    return "unsupported_country";
-  }
-  if (result.outcome === "not_directly_in_scope") {
-    return "not_directly_in_scope";
-  }
-  return "clarification_required";
+function getIneligibilityReason(result: StoredRuleEvaluationResult) {
+  if (result.unresolvedFactCodes.includes("unresolved_unsupported_profile")) return "unsupported_country" as const;
+  if (result.outcome === "not_directly_in_scope") return "not_directly_in_scope" as const;
+  return "clarification_required" as const;
 }

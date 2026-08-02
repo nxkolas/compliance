@@ -1,3 +1,8 @@
-# Gate corpus activation with grounding evaluations
+# Superseded: corpus evaluation and release activation gates
 
-Activating a Legal Corpus Release requires deterministic integrity validation and automated retrieval, citation, conflict, translation, and unsupported-claim evaluations to meet defined thresholds. A Platform Administrator may bypass a failed evaluation only through an explicit emergency override with a recorded reason and audit event.
+Status: superseded 2 August 2026.
+
+Corpus evaluation, override, publication, and activation-history tables are
+removed. Deployment tooling validates immutable snapshot membership and
+atomically advances the family pointer. The platform audit stream is the action
+history.

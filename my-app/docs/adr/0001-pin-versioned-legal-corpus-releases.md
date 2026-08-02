@@ -1,3 +1,10 @@
-# Pin versioned legal-corpus releases
+# Pin versioned legal-corpus evidence
 
-The application will maintain centrally curated legal sources as immutable versions grouped into published Legal Corpus Releases. Compliance and Gap-Analyse releases pin an exact corpus release, and every AI run records the exact source versions and chunks it received, so legal updates are adopted deliberately without changing the basis of historical or in-progress results.
+Status: amended 2 August 2026.
+
+Legal sources, versions, renditions, processing generations, chunks, embeddings,
+and reviewed provision bindings remain immutable evidence. The former evaluated,
+published, and activated release control plane is superseded by an immutable
+validated corpus snapshot and one atomic current pointer per corpus family.
+Every AI run records the exact admitted legal contexts so advancing the pointer
+cannot alter historical results.

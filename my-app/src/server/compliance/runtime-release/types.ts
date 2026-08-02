@@ -1,5 +1,18 @@
 import type { Locale } from "@/lib/i18n-config";
-import type { ruleSets } from "@/src/db/schema";
+
+export type RuntimeRuleSet = {
+  id: string;
+  moduleId: string;
+  code: string;
+  versionLabel: string;
+  status: "published";
+  evaluatorKind: string;
+  evaluatorSchemaVersion: number;
+  rules: unknown;
+  contentHash: string;
+  createdAt: Date;
+  publishedAt: Date;
+};
 
 export type RuntimeReleaseOption = {
   id: string;
@@ -39,7 +52,7 @@ export type PublishedComplianceRelease = {
   questionnaireVersionId: string;
   questionnaireTitle: string;
   questionnaireCode: string;
-  ruleSet: typeof ruleSets.$inferSelect;
+  ruleSet: RuntimeRuleSet;
   scopeModelVersionId: string;
   questions: RuntimeReleaseQuestion[];
   contentByStableKey: Record<string, string>;

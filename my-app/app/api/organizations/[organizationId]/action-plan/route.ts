@@ -1,7 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { actionPlanGenerationRequestSchema } from "@/src/contracts/action-plans";
 import { requireApiUser } from "@/src/server/api/auth";
-import { formatEtag } from "@/src/server/api/concurrency";
 import { apiRoute } from "@/src/server/api/handler";
 import { runIdempotentCommand } from "@/src/server/api/idempotency";
 import { readJsonBody } from "@/src/server/api/request";
@@ -27,15 +26,7 @@ export const GET = apiRoute(
     const user = await requireApiUser();
     const { organizationId } = await routeContext.params;
     const current = await getCurrentActionPlan(user.id, organizationId);
-    return {
-      data: { current },
-      ...(current
-        ? {
-            meta: { version: current.plan.version },
-            headers: { etag: formatEtag(current.plan.version) },
-          }
-        : {}),
-    };
+    return { data: { current } };
   },
 );
 

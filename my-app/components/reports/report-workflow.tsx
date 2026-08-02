@@ -41,10 +41,9 @@ export function ReportWorkflow({
     () =>
       reports
         .filter(
-          (report) =>
-            report.jobId && ["queued", "rendering"].includes(report.state),
+          (report) => ["queued", "rendering"].includes(report.state),
         )
-        .map((report) => report.jobId!),
+        .map((report) => report.renderingJobId),
     [reports],
   );
 
@@ -99,10 +98,7 @@ export function ReportWorkflow({
           disabled={busy !== null}
           onClick={() =>
             act("create", () =>
-              reportsClient.create(organizationId, {
-                kind: "compliance_summary",
-                locale,
-              }),
+              reportsClient.create(organizationId, { locale }),
             )
           }
         >
@@ -145,14 +141,13 @@ export function ReportWorkflow({
                   {labels.download}
                 </Button>
               ) : null}
-              {report.jobId &&
-              ["queued", "rendering"].includes(report.state) &&
+              {["queued", "rendering"].includes(report.state) &&
               canCreate ? (
                 <Button
                   variant="outline"
                   onClick={() =>
                     act(`cancel-${report.id}`, () =>
-                      jobsClient.cancel(report.jobId!),
+                      jobsClient.cancel(report.renderingJobId),
                     )
                   }
                 >

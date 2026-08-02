@@ -433,6 +433,11 @@ export const modulesMessages = defineFeatureMessages({
               supportNoDocument: "Kein Dokument hinterlegt",
               questionnaireDisagreement: "Die generierte Bewertung weicht von Ihrer Fragebogenantwort ab.",
               reviewRequired: "Widersprüchliche Angaben",
+              contradictionDecision: "Welche Angabe soll für diese Kategorie maßgeblich sein? Die Entscheidung erstellt einen neuen, unveränderlichen Analysestand.",
+              trustQuestionnaire: "Fragebogen vertrauen",
+              trustDocument: "Dokument vertrauen",
+              resolvingContradiction: "Widerspruch wird aufgelöst …",
+              contradictionResolutionFailed: "Der Widerspruch konnte nicht aufgelöst werden.",
               changeAssessment: "Bewertung ändern",
               correctionRegenerates:
                 "Beim Speichern werden die betroffenen Lücken automatisch neu erstellt.",
@@ -1069,6 +1074,11 @@ export const modulesMessages = defineFeatureMessages({
               supportNoDocument: "No document provided",
               questionnaireDisagreement: "The generated assessment differs from your questionnaire answer.",
               reviewRequired: "Conflicting information",
+              contradictionDecision: "Which source should govern this category? The decision creates a new immutable analysis revision.",
+              trustQuestionnaire: "Trust questionnaire",
+              trustDocument: "Trust document",
+              resolvingContradiction: "Resolving contradiction…",
+              contradictionResolutionFailed: "The contradiction could not be resolved.",
               changeAssessment: "Change assessment",
               correctionRegenerates:
                 "Saving automatically regenerates the affected gaps.",

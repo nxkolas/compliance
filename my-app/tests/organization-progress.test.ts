@@ -77,7 +77,7 @@ describe("organization progress derivation", () => {
       hasAcceptedGapAnalysis: true,
       hasUploadedDocument: true,
       hasActivatedActionPlan: true,
-      activeActionPlanItemStatuses: ["done", "cancelled"],
+      activeActionPlanItemStatuses: ["done", "done"],
     });
 
     expect(progress.completedCount).toBe(6);

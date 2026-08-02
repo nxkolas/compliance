@@ -4,7 +4,7 @@ import {
   type OrganizationProgressStepKey,
 } from "@/src/contracts/organization-progress";
 
-const terminalActionPlanItemStatuses = new Set(["done", "cancelled"]);
+const terminalActionPlanItemStatuses = new Set(["done"]);
 
 export type OrganizationProgressSignals = {
   welcomeCompleted?: boolean;

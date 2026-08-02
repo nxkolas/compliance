@@ -29,7 +29,6 @@ function request(body: unknown) {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
-        "if-match": '"4"',
       },
       body: JSON.stringify(body),
     },
@@ -47,21 +46,19 @@ describe("action-plan status update route", () => {
     mocks.updateActionPlanItem.mockResolvedValue({
       id: itemId,
       status: "done",
-      version: 5,
     });
   });
 
-  it("updates only the status with optimistic concurrency", async () => {
+  it("updates only the status with last-write-wins semantics", async () => {
     const response = await PATCH(request({ status: "done" }), context);
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("etag")).toBe('"5"');
+    expect(response.headers.get("etag")).toBeNull();
     expect(mocks.updateActionPlanItem).toHaveBeenCalledWith({
       userId,
       organizationId,
       itemId,
       status: "done",
-      expectedVersion: 4,
     });
   });
 

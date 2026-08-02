@@ -56,24 +56,25 @@ describe("existing organization route baseline", () => {
   });
 
   it("keeps the create status inside the common envelope", async () => {
-    mocks.createOrganizationForUser.mockResolvedValue({ id: "organization-2", version: 1 });
+    mocks.createOrganizationForUser.mockResolvedValue({ id: "organization-2" });
 
     const response = await POST(
       new Request("http://localhost/api/organizations", {
         method: "POST",
         headers: { "content-type": "application/json", "idempotency-key": "organization-create-1" },
-        body: JSON.stringify({ name: "Example GmbH", country: "de" }),
+        body: JSON.stringify({ name: "Example GmbH", countryCode: "de" }),
       }), undefined,
     );
 
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({
-      data: { organization: { id: "organization-2", version: 1 }, reused: false },
-      meta: { requestId: expect.any(String), version: 1 },
+      data: { organization: { id: "organization-2" }, reused: false },
+      meta: { requestId: expect.any(String) },
     });
     expect(mocks.createOrganizationForUser).toHaveBeenCalledWith("user-1", {
       name: "Example GmbH",
-      country: "DE",
+      countryCode: "DE",
+      aiProviderMode: "company_hosted",
     });
   });
 

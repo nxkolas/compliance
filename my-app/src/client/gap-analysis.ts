@@ -1,7 +1,5 @@
 import * as z from "zod";
 import {
-  gapCorrectionInputSchema,
-  gapGuidanceRegenerationInputSchema,
   gapEntitySchema,
   gapGenerationEnqueueResponseSchema,
   gapQuestionnaireInputSchema,
@@ -11,8 +9,8 @@ import {
   gapInputsReadSchema,
   gapHistoryReadSchema,
 } from "@/src/contracts/gap-analysis/generation";
-import { request } from "./api-client";
 import { jobDtoSchema } from "@/src/contracts/common/jobs";
+import { request } from "./api-client";
 
 function gapBase(organizationId: string) {
   return `/api/organizations/${encodeURIComponent(organizationId)}/gap-analysis`;
@@ -29,9 +27,9 @@ export const gapAnalysisClient = {
     });
   },
 
-  replaceGapAnalysisEvidence(organizationId: string, input: { cycleId: string; expectedLockVersion: number; selectedDocumentIds: string[] }) {
+  replaceGapAnalysisEvidence(organizationId: string, input: { cycleId: string; selectedDocumentIds: string[] }) {
     return request(`${analysisCycleBase(organizationId)}/${encodeURIComponent(input.cycleId)}/evidence`, {
-      method: "PUT", input: { expectedLockVersion: input.expectedLockVersion, selectedDocumentIds: input.selectedDocumentIds }, ifMatch: input.expectedLockVersion, outputSchema: z.object({ analysisCycle: z.object({ id: z.uuid() }).loose() }),
+      method: "PUT", input: { selectedDocumentIds: input.selectedDocumentIds }, outputSchema: z.object({ analysisCycle: z.unknown() }),
     });
   },
 
@@ -61,6 +59,25 @@ export const gapAnalysisClient = {
     });
   },
 
+  resolveContradiction(
+    organizationId: string,
+    revisionId: string,
+    findingId: string,
+    sourceChoice: "questionnaire" | "document",
+    signal?: AbortSignal,
+  ) {
+    return request(
+      `${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/contradictions/${encodeURIComponent(findingId)}/resolve`,
+      {
+        method: "POST",
+        input: { sourceChoice },
+        idempotencyKey: crypto.randomUUID(),
+        outputSchema: z.object({ job: jobDtoSchema, reused: z.boolean() }),
+        signal,
+      },
+    );
+  },
+
   createAssessment(organizationId: string, signal?: AbortSignal) {
     return request(`${gapBase(organizationId)}/assessments`, {
       method: "POST", outputSchema: z.object({ assessment: gapEntitySchema }), signal,
@@ -85,51 +102,20 @@ export const gapAnalysisClient = {
       {
         method: "PATCH",
         input: gapQuestionnaireDraftAnswerSchema.parse(input),
-        ifMatch: input.expectedVersion,
         outputSchema: z.object({
           answer: z.object({
             draftId: z.uuid(),
             version: z.number().int().positive(),
-            questionId: z.uuid(),
-            optionId: z.uuid(),
-            updatedAt: z.string(),
+            questionId: z.string(),
+            optionId: z.string(),
           }),
-          completion: z.object({
-            answeredRequired: z.number().int().nonnegative(),
-            totalRequired: z.number().int().nonnegative(),
-            complete: z.boolean(),
-          }),
-        }),
+        }).loose(),
         signal,
       },
     );
   },
 
-  correctRevision(organizationId: string, revisionId: string, input: z.infer<typeof gapCorrectionInputSchema>, signal?: AbortSignal) {
-    return request(`${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/corrections`, {
-      method: "POST", input: gapCorrectionInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ job: jobDtoSchema, reused: z.boolean() }), signal,
-    });
-  },
-
-  regenerateGuidance(
-    organizationId: string,
-    revisionId: string,
-    input: z.infer<typeof gapGuidanceRegenerationInputSchema>,
-    signal?: AbortSignal,
-  ) {
-    return request(
-      `${gapBase(organizationId)}/revisions/${encodeURIComponent(revisionId)}/guidance-regenerations`,
-      {
-        method: "POST",
-        input: gapGuidanceRegenerationInputSchema.parse(input),
-        idempotencyKey: crypto.randomUUID(),
-        outputSchema: z.object({ job: jobDtoSchema, reused: z.boolean() }),
-        signal,
-      },
-    );
-  },
-
-  enqueueGapAnalysisGeneration(organizationId: string, cycleId: string, input: { operation: "start"; expectedLockVersion: number } | { operation: "retry"; retryNonce: string }, idempotencyKey: string, signal?: AbortSignal) {
+  enqueueGapAnalysisGeneration(organizationId: string, cycleId: string, input: { operation: "start" } | { operation: "retry"; retryNonce: string }, idempotencyKey: string, signal?: AbortSignal) {
     return request(`${analysisCycleBase(organizationId)}/${encodeURIComponent(cycleId)}/generation-jobs`, {
       method: "POST",
       input,

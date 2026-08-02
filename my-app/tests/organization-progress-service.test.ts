@@ -1,155 +1,52 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  requireOrganizationCapability: vi.fn(),
-  findArtifacts: vi.fn(),
-  findUploadedDocument: vi.fn(),
-  findPlans: vi.fn(),
-  findApplicabilityRevision: vi.fn(),
-  findActionPlanItems: vi.fn(),
+  authorize: vi.fn(),
+  findOutputs: vi.fn(),
+  findDocument: vi.fn(),
+  findPlan: vi.fn(),
+  findRevision: vi.fn(),
+  findItems: vi.fn(),
 }));
 
-vi.mock("@/src/server/auth/capability-service", () => ({
-  requireOrganizationCapability: mocks.requireOrganizationCapability,
-}));
-
-vi.mock("@/src/db", () => ({
-  db: {
-    query: {
-      generatedArtifacts: { findMany: mocks.findArtifacts },
-      documents: { findFirst: mocks.findUploadedDocument },
-      actionPlans: { findMany: mocks.findPlans },
-      generatedArtifactRevisions: {
-        findFirst: mocks.findApplicabilityRevision,
-      },
-      actionPlanItems: { findMany: mocks.findActionPlanItems },
-    },
-  },
-}));
+vi.mock("@/src/server/auth/capability-service", () => ({ requireOrganizationCapability: mocks.authorize }));
+vi.mock("@/src/db", () => ({ db: { query: {
+  analysisOutputs: { findMany: mocks.findOutputs },
+  documents: { findFirst: mocks.findDocument },
+  actionPlans: { findFirst: mocks.findPlan },
+  analysisOutputRevisions: { findFirst: mocks.findRevision },
+  actionPlanItems: { findMany: mocks.findItems },
+} } }));
 
 import { getOrganizationProgress } from "@/src/server/organization-progress/service";
-
-const userId = "00000000-0000-4000-8000-000000000001";
-const organizationId = "00000000-0000-4000-8000-000000000002";
 
 describe("organization progress service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireOrganizationCapability.mockResolvedValue({});
+    mocks.authorize.mockResolvedValue({});
+    mocks.findOutputs.mockResolvedValue([]);
+    mocks.findDocument.mockResolvedValue(undefined);
+    mocks.findPlan.mockResolvedValue(undefined);
   });
 
-  it("authorizes the read and derives completion from retained domain records", async () => {
-    mocks.findArtifacts.mockResolvedValue([
-      {
-        artifactType: "affectedness_result",
-        acceptedRevisionId: "applicability-revision",
-      },
-      {
-        artifactType: "gap_analysis_result",
-        acceptedRevisionId: "gap-revision",
-      },
+  it("derives completion from current immutable outputs and the one plan", async () => {
+    mocks.findOutputs.mockResolvedValue([
+      { kind: "applicability", currentRevisionId: "app" },
+      { kind: "gap", currentRevisionId: "gap" },
     ]);
-    mocks.findUploadedDocument.mockResolvedValue({ id: "archived-document" });
-    mocks.findPlans.mockResolvedValue([
-      {
-        id: "archived-plan",
-        status: "archived",
-        activatedAt: new Date("2026-07-01T12:00:00.000Z"),
-      },
-      {
-        id: "active-plan",
-        status: "active",
-        activatedAt: new Date("2026-07-20T12:00:00.000Z"),
-      },
-    ]);
-    mocks.findApplicabilityRevision.mockResolvedValue({
-      outcomeCode: "important_entity",
-    });
-    mocks.findActionPlanItems.mockResolvedValue([
-      { status: "done" },
-      { status: "cancelled" },
-    ]);
-
-    const progress = await getOrganizationProgress(userId, organizationId);
-
-    expect(mocks.requireOrganizationCapability).toHaveBeenCalledWith(
-      userId,
-      organizationId,
-      "organizations:read",
-    );
-    expect(mocks.findActionPlanItems).toHaveBeenCalledOnce();
-    expect(progress).toMatchObject({
-      completedCount: 6,
-      totalCount: 6,
-    });
-  });
-
-  it("does not query plan items when there is no active plan", async () => {
-    mocks.findArtifacts.mockResolvedValue([]);
-    mocks.findUploadedDocument.mockResolvedValue(undefined);
-    mocks.findPlans.mockResolvedValue([]);
-
-    const progress = await getOrganizationProgress(userId, organizationId);
-
-    expect(mocks.findApplicabilityRevision).not.toHaveBeenCalled();
-    expect(mocks.findActionPlanItems).not.toHaveBeenCalled();
-    expect(progress.steps[0]).toEqual({ key: "welcome", completed: false });
-  });
-
-  it("recognizes a legacy approved applicability revision without an accepted pointer", async () => {
-    mocks.findArtifacts.mockResolvedValue([
-      {
-        artifactType: "affectedness_result",
-        currentRevisionId: "applicability-revision",
-        acceptedRevisionId: null,
-      },
-    ]);
-    mocks.findUploadedDocument.mockResolvedValue(undefined);
-    mocks.findPlans.mockResolvedValue([]);
-    mocks.findApplicabilityRevision.mockResolvedValue({
-      status: "approved",
-      outcomeCode: "important_entity",
-    });
-
-    const progress = await getOrganizationProgress(userId, organizationId);
-
-    expect(progress.completedCount).toBe(2);
-    expect(progress.steps[1]).toEqual({
-      key: "applicability_check",
-      completed: true,
-    });
-  });
-
-  it("does not mask completed gap and action-plan steps behind a legacy applicability pointer", async () => {
-    mocks.findArtifacts.mockResolvedValue([
-      {
-        artifactType: "affectedness_result",
-        currentRevisionId: "applicability-revision",
-        acceptedRevisionId: null,
-      },
-      {
-        artifactType: "gap_analysis_result",
-        currentRevisionId: "gap-revision",
-        acceptedRevisionId: "gap-revision",
-      },
-    ]);
-    mocks.findUploadedDocument.mockResolvedValue({ id: "document" });
-    mocks.findPlans.mockResolvedValue([
-      {
-        id: "active-plan",
-        status: "active",
-        activatedAt: new Date("2026-07-20T12:00:00.000Z"),
-      },
-    ]);
-    mocks.findApplicabilityRevision.mockResolvedValue({
-      status: "approved",
-      outcomeCode: "important_entity",
-    });
-    mocks.findActionPlanItems.mockResolvedValue([{ status: "done" }]);
-
-    const progress = await getOrganizationProgress(userId, organizationId);
-
+    mocks.findDocument.mockResolvedValue({ id: "document" });
+    mocks.findPlan.mockResolvedValue({ id: "plan" });
+    mocks.findRevision.mockResolvedValue({ outcomeCode: "important_entity" });
+    mocks.findItems.mockResolvedValue([{ status: "done" }, { status: "done" }]);
+    const progress = await getOrganizationProgress("user", "organization");
     expect(progress.completedCount).toBe(6);
     expect(progress.steps.every((step) => step.completed)).toBe(true);
+  });
+
+  it("leaves the workflow open when no retained records exist", async () => {
+    const progress = await getOrganizationProgress("user", "organization");
+    expect(progress.completedCount).toBe(0);
+    expect(mocks.findRevision).not.toHaveBeenCalled();
+    expect(mocks.findItems).not.toHaveBeenCalled();
   });
 });

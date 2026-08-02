@@ -1,3 +1,7 @@
-# Allow one administrator to publish corpus releases
+# Superseded: platform-administrator corpus publication
 
-A Platform Administrator may curate, publish, and activate a Legal Corpus Release without a second approver. This favors an operable early-stage workflow over mandatory four-eyes review; platform authorization remains separate from organization roles, and all corpus mutations, publication, and activation actions must be attributable in the audit history.
+Status: superseded 2 August 2026.
+
+There is no platform-administrator registry or publication API. A
+deployment-authorized operator validates and atomically selects an immutable
+corpus snapshot; `platform_audit_events` records the supplied operator identity.

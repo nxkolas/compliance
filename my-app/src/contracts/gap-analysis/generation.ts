@@ -22,55 +22,21 @@ export const gapGenerationEnqueueResponseSchema = z.object({
   reused: z.boolean(),
 });
 
+export const gapContradictionResolutionSchema = z.object({
+  sourceChoice: z.enum(["questionnaire", "document"]),
+}).strict();
+
 export type GapGenerationEnqueueResponse = z.infer<typeof gapGenerationEnqueueResponseSchema>;
 
 export const gapEntitySchema = z.object({ id: z.uuid() }).loose();
 export const gapQuestionnaireInputSchema = z.object({
   assessmentId: z.uuid(),
   draftId: z.uuid(),
-  expectedVersion: z.number().int().positive(),
 });
 export const gapQuestionnaireDraftAnswerSchema = z.object({
   draftId: z.uuid(),
-  optionId: z.uuid(),
-  expectedVersion: z.number().int().positive(),
+  optionId: z.string().trim().min(1),
 });
-export const gapCorrectionInputSchema = z.object({
-  corrections: z.array(z.object({
-    findingId: z.uuid(),
-    status: z.enum(["fulfilled", "partially_fulfilled", "not_fulfilled", "insufficient_evidence"]).optional(),
-    evidenceSufficiency: z.enum(["sufficient", "partial", "none"]).optional(),
-    requiresReview: z.boolean().optional(),
-    reason: z.string().trim().min(1),
-    resolutionReason: z.string().trim().min(1).optional(),
-  }).strict()).length(1),
-});
-export const gapGuidanceRegenerationInputSchema = z.object({
-  findingId: z.uuid(),
-  reason: z.string().trim().min(1),
-  retryNonce: z.string().trim().min(1).max(100).optional(),
-}).strict();
-export const gapRevisionMutationPayloadSchema = z.discriminatedUnion("mode", [
-  z.object({
-    mode: z.literal("correction"),
-    sourceRevisionId: z.uuid(),
-    findingId: z.uuid(),
-    correctedStatus: z.enum(["fulfilled", "partially_fulfilled", "not_fulfilled", "insufficient_evidence"]).optional(),
-    correctedEvidenceSufficiency: z.enum(["sufficient", "partial", "none"]).optional(),
-    requiresReview: z.boolean().optional(),
-    reason: z.string().trim().min(1),
-    resolutionReason: z.string().trim().min(1).optional(),
-    retryNonce: z.string().trim().min(1).max(255),
-  }).strict(),
-  z.object({
-    mode: z.literal("guidance_regeneration"),
-    sourceRevisionId: z.uuid(),
-    findingId: z.uuid(),
-    reason: z.string().trim().min(1),
-    retryNonce: z.string().trim().min(1).max(255),
-  }).strict(),
-]);
-export type GapRevisionMutationPayload = z.infer<typeof gapRevisionMutationPayloadSchema>;
 export const gapAnalysisCycleQuerySchema = z.object({ assessmentId: z.uuid() });
 export const gapAnalysisCyclePrepareSchema = z
   .object({
@@ -81,14 +47,12 @@ export const gapAnalysisCyclePrepareSchema = z
 export const gapAnalysisCycleEvidenceSchema = z
   .object({
     draftId: z.uuid(),
-    expectedLockVersion: z.number().int().positive(),
     selectedDocumentIds: z.array(z.uuid()),
   })
   .strict();
 export const gapAnalysisEvidenceReplaceSchema = gapAnalysisCycleEvidenceSchema.omit({ draftId: true });
 export const gapAnalysisCycleGenerateSchema = z.object({
   draftId: z.uuid(),
-  expectedLockVersion: z.number().int().positive(),
 });
 export const gapAnalysisCycleRetrySchema = z.object({
   draftId: z.uuid(),
@@ -97,7 +61,6 @@ export const gapAnalysisCycleRetrySchema = z.object({
 export const gapAnalysisGenerationJobSchema = z.discriminatedUnion("operation", [
   z.object({
     operation: z.literal("start"),
-    expectedLockVersion: z.number().int().positive(),
   }).strict(),
   z.object({
     operation: z.literal("retry"),
@@ -127,8 +90,7 @@ export const gapWorkflowReadSchema = z.object({
         satisfied: z.literal(false),
         status: z.enum([
           "missing",
-          "release_incompatible",
-          "not_approved",
+          "definition_incompatible",
           "invalid",
           "not_eligible",
         ]),

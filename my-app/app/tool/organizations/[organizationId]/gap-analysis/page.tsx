@@ -33,11 +33,11 @@ export default async function GapAnalysisPage({
   const navigation = deriveGapWorkflowNavigation({
     prerequisiteSatisfied: workflow.prerequisite.satisfied,
     hasAssessment: Boolean(workflow.assessment),
-    answeredQuestionCount: workflow.answerSummary.filter(
-      (answer) => answer.answer,
+    answeredQuestionCount: workflow.release.questions.filter(
+      (question) => Boolean(workflow.answers[question.id]),
     ).length,
-    requiredQuestionCount: workflow.answerSummary.filter(
-      (answer) => answer.required,
+    requiredQuestionCount: workflow.release.questions.filter(
+      (question) => question.required,
     ).length,
     hasPreparedInputs: Boolean(workflow.analysisCycle),
     hasResult: Boolean(workflow.revision),

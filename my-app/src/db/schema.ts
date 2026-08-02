@@ -153,6 +153,7 @@ export const uploadSessionStateEnum = pgEnum("upload_session_state", [
   "uploaded",
   "completed",
   "expired",
+  "failed",
 ]);
 
 export const legalAuthorityTierEnum = pgEnum("legal_authority_tier", [
@@ -457,8 +458,8 @@ export const analysisOutputRevisions = pgTable.withRLS(
       name: "analysis_output_revisions_applicability_tenant_fk",
       columns: [table.organizationId, table.sourceApplicabilityRevisionId],
       foreignColumns: [
-        assessmentRevisions.organizationId,
-        assessmentRevisions.id,
+        table.organizationId,
+        table.id,
       ],
     }).onDelete("restrict"),
     foreignKey({
