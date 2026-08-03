@@ -98,53 +98,28 @@ describe("Supabase authentication proxy", () => {
     );
   });
 
-  it("returns a standard JSON 401 for an unauthenticated private API", async () => {
+  it("delegates private API authentication to the route without resolving a user", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
 
     const response = await updateSession(
       request("/api/organizations", { "x-request-id": "proxy-request-1" }),
     );
 
-    expect(response.status).toBe(401);
-    expect(response.headers.get("content-type")).toContain("application/json");
-    expect(response.headers.get("location")).toBeNull();
-    expect(response.headers.get("x-request-id")).toBe("proxy-request-1");
-    expect(await response.json()).toEqual({
-      error: {
-        code: "AUTHENTICATION_REQUIRED",
-        message: "Authentication required",
-        requestId: "proxy-request-1",
-      },
-    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
+    expect(mocks.getUser).not.toHaveBeenCalled();
   });
 
-  it("replaces an invalid request ID and keeps the generated value in the body and header", async () => {
-    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
-
-    const response = await updateSession(
-      request("/api/organizations", { "x-request-id": "invalid request id" }),
-    );
-    const body = await response.json();
-
-    expect(response.status).toBe(401);
-    expect(body.error.requestId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
-    );
-    expect(response.headers.get("x-request-id")).toBe(body.error.requestId);
-  });
-
-  it("treats anonymous sessions as unauthenticated for private pages and APIs", async () => {
+  it("treats anonymous sessions as unauthenticated for private pages", async () => {
     mocks.getUser.mockResolvedValue({
       data: { user: anonymousUser() },
       error: null,
     });
 
     const pageResponse = await updateSession(request("/tool/organizations"));
-    const apiResponse = await updateSession(request("/api/organizations"));
-
     expect(pageResponse.status).toBe(307);
     expect(pageResponse.headers.get("location")).toContain("/auth/login?");
-    expect(apiResponse.status).toBe(401);
   });
 
   it("allows anonymous sessions to open guest-only authentication pages", async () => {
@@ -159,7 +134,7 @@ describe("Supabase authentication proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("returns a standard JSON 503 for private APIs when configuration is missing", async () => {
+  it("leaves API configuration errors to the authoritative route", async () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -168,15 +143,8 @@ describe("Supabase authentication proxy", () => {
     );
 
     expect(mocks.createServerClient).not.toHaveBeenCalled();
-    expect(response.status).toBe(503);
-    expect(response.headers.get("x-request-id")).toBe("proxy-request-503");
-    expect(await response.json()).toEqual({
-      error: {
-        code: "SERVICE_UNAVAILABLE",
-        message: "Authentication service unavailable",
-        requestId: "proxy-request-503",
-      },
-    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it.each([
@@ -273,31 +241,27 @@ describe("Supabase authentication proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("keeps the guest claim API private", async () => {
+  it("delegates the private guest claim API to its authenticated route", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
 
     const response = await updateSession(
       request("/api/guest/applicability-check/claim"),
     );
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(200);
+    expect(mocks.getUser).not.toHaveBeenCalled();
   });
 
-  it("preserves refreshed cookies on redirects and JSON errors", async () => {
+  it("preserves refreshed cookies on page redirects", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
 
     const redirect = await updateSession(request("/tool/organizations"));
-    const error = await updateSession(request("/api/organizations"));
-
     expect(redirect.headers.get("set-cookie")).toContain(
-      "sb-session=refreshed-session",
-    );
-    expect(error.headers.get("set-cookie")).toContain(
       "sb-session=refreshed-session",
     );
   });
 
-  it("preserves cleared cookies on redirects and JSON errors", async () => {
+  it("preserves cleared cookies on page redirects", async () => {
     mocks.cookiesToSet = [
       {
         name: "sb-session",
@@ -308,12 +272,7 @@ describe("Supabase authentication proxy", () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
 
     const redirect = await updateSession(request("/tool/organizations"));
-    const error = await updateSession(request("/api/organizations"));
-
     expect(redirect.headers.get("set-cookie")).toContain(
-      "sb-session=; Path=/; Max-Age=0",
-    );
-    expect(error.headers.get("set-cookie")).toContain(
       "sb-session=; Path=/; Max-Age=0",
     );
   });

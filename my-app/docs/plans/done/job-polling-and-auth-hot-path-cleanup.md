@@ -1,6 +1,6 @@
 # Job Polling and Authentication Hot-Path Cleanup
 
-Status: proposed workflow-polish plan after background-job policy is centralized.
+Status: implemented on 3 August 2026 after background-job policy was centralized.
 
 ## Problem Statement
 

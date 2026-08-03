@@ -39,8 +39,16 @@ cannot be cancelled. Public job DTOs expose neither payload nor lease details.
 Handler execution is at least once. A lease can expire after a handler starts,
 so handlers that publish durable results must remain idempotent and verify the
 live lease fence inside the publication transaction. The web after-response
-path, polling wake-up, recovery route, resident worker, and scripts all call the
-same drain and definition-owned execution implementation.
+path, recovery route, resident worker, and scripts all call the same drain and
+definition-owned execution implementation. Browser job polling is deliberately
+read-only and is not a recovery mechanism.
+
+Every production deployment must provide recovery independent of browser
+activity. The private self-hosted release topology includes its resident worker.
+Managed-cloud production must set `JOB_RECOVERY_ENABLED=true`, configure
+`CRON_SECRET`, and invoke `/api/internal/jobs/drain` on a schedule. The
+after-response adapter improves latency but is not the durable recovery
+guarantee.
 
 Maintenance cleanup deletes expired guest checks, invitations, upload sessions,
 idempotency records, and rate-limit windows. There is no legal-source monitor

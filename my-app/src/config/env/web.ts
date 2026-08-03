@@ -50,6 +50,17 @@ export const webEnvironmentSchema = commonApplicationEnvironmentSchema
       });
     }
 
+    if (
+      environment.DEPLOYMENT_TOPOLOGY === "managed_cloud" &&
+      !environment.JOB_RECOVERY_ENABLED
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["JOB_RECOVERY_ENABLED"],
+        message: "must be enabled for managed-cloud durable job recovery",
+      });
+    }
+
     if (environment.DEPLOYMENT_TOPOLOGY === "managed_cloud") {
       for (const [name, value] of [
         ["NEXT_PUBLIC_SUPABASE_URL", environment.NEXT_PUBLIC_SUPABASE_URL],

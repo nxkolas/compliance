@@ -14,7 +14,7 @@ authentication, tenancy, and operator-workflow knowledge.
 1. [Gap generation durable-retry correctness](./gap-generation-durable-retry-correctness.md)
 2. [Atomic document-upload completion](./atomic-document-upload-completion.md)
 3. [Background-job module deepening](./background-job-module-deepening.md)
-4. [Job polling and authentication hot-path cleanup](./job-polling-and-auth-hot-path-cleanup.md)
+4. [Job polling and authentication hot-path cleanup](../done/job-polling-and-auth-hot-path-cleanup.md) (implemented)
 5. [Organization-scope locality](./organization-scope-locality.md)
 6. [Operator workflow and overview polish](./operator-workflow-and-system-overview-polish.md)
 

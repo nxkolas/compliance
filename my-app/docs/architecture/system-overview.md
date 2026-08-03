@@ -99,7 +99,7 @@ sequenceDiagram
     participant D as Drizzle/PostgreSQL
 
     B->>P: Request with Supabase cookies
-    P->>P: Refresh or reject session
+    P->>P: Refresh or reject page session
     B->>C: Invoke typed client operation
     C->>R: JSON plus request/idempotency headers
     R->>R: Assign request ID and validate route params
@@ -115,18 +115,24 @@ sequenceDiagram
 
 The main boundary pieces are:
 
+Browser cookies terminate at the application origin; server-side Supabase
+clients read them from the incoming application request.
+
 1. `proxy.ts` delegates to `lib/supabase/proxy.ts`. It refreshes the Supabase
-   session and blocks private page/API access before the request reaches most
-   application code.
+   session and protects page navigation. API requests continue to their route,
+   which is the authoritative API authentication seam.
 2. Browser requests go through `src/client/api-client.ts`. It sends same-origin
    credentials and optional locale, request ID, idempotency, and conditional
    headers. It validates both success and error envelopes.
 3. A route normally uses `apiRoute()` from `src/server/api/handler.ts`. The
    wrapper validates UUID-like route parameters, assigns a request ID, produces
    consistent JSON, hides unexpected server errors, and logs duration/status.
-4. Authentication is repeated at the route boundary with `requireApiUser()`.
-   This resolves the current Supabase user and synchronizes the small local user
-   directory.
+4. Routes authenticate independently with `requireApiUser()`. Authentication
+   resolves a safe actor projection and performs no application-table write.
+   The authenticated tool layout reuses one request-scoped actor resolution and
+   conditionally synchronizes the local user directory; identity-dependent
+   commands such as organization creation and invitation acceptance also do so
+   explicitly.
 5. Request bodies and query data are parsed with Zod using schemas in
    `src/contracts/` or domain validation modules.
 6. The route calls a service in `src/server/<domain>/`. Services check role
@@ -169,10 +175,14 @@ so a worker that lost ownership cannot publish a late result.
 The same drain can be started by:
 
 - `after_response`: Next.js `after()` when an API response returns `202`;
-- `polling`: a non-terminal job-status read wakes another drain;
 - `recovery_route`: the authenticated internal scheduled drain;
 - `resident_worker`: the loop in `src/worker/main.ts`;
 - `script`: operator or qualification execution.
+
+Job-status polling is an authorized, rate-limited read only. It never drains
+the queue or schedules maintenance. Managed-cloud production configuration
+therefore requires the scheduled recovery route, while the private self-hosted
+release topology includes a resident worker.
 
 Retries, cancellation requests, progress, safe errors, and result locators all
 remain in PostgreSQL. The queue therefore survives a web-process restart.

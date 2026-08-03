@@ -26,7 +26,7 @@ export const POST = apiRoute(async ({ request, routeContext, requestId }: { requ
     resultId: (result) => result.internalResultId,
     replay: () => completeDocumentUpload({ userId: user.id, ...params, ...body }),
   });
-  scheduleAfterResponseDrain({ adapter: "after_response", requestId });
+  scheduleAfterResponseDrain({ requestId });
   revalidatePath(`/tool/organizations/${params.organizationId}/documents`); revalidatePath(`/tool/organizations/${params.organizationId}/gap-analysis`);
   return { status: 201, data: { document: result.value.document } };
 });

@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { getPublicSupabaseEnvironment } from "@/src/config/env/supabase";
+import { resolveAuthenticatedActor } from "@/src/server/auth/authenticated-actor";
 import { ApiError } from "./errors";
 
 export async function requireApiUser() {
@@ -9,19 +9,9 @@ export async function requireApiUser() {
     throw new ApiError(503, "Authentication service unavailable");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user || user.is_anonymous) {
+  const actor = await resolveAuthenticatedActor();
+  if (!actor) {
     throw new ApiError(401, "Authentication required");
   }
-
-  if (user.email) {
-    const { syncAuthenticatedUser } = await import("@/src/server/users");
-    await syncAuthenticatedUser(user);
-  }
-  return user;
+  return actor;
 }

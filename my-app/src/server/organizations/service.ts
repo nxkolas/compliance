@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { User } from "@supabase/supabase-js";
 import * as z from "zod";
 import { db } from "@/src/db";
 import {
@@ -26,6 +25,7 @@ import {
   resolveOrganizationCapabilities,
 } from "../auth/capability-service";
 import { organizationActionsForRole } from "./workflow-permissions";
+import type { AuthenticatedActor } from "@/src/server/users/projection";
 import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
@@ -485,18 +485,18 @@ export async function listOrganizationInvitationsPage(input: {
   return { invitations: rows, nextCursor: undefined };
 }
 
-export async function listMailboxInvitationsForUser(user: User) {
+export async function listMailboxInvitationsForUser(user: AuthenticatedActor) {
   return (
     await listMailboxInvitationsForUserPage({ user, limit: 100 })
   ).invitations;
 }
 
 export async function listMailboxInvitationsForUserPage(input: {
-  user: User;
+  user: AuthenticatedActor;
   limit: number;
   cursor?: string;
 }) {
-  const email = input.user.email?.toLowerCase();
+  const email = input.user.email;
   if (!email) return { invitations: [], nextCursor: undefined };
   await deleteExpiredInvitations();
   const rows = await db
@@ -561,7 +561,7 @@ export async function createOrganizationInvitation(
 }
 
 export async function acceptOrganizationInvitation(
-  user: User,
+  user: AuthenticatedActor,
   input: AcceptOrganizationInvitationInput,
 ) {
   const invitation = await db.query.organizationInvitations.findFirst({
@@ -584,7 +584,7 @@ export async function acceptOrganizationInvitation(
   return acceptInvitationRow(user, invitation);
 }
 
-export async function acceptMailboxInvitation(user: User, invitationId: string) {
+export async function acceptMailboxInvitation(user: AuthenticatedActor, invitationId: string) {
   const invitation = await db.query.organizationInvitations.findFirst({
     columns: {
       id: true,
@@ -606,7 +606,7 @@ export async function acceptMailboxInvitation(user: User, invitationId: string) 
 }
 
 async function acceptInvitationRow(
-  user: User,
+  user: AuthenticatedActor,
   invitation: typeof organizationInvitations.$inferSelect,
 ) {
   if (!user.email || user.email.toLowerCase() !== invitation.email.toLowerCase()) {

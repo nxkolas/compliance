@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   requireApiUser: vi.fn(),
   getAuthorizedJob: vi.fn(),
   enforceOperationRateLimit: vi.fn(),
-  scheduleAfterResponseDrain: vi.fn(),
 }));
 
 vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
@@ -16,10 +15,6 @@ vi.mock("@/src/server/jobs", () => ({
   getAuthorizedJob: mocks.getAuthorizedJob,
   requestJobCancellation: vi.fn(),
 }));
-vi.mock("@/src/server/job-execution/after-response", () => ({
-  scheduleAfterResponseDrain: mocks.scheduleAfterResponseDrain,
-}));
-
 import { GET } from "@/app/api/jobs/[jobId]/route";
 
 describe("job status route contract", () => {
@@ -65,13 +60,13 @@ describe("job status route contract", () => {
       "00000000-0000-4000-8000-000000000001",
       job.id,
     );
-    expect(mocks.scheduleAfterResponseDrain).toHaveBeenCalledWith({
-      adapter: "polling",
-      requestId: "job-status-test",
+    expect(mocks.enforceOperationRateLimit).toHaveBeenCalledWith({
+      userId: "00000000-0000-4000-8000-000000000001",
+      operation: "jobs:poll",
     });
   });
 
-  it("does not wake execution for terminal jobs", async () => {
+  it("reads terminal jobs without an execution side effect", async () => {
     mocks.getAuthorizedJob.mockResolvedValue({
       id: "00000000-0000-4000-8000-000000000002",
       state: "succeeded",
@@ -87,7 +82,7 @@ describe("job status route contract", () => {
       },
     );
     expect(response.status).toBe(200);
-    expect(mocks.scheduleAfterResponseDrain).not.toHaveBeenCalled();
+    expect(mocks.getAuthorizedJob).toHaveBeenCalledOnce();
   });
 
   it("rejects malformed identifiers before authorization or lookup", async () => {
@@ -96,6 +91,5 @@ describe("job status route contract", () => {
     await expect(response.json()).resolves.toMatchObject({ error: { code: "INVALID_ROUTE_PARAMETER" } });
     expect(mocks.requireApiUser).not.toHaveBeenCalled();
     expect(mocks.getAuthorizedJob).not.toHaveBeenCalled();
-    expect(mocks.scheduleAfterResponseDrain).not.toHaveBeenCalled();
   });
 });

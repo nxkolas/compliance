@@ -26,7 +26,6 @@ describe("asynchronous API job wake-up", () => {
     expect(response.status).toBe(202);
     expect(mocks.scheduleAfterResponseDrain).toHaveBeenCalledOnce();
     expect(mocks.scheduleAfterResponseDrain).toHaveBeenCalledWith({
-      adapter: "after_response",
       requestId: "wake-request-1",
     });
   });
