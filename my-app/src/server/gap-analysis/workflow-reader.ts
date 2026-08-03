@@ -20,7 +20,7 @@ import {
 } from "@/src/server/definitions";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { hasOrganizationCapability } from "../auth/capabilities";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { authorizeOrganizationRead } from "../auth/organization-scope";
 import {
   evaluateGapApplicabilityPrerequisite,
   projectGapPrerequisiteView,
@@ -37,7 +37,8 @@ export type GapPageReadInput = {
 };
 
 export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
-  const membership = await requireOrganizationCapability(input.userId, input.organizationId, "gap:read");
+  const scope = await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:read" });
+  const { executor: db, membership } = scope;
   const release = getCurrentGapDefinition(input.locale);
   const [assessment, applicabilityOutput, gapOutput, plan, documentRows] = await Promise.all([
     db.query.assessments.findFirst({
@@ -77,11 +78,11 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
       })
     : null;
   const cycle = assessment
-    ? await getGapAnalysisCyclePreauthorized({
+      ? await getGapAnalysisCyclePreauthorized({
         organizationId: input.organizationId,
         assessmentId: assessment.id,
         locale: input.locale,
-      })
+      }, scope.executor)
     : null;
   const draftAnswers = cycle?.cycle.draftAnswers ?? {};
   const answers = answerIds(release, draftAnswers);
@@ -161,8 +162,8 @@ export async function getGapAnalysisRevisionRecord(
   organizationId: string,
   revisionId: string,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "gap:read");
-  return db.query.analysisOutputRevisions.findFirst({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "gap:read" });
+  return executor.query.analysisOutputRevisions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, revisionId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
 }

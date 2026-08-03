@@ -1,6 +1,6 @@
 # Portable job execution
 
-Status: current as of 2 August 2026.
+Status: current as of 3 August 2026.
 
 Run the dedicated Node worker with `npm run worker`; use `npm run worker:once`
 or `npm run jobs:drain:local` for a bounded drain. Multiple workers may lease
@@ -18,10 +18,37 @@ Stable job kinds are:
 - `legal_source_processing`
 - `maintenance_cleanup`
 
+The server-side job module exposes one enqueue command. Each command pairs a
+kind with its typed payload and required organization/requester scope. Callers
+that already own a database transaction pass its executor to `enqueueJob`, so
+the domain update and job publication commit atomically. Attempt limits,
+capabilities, and cancellability are definition-owned; callers cannot override
+them.
+
+The internal catalog contains one complete definition per persisted kind:
+payload and result schemas, scope, attempts, read/cancellation policy, failure
+classification, handler, and safe result projection. Payloads are validated
+before insertion and after leasing. Results are validated before the success
+transition. An incompatible persisted payload terminates safely without
+reaching its domain handler.
+
 Definition/build identities and resource IDs belong in the validated payload;
-prompt/provider/model history belongs in `ai_processing_runs`. Cancellation is
-derived from kind and caller capability. Terminal jobs cannot be cancelled.
-An incompatible unfinished job may fail and be restarted under current code.
+prompt/provider/model history belongs in `ai_processing_runs`. Terminal jobs
+cannot be cancelled. Public job DTOs expose neither payload nor lease details.
+
+Handler execution is at least once. A lease can expire after a handler starts,
+so handlers that publish durable results must remain idempotent and verify the
+live lease fence inside the publication transaction. The web after-response
+path, recovery route, resident worker, and scripts all call the same drain and
+definition-owned execution implementation. Browser job polling is deliberately
+read-only and is not a recovery mechanism.
+
+Every production deployment must provide recovery independent of browser
+activity. The private self-hosted release topology includes its resident worker.
+Managed-cloud production must set `JOB_RECOVERY_ENABLED=true`, configure
+`CRON_SECRET`, and invoke `/api/internal/jobs/drain` on a schedule. The
+after-response adapter improves latency but is not the durable recovery
+guarantee.
 
 Maintenance cleanup deletes expired guest checks, invitations, upload sessions,
 idempotency records, and rate-limit windows. There is no legal-source monitor

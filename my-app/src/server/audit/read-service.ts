@@ -1,14 +1,13 @@
 import { and, eq, gte, lt, lte, or } from "drizzle-orm";
 import * as z from "zod";
-import { db } from "@/src/db";
-import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
+import { authorizeOrganizationRead } from "@/src/server/auth/organization-scope";
 import { getCursorCodec } from "@/src/server/api/pagination";
 
 const cursorSchema = z.tuple([z.iso.datetime(), z.uuid()]);
 type AuditFilters = { eventType?: string; entityType?: string; entityId?: string; actorUserId?: string; dateFrom?: Date; dateTo?: Date };
 
 export async function listOrganizationAuditEvents(input: { userId: string; organizationId: string; limit: number; cursor?: string } & AuditFilters) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "audit:read");
+  const { executor: db } = await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "audit:read" });
   const scope = cursorScope(input.organizationId, input);
   const cursor = input.cursor ? cursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.query.auditEvents.findMany({

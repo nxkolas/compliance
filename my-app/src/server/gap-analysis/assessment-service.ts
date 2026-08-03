@@ -1,9 +1,8 @@
-import { db } from "@/src/db";
 import { assessments, auditEvents } from "@/src/db/schema";
 import { currentApplicabilityDefinitionHash } from "@/src/server/definitions";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand } from "../auth/organization-scope";
 import {
   assertGapApplicabilityEligible,
   evaluateGapApplicabilityPrerequisite,
@@ -14,7 +13,7 @@ export async function createOrOpenGapAssessment(
   userId: string,
   organizationId: string,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "gap:contribute");
+  return withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "gap:contribute" }, async ({ executor: db }) => {
   const applicabilityOutput = await db.query.analysisOutputs.findFirst({
     where: {
       RAW: (table, operators) =>
@@ -64,8 +63,10 @@ export async function createOrOpenGapAssessment(
     organizationId,
     assessment,
     locale: "de",
+    executor: db,
   });
   return assessment;
+  });
 }
 
 export async function getGapAssessment(
@@ -73,8 +74,8 @@ export async function getGapAssessment(
   organizationId: string,
   assessmentId: string,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "gap:read");
-  const assessment = await db.query.assessments.findFirst({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "gap:read" });
+  const assessment = await executor.query.assessments.findFirst({
     where: {
       RAW: (table, operators) =>
         and(eq(table.id, assessmentId), eq(table.organizationId, organizationId), eq(table.kind, "gap")) ?? operators.sql`true`,

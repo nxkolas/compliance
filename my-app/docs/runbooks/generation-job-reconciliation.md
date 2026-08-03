@@ -5,6 +5,20 @@ remains `processing`. Scheduled cleanup checks this invariant in bounded
 batches using row locks and `SKIP LOCKED`. It closes only rows that still match
 under lock, records privacy-safe audit metadata, and is idempotent.
 
+Gap and Action Plan category generation use two levels of identity. A category
+phase (`initial` or `repair`) has a stable reservation for the requested job,
+while every actual provider call has an append-only attempt identity derived
+from the durable job attempt and bounded provider attempt. A later lease may
+recover a compatible validated result from the same reservation without
+calling the provider again. Failed attempts and processing attempts without
+validated output are never recovered.
+
+Starting a successor call under a live parent lease abandons older empty
+processing attempts. Publication is fenced by the current live lease and marks
+unselected processing attempts as superseded. A user-requested Gap retry nonce
+creates a new reservation; the queue's attempt count only creates new call
+attempts beneath an existing reservation.
+
 Run the operator command in dry-run mode first:
 
 ```powershell

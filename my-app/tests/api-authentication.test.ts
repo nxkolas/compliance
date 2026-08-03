@@ -39,10 +39,19 @@ describe("requireApiUser", () => {
   });
 
   it("returns an authenticated non-anonymous user", async () => {
-    const user = { id: "user-1", is_anonymous: false };
+    const user = {
+      id: "user-1",
+      email: " User@Example.com ",
+      is_anonymous: false,
+      user_metadata: { full_name: " User Name " },
+    };
     mocks.getUser.mockResolvedValue({ data: { user }, error: null });
 
-    await expect(requireApiUser()).resolves.toBe(user);
+    await expect(requireApiUser()).resolves.toEqual({
+      id: "user-1",
+      email: "user@example.com",
+      displayName: "User Name",
+    });
   });
 
   it.each([

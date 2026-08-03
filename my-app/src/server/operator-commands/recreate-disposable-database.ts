@@ -1,4 +1,7 @@
 import postgres from "postgres";
+import { databaseTargetIdentity } from "./disposable-schema-workflow";
+
+export { databaseTargetIdentity } from "./disposable-schema-workflow";
 
 const CONFIRMATION = "recreate-disposable-database";
 const DISPOSABLE_ENVIRONMENTS = new Set([
@@ -8,15 +11,6 @@ const DISPOSABLE_ENVIRONMENTS = new Set([
   "preproduction",
   "staging",
 ]);
-
-export function databaseTargetIdentity(databaseUrl: string) {
-  const url = new URL(databaseUrl);
-  const database = decodeURIComponent(url.pathname.replace(/^\//u, ""));
-  if (!url.hostname || !database) {
-    throw new Error("The configured database URL has no host or database name");
-  }
-  return `${url.hostname}:${url.port || "5432"}/${database}`;
-}
 
 export function authorizeDisposableDatabaseRecreation(input: {
   databaseUrl: string;

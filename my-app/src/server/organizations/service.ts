@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { User } from "@supabase/supabase-js";
 import * as z from "zod";
 import { db } from "@/src/db";
 import {
@@ -21,11 +20,10 @@ import {
 } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { getCursorCodec } from "../api/pagination";
-import {
-  requireOrganizationCapability,
-  resolveOrganizationCapabilities,
-} from "../auth/capability-service";
+import { hasOrganizationCapability } from "../auth/capabilities";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand, type OrganizationScopeExecutor, type OrganizationTransaction } from "../auth/organization-scope";
 import { organizationActionsForRole } from "./workflow-permissions";
+import type { AuthenticatedActor } from "@/src/server/users/projection";
 import type {
   AcceptOrganizationInvitationInput,
   CreateOrganizationInput,
@@ -182,9 +180,8 @@ export async function updateOrganizationForUser(
   organizationId: string,
   input: UpdateOrganizationInput,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "organizations:update");
-  return db.transaction(async (tx) => {
-    const [organization] = await tx
+  return withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "organizations:update" }, async ({ executor }) => {
+    const [organization] = await executor
       .update(organizations)
       .set({
         name: normalizeRequiredString(input.name, "name"),
@@ -196,7 +193,7 @@ export async function updateOrganizationForUser(
       .where(eq(organizations.id, organizationId))
       .returning();
     if (!organization) throw organizationNotFound();
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId,
       actorUserId: userId,
       eventType: "organization.updated",
@@ -215,8 +212,8 @@ export async function getOrganizationForUser(
   userId: string,
   organizationId: string,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "organizations:read");
-  const organization = await db.query.organizations.findFirst({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "organizations:read" });
+  const organization = await executor.query.organizations.findFirst({
     columns: {
       id: true,
       name: true,
@@ -240,39 +237,29 @@ export async function archiveOrganization(input: {
   userId: string;
   organizationId: string;
 }) {
-  await requireOrganizationCapability(
-    input.userId,
-    input.organizationId,
-    "organizations:archive",
-  );
-  return setOrganizationArchiveState(input, new Date(), "organization.archived");
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "organizations:archive" }, ({ executor }) => setOrganizationArchiveState(input, new Date(), "organization.archived", executor));
 }
 
 export async function restoreOrganization(input: {
   userId: string;
   organizationId: string;
 }) {
-  await requireOrganizationCapability(
-    input.userId,
-    input.organizationId,
-    "organizations:archive",
-  );
-  return setOrganizationArchiveState(input, null, "organization.restored");
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "organizations:archive" }, ({ executor }) => setOrganizationArchiveState(input, null, "organization.restored", executor));
 }
 
 async function setOrganizationArchiveState(
   input: { userId: string; organizationId: string },
   archivedAt: Date | null,
   eventType: string,
+  executor: OrganizationTransaction,
 ) {
-  return db.transaction(async (tx) => {
-    const [organization] = await tx
+    const [organization] = await executor
       .update(organizations)
       .set({ archivedAt, updatedAt: new Date() })
       .where(eq(organizations.id, input.organizationId))
       .returning();
     if (!organization) throw organizationNotFound();
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType,
@@ -281,7 +268,6 @@ async function setOrganizationArchiveState(
       metadata: {},
     });
     return organization;
-  });
 }
 
 export async function listOrganizationMembers(
@@ -303,7 +289,8 @@ export async function listOrganizationMembersPage(input: {
   limit: number;
   cursor?: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "members:read");
+  const authorization = await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "members:read" });
+  const db = authorization.executor;
   const scope = `organization-members:${input.organizationId}`;
   const cursor = input.cursor
     ? dateCursorSchema.parse(getCursorCodec().decode(input.cursor, scope))
@@ -345,16 +332,12 @@ export async function listOrganizationMembersPage(input: {
     identityResolved: row.email !== null,
   }));
   const last = members.at(-1);
-  const authorization = await resolveOrganizationCapabilities(
-    input.userId,
-    input.organizationId,
-  );
   return {
     members,
     controls: {
       actorUserId: input.userId,
-      canManage: authorization.capabilities.has("members:manage"),
-      canManageOwners: authorization.membership?.role === "owner",
+      canManage: hasOrganizationCapability(authorization.membership.role, "members:manage"),
+      canManageOwners: authorization.membership.role === "owner",
     },
     nextCursor:
       rows.length > input.limit && last
@@ -369,14 +352,13 @@ export async function updateOrganizationMember(input: {
   memberUserId: string;
   role: OrganizationRole;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
-  return db.transaction(async (tx) => {
-    const current = await findMembership(tx, input.organizationId, input.memberUserId);
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "members:manage" }, async ({ executor }) => {
+    const current = await findMembership(executor, input.organizationId, input.memberUserId);
     if (!current) throw memberNotFound();
     if (current.role === "owner" && input.role !== "owner") {
-      await assertAnotherOwner(tx, input.organizationId, input.memberUserId);
+      await assertAnotherOwner(executor, input.organizationId, input.memberUserId);
     }
-    const [membership] = await tx
+    const [membership] = await executor
       .update(organizationMemberships)
       .set({ role: input.role })
       .where(
@@ -386,7 +368,7 @@ export async function updateOrganizationMember(input: {
         ),
       )
       .returning();
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType: "membership.role_changed",
@@ -403,32 +385,27 @@ export async function removeOrganizationMember(input: {
   organizationId: string;
   memberUserId: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "members:manage");
-  return deleteMembership(input, "membership.removed");
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "members:manage" }, ({ executor }) => deleteMembership(input, "membership.removed", executor));
 }
 
 export async function leaveOrganization(input: {
   userId: string;
   organizationId: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "organizations:read");
-  return deleteMembership(
-    { ...input, memberUserId: input.userId },
-    "membership.left",
-  );
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "organizations:read" }, ({ executor }) => deleteMembership({ ...input, memberUserId: input.userId }, "membership.left", executor));
 }
 
 async function deleteMembership(
   input: { userId: string; organizationId: string; memberUserId: string },
   eventType: string,
+  executor: OrganizationTransaction,
 ) {
-  return db.transaction(async (tx) => {
-    const current = await findMembership(tx, input.organizationId, input.memberUserId);
+    const current = await findMembership(executor, input.organizationId, input.memberUserId);
     if (!current) throw memberNotFound();
     if (current.role === "owner") {
-      await assertAnotherOwner(tx, input.organizationId, input.memberUserId);
+      await assertAnotherOwner(executor, input.organizationId, input.memberUserId);
     }
-    await tx
+    await executor
       .delete(organizationMemberships)
       .where(
         and(
@@ -436,7 +413,7 @@ async function deleteMembership(
           eq(organizationMemberships.userId, input.memberUserId),
         ),
       );
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType,
@@ -445,7 +422,6 @@ async function deleteMembership(
       metadata: { previousRole: current.role },
     });
     return current;
-  });
 }
 
 export async function listOrganizationInvitations(
@@ -463,9 +439,9 @@ export async function listOrganizationInvitationsPage(input: {
   limit: number;
   cursor?: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "members:read");
-  await deleteExpiredInvitations();
-  const rows = await db.query.organizationInvitations.findMany({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "members:read" });
+  await deleteExpiredInvitations(input.organizationId, executor);
+  const rows = await executor.query.organizationInvitations.findMany({
     columns: {
       id: true,
       organizationId: true,
@@ -485,18 +461,18 @@ export async function listOrganizationInvitationsPage(input: {
   return { invitations: rows, nextCursor: undefined };
 }
 
-export async function listMailboxInvitationsForUser(user: User) {
+export async function listMailboxInvitationsForUser(user: AuthenticatedActor) {
   return (
     await listMailboxInvitationsForUserPage({ user, limit: 100 })
   ).invitations;
 }
 
 export async function listMailboxInvitationsForUserPage(input: {
-  user: User;
+  user: AuthenticatedActor;
   limit: number;
   cursor?: string;
 }) {
-  const email = input.user.email?.toLowerCase();
+  const email = input.user.email;
   if (!email) return { invitations: [], nextCursor: undefined };
   await deleteExpiredInvitations();
   const rows = await db
@@ -521,14 +497,13 @@ export async function createOrganizationInvitation(
   organizationId: string,
   input: CreateOrganizationInvitationInput,
 ): Promise<CreatedOrganizationInvitationDto> {
-  await requireOrganizationCapability(userId, organizationId, "members:invite");
   if (!assignableRoles.includes(input.role)) {
     throw new ApiError(400, "Invitation role is not assignable", undefined, "INVALID_ROLE");
   }
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  return db.transaction(async (tx) => {
-    await tx
+  return withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "members:invite" }, async ({ executor }) => {
+    await executor
       .delete(organizationInvitations)
       .where(
         and(
@@ -536,7 +511,7 @@ export async function createOrganizationInvitation(
           eq(sql`lower(${organizationInvitations.email})`, input.email.toLowerCase()),
         ),
       );
-    const [invitation] = await tx
+    const [invitation] = await executor
       .insert(organizationInvitations)
       .values({
         organizationId,
@@ -548,7 +523,7 @@ export async function createOrganizationInvitation(
       })
       .returning();
     if (!invitation) throw new Error("Invitation insert returned no row");
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId,
       actorUserId: userId,
       eventType: "invitation.created",
@@ -561,7 +536,7 @@ export async function createOrganizationInvitation(
 }
 
 export async function acceptOrganizationInvitation(
-  user: User,
+  user: AuthenticatedActor,
   input: AcceptOrganizationInvitationInput,
 ) {
   const invitation = await db.query.organizationInvitations.findFirst({
@@ -584,7 +559,7 @@ export async function acceptOrganizationInvitation(
   return acceptInvitationRow(user, invitation);
 }
 
-export async function acceptMailboxInvitation(user: User, invitationId: string) {
+export async function acceptMailboxInvitation(user: AuthenticatedActor, invitationId: string) {
   const invitation = await db.query.organizationInvitations.findFirst({
     columns: {
       id: true,
@@ -606,7 +581,7 @@ export async function acceptMailboxInvitation(user: User, invitationId: string) 
 }
 
 async function acceptInvitationRow(
-  user: User,
+  user: AuthenticatedActor,
   invitation: typeof organizationInvitations.$inferSelect,
 ) {
   if (!user.email || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
@@ -640,8 +615,8 @@ export async function getOrganizationInvitation(
   organizationId: string,
   invitationId: string,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "members:read");
-  const invitation = await db.query.organizationInvitations.findFirst({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "members:read" });
+  const invitation = await executor.query.organizationInvitations.findFirst({
     columns: {
       id: true,
       organizationId: true,
@@ -666,9 +641,8 @@ export async function revokeOrganizationInvitation(input: {
   organizationId: string;
   invitationId: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "members:invite");
-  return db.transaction(async (tx) => {
-    const [invitation] = await tx
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "members:invite" }, async ({ executor }) => {
+    const [invitation] = await executor
       .delete(organizationInvitations)
       .where(
         and(
@@ -678,7 +652,7 @@ export async function revokeOrganizationInvitation(input: {
       )
       .returning();
     if (!invitation) throw invitationNotFound();
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType: "invitation.revoked",
@@ -710,19 +684,19 @@ export async function resendOrganizationInvitation(input: {
 }
 
 export async function assertCanAccessOrganization(userId: string, organizationId: string) {
-  return requireOrganizationCapability(userId, organizationId, "organizations:read");
+  return (await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "organizations:read" })).membership;
 }
 export async function assertCanManageOrganization(userId: string, organizationId: string) {
-  return requireOrganizationCapability(userId, organizationId, "plans:manage");
+  return (await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "plans:manage" })).membership;
 }
 export async function assertCanContributeToOrganization(userId: string, organizationId: string) {
-  return requireOrganizationCapability(userId, organizationId, "plans:contribute");
+  return (await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "plans:contribute" })).membership;
 }
 
-async function deleteExpiredInvitations() {
-  await db
+async function deleteExpiredInvitations(organizationId?: string, executor: OrganizationScopeExecutor = db) {
+  await executor
     .delete(organizationInvitations)
-    .where(sql`${organizationInvitations.expiresAt} <= now()`);
+    .where(and(sql`${organizationInvitations.expiresAt} <= now()`, organizationId ? eq(organizationInvitations.organizationId, organizationId) : undefined));
 }
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];

@@ -1,6 +1,5 @@
 export const JOB_EXECUTION_ADAPTERS = [
   "after_response",
-  "polling",
   "recovery_route",
   "resident_worker",
   "script",

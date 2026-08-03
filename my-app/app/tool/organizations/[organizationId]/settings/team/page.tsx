@@ -10,12 +10,14 @@ import {
   listOrganizationInvitations,
   listOrganizationMembersPage,
 } from "@/src/server/organizations/service";
+import { synchronizeAuthenticatedActor } from "@/src/server/users";
 
 type Props = { params: Promise<{ organizationId: string }> };
 
 export default async function OrganizationTeamPage({ params }: Props) {
   await connection();
   const user = await requireAuth();
+  await synchronizeAuthenticatedActor(user);
   const { organizationId } = await params;
   const [dictionary, locale, organization, authorization, memberResult] = await Promise.all([
     getDictionary(),

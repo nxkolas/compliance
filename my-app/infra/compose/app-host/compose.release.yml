@@ -50,22 +50,22 @@ services:
     environment:
       WORKER_ID: ${APP_ENV}-green
 
+  database-plan:
+    <<: *app-security
+    image: ${WORKER_IMAGE}
+    env_file: ["${APP_ENV_FILE}"]
+    restart: "no"
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/disposable-schema-workflow.ts, plan]
+    networks: [data]
+    mem_limit: 1g
+    cpus: 1
+
   database-bootstrap:
     <<: *app-security
     image: ${WORKER_IMAGE}
     env_file: ["${APP_ENV_FILE}"]
     restart: "no"
-    command: [node, node_modules/tsx/dist/cli.mjs, scripts/bootstrap-disposable-schema.ts]
-    networks: [data]
-    mem_limit: 1g
-    cpus: 1
-
-  supabase-bootstrap:
-    <<: *app-security
-    image: ${WORKER_IMAGE}
-    env_file: ["${APP_ENV_FILE}"]
-    restart: "no"
-    command: [node, node_modules/tsx/dist/cli.mjs, scripts/bootstrap-storage.ts]
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/disposable-schema-workflow.ts, apply, --target, "${DISPOSABLE_SCHEMA_TARGET}"]
     networks: [edge, data]
     mem_limit: 1g
     cpus: 1

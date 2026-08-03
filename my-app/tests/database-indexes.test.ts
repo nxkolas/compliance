@@ -12,6 +12,7 @@ describe("target database indexes", () => {
     "background_jobs_claim_idx",
     "background_jobs_lease_idx",
     "ai_processing_runs_job_idx",
+    "ai_processing_runs_generation_reservation_idx",
     "audit_events_organization_time_idx",
     "api_rate_limit_windows_expiry_idx",
   ])("retains the target access-path index %s", (name) => {

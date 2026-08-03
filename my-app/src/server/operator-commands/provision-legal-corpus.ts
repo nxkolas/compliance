@@ -2,7 +2,6 @@ import * as z from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
-  backgroundJobs,
   legalCorpusFamilies,
   legalProvisionChunkBindings,
   legalSourceProcessingGenerations,
@@ -11,6 +10,7 @@ import {
   legalSourceVersions,
   platformAuditEvents,
 } from "@/src/db/schema";
+import { enqueueJob } from "@/src/server/jobs";
 
 const timestamp = z.iso.datetime().transform((value) => new Date(value));
 const optionalTimestamp = z.union([timestamp, z.null()]).optional();
@@ -153,12 +153,10 @@ export async function provisionLegalCorpus(
       });
       if (!generation) throw new Error("Legal processing generation was not created");
       if (!generation.jobId && generation.status === "pending") {
-        const [job] = await tx.insert(backgroundJobs).values({
+        const job = await enqueueJob({
           kind: "legal_source_processing",
           payload: { processingGenerationId: generation.id },
-          maxAttempts: 3,
-        }).returning();
-        if (!job) throw new Error("Legal processing job was not created");
+        }, { executor: tx });
         await tx.update(legalSourceProcessingGenerations)
           .set({ jobId: job.id })
           .where(eq(legalSourceProcessingGenerations.id, generation.id));

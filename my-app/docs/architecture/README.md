@@ -4,6 +4,7 @@ This folder contains system architecture, data model, and API design notes.
 
 ## Guides
 
+- [System architecture overview](./system-overview.md)
 - [End-to-end compliance workflow](./end-to-end-compliance-workflow.md)
 - [Database structure](./database-structure.md)
 - [Framework change and extension effort](./framework-change-effort.md)
@@ -19,5 +20,5 @@ This folder contains system architecture, data model, and API design notes.
 Durable background work uses one PostgreSQL-backed execution module with
 multiple bounded wake-up adapters. Next.js `after()` handles low-latency
 request-driven execution, an authenticated internal route provides scheduled
-recovery, job polling can re-wake non-terminal work, and the optional resident
-worker repeats the same drain for self-hosted throughput.
+recovery, and the resident worker repeats the same drain for self-hosted
+throughput. Job polling observes durable state and never executes work.

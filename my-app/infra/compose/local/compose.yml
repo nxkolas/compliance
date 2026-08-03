@@ -376,7 +376,7 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  database-bootstrap:
+  database-plan:
     <<: [*app-security, *app-environment]
     image: ${COMPLIANCETOOL_WORKER_IMAGE}
     build:
@@ -392,21 +392,28 @@ services:
         condition: service_healthy
       storage:
         condition: service_healthy
-    command: [node, node_modules/tsx/dist/cli.mjs, scripts/bootstrap-disposable-schema.ts]
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/disposable-schema-workflow.ts, plan]
     networks: [data]
     mem_limit: 1g
     cpus: 1
 
-  supabase-bootstrap:
+  database-bootstrap:
     <<: [*app-security, *app-environment]
     image: ${COMPLIANCETOOL_WORKER_IMAGE}
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+      target: worker
+      args:
+        VCS_REF: ${COMPLIANCETOOL_REVISION}
+        SOURCE_URL: ${COMPLIANCETOOL_SOURCE}
     restart: "no"
     depends_on:
-      database-bootstrap:
+      database-plan:
         condition: service_completed_successfully
-      kong:
+      storage:
         condition: service_healthy
-    command: [node, node_modules/tsx/dist/cli.mjs, scripts/bootstrap-storage.ts]
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/disposable-schema-workflow.ts, apply, --target, "${DISPOSABLE_SCHEMA_TARGET}"]
     networks: [edge, data]
     mem_limit: 1g
     cpus: 1
@@ -423,7 +430,7 @@ services:
         SOURCE_URL: ${COMPLIANCETOOL_SOURCE}
     restart: unless-stopped
     depends_on:
-      supabase-bootstrap:
+      database-bootstrap:
         condition: service_completed_successfully
       litellm:
         condition: service_healthy
@@ -446,7 +453,7 @@ services:
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     restart: unless-stopped
     depends_on:
-      supabase-bootstrap:
+      database-bootstrap:
         condition: service_completed_successfully
       litellm:
         condition: service_healthy

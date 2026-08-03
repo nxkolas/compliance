@@ -140,6 +140,7 @@ async function main() {
     userId,
     organizationId: organization.id,
     workerId,
+    attemptCount: 1,
     locale: "de",
     groundingDependencies,
   });
@@ -178,6 +179,7 @@ async function main() {
     organizationId: organization.id,
     userId,
     sourceGapRevisionId: gapResult.id,
+    attemptCount: 1,
     locale: "de",
     groundingDependencies,
   });

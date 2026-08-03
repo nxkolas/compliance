@@ -4,6 +4,7 @@ import {
   gapGenerationEnqueueResponseSchema,
   gapQuestionnaireInputSchema,
   gapQuestionnaireDraftAnswerSchema,
+  gapQuestionnaireProgressSchema,
   gapRevisionReadSchema,
   gapWorkflowReadSchema,
   gapInputsReadSchema,
@@ -55,6 +56,13 @@ export const gapAnalysisClient = {
   getHistory(organizationId: string, signal?: AbortSignal) {
     return request(`${gapBase(organizationId)}/history`, {
       outputSchema: gapHistoryReadSchema,
+      signal,
+    });
+  },
+
+  getQuestionnaireProgress(organizationId: string, signal?: AbortSignal) {
+    return request(`${gapBase(organizationId)}/progress`, {
+      outputSchema: z.object({ progress: gapQuestionnaireProgressSchema }),
       signal,
     });
   },

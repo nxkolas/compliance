@@ -11,12 +11,10 @@ export {
   succeedJob,
   toJobDto,
 } from "./service";
-export type { BackgroundJobRecord } from "./service";
-export {
-  ACTION_PLAN_GENERATION_JOB_KINDS,
-  GAP_GENERATION_JOB_KINDS,
-  actionPlanGenerationJobKind,
-  gapGenerationJobKind,
-  isActionPlanGenerationJobKind,
-  isGapGenerationJobKind,
-} from "./generation-kinds";
+export type { EnqueueJobOptions } from "./service";
+export type {
+  BackgroundJobRecord,
+  JobCommand,
+  JobKind,
+  JobResultLocator,
+} from "./definitions";

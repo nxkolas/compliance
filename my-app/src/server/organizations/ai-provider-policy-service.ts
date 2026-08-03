@@ -1,15 +1,14 @@
-import { db } from "@/src/db";
 import { auditEvents, organizations } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
-import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand } from "@/src/server/auth/organization-scope";
 import { ApiError } from "../api/errors";
 
 export async function getOrganizationAiProviderPolicy(
   userId: string,
   organizationId: string,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "organizations:read");
-  const organization = await db.query.organizations.findFirst({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "organizations:read" });
+  const organization = await executor.query.organizations.findFirst({
     columns: { id: true, aiProviderMode: true },
     where: {
       RAW: (table, operators) =>
@@ -29,19 +28,14 @@ export async function updateOrganizationAiProviderPolicy(input: {
   providerMode: "company_hosted" | "openai" | "self_hosted";
   requestId?: string;
 }) {
-  await requireOrganizationCapability(
-    input.userId,
-    input.organizationId,
-    "organizations:update",
-  );
-  return db.transaction(async (tx) => {
-    const [organization] = await tx
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "organizations:update" }, async ({ executor }) => {
+    const [organization] = await executor
       .update(organizations)
       .set({ aiProviderMode: input.providerMode, updatedAt: new Date() })
       .where(eq(organizations.id, input.organizationId))
       .returning({ id: organizations.id, aiProviderMode: organizations.aiProviderMode });
     if (!organization) throw organizationNotFound();
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType: "organization.ai_provider_changed",

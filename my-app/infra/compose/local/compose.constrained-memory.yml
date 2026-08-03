@@ -36,10 +36,10 @@ services:
   litellm:
     mem_limit: 1536m
 
-  database-bootstrap:
+  database-plan:
     mem_limit: 512m
 
-  supabase-bootstrap:
+  database-bootstrap:
     mem_limit: 512m
 
   worker:

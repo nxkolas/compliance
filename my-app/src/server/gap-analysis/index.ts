@@ -30,6 +30,7 @@ export {
 } from "./analysis-cycle-service";
 export { getGapQuestionnaireRevision, submitGapQuestionnaire } from "./questionnaire-service";
 export { saveQuestionnaireDraftAnswer } from "./questionnaire-draft-service";
+export { getGapQuestionnaireProgress } from "./progress-service";
 export { getGapHistory, getGapInputs, getGapResults, getGapWorkflowSummary } from "./read-models";
 export { getGapAnalysisRevision, getGapAnalysisRevisionRecord, getGapAnalysisWorkflow } from "./workflow-reader";
 export {

@@ -116,8 +116,8 @@ if ($Mode -eq "test") {
 if ($Mode -eq "infra") {
   $services = @(
     "db", "rustfs", "rustfs-init", "mailpit", "auth", "rest", "storage",
-    "kong", "ollama", "ollama-model-init", "litellm", "database-bootstrap",
-    "supabase-bootstrap"
+    "kong", "ollama", "ollama-model-init", "litellm", "database-plan",
+    "database-bootstrap"
   )
   $buildOption = if ($UsePrebuiltImages) { "--no-build" } else { "--build" }
   & docker @arguments @profiles up $buildOption --detach --wait @services

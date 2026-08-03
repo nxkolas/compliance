@@ -1,4 +1,4 @@
-import { db } from "@/src/db";
+import { db, type Db } from "@/src/db";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import {
@@ -10,8 +10,9 @@ import {
 export async function resolveOrganizationCapabilities(
   userId: string,
   organizationId: string,
+  executor: OrganizationAuthorizationExecutor = db,
 ) {
-  const membership = await db.query.organizationMemberships.findFirst({
+  const membership = await executor.query.organizationMemberships.findFirst({
     columns: {
       organizationId: true,
       userId: true,
@@ -39,8 +40,13 @@ export async function requireOrganizationCapability(
   userId: string,
   organizationId: string,
   capability: OrganizationCapability,
+  executor: OrganizationAuthorizationExecutor = db,
 ) {
-  const resolved = await resolveOrganizationCapabilities(userId, organizationId);
+  const resolved = await resolveOrganizationCapabilities(
+    userId,
+    organizationId,
+    executor,
+  );
   if (!resolved.membership) {
     throw new ApiError(
       404,
@@ -58,7 +64,7 @@ export async function requireOrganizationCapability(
     );
   }
   if (!archivedOrganizationCapabilities.has(capability)) {
-    const organization = await db.query.organizations.findFirst({
+    const organization = await executor.query.organizations.findFirst({
       where: {
         RAW: (table, operators) =>
           eq(table.id, organizationId) ?? operators.sql`true`,
@@ -76,6 +82,8 @@ export async function requireOrganizationCapability(
   }
   return resolved.membership;
 }
+
+export type OrganizationAuthorizationExecutor = Pick<Db, "query">;
 
 const archivedOrganizationCapabilities = new Set<OrganizationCapability>([
   "organizations:read",

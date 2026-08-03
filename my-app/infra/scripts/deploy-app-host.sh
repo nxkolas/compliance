@@ -60,11 +60,11 @@ fi
 "${platform[@]}" up -d --wait
 "${release[@]}" --profile "$color" up -d "web-$color"
 if [[ "$app_environment" == "staging" ]]; then
+  "${release[@]}" run --rm database-plan
   "${release[@]}" run --rm database-bootstrap
 else
   echo "Skipping disposable Drizzle bootstrap in production; use the reviewed production baseline procedure."
 fi
-"${release[@]}" run --rm supabase-bootstrap
 "${release[@]}" --profile "$color" up -d --wait "web-$color"
 
 active_file="$(read_env CADDY_ACTIVE_UPSTREAM_FILE)"

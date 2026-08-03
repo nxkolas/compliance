@@ -151,7 +151,7 @@ export function ActionPlanWorkflow({ organizationId, current, canContribute, lab
       </div>
     );
   }
-  async function update(itemId: string, status: "open" | "in_progress" | "done") {
+  async function update(itemId: string, status: "open" | "in_progress" | "done" | "cancelled") {
     setBusy(itemId);
     setError(null);
     try {
@@ -202,7 +202,7 @@ function ActionItem({ item, labels, canContribute, busy, save }: {
   labels: Labels;
   canContribute: boolean;
   busy: boolean;
-  save: (status: "open" | "in_progress" | "done") => Promise<boolean>;
+  save: (status: "open" | "in_progress" | "done" | "cancelled") => Promise<boolean>;
 }) {
   const [status, setStatus] = useState(item.status);
   return (
@@ -236,7 +236,7 @@ function ActionItem({ item, labels, canContribute, busy, save }: {
               });
             }}
           >
-            {(["open", "in_progress", "done"] as const).map((value) => <option key={value} value={value}>{labels.statuses[value]}</option>)}
+            {(["open", "in_progress", "done", "cancelled"] as const).map((value) => <option key={value} value={value}>{labels.statuses[value]}</option>)}
           </select>
         </label>
       </CardContent>

@@ -104,7 +104,7 @@ describe("deployment environment contracts", () => {
         SELF_HOSTED_AI_BASE_URL: "http://ai.example.com/v1",
       }),
     ).toThrow(
-      "Invalid environment variables: DATABASE_URL, SELF_HOSTED_AI_BASE_URL",
+      "Invalid environment variables: DATABASE_URL, JOB_RECOVERY_ENABLED, SELF_HOSTED_AI_BASE_URL",
     );
   });
 
@@ -115,6 +115,19 @@ describe("deployment environment contracts", () => {
         JOB_RECOVERY_ENABLED: "true",
       }),
     ).toThrow("Invalid environment variables: CRON_SECRET");
+  });
+
+  it("requires scheduled recovery for managed-cloud deployments", () => {
+    expect(() =>
+      getWebEnvironment({
+        ...productionEnvironment,
+        DEPLOYMENT_TOPOLOGY: "managed_cloud",
+        DATABASE_URL:
+          "postgresql://app:secret@database.example.com:5432/postgres?sslmode=require",
+        SELF_HOSTED_AI_BASE_URL: "https://ai.example.com/v1",
+        NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
+      }),
+    ).toThrow("Invalid environment variables: JOB_RECOVERY_ENABLED");
   });
 
   it("rejects unsafe production web defaults without printing values", () => {

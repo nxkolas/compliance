@@ -1,9 +1,12 @@
 export {
   createUploadSession,
+  failPreparedUploadSession,
   expireUploadSessions,
-  getUploadSessionResult,
   listUnreferencedFailedUploads,
-  markUploadSessionCompleted,
+  prepareUploadSession,
+  signPreparedUploadSession,
   verifyUploadedObject,
 } from "./service";
 export type { UploadPolicy } from "./service";
+export type { PreparedUploadCompletion } from "./service";
+export { canonicalizeUploadMimeType } from "./policy";

@@ -27,7 +27,8 @@ import {
 } from "@/src/server/definitions";
 import { and, asc, eq, inArray, isNull, ne, notInArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand, type OrganizationScopeExecutor } from "../auth/organization-scope";
+import { enqueueJob, toJobDto } from "../jobs";
 import { evaluateGapRequirement } from "./deterministic-evaluator";
 import { deriveAtomicGapTriggerPolicy } from "./trigger-policy";
 import { generateAtomicGapBatch } from "./atomic-gap-generation";
@@ -43,11 +44,11 @@ export async function prepareGapAnalysisCycle(input: {
   selectedDocumentIds: string[];
   locale: Locale;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
-  const assessment = await requireGapAssessment(input.organizationId, input.assessmentId);
-  let cycle = await findUnfinishedCycle(input.organizationId);
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:contribute" }, async ({ executor: db }) => {
+  const assessment = await requireGapAssessment(input.organizationId, input.assessmentId, db);
+  let cycle = await findUnfinishedCycle(input.organizationId, db);
   if (!cycle) {
-    const draftAnswers = await prefillAnswers(assessment.currentRevisionId);
+    const draftAnswers = await prefillAnswers(assessment.currentRevisionId, db);
     const [created] = await db
       .insert(gapAnalysisCycles)
       .values({
@@ -72,17 +73,17 @@ export async function prepareGapAnalysisCycle(input: {
     });
   }
   if (cycle.stage === "questions" || cycle.stage === "evidence") {
-    await replaceSelectedDocuments(input.organizationId, cycle.id, input.selectedDocumentIds);
+    await replaceSelectedDocuments(input.organizationId, cycle.id, input.selectedDocumentIds, db);
     await db
       .update(gapAnalysisCycles)
       .set({ stage: "evidence", updatedAt: new Date() })
       .where(eq(gapAnalysisCycles.id, cycle.id));
   }
-  return getGapAnalysisCycle({
-    userId: input.userId,
+  return readCycle({
     organizationId: input.organizationId,
     draftId: cycle.id,
     locale: input.locale,
+  }, db);
   });
 }
 
@@ -93,21 +94,21 @@ export async function replaceGapAnalysisEvidence(input: {
   selectedDocumentIds: string[];
   expectedLockVersion?: number;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
-  const cycle = await requireCycle(input.organizationId, input.draftId);
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:contribute" }, async ({ executor: db }) => {
+  const cycle = await requireCycle(input.organizationId, input.draftId, db);
   if (cycle.stage !== "questions" && cycle.stage !== "evidence") {
     throw new ApiError(409, "Selected evidence is locked while generation runs", undefined, "GAP_CYCLE_INPUT_LOCKED");
   }
-  await replaceSelectedDocuments(input.organizationId, cycle.id, input.selectedDocumentIds);
+  await replaceSelectedDocuments(input.organizationId, cycle.id, input.selectedDocumentIds, db);
   await db
     .update(gapAnalysisCycles)
     .set({ stage: "evidence", updatedAt: new Date() })
     .where(eq(gapAnalysisCycles.id, cycle.id));
-  return getGapAnalysisCycle({
-    userId: input.userId,
+  return readCycle({
     organizationId: input.organizationId,
     draftId: cycle.id,
     locale: cycle.locale as Locale,
+  }, db);
   });
 }
 
@@ -118,8 +119,8 @@ export async function getGapAnalysisCycle(input: {
   assessmentId?: string;
   locale: Locale;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:read");
-  return readCycle(input);
+  const { executor } = await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:read" });
+  return readCycle(input, executor);
 }
 
 export async function getGapAnalysisCyclePreauthorized(input: {
@@ -127,8 +128,8 @@ export async function getGapAnalysisCyclePreauthorized(input: {
   draftId?: string;
   assessmentId?: string;
   locale: Locale;
-}) {
-  return readCycle(input);
+}, executor: OrganizationScopeExecutor = db) {
+  return readCycle(input, executor);
 }
 
 export async function enqueueGapAnalysisGeneration(input: {
@@ -139,8 +140,7 @@ export async function enqueueGapAnalysisGeneration(input: {
   locale: Locale;
   idempotencyKey: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
-  return enqueueCycle(input, false);
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:contribute" }, ({ executor }) => enqueueCycle(input, false, executor));
 }
 
 export async function retryGapAnalysisGeneration(input: {
@@ -150,9 +150,10 @@ export async function retryGapAnalysisGeneration(input: {
   retryNonce: string;
   idempotencyKey: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
-  const cycle = await requireCycle(input.organizationId, input.draftId);
-  return enqueueCycle({ ...input, locale: cycle.locale as Locale }, true);
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:contribute" }, async ({ executor }) => {
+    const cycle = await requireCycle(input.organizationId, input.draftId, executor);
+    return enqueueCycle({ ...input, locale: cycle.locale as Locale }, true, executor);
+  });
 }
 
 export async function finalizeGapCycleQuestionnaire(input: {
@@ -161,9 +162,9 @@ export async function finalizeGapCycleQuestionnaire(input: {
   cycleId: string;
   assessmentId: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
-  const cycle = await requireCycle(input.organizationId, input.cycleId);
-  const assessment = await requireGapAssessment(input.organizationId, input.assessmentId);
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:contribute" }, async ({ executor: db }) => {
+  const cycle = await requireCycle(input.organizationId, input.cycleId, db);
+  const assessment = await requireGapAssessment(input.organizationId, input.assessmentId, db);
   const revisionId = cycle.assessmentRevisionId ?? (await finalizeAnswers({
     userId: input.userId,
     organizationId: input.organizationId,
@@ -171,21 +172,20 @@ export async function finalizeGapCycleQuestionnaire(input: {
     cycle,
     locale: cycle.locale as Locale,
   }));
-  await db.transaction(async (tx) => {
-    await tx.update(assessments).set({ currentRevisionId: revisionId, updatedAt: new Date() })
+    await db.update(assessments).set({ currentRevisionId: revisionId, updatedAt: new Date() })
       .where(eq(assessments.id, assessment.id));
-    await tx.update(gapAnalysisCycles).set({
+    await db.update(gapAnalysisCycles).set({
       assessmentRevisionId: revisionId,
       stage: "evidence",
       questionsCompletedAt: cycle.questionsCompletedAt ?? new Date(),
       updatedAt: new Date(),
     }).where(eq(gapAnalysisCycles.id, cycle.id));
-  });
   const revision = await db.query.assessmentRevisions.findFirst({
     where: { RAW: (table, operators) => eq(table.id, revisionId) ?? operators.sql`true` },
   });
   if (!revision) throw new Error("Gap assessment revision is unavailable");
   return revision;
+  });
 }
 
 async function enqueueCycle(
@@ -198,8 +198,9 @@ async function enqueueCycle(
     retryNonce?: string;
   },
   retry: boolean,
+  executor?: OrganizationScopeExecutor,
 ) {
-  return db.transaction(async (tx) => {
+  const run = async (tx: OrganizationScopeExecutor) => {
     const [cycle] = await tx
       .select()
       .from(gapAnalysisCycles)
@@ -247,10 +248,10 @@ async function enqueueCycle(
       cycle,
       locale: input.locale,
     }, tx));
-    const [job] = await tx.insert(backgroundJobs).values({
+    const job = await enqueueJob({
       organizationId: input.organizationId,
+      requestedByUserId: input.userId,
       kind: "gap_analysis",
-      state: "queued",
       payload: {
         cycleId: cycle.id,
         locale: input.locale,
@@ -259,9 +260,7 @@ async function enqueueCycle(
         idempotencyKey: input.idempotencyKey,
         retryNonce: input.retryNonce,
       },
-      requestedBy: input.userId,
-    }).returning();
-    if (!job) throw new Error("Gap generation job was not created");
+    }, { executor: tx });
     await tx.update(gapAnalysisCycles).set({
       stage: "generating",
       assessmentRevisionId,
@@ -271,7 +270,8 @@ async function enqueueCycle(
       updatedAt: new Date(),
     }).where(eq(gapAnalysisCycles.id, cycle.id));
     return { job: toJobDto(job), reused: false };
-  });
+  };
+  return executor ? run(executor) : db.transaction(run);
 }
 
 export async function executeGapGenerationJob(input: {
@@ -281,6 +281,7 @@ export async function executeGapGenerationJob(input: {
   userId: string;
   organizationId: string;
   workerId: string;
+  attemptCount: number;
   locale: Locale;
   retryNonce?: string;
   abortSignal?: AbortSignal;
@@ -377,6 +378,7 @@ export async function executeGapGenerationJob(input: {
     asOfDate: new Date().toISOString().slice(0, 10),
     jobId: input.jobId,
     workerId: input.workerId,
+    durableExecutionAttempt: input.attemptCount,
     abortSignal: input.abortSignal,
     groundingDependencies: input.groundingDependencies,
   });
@@ -393,9 +395,17 @@ export async function executeGapGenerationJob(input: {
     const [job] = await tx.select({
       state: backgroundJobs.state,
       leaseOwner: backgroundJobs.leaseOwner,
+      leaseExpiresAt: backgroundJobs.leaseExpiresAt,
       cancellationRequestedAt: backgroundJobs.cancellationRequestedAt,
     }).from(backgroundJobs).where(eq(backgroundJobs.id, input.jobId)).limit(1).for("update");
-    if (!job || job.state !== "running" || job.leaseOwner !== input.workerId || job.cancellationRequestedAt) {
+    if (
+      !job ||
+      job.state !== "running" ||
+      job.leaseOwner !== input.workerId ||
+      !job.leaseExpiresAt ||
+      job.leaseExpiresAt <= now ||
+      job.cancellationRequestedAt
+    ) {
       throw new ApiError(409, "Gap generation no longer owns publication", undefined, "GAP_GENERATION_RESERVATION_INVALID");
     }
     await tx.insert(analysisOutputs).values({ organizationId: input.organizationId, kind: "gap" })
@@ -516,8 +526,8 @@ export async function executeGapGenerationJob(input: {
       if (completed.length !== runIds.length) throw new Error("Grounded Gap run publication is incomplete");
       await tx.update(aiProcessingRuns).set({
         status: "failed",
-        failureCode: "GENERATION_CANDIDATE_REJECTED",
-        failureMessage: "A corrected category candidate replaced this generation attempt.",
+        failureCode: "GENERATION_ATTEMPT_SUPERSEDED",
+        failureMessage: "A selected attempt superseded this generation candidate.",
         completedAt: now,
       }).where(and(
         eq(aiProcessingRuns.jobId, input.jobId),
@@ -589,15 +599,15 @@ async function readCycle(input: {
   draftId?: string;
   assessmentId?: string;
   locale: Locale;
-}) {
+}, executor: OrganizationScopeExecutor = db) {
   const cycle = input.draftId
-    ? await db.query.gapAnalysisCycles.findFirst({ where: { RAW: (table, operators) => and(eq(table.id, input.draftId!), eq(table.organizationId, input.organizationId)) ?? operators.sql`true` } })
-    : await db.query.gapAnalysisCycles.findFirst({
+    ? await executor.query.gapAnalysisCycles.findFirst({ where: { RAW: (table, operators) => and(eq(table.id, input.draftId!), eq(table.organizationId, input.organizationId)) ?? operators.sql`true` } })
+    : await executor.query.gapAnalysisCycles.findFirst({
         where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), ne(table.stage, "generated")) ?? operators.sql`true` },
         orderBy: { createdAt: "desc" },
       });
   if (!cycle) return null;
-  const selected = await db.select({
+  const selected = await executor.select({
     documentId: documentVersions.documentId,
     documentVersionId: documentVersions.id,
     position: gapAnalysisCycleDocuments.position,
@@ -605,10 +615,10 @@ async function readCycle(input: {
     .innerJoin(documentVersions, eq(documentVersions.id, gapAnalysisCycleDocuments.documentVersionId))
     .where(eq(gapAnalysisCycleDocuments.cycleId, cycle.id))
     .orderBy(asc(gapAnalysisCycleDocuments.position));
-  const job = cycle.generationJobId ? await db.query.backgroundJobs.findFirst({
+  const job = cycle.generationJobId ? await executor.query.backgroundJobs.findFirst({
     where: { RAW: (table, operators) => eq(table.id, cycle.generationJobId!) ?? operators.sql`true` },
   }) : null;
-  const assessment = await db.query.assessments.findFirst({
+  const assessment = await executor.query.assessments.findFirst({
     where: { RAW: (table, operators) => and(eq(table.organizationId, input.organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
   });
   const legacyStatus = cycle.stage === "generated" ? "generated"
@@ -655,9 +665,9 @@ async function readCycle(input: {
   };
 }
 
-async function replaceSelectedDocuments(organizationId: string, cycleId: string, documentIds: string[]) {
+async function replaceSelectedDocuments(organizationId: string, cycleId: string, documentIds: string[], executor: OrganizationScopeExecutor = db) {
   const unique = [...new Set(documentIds)];
-  const rows = unique.length ? await db.select({ id: documents.id, versionId: documents.currentVersionId, status: documentVersions.indexingStatus })
+  const rows = unique.length ? await executor.select({ id: documents.id, versionId: documents.currentVersionId, status: documentVersions.indexingStatus })
     .from(documents)
     .innerJoin(documentVersions, eq(documentVersions.id, documents.currentVersionId))
     .where(and(
@@ -668,46 +678,44 @@ async function replaceSelectedDocuments(organizationId: string, cycleId: string,
   if (rows.length !== unique.length) throw new ApiError(400, "One or more selected documents are unavailable");
   const blocked = rows.filter((row) => row.status !== "succeeded");
   if (blocked.length) throw new ApiError(409, "Selected documents must finish indexing", { documentIds: blocked.map((row) => row.id) }, "GAP_DOCUMENT_NOT_READY");
-  await db.transaction(async (tx) => {
-    await tx.delete(gapAnalysisCycleDocuments).where(eq(gapAnalysisCycleDocuments.cycleId, cycleId));
-    if (rows.length) await tx.insert(gapAnalysisCycleDocuments).values(rows.map((row, position) => ({
+    await executor.delete(gapAnalysisCycleDocuments).where(and(eq(gapAnalysisCycleDocuments.cycleId, cycleId), eq(gapAnalysisCycleDocuments.organizationId, organizationId)));
+    if (rows.length) await executor.insert(gapAnalysisCycleDocuments).values(rows.map((row, position) => ({
       organizationId,
       cycleId,
       documentVersionId: row.versionId!,
       position,
     })));
-  });
 }
 
-async function prefillAnswers(revisionId: string | null) {
+async function prefillAnswers(revisionId: string | null, executor: OrganizationScopeExecutor = db) {
   if (!revisionId) return {};
-  const revision = await db.query.assessmentRevisions.findFirst({
+  const revision = await executor.query.assessmentRevisions.findFirst({
     where: { RAW: (table, operators) => eq(table.id, revisionId) ?? operators.sql`true` },
   });
   if (!revision || revision.definitionHash !== currentGapDefinitionHash) return {};
-  const rows = await db.select({ key: assessmentAnswers.questionKey, value: assessmentAnswers.answerValue })
+  const rows = await executor.select({ key: assessmentAnswers.questionKey, value: assessmentAnswers.answerValue })
     .from(assessmentAnswers).where(eq(assessmentAnswers.assessmentRevisionId, revision.id));
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
-async function requireGapAssessment(organizationId: string, assessmentId: string) {
-  const row = await db.query.assessments.findFirst({
+async function requireGapAssessment(organizationId: string, assessmentId: string, executor: OrganizationScopeExecutor = db) {
+  const row = await executor.query.assessments.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, assessmentId), eq(table.organizationId, organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
   });
   if (!row) throw new ApiError(404, "Gap assessment not found");
   return row;
 }
 
-async function requireCycle(organizationId: string, cycleId: string) {
-  const row = await db.query.gapAnalysisCycles.findFirst({
+async function requireCycle(organizationId: string, cycleId: string, executor: OrganizationScopeExecutor = db) {
+  const row = await executor.query.gapAnalysisCycles.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, cycleId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
   if (!row) throw new ApiError(404, "Gap analysis cycle not found", undefined, "GAP_CYCLE_NOT_FOUND");
   return row;
 }
 
-async function findUnfinishedCycle(organizationId: string) {
-  return db.query.gapAnalysisCycles.findFirst({
+async function findUnfinishedCycle(organizationId: string, executor: OrganizationScopeExecutor = db) {
+  return executor.query.gapAnalysisCycles.findFirst({
     where: { RAW: (table, operators) => and(eq(table.organizationId, organizationId), ne(table.stage, "generated")) ?? operators.sql`true` },
     orderBy: { createdAt: "desc" },
   });
@@ -721,28 +729,6 @@ async function currentApplicabilityRevision(organizationId: string) {
   return db.query.analysisOutputRevisions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, output.currentRevisionId!), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
-}
-
-function toJobDto(job: typeof backgroundJobs.$inferSelect) {
-  const completed = job.progressCurrent ?? 0;
-  const total = job.progressTotal ?? 100;
-  return {
-    id: job.id,
-    kind: job.kind,
-    state: job.state === "leased" ? "running" as const : job.state,
-    progress: total > 0 ? Math.round((completed / total) * 100) : 0,
-    phase: null,
-    completedUnits: job.progressCurrent,
-    totalUnits: job.progressTotal,
-    attemptCount: job.attemptCount,
-    safeError: job.errorCode ? { code: job.errorCode, message: job.errorMessage ?? "Job failed" } : null,
-    createdAt: job.createdAt.toISOString(),
-    updatedAt: job.updatedAt.toISOString(),
-    startedAt: job.startedAt?.toISOString() ?? null,
-    finishedAt: job.finishedAt?.toISOString() ?? null,
-    cancellable: ["queued", "leased", "running"].includes(job.state),
-    resultLink: null,
-  };
 }
 
 function summaryForStatus(status: string, locale: Locale) {

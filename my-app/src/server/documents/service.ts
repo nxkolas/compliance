@@ -3,21 +3,28 @@ import type { DocumentDto, DocumentListQuery } from "@/src/contracts/documents";
 import { db } from "@/src/db";
 import {
   auditEvents,
-  backgroundJobs,
   documentChunks,
   documentVersions,
   documents,
+  uploadSessions,
 } from "@/src/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { hasOrganizationCapability } from "../auth/capabilities";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import {
+  authorizeOrganizationRead,
+  withAuthorizedOrganizationCommand,
+  type OrganizationScopeExecutor,
+} from "../auth/organization-scope";
+import { enqueueJob } from "../jobs";
 import { getSupabaseAdminClient } from "../supabase-admin";
 import {
-  createUploadSession,
-  getUploadSessionResult,
-  markUploadSessionCompleted,
+  canonicalizeUploadMimeType,
+  failPreparedUploadSession,
+  prepareUploadSession,
+  signPreparedUploadSession,
   verifyUploadedObject,
+  type PreparedUploadCompletion,
 } from "../uploads";
 import { chunkExtractedPages } from "./chunker";
 import {
@@ -52,7 +59,7 @@ export async function uploadOrganizationDocument(
   command: UploadOrganizationDocumentCommand,
   dependencies: { storage?: DocumentStorage; embeddingProvider?: DocumentEmbeddingProvider } = {},
 ) {
-  await requireOrganizationCapability(command.userId, command.organizationId, "documents:write");
+  await authorizeOrganizationRead({ actorUserId: command.userId, organizationId: command.organizationId, capability: "documents:write" });
   validateDocumentUpload({ fileName: command.fileName, mimeType: command.mimeType, byteSize: command.bytes.byteLength });
   const documentId = randomUUID();
   const versionId = randomUUID();
@@ -60,7 +67,7 @@ export async function uploadOrganizationDocument(
   const storage = dependencies.storage ?? supabaseStorage;
   await storage.upload({ bucket: DOCUMENT_STORAGE_BUCKET, path: key, bytes: command.bytes, contentType: command.mimeType });
   try {
-    await createDocumentRecords({
+    await withAuthorizedOrganizationCommand({ actorUserId: command.userId, organizationId: command.organizationId, capability: "documents:write" }, ({ executor }) => createDocumentRecords({
       documentId,
       versionId,
       organizationId: command.organizationId,
@@ -73,7 +80,7 @@ export async function uploadOrganizationDocument(
       storageKey: key,
       contentHash: sha256(command.bytes),
       indexingStatus: "processing",
-    });
+    }, executor));
     await indexDocumentVersion({
       versionId,
       organizationId: command.organizationId,
@@ -91,17 +98,21 @@ export async function uploadOrganizationDocumentVersion(
   command: UploadOrganizationDocumentVersionCommand,
   dependencies: { storage?: DocumentStorage; embeddingProvider?: DocumentEmbeddingProvider } = {},
 ) {
-  await requireOrganizationCapability(command.userId, command.organizationId, "documents:write");
-  const existing = await requireDocument(command.organizationId, command.documentId);
+  const initialScope = await authorizeOrganizationRead({ actorUserId: command.userId, organizationId: command.organizationId, capability: "documents:write" });
+  const existing = await requireDocument(command.organizationId, command.documentId, initialScope.executor);
   if (existing.archivedAt) throw new ApiError(409, "Restore the document before adding a version");
   validateDocumentUpload({ fileName: command.fileName, mimeType: command.mimeType, byteSize: command.bytes.byteLength });
-  const prior = await db.select({ versionNumber: documentVersions.versionNumber }).from(documentVersions)
-    .where(eq(documentVersions.documentId, command.documentId)).orderBy(desc(documentVersions.versionNumber));
   const versionId = randomUUID();
   const key = storageKey(command.organizationId, command.documentId, versionId, command.fileName);
   const storage = dependencies.storage ?? supabaseStorage;
   await storage.upload({ bucket: DOCUMENT_STORAGE_BUCKET, path: key, bytes: command.bytes, contentType: command.mimeType });
-  const [version] = await db.insert(documentVersions).values({
+  const [version] = await withAuthorizedOrganizationCommand({ actorUserId: command.userId, organizationId: command.organizationId, capability: "documents:write" }, async ({ executor }) => {
+    const currentDocument = await requireDocument(command.organizationId, command.documentId, executor);
+    if (currentDocument.archivedAt) throw new ApiError(409, "Restore the document before adding a version");
+    const prior = await executor.select({ versionNumber: documentVersions.versionNumber }).from(documentVersions)
+      .where(and(eq(documentVersions.documentId, command.documentId), eq(documentVersions.organizationId, command.organizationId)))
+      .orderBy(desc(documentVersions.versionNumber));
+    return executor.insert(documentVersions).values({
     id: versionId,
     organizationId: command.organizationId,
     documentId: command.documentId,
@@ -117,10 +128,13 @@ export async function uploadOrganizationDocumentVersion(
     embeddingModel: EMBEDDING_MODEL,
     indexingStartedAt: new Date(),
     createdBy: command.userId,
-  }).returning();
+    }).returning();
+  });
   if (!version) throw new Error("Document version was not created");
   await indexDocumentVersion({ versionId, organizationId: command.organizationId, bytes: command.bytes, embeddingProvider: dependencies.embeddingProvider });
-  await db.update(documents).set({ currentVersionId: versionId, updatedAt: new Date() }).where(eq(documents.id, command.documentId));
+  await withAuthorizedOrganizationCommand({ actorUserId: command.userId, organizationId: command.organizationId, capability: "documents:write" }, async ({ executor }) => {
+    await executor.update(documents).set({ currentVersionId: versionId, updatedAt: new Date() }).where(and(eq(documents.id, command.documentId), eq(documents.organizationId, command.organizationId)));
+  });
   return { documentId: command.documentId, documentVersionId: versionId };
 }
 
@@ -129,9 +143,9 @@ export async function listOrganizationDocumentDtos(input: {
   organizationId: string;
   query?: DocumentListQuery;
 }) {
-  const membership = await requireOrganizationCapability(input.userId, input.organizationId, "documents:read");
+  const scope = await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "documents:read" });
   const query = input.query ?? { status: "active", limit: 25 };
-  const all = await currentDocumentRows(input.organizationId);
+  const all = await currentDocumentRows(input.organizationId, scope.executor);
   const search = ("search" in query ? query.search : undefined)?.toLocaleLowerCase();
   const filtered = all.filter(({ document }) => {
     if (query.status === "active" && document.archivedAt) return false;
@@ -141,10 +155,10 @@ export async function listOrganizationDocumentDtos(input: {
   return {
     documents: filtered.slice(0, query.limit).map(toDocumentDto),
     permissions: {
-      canUpload: hasOrganizationCapability(membership.role, "documents:write"),
-      canArchive: hasOrganizationCapability(membership.role, "documents:archive"),
-      canRestore: hasOrganizationCapability(membership.role, "documents:archive"),
-      canRetryIndexing: hasOrganizationCapability(membership.role, "documents:write"),
+      canUpload: hasOrganizationCapability(scope.membership.role, "documents:write"),
+      canArchive: hasOrganizationCapability(scope.membership.role, "documents:archive"),
+      canRestore: hasOrganizationCapability(scope.membership.role, "documents:archive"),
+      canRetryIndexing: hasOrganizationCapability(scope.membership.role, "documents:write"),
     },
     counts: {
       all: all.length,
@@ -156,25 +170,25 @@ export async function listOrganizationDocumentDtos(input: {
 }
 
 export async function getOrganizationDocumentLibrary(userId: string, organizationId: string) {
-  await requireOrganizationCapability(userId, organizationId, "documents:read");
-  return getOrganizationDocumentLibraryPreauthorized(organizationId);
+  const scope = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "documents:read" });
+  return getOrganizationDocumentLibraryPreauthorized(organizationId, scope.executor);
 }
 
-export async function getOrganizationDocumentLibraryPreauthorized(organizationId: string) {
-  const rows = await currentDocumentRows(organizationId);
+export async function getOrganizationDocumentLibraryPreauthorized(organizationId: string, executor: OrganizationScopeExecutor = db) {
+  const rows = await currentDocumentRows(organizationId, executor);
   return { documents: rows.map(toDocumentDto) };
 }
 
 export async function getOrganizationDocumentDetail(userId: string, organizationId: string, documentId: string) {
-  await requireOrganizationCapability(userId, organizationId, "documents:read");
-  const row = (await currentDocumentRows(organizationId)).find(({ document }) => document.id === documentId);
+  const scope = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "documents:read" });
+  const row = (await currentDocumentRows(organizationId, scope.executor)).find(({ document }) => document.id === documentId);
   return row ? toDocumentDto(row) : null;
 }
 
 export async function listOrganizationDocumentVersions(userId: string, organizationId: string, documentId: string) {
-  await requireOrganizationCapability(userId, organizationId, "documents:read");
-  await requireDocument(organizationId, documentId);
-  return db.select().from(documentVersions).where(eq(documentVersions.documentId, documentId)).orderBy(desc(documentVersions.versionNumber));
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "documents:read" });
+  await requireDocument(organizationId, documentId, executor);
+  return executor.select().from(documentVersions).where(and(eq(documentVersions.documentId, documentId), eq(documentVersions.organizationId, organizationId))).orderBy(desc(documentVersions.versionNumber));
 }
 
 export async function listOrganizationDocumentVersionsPage(input: { userId: string; organizationId: string; documentId: string; limit: number; cursor?: string }) {
@@ -183,8 +197,8 @@ export async function listOrganizationDocumentVersionsPage(input: { userId: stri
 }
 
 export async function getOrganizationDocumentVersion(userId: string, organizationId: string, versionId: string) {
-  await requireOrganizationCapability(userId, organizationId, "documents:read");
-  return db.query.documentVersions.findFirst({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "documents:read" });
+  return executor.query.documentVersions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, versionId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
 }
@@ -195,8 +209,8 @@ export async function createDocumentSourceAccess(
   documentId: string,
   options: { mode?: "inline" | "download"; page?: number } = {},
 ) {
-  await requireOrganizationCapability(userId, organizationId, "documents:read");
-  const row = (await currentDocumentRows(organizationId)).find(({ document }) => document.id === documentId);
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "documents:read" });
+  const row = (await currentDocumentRows(organizationId, executor)).find(({ document }) => document.id === documentId);
   if (!row?.version) throw new ApiError(404, "Document not found");
   const { data, error } = await getSupabaseAdminClient().storage
     .from(row.version.storageBucket)
@@ -206,27 +220,30 @@ export async function createDocumentSourceAccess(
 }
 
 export async function updateOrganizationDocument(input: { userId: string; organizationId: string; documentId: string; title: string; expectedVersion?: number }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "documents:write");
-  const [document] = await db.update(documents).set({ name: input.title.trim(), updatedAt: new Date() })
-    .where(and(eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId))).returning();
-  if (!document) throw new ApiError(404, "Document not found");
+  await withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "documents:write" }, async ({ executor }) => {
+    const [document] = await executor.update(documents).set({ name: input.title.trim(), updatedAt: new Date() })
+      .where(and(eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId))).returning();
+    if (!document) throw new ApiError(404, "Document not found");
+  });
   return getOrganizationDocumentDetail(input.userId, input.organizationId, input.documentId);
 }
 
 export async function restoreOrganizationDocument(userId: string, organizationId: string, documentId: string) {
-  await requireOrganizationCapability(userId, organizationId, "documents:archive");
-  await db.update(documents).set({ archivedAt: null, updatedAt: new Date() })
-    .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)));
+  await withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "documents:archive" }, async ({ executor }) => {
+    await executor.update(documents).set({ archivedAt: null, updatedAt: new Date() })
+      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)));
+  });
   return getOrganizationDocumentDetail(userId, organizationId, documentId);
 }
 
 export async function archiveOrganizationDocument(userId: string, organizationId: string, documentId: string) {
-  await requireOrganizationCapability(userId, organizationId, "documents:archive");
-  const document = await requireDocument(organizationId, documentId);
-  if (document.currentVersionId && await versionIsInUnfinishedCycle(document.currentVersionId)) {
-    throw new ApiError(409, "Document is selected in an unfinished Gap cycle", undefined, "DOCUMENT_IN_USE");
-  }
-  await db.update(documents).set({ archivedAt: new Date(), updatedAt: new Date() }).where(eq(documents.id, documentId));
+  await withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "documents:archive" }, async ({ executor }) => {
+    const document = await requireDocument(organizationId, documentId, executor);
+    if (document.currentVersionId && await versionIsInUnfinishedCycle(document.currentVersionId, executor)) {
+      throw new ApiError(409, "Document is selected in an unfinished Gap cycle", undefined, "DOCUMENT_IN_USE");
+    }
+    await executor.update(documents).set({ archivedAt: new Date(), updatedAt: new Date() }).where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId)));
+  });
   return getOrganizationDocumentDetail(userId, organizationId, documentId);
 }
 
@@ -238,8 +255,8 @@ export async function createDocumentUploadSession(input: {
   size: number;
   sha256?: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "documents:write");
-  return createUploadSession({
+  const policy = { bucket: DOCUMENT_STORAGE_BUCKET, maxBytes: MAX_DOCUMENT_BYTES, allowedMimeTypes: SUPPORTED_DOCUMENT_TYPES, expiresInSeconds: 600 };
+  const session = await withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "documents:write" }, ({ executor }) => prepareUploadSession({
     organizationId: input.organizationId,
     userId: input.userId,
     scope: "document",
@@ -247,13 +264,18 @@ export async function createDocumentUploadSession(input: {
     mimeType: input.mimeType,
     size: input.size,
     sha256: input.sha256,
-    policy: { bucket: DOCUMENT_STORAGE_BUCKET, maxBytes: MAX_DOCUMENT_BYTES, allowedMimeTypes: SUPPORTED_DOCUMENT_TYPES, expiresInSeconds: 600 },
-    signUpload: async ({ bucket, objectPath }) => {
+    policy,
+  }, executor));
+  try {
+    return await signPreparedUploadSession(session, async ({ bucket, objectPath }) => {
       const { data, error } = await getSupabaseAdminClient().storage.from(bucket).createSignedUploadUrl(objectPath);
       if (error) throw error;
       return data.token;
-    },
-  });
+    }, policy.expiresInSeconds);
+  } catch (error) {
+    await failPreparedUploadSession(session.id);
+    throw error;
+  }
 }
 
 export async function completeDocumentUpload(input: {
@@ -262,63 +284,205 @@ export async function completeDocumentUpload(input: {
   sessionId: string;
   title: string;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "documents:write");
-  const verified = await verifyUploadedObject({ sessionId: input.sessionId, userId: input.userId, verifyObject: verifyObject });
-  if (verified.organizationId !== input.organizationId) throw new ApiError(404, "Upload session not found");
-  if (verified.state === "completed") {
-    const locator = await getUploadSessionResult(verified.id) as { type?: string; id?: string } | null;
-    if (!locator?.id) throw new ApiError(409, "Completed upload result is unavailable");
-    const version = await db.query.documentVersions.findFirst({ where: { RAW: (table, operators) => eq(table.id, locator.id!) ?? operators.sql`true` } });
-    if (!version) throw new ApiError(409, "Completed upload result is unavailable");
-    return { document: await getOrganizationDocumentDetail(input.userId, input.organizationId, version.documentId), internalResultId: version.id, replayed: true };
-  }
-  const bytes = await downloadObject(verified.storageBucket, verified.storageKey);
-  const documentId = randomUUID();
-  const versionId = randomUUID();
-  await createDocumentRecords({
-    documentId,
-    versionId,
-    organizationId: input.organizationId,
+  await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "documents:write" });
+  const upload = await verifyUploadedObject({
+    sessionId: input.sessionId,
     userId: input.userId,
-    title: input.title,
-    fileName: verified.fileName,
-    mimeType: verified.mimeType,
-    byteSize: verified.expectedByteSize,
-    storageBucket: verified.storageBucket,
-    storageKey: verified.storageKey,
-    contentHash: sha256(bytes),
-    indexingStatus: "pending",
-  });
-  const [job] = await db.insert(backgroundJobs).values({
     organizationId: input.organizationId,
-    kind: "document_indexing",
-    payload: { documentVersionId: versionId },
-    requestedBy: input.userId,
-  }).returning();
-  await markUploadSessionCompleted({ sessionId: verified.id, result: { type: "document_version", id: versionId } });
-  await db.insert(auditEvents).values({
-    organizationId: input.organizationId,
-    actorUserId: input.userId,
-    eventType: "document.uploaded",
-    entityType: "document_version",
-    entityId: versionId,
-    metadata: { documentId, jobId: job?.id },
+    verifyObject,
   });
-  return { document: await getOrganizationDocumentDetail(input.userId, input.organizationId, documentId), internalResultId: versionId, replayed: false };
+  const result = await withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "documents:write" }, ({ executor }) => finalizeDocumentUpload({ upload, title: input.title }, executor));
+  const document = await getOrganizationDocumentDetail(
+    input.userId,
+    input.organizationId,
+    result.documentId,
+  );
+  if (!document) throw new Error("Committed document is unavailable");
+  return {
+    document,
+    internalResultId: result.documentVersionId,
+    replayed: result.replayed,
+  };
+}
+
+export async function finalizeDocumentUpload(input: {
+  upload: PreparedUploadCompletion;
+  title: string;
+  now?: Date;
+}, executor?: OrganizationScopeExecutor) {
+  const title = input.title.trim();
+  if (!title) throw new ApiError(400, "A document title is required");
+
+  const now = input.now ?? new Date();
+  const ids = {
+    documentId: randomUUID(),
+    documentVersionId: randomUUID(),
+    jobId: randomUUID(),
+    auditEventId: randomUUID(),
+  };
+
+  const run = async (tx: OrganizationScopeExecutor) => {
+    const [session] = await tx.select().from(uploadSessions)
+      .where(eq(uploadSessions.id, input.upload.sessionId))
+      .for("update");
+    if (
+      !session ||
+      session.requestedBy !== input.upload.requestedBy ||
+      session.organizationId !== input.upload.organizationId
+    ) {
+      throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
+    }
+
+    if (session.state === "completed") {
+      const locator = parseDocumentVersionLocator(session.resultLocator);
+      if (!locator) {
+        throw new ApiError(409, "Completed upload result is unavailable");
+      }
+      const [version] = await tx.select({
+        id: documentVersions.id,
+        documentId: documentVersions.documentId,
+      }).from(documentVersions).where(and(
+        eq(documentVersions.id, locator.id),
+        eq(documentVersions.organizationId, session.organizationId),
+      ));
+      if (!version) {
+        throw new ApiError(409, "Completed upload result is unavailable");
+      }
+      return {
+        documentId: version.documentId,
+        documentVersionId: version.id,
+        replayed: true,
+      };
+    }
+    if (input.upload.kind !== "verified") {
+      throw new ApiError(409, "Upload session changed", undefined, "UPLOAD_SESSION_CHANGED");
+    }
+    if (session.expiresAt <= now) {
+      throw new ApiError(410, "Upload session expired", undefined, "UPLOAD_SESSION_EXPIRED");
+    }
+    if (session.state !== "uploaded") {
+      throw new ApiError(409, "Upload session is not uploaded", undefined, "UPLOAD_SESSION_NOT_UPLOADED");
+    }
+    assertUploadIdentity(session, input.upload);
+
+    const [document] = await tx.insert(documents).values({
+      id: ids.documentId,
+      organizationId: session.organizationId,
+      name: title,
+      createdBy: session.requestedBy,
+    }).returning({ id: documents.id });
+    if (!document) throw new Error("Document was not created");
+
+    const [version] = await tx.insert(documentVersions).values({
+      id: ids.documentVersionId,
+      organizationId: session.organizationId,
+      documentId: ids.documentId,
+      versionNumber: 1,
+      fileName: session.fileName,
+      mimeType: session.mimeType,
+      byteSize: input.upload.object.byteSize,
+      storageBucket: session.storageBucket,
+      storageKey: session.storageKey,
+      contentHash: input.upload.object.contentHash,
+      indexingStatus: "pending",
+      parser: parserName(session.mimeType),
+      embeddingModel: EMBEDDING_MODEL,
+      createdBy: session.requestedBy,
+    }).returning({ id: documentVersions.id });
+    if (!version) throw new Error("Document version was not created");
+
+    const [currentDocument] = await tx.update(documents).set({
+      currentVersionId: ids.documentVersionId,
+      updatedAt: now,
+    }).where(eq(documents.id, ids.documentId)).returning({ id: documents.id });
+    if (!currentDocument) throw new Error("Document current version was not updated");
+
+    await enqueueJob({
+      organizationId: session.organizationId,
+      requestedByUserId: session.requestedBy,
+      kind: "document_indexing",
+      payload: { documentVersionId: ids.documentVersionId },
+    }, { executor: tx, jobId: ids.jobId });
+
+    const [completedSession] = await tx.update(uploadSessions).set({
+      state: "completed",
+      resultLocator: {
+        type: "document_version",
+        id: ids.documentVersionId,
+      },
+      updatedAt: now,
+    }).where(and(
+      eq(uploadSessions.id, session.id),
+      eq(uploadSessions.state, "uploaded"),
+    )).returning({ id: uploadSessions.id });
+    if (!completedSession) throw new Error("Upload session was not completed");
+
+    const [auditEvent] = await tx.insert(auditEvents).values({
+      id: ids.auditEventId,
+      organizationId: session.organizationId,
+      actorUserId: session.requestedBy,
+      eventType: "document.uploaded",
+      entityType: "document_version",
+      entityId: ids.documentVersionId,
+      metadata: { documentId: ids.documentId, jobId: ids.jobId },
+      occurredAt: now,
+    }).returning({ id: auditEvents.id });
+    if (!auditEvent) throw new Error("Document upload audit event was not created");
+
+    return {
+      documentId: ids.documentId,
+      documentVersionId: ids.documentVersionId,
+      replayed: false,
+    };
+  };
+  return executor ? run(executor) : db.transaction(run);
+}
+
+function assertUploadIdentity(
+  session: typeof uploadSessions.$inferSelect,
+  upload: Extract<PreparedUploadCompletion, { kind: "verified" }>,
+) {
+  if (
+    session.storageBucket !== upload.storageBucket ||
+    session.storageKey !== upload.storageKey ||
+    session.fileName !== upload.fileName ||
+    session.mimeType !== upload.mimeType ||
+    session.expectedByteSize !== upload.expectedByteSize ||
+    session.expectedHash !== upload.expectedHash ||
+    session.expiresAt.getTime() !== upload.expiresAt.getTime()
+  ) {
+    throw new ApiError(409, "Upload session changed", undefined, "UPLOAD_SESSION_CHANGED");
+  }
+  if (
+    upload.object.byteSize !== session.expectedByteSize ||
+    upload.object.mimeType !== canonicalizeUploadMimeType(session.mimeType) ||
+    (session.expectedHash && upload.object.contentHash !== session.expectedHash)
+  ) {
+    throw new ApiError(422, "Uploaded object does not match the session", undefined, "UPLOAD_OBJECT_MISMATCH");
+  }
+}
+
+function parseDocumentVersionLocator(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const locator = value as { type?: unknown; id?: unknown };
+  return locator.type === "document_version" && typeof locator.id === "string"
+    ? { type: locator.type, id: locator.id }
+    : null;
 }
 
 export async function retryOrganizationDocumentIndexing(userId: string, organizationId: string, documentId: string) {
-  await requireOrganizationCapability(userId, organizationId, "documents:write");
-  const document = await requireDocument(organizationId, documentId);
-  if (document.archivedAt) throw new ApiError(409, "Restore the document before retrying indexing");
-  const version = document.currentVersionId ? await db.query.documentVersions.findFirst({ where: { RAW: (table, operators) => eq(table.id, document.currentVersionId!) ?? operators.sql`true` } }) : null;
-  if (!version) throw new ApiError(404, "Document version not found");
-  if (version.indexingStatus !== "failed") return getOrganizationDocumentDetail(userId, organizationId, documentId);
-  await db.transaction(async (tx) => {
-    await tx.delete(documentChunks).where(eq(documentChunks.documentVersionId, version.id));
-    await tx.update(documentVersions).set({ indexingStatus: "pending", failureCode: null, failureMessage: null, indexingStartedAt: null, indexingCompletedAt: null }).where(eq(documentVersions.id, version.id));
-    await tx.insert(backgroundJobs).values({ organizationId, kind: "document_indexing", payload: { documentVersionId: version.id }, requestedBy: userId });
+  const result = await withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "documents:write" }, async ({ executor }) => {
+    const document = await requireDocument(organizationId, documentId, executor);
+    if (document.archivedAt) throw new ApiError(409, "Restore the document before retrying indexing");
+    const version = document.currentVersionId ? await executor.query.documentVersions.findFirst({ where: { RAW: (table, operators) => and(eq(table.id, document.currentVersionId!), eq(table.organizationId, organizationId)) ?? operators.sql`true` } }) : null;
+    if (!version) throw new ApiError(404, "Document version not found");
+    if (version.indexingStatus !== "failed") return { changed: false } as const;
+    await executor.delete(documentChunks).where(and(eq(documentChunks.documentVersionId, version.id), eq(documentChunks.organizationId, organizationId)));
+    await executor.update(documentVersions).set({ indexingStatus: "pending", failureCode: null, failureMessage: null, indexingStartedAt: null, indexingCompletedAt: null }).where(and(eq(documentVersions.id, version.id), eq(documentVersions.organizationId, organizationId)));
+    await enqueueJob({ organizationId, requestedByUserId: userId, kind: "document_indexing", payload: { documentVersionId: version.id } }, { executor });
+    return { changed: true } as const;
   });
+  void result;
   return getOrganizationDocumentDetail(userId, organizationId, documentId);
 }
 
@@ -336,12 +500,11 @@ async function createDocumentRecords(input: {
   documentId: string; versionId: string; organizationId: string; userId: string; title: string;
   fileName: string; mimeType: string; byteSize: number; storageBucket: string; storageKey: string;
   contentHash: string; indexingStatus: "pending" | "processing";
-}) {
+}, executor: OrganizationScopeExecutor = db) {
   const title = input.title.trim();
   if (!title) throw new ApiError(400, "A document title is required");
-  await db.transaction(async (tx) => {
-    await tx.insert(documents).values({ id: input.documentId, organizationId: input.organizationId, name: title, createdBy: input.userId });
-    await tx.insert(documentVersions).values({
+    await executor.insert(documents).values({ id: input.documentId, organizationId: input.organizationId, name: title, createdBy: input.userId });
+    await executor.insert(documentVersions).values({
       id: input.versionId,
       organizationId: input.organizationId,
       documentId: input.documentId,
@@ -358,8 +521,7 @@ async function createDocumentRecords(input: {
       indexingStartedAt: input.indexingStatus === "processing" ? new Date() : null,
       createdBy: input.userId,
     });
-    await tx.update(documents).set({ currentVersionId: input.versionId, updatedAt: new Date() }).where(eq(documents.id, input.documentId));
-  });
+    await executor.update(documents).set({ currentVersionId: input.versionId, updatedAt: new Date() }).where(and(eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId)));
 }
 
 async function indexDocumentVersion(input: {
@@ -398,8 +560,8 @@ async function indexDocumentVersion(input: {
   }
 }
 
-async function currentDocumentRows(organizationId: string) {
-  return db.select({ document: documents, version: documentVersions })
+async function currentDocumentRows(organizationId: string, executor: OrganizationScopeExecutor = db) {
+  return executor.select({ document: documents, version: documentVersions })
     .from(documents)
     .leftJoin(documentVersions, eq(documentVersions.id, documents.currentVersionId))
     .where(eq(documents.organizationId, organizationId))
@@ -420,20 +582,20 @@ function toDocumentDto(row: Awaited<ReturnType<typeof currentDocumentRows>>[numb
   };
 }
 
-async function requireDocument(organizationId: string, documentId: string) {
-  const row = await db.query.documents.findFirst({
+async function requireDocument(organizationId: string, documentId: string, executor: OrganizationScopeExecutor = db) {
+  const row = await executor.query.documents.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, documentId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
   if (!row) throw new ApiError(404, "Document not found", undefined, "DOCUMENT_NOT_FOUND");
   return row;
 }
 
-async function versionIsInUnfinishedCycle(versionId: string) {
-  const row = await db.query.gapAnalysisCycleDocuments.findFirst({
+async function versionIsInUnfinishedCycle(versionId: string, executor: OrganizationScopeExecutor = db) {
+  const row = await executor.query.gapAnalysisCycleDocuments.findFirst({
     where: { RAW: (table, operators) => eq(table.documentVersionId, versionId) ?? operators.sql`true` },
   });
   if (!row) return false;
-  const cycle = await db.query.gapAnalysisCycles.findFirst({
+  const cycle = await executor.query.gapAnalysisCycles.findFirst({
     columns: { stage: true },
     where: { RAW: (table, operators) => eq(table.id, row.cycleId) ?? operators.sql`true` },
   });
