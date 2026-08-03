@@ -5,6 +5,11 @@ import Link from "next/link";
 import {
   ArrowBigRightDash,
   BarChart3,
+  ChevronLeft,
+  ExternalLink,
+  FileSearch,
+  FolderOpen,
+  TrendingUp,
 } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n";
 import type {
@@ -40,6 +45,10 @@ export function TutorialWelcome({
   labels,
 }: TutorialWelcomeProps) {
   const dashboardHref = `/tool/organizations/${organizationId}`;
+  const applicabilityCheckHref = `/tool/organizations/${organizationId}/applicability-check`;
+  const documentsHref = `/tool/organizations/${organizationId}/documents`;
+  const gapAnalysisHref = `/tool/organizations/${organizationId}/gap-analysis`;
+  const actionPlanHref = `/tool/organizations/${organizationId}/action-plan`;
   const storageKey = `comply:tutorial-progress:${organizationId}`;
   const legacyWelcomeStorageKey =
     `comply:tutorial-welcome:${organizationId}`;
@@ -159,7 +168,7 @@ export function TutorialWelcome({
       </ol>
 
       <div className="mt-8 grid flex-1 items-center gap-0 lg:-translate-y-8 lg:grid-cols-[minmax(300px,0.78fr)_minmax(460px,1.22fr)] xl:mt-14">
-        <div className="relative z-30 flex min-h-[280px] items-end justify-center lg:translate-x-20 lg:translate-y-16">
+        <div className="pointer-events-none relative z-30 flex min-h-[280px] items-end justify-center lg:translate-x-20 lg:translate-y-16">
           <div className="relative w-full max-w-[430px]">
             <Image
               src="/images/Maskottchen_ohneLogo.svg"
@@ -175,12 +184,12 @@ export function TutorialWelcome({
             </span>
             {isDocumentsStep ? (
               <>
-                <span className="absolute left-[2%] top-[30%] flex h-[25%] w-[23%] items-center justify-center">
-                  <span className="box-content flex h-[28.3px] w-[36.72px] origin-top-left -rotate-[17.09deg] items-center justify-center p-[3px]">
+                <span className="absolute left-[0.3%] top-[33%] flex h-[25%] w-[23%] items-center justify-center">
+                  <span className="box-content flex h-[38px] w-[49px] origin-top-left -rotate-[17.09deg] items-center justify-center p-[2px]">
                     <RobotTrendIcon className="size-full text-white" />
                   </span>
                 </span>
-                <span className="absolute right-[2%] top-[29%] flex h-[25%] w-[23%] items-center justify-center">
+                <span className="absolute right-[-0.6%] top-[29%] flex h-[25%] w-[23%] items-center justify-center">
                   <RobotUploadIcon className="size-12 origin-top-left -rotate-[7.06deg] text-primary" />
                 </span>
               </>
@@ -199,7 +208,13 @@ export function TutorialWelcome({
             <g filter="url(#tutorial-bubble-shadow)">
               <path
                 d="M743.025 16.0351L740.833 343.18C740.789 349.807 735.38 355.155 728.753 355.124L30.0604 351.893C23.4555 351.862 18.1281 346.5 18.1406 339.895L18.6242 85.4893C18.6306 82.1332 17.2312 78.9308 14.7657 76.6589L5.18521 67.8312L15.3585 60.5303C18.5006 58.2754 20.3678 54.6478 20.3752 50.7841L20.4475 12.751C20.4602 6.10116 25.8782 0.718459 32.5281 0.749212L731.106 3.97987C737.733 4.01052 743.07 9.4078 743.025 16.0351Z"
+                fill="#D9D9D9"
+                fillOpacity="0.06"
+              />
+              <path
+                d="M743.025 16.0351L740.833 343.18C740.789 349.807 735.38 355.155 728.753 355.124L30.0604 351.893C23.4555 351.862 18.1281 346.5 18.1406 339.895L18.6242 85.4893C18.6306 82.1332 17.2312 78.9308 14.7657 76.6589L5.18521 67.8312L15.3585 60.5303C18.5006 58.2754 20.3678 54.6478 20.3752 50.7841L20.4475 12.751C20.4602 6.10116 25.8782 0.718459 32.5281 0.749212L731.106 3.97987C737.733 4.01052 743.07 9.4078 743.025 16.0351Z"
                 fill="url(#tutorial-bubble-gradient)"
+                fillOpacity="0.44"
                 stroke="#3D4049"
                 strokeWidth="1.5"
               />
@@ -286,38 +301,174 @@ export function TutorialWelcome({
               </p>
             </div>
 
-            <div className="mt-auto flex min-h-12 w-full -translate-x-8 flex-wrap items-center justify-end gap-3 pt-4">
+            <div className="mt-auto flex min-h-12 w-full items-center justify-between gap-3 pt-4">
               {hasPreviousStep ? (
                 <button
                   type="button"
                   onClick={goToPreviousStep}
-                  className="inline-flex h-12 w-28 items-center justify-center overflow-hidden rounded-lg bg-[#002BFF]/50 text-base font-medium uppercase text-white/50 transition-colors hover:bg-[#002BFF]/60 hover:text-white/70"
+                  data-eigenschaft-1="Standard"
+                  aria-label={labels.backAction}
+                  className="relative z-40 inline-flex h-12 shrink-0 cursor-pointer items-center justify-start text-white/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                 >
-                  {labels.backAction}
+                  <span className="relative size-4 overflow-hidden" aria-hidden="true">
+                    <ChevronLeft className="size-4" strokeWidth={1.3} />
+                  </span>
+                  <span className="w-16 text-left font-['Space_Grotesk'] text-[10px] font-medium uppercase leading-5">
+                    {labels.backAction}
+                  </span>
                 </button>
-              ) : (
-                <Link
-                  href={dashboardHref}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[#D9D9D9]/70 px-5 text-sm font-medium uppercase text-[#D9D9D9] shadow-[0_4px_4px_rgba(255,255,255,0.12)] transition-colors hover:bg-white/5 hover:text-white"
-                >
-                  <BarChart3 className="size-4" strokeWidth={1.5} />
-                  {labels.dashboardAction}
-                </Link>
-              )}
-              <button
-                type="button"
-                onClick={goToNextStep}
-                className="inline-flex h-12 w-32 items-center justify-center gap-2 overflow-hidden rounded-lg bg-[#002BFF] text-base font-medium uppercase text-white transition-colors hover:bg-[#0022cc]"
-              >
+              ) : null}
+
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
                 {!hasPreviousStep ? (
-                  <StartButtonIcon className="size-4 shrink-0" />
+                  <Link
+                    href={dashboardHref}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[#D9D9D9]/70 px-5 font-['Space_Grotesk'] text-base font-medium uppercase text-[#D9D9D9] shadow-[0_4px_4px_rgba(255,255,255,0.12)] transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    <BarChart3 className="size-5 shrink-0" strokeWidth={1.33} />
+                    {labels.dashboardAction}
+                  </Link>
                 ) : null}
-                {hasPreviousStep
-                  ? labels.nextAction
-                  : labels.startAction}
-              </button>
+                {currentStepIndex === 1 ? (
+                  <Link
+                    href={applicabilityCheckHref}
+                    className="inline-flex h-12 w-72 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    <span
+                      data-eigenschaft-1="Betroffenheitscheck"
+                      className="relative size-5 shrink-0 overflow-hidden"
+                      aria-hidden="true"
+                    >
+                      <ApplicabilityCheckStepIcon
+                        className="size-5 text-neutral-50"
+                        strokeWidth={1.33}
+                      />
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap text-center font-['Space_Grotesk'] text-base font-medium uppercase text-white/70">
+                      {labels.applicabilityCheckAction}
+                    </span>
+                  </Link>
+                ) : null}
+                {isDocumentsStep ? (
+                  <Link
+                    href={documentsHref}
+                    className="inline-flex h-12 w-72 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    <FolderOpen
+                      className="size-5 shrink-0"
+                      strokeWidth={1.33}
+                      aria-hidden="true"
+                    />
+                    <span className="shrink-0 whitespace-nowrap text-center font-['Space_Grotesk'] text-base font-medium uppercase text-white/70">
+                      {labels.documentsLibraryAction}
+                    </span>
+                  </Link>
+                ) : null}
+                {currentStepIndex === 3 ? (
+                  <Link
+                    href={gapAnalysisHref}
+                    className="inline-flex h-12 w-52 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    <span
+                      data-eigenschaft-1="Gap-Analyse"
+                      className="relative size-5 shrink-0 overflow-hidden"
+                      aria-hidden="true"
+                    >
+                      <TrendingUp
+                        className="size-5 text-neutral-50"
+                        strokeWidth={1.33}
+                      />
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap text-center font-['Space_Grotesk'] text-base font-medium uppercase text-white/70">
+                      {labels.gapAnalysisAction}
+                    </span>
+                  </Link>
+                ) : null}
+                {currentStepIndex === 4 ? (
+                  <Link
+                    href={actionPlanHref}
+                    className="inline-flex h-12 w-60 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    <span
+                      data-eigenschaft-1="Maßnahmenplan"
+                      className="relative size-5 shrink-0 overflow-hidden"
+                      aria-hidden="true"
+                    >
+                      <ActionPlanStepIcon className="size-5 text-neutral-50/70" />
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap text-center font-['Space_Grotesk'] text-base font-medium text-white/70">
+                      {labels.actionPlanAction}
+                    </span>
+                  </Link>
+                ) : null}
+                {currentStepIndex === stepKeys.length - 1 ? (
+                  <Link
+                    href={dashboardHref}
+                    className="inline-flex h-12 w-48 items-center justify-center gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium uppercase text-white transition-colors hover:bg-[#0022cc]"
+                  >
+                    <span
+                      data-eigenschaft-1="Dashboard"
+                      className="relative size-5 shrink-0 overflow-hidden"
+                      aria-hidden="true"
+                    >
+                      <BarChart3 className="size-5 text-neutral-50" strokeWidth={1.33} />
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap">
+                      {labels.dashboardAction}
+                    </span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={goToNextStep}
+                    className="inline-flex h-12 w-32 items-center justify-center gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium uppercase text-white transition-colors hover:bg-[#0022cc]"
+                  >
+                    {!hasPreviousStep ? (
+                      <StartButtonIcon className="size-5 shrink-0" />
+                    ) : null}
+                    {hasPreviousStep
+                      ? labels.nextAction
+                      : labels.startAction}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          {currentStepIndex === stepKeys.length - 1 ? (
+            <div className="absolute top-[calc(100%+18px)] right-0 z-30 h-24 w-96 rounded-xl bg-gradient-to-br from-gray-900 to-slate-800 outline outline-1 outline-offset-[-1px] outline-indigo-50/20">
+              <div className="absolute top-6 left-[29px] inline-flex w-96 flex-col items-start justify-start">
+                <div className="w-72 justify-start font-['Space_Grotesk'] text-xl leading-5 font-semibold text-white">
+                  {labels.whyOrderTitle}
+                </div>
+              </div>
+              <div
+                data-eigenschaft-1="Standard"
+                className="absolute top-[52px] left-[29px] h-6 w-[568px]"
+              >
+                <ExternalLink
+                  className="absolute top-px left-0 size-5 text-white"
+                  strokeWidth={1.33}
+                  aria-hidden="true"
+                />
+                <div className="absolute top-0 left-[26px] inline-flex w-80 items-baseline gap-1 whitespace-nowrap font-['Space_Grotesk'] text-base leading-6 font-normal text-white/90">
+                  <span>{labels.whyOrderMorePrefix}</span>
+                  <span className="inline-flex items-baseline">
+                    <span>comply</span>
+                    <Image
+                      src="/images/comply-x.svg"
+                      alt=""
+                      aria-hidden="true"
+                      width={12}
+                      height={16}
+                      className="h-4 w-3 brightness-0 invert"
+                    />
+                  </span>
+                  <span>{labels.whyOrderMoreSuffix}</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </article>
       </div>
 
@@ -392,20 +543,20 @@ function StartButtonIcon({ className }: { className?: string }) {
   );
 }
 
-function ApplicabilityCheckStepIcon({ className }: { className?: string }) {
+function ApplicabilityCheckStepIcon({
+  className,
+  strokeWidth = 1.33,
+}: {
+  className?: string;
+  strokeWidth?: number;
+}) {
   return (
-    <svg
-      viewBox="0 0 17 18"
-      fill="none"
+    <FileSearch
       className={className}
+      strokeWidth={strokeWidth}
       aria-hidden="true"
       focusable="false"
-    >
-      <path
-        d="M11.2119 0.0127C11.3395 0.0382 11.4583 0.101 11.5518 0.1943L16.1357 4.7783C16.26 4.9029 16.33 5.0721 16.3301 5.248V15.665C16.33 16.2832 16.0845 16.8763 15.6475 17.3135C15.2103 17.7507 14.6163 17.997 13.998 17.9971H2.332C1.965 17.9971 1.6673 17.699 1.667 17.332C1.667 16.9648 1.9648 16.667 2.332 16.667H13.998C14.2636 16.6669 14.5193 16.5608 14.707 16.373C14.8946 16.1853 14.9999 15.9304 15 15.665V6.3301H10.665C10.2979 6.3301 10.0002 6.0322 10 5.665V1.3301H3.998C3.7326 1.3302 3.4778 1.4354 3.29 1.623C3.1022 1.8109 2.9971 2.0664 2.9971 2.332V4.832C2.9967 5.1988 2.6988 5.4967 2.332 5.4971C1.965 5.4971 1.6673 5.199 1.667 4.832V2.332C1.667 1.7136 1.9123 1.1199 2.3496 0.6826C2.7868 0.2455 3.3798 0.0001 3.998 0H11.082L11.2119 0.0127ZM3.165 7.5C4.0043 7.5 4.8098 7.8332 5.4033 8.4268C5.9969 9.0203 6.3301 9.8256 6.3301 10.665C6.33 11.2842 6.1483 11.8897 5.8223 12.3818L6.9688 13.5283C7.228 13.7881 7.2283 14.2092 6.9688 14.4688C6.7092 14.7283 6.2881 14.728 6.0283 14.4688L4.8818 13.3223C4.3756 13.6502 3.7822 13.8301 3.165 13.8301C2.3258 13.8301 1.5203 13.4967 0.9268 12.9033C0.3333 12.3098 0.0001 11.5043 0 10.665C0 9.8256 0.3332 9.0203 0.9268 8.4268C1.5203 7.8332 2.3256 7.5 3.165 7.5ZM3.165 8.8301C2.6784 8.8301 2.2113 9.0231 1.8672 9.3672C1.5231 9.7113 1.3301 10.1784 1.3301 10.665C1.3302 11.1516 1.5231 11.6188 1.8672 11.9629C2.2113 12.3068 2.6785 12.5 3.165 12.5C3.6516 12.5 4.1188 12.3068 4.4629 11.9629C4.8068 11.6188 5 11.1516 5 10.665C5 10.1784 4.8069 9.7113 4.4629 9.3672C4.1188 9.0231 3.6517 8.8301 3.165 8.8301ZM11.3301 5H14.4756L11.3301 1.8545V5Z"
-        fill="currentColor"
-      />
-    </svg>
+    />
   );
 }
 

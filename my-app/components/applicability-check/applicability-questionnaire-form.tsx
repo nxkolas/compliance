@@ -522,7 +522,7 @@ function QuestionStepper({
   return (
     <nav
       aria-label={labels.progress}
-      className="overflow-x-auto pb-2 [scrollbar-width:none] sm:pr-[52px] [&::-webkit-scrollbar]:hidden"
+      className="overflow-x-auto px-1 pt-1 pb-2 [scrollbar-width:none] sm:pr-[52px] [&::-webkit-scrollbar]:hidden"
     >
       <ol className="flex w-max min-w-full items-center justify-between gap-3">
         {questions.map((question, index) => {
@@ -559,16 +559,16 @@ function QuestionStepper({
                 >
                   <span
                     className={cn(
-                      "grid size-8 shrink-0 place-items-center rounded-full bg-foreground-subtle/25 text-center font-['Space_Grotesk'] text-sm leading-none font-normal tabular-nums text-foreground/60 outline outline-1 outline-offset-[-1px] outline-transparent transition-colors",
+                      "grid size-8 shrink-0 place-items-center rounded-full bg-foreground-subtle/25 text-center font-['Space_Grotesk'] text-sm leading-none font-normal tabular-nums text-white outline outline-1 outline-offset-[-1px] outline-transparent transition-colors dark:text-foreground/60",
                       answered &&
-                        "bg-success font-semibold text-foreground outline-success-foreground/70",
+                        "bg-[#46A95A] font-semibold text-white outline-transparent dark:bg-success dark:text-foreground dark:outline-success-foreground/70",
                       active && "size-10 text-base font-semibold ring-4",
                       active &&
                         !answered &&
                         "bg-primary text-primary-foreground ring-primary/20",
                       active &&
                         answered &&
-                        "bg-success text-foreground ring-success/20",
+                        "bg-[#46A95A] text-white ring-[#46A95A]/20 dark:bg-success dark:text-foreground dark:ring-success/20",
                     )}
                   >
                     <span
@@ -639,7 +639,7 @@ function QuestionBlock({
           className={cn(
             "grid size-8 shrink-0 place-items-center rounded-full border bg-background text-center text-sm leading-none font-semibold tabular-nums",
             authenticated &&
-              "rounded-full border-[1.5px] border-border-strong bg-surface text-base text-foreground",
+              "rounded-full border-[1.5px] border-transparent bg-primary text-base text-white dark:border-border-strong dark:bg-surface dark:text-foreground",
           )}
         >
           {stepNumber ?? question.position}
