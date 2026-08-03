@@ -18,6 +18,11 @@ own HTTP endpoints.
 - Long work returns `202` with a durable common job DTO; `/api/jobs/:jobId`
   provides authorized polling and cancellation.
 - Files upload directly to private storage using expiring upload sessions.
+- Direct-upload completion verifies storage bytes and hashes before opening a
+  database transaction. The transaction locks the upload session and commits
+  the document, immutable version, indexing job, audit event, and completion
+  locator together. A completed session replays that stored locator without
+  downloading the object again.
 - Original evidence, legal renditions, and reports are returned only through
   authorized short-lived access links.
 - Organization capabilities and platform capabilities are disjoint. An

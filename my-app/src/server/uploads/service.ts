@@ -13,6 +13,32 @@ import {
 export type { UploadPolicy } from "./policy";
 export type UploadSigner = (input: { bucket: string; objectPath: string; expiresInSeconds: number }) => Promise<string>;
 export type UploadedObjectVerifier = (input: { bucket: string; objectPath: string }) => Promise<{ size: number; mimeType: string; sha256: string }>;
+type UploadSessionIdentity = {
+  sessionId: string;
+  organizationId: string;
+  requestedBy: string;
+  storageBucket: string;
+  storageKey: string;
+  fileName: string;
+  mimeType: string;
+  expectedByteSize: number;
+  expectedHash: string | null;
+  expiresAt: Date;
+};
+
+export type PreparedUploadCompletion =
+  | (UploadSessionIdentity & {
+      kind: "completed";
+      resultLocator: unknown;
+    })
+  | (UploadSessionIdentity & {
+      kind: "verified";
+      object: {
+        byteSize: number;
+        mimeType: string;
+        contentHash: string;
+      };
+    });
 
 export async function createUploadSession(input: {
   organizationId?: string;
@@ -60,55 +86,54 @@ export async function createUploadSession(input: {
 export async function verifyUploadedObject(input: {
   sessionId: string;
   userId: string;
+  organizationId: string;
   verifyObject: UploadedObjectVerifier;
   now?: Date;
-}) {
+}): Promise<PreparedUploadCompletion> {
   const now = input.now ?? new Date();
-  const session = await db.query.uploadSessions.findFirst({
-    where: { RAW: (table, operators) => and(eq(table.id, input.sessionId), eq(table.requestedBy, input.userId)) ?? operators.sql`true` },
-  });
+  const [session] = await db.select().from(uploadSessions).where(and(
+    eq(uploadSessions.id, input.sessionId),
+    eq(uploadSessions.requestedBy, input.userId),
+    eq(uploadSessions.organizationId, input.organizationId),
+  ));
   if (!session) throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
-  if (session.state === "completed" || session.state === "uploaded") return session;
-  if (session.state !== "pending") throw new ApiError(409, "Upload session cannot be completed");
+  const identity = toCompletionIdentity(session);
+  if (session.state === "completed") {
+    return { ...identity, kind: "completed", resultLocator: session.resultLocator };
+  }
+  if (session.state !== "pending" && session.state !== "uploaded") {
+    throw new ApiError(409, "Upload session cannot be completed");
+  }
   if (session.expiresAt <= now) {
-    await db.update(uploadSessions).set({ state: "expired", updatedAt: now }).where(eq(uploadSessions.id, session.id));
+    await db.update(uploadSessions).set({ state: "expired", updatedAt: now })
+      .where(and(eq(uploadSessions.id, session.id), inArray(uploadSessions.state, ["pending", "uploaded"])));
     throw new ApiError(410, "Upload session expired", undefined, "UPLOAD_SESSION_EXPIRED");
   }
   const object = await input.verifyObject({ bucket: session.storageBucket, objectPath: session.storageKey });
+  const objectMimeType = canonicalizeUploadMimeType(object.mimeType);
+  const contentHash = object.sha256.toLowerCase();
   if (
     object.size !== session.expectedByteSize ||
-    canonicalizeUploadMimeType(object.mimeType) !== canonicalizeUploadMimeType(session.mimeType) ||
-    (session.expectedHash && object.sha256.toLowerCase() !== session.expectedHash)
+    objectMimeType !== canonicalizeUploadMimeType(session.mimeType) ||
+    (session.expectedHash && contentHash !== session.expectedHash)
   ) {
-    await db.update(uploadSessions).set({ state: "failed", updatedAt: now }).where(eq(uploadSessions.id, session.id));
+    await db.update(uploadSessions).set({ state: "failed", updatedAt: now })
+      .where(and(eq(uploadSessions.id, session.id), inArray(uploadSessions.state, ["pending", "uploaded"])));
     throw new ApiError(422, "Uploaded object does not match the session", undefined, "UPLOAD_OBJECT_MISMATCH");
   }
-  const [uploaded] = await db.update(uploadSessions).set({ state: "uploaded", updatedAt: now })
-    .where(and(eq(uploadSessions.id, session.id), eq(uploadSessions.state, "pending"))).returning();
-  if (!uploaded) throw new ApiError(409, "Upload session changed");
-  return uploaded;
-}
-
-export async function markUploadSessionCompleted(input: {
-  sessionId: string;
-  result: { type: string; id: string };
-  now?: Date;
-}) {
-  const [session] = await db.update(uploadSessions).set({
-    state: "completed",
-    resultLocator: input.result,
-    updatedAt: input.now ?? new Date(),
-  }).where(and(eq(uploadSessions.id, input.sessionId), eq(uploadSessions.state, "uploaded"))).returning();
-  if (!session) throw new ApiError(409, "Upload session is not uploaded");
-  return session;
-}
-
-export async function getUploadSessionResult(sessionId: string) {
-  const session = await db.query.uploadSessions.findFirst({
-    columns: { resultLocator: true },
-    where: { RAW: (table, operators) => eq(table.id, sessionId) ?? operators.sql`true` },
-  });
-  return session?.resultLocator ?? null;
+  if (session.state === "pending") {
+    await db.update(uploadSessions).set({ state: "uploaded", updatedAt: now })
+      .where(and(eq(uploadSessions.id, session.id), eq(uploadSessions.state, "pending")));
+  }
+  return {
+    ...identity,
+    kind: "verified",
+    object: {
+      byteSize: object.size,
+      mimeType: objectMimeType,
+      contentHash,
+    },
+  };
 }
 
 export function expireUploadSessions(now = new Date()) {
@@ -123,10 +148,6 @@ export function listUnreferencedFailedUploads(before: Date) {
     .where(and(inArray(uploadSessions.state, ["expired", "failed"]), lt(uploadSessions.updatedAt, before)));
 }
 
-export function toUploadResultValues(_sessionId: string, result: { type: string; id: string }) {
-  return result;
-}
-
 function toDto(session: typeof uploadSessions.$inferSelect): UploadSessionDto {
   return {
     id: session.id,
@@ -136,5 +157,22 @@ function toDto(session: typeof uploadSessions.$inferSelect): UploadSessionDto {
     expectedByteSize: session.expectedByteSize,
     storageKey: session.storageKey,
     expiresAt: session.expiresAt.toISOString(),
+  };
+}
+
+function toCompletionIdentity(
+  session: typeof uploadSessions.$inferSelect,
+): UploadSessionIdentity {
+  return {
+    sessionId: session.id,
+    organizationId: session.organizationId,
+    requestedBy: session.requestedBy,
+    storageBucket: session.storageBucket,
+    storageKey: session.storageKey,
+    fileName: session.fileName,
+    mimeType: session.mimeType,
+    expectedByteSize: session.expectedByteSize,
+    expectedHash: session.expectedHash,
+    expiresAt: session.expiresAt,
   };
 }

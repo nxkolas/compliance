@@ -7,6 +7,7 @@ import {
   documentChunks,
   documentVersions,
   documents,
+  uploadSessions,
 } from "@/src/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -14,10 +15,10 @@ import { hasOrganizationCapability } from "../auth/capabilities";
 import { requireOrganizationCapability } from "../auth/capability-service";
 import { getSupabaseAdminClient } from "../supabase-admin";
 import {
+  canonicalizeUploadMimeType,
   createUploadSession,
-  getUploadSessionResult,
-  markUploadSessionCompleted,
   verifyUploadedObject,
+  type PreparedUploadCompletion,
 } from "../uploads";
 import { chunkExtractedPages } from "./chunker";
 import {
@@ -263,48 +264,190 @@ export async function completeDocumentUpload(input: {
   title: string;
 }) {
   await requireOrganizationCapability(input.userId, input.organizationId, "documents:write");
-  const verified = await verifyUploadedObject({ sessionId: input.sessionId, userId: input.userId, verifyObject: verifyObject });
-  if (verified.organizationId !== input.organizationId) throw new ApiError(404, "Upload session not found");
-  if (verified.state === "completed") {
-    const locator = await getUploadSessionResult(verified.id) as { type?: string; id?: string } | null;
-    if (!locator?.id) throw new ApiError(409, "Completed upload result is unavailable");
-    const version = await db.query.documentVersions.findFirst({ where: { RAW: (table, operators) => eq(table.id, locator.id!) ?? operators.sql`true` } });
-    if (!version) throw new ApiError(409, "Completed upload result is unavailable");
-    return { document: await getOrganizationDocumentDetail(input.userId, input.organizationId, version.documentId), internalResultId: version.id, replayed: true };
-  }
-  const bytes = await downloadObject(verified.storageBucket, verified.storageKey);
-  const documentId = randomUUID();
-  const versionId = randomUUID();
-  await createDocumentRecords({
-    documentId,
-    versionId,
-    organizationId: input.organizationId,
+  const upload = await verifyUploadedObject({
+    sessionId: input.sessionId,
     userId: input.userId,
-    title: input.title,
-    fileName: verified.fileName,
-    mimeType: verified.mimeType,
-    byteSize: verified.expectedByteSize,
-    storageBucket: verified.storageBucket,
-    storageKey: verified.storageKey,
-    contentHash: sha256(bytes),
-    indexingStatus: "pending",
-  });
-  const [job] = await db.insert(backgroundJobs).values({
     organizationId: input.organizationId,
-    kind: "document_indexing",
-    payload: { documentVersionId: versionId },
-    requestedBy: input.userId,
-  }).returning();
-  await markUploadSessionCompleted({ sessionId: verified.id, result: { type: "document_version", id: versionId } });
-  await db.insert(auditEvents).values({
-    organizationId: input.organizationId,
-    actorUserId: input.userId,
-    eventType: "document.uploaded",
-    entityType: "document_version",
-    entityId: versionId,
-    metadata: { documentId, jobId: job?.id },
+    verifyObject,
   });
-  return { document: await getOrganizationDocumentDetail(input.userId, input.organizationId, documentId), internalResultId: versionId, replayed: false };
+  const result = await finalizeDocumentUpload({ upload, title: input.title });
+  const document = await getOrganizationDocumentDetail(
+    input.userId,
+    input.organizationId,
+    result.documentId,
+  );
+  if (!document) throw new Error("Committed document is unavailable");
+  return {
+    document,
+    internalResultId: result.documentVersionId,
+    replayed: result.replayed,
+  };
+}
+
+export async function finalizeDocumentUpload(input: {
+  upload: PreparedUploadCompletion;
+  title: string;
+  now?: Date;
+}) {
+  const title = input.title.trim();
+  if (!title) throw new ApiError(400, "A document title is required");
+
+  const now = input.now ?? new Date();
+  const ids = {
+    documentId: randomUUID(),
+    documentVersionId: randomUUID(),
+    jobId: randomUUID(),
+    auditEventId: randomUUID(),
+  };
+
+  return db.transaction(async (tx) => {
+    const [session] = await tx.select().from(uploadSessions)
+      .where(eq(uploadSessions.id, input.upload.sessionId))
+      .for("update");
+    if (
+      !session ||
+      session.requestedBy !== input.upload.requestedBy ||
+      session.organizationId !== input.upload.organizationId
+    ) {
+      throw new ApiError(404, "Upload session not found", undefined, "UPLOAD_SESSION_NOT_FOUND");
+    }
+
+    if (session.state === "completed") {
+      const locator = parseDocumentVersionLocator(session.resultLocator);
+      if (!locator) {
+        throw new ApiError(409, "Completed upload result is unavailable");
+      }
+      const [version] = await tx.select({
+        id: documentVersions.id,
+        documentId: documentVersions.documentId,
+      }).from(documentVersions).where(and(
+        eq(documentVersions.id, locator.id),
+        eq(documentVersions.organizationId, session.organizationId),
+      ));
+      if (!version) {
+        throw new ApiError(409, "Completed upload result is unavailable");
+      }
+      return {
+        documentId: version.documentId,
+        documentVersionId: version.id,
+        replayed: true,
+      };
+    }
+    if (input.upload.kind !== "verified") {
+      throw new ApiError(409, "Upload session changed", undefined, "UPLOAD_SESSION_CHANGED");
+    }
+    if (session.expiresAt <= now) {
+      throw new ApiError(410, "Upload session expired", undefined, "UPLOAD_SESSION_EXPIRED");
+    }
+    if (session.state !== "uploaded") {
+      throw new ApiError(409, "Upload session is not uploaded", undefined, "UPLOAD_SESSION_NOT_UPLOADED");
+    }
+    assertUploadIdentity(session, input.upload);
+
+    const [document] = await tx.insert(documents).values({
+      id: ids.documentId,
+      organizationId: session.organizationId,
+      name: title,
+      createdBy: session.requestedBy,
+    }).returning({ id: documents.id });
+    if (!document) throw new Error("Document was not created");
+
+    const [version] = await tx.insert(documentVersions).values({
+      id: ids.documentVersionId,
+      organizationId: session.organizationId,
+      documentId: ids.documentId,
+      versionNumber: 1,
+      fileName: session.fileName,
+      mimeType: session.mimeType,
+      byteSize: input.upload.object.byteSize,
+      storageBucket: session.storageBucket,
+      storageKey: session.storageKey,
+      contentHash: input.upload.object.contentHash,
+      indexingStatus: "pending",
+      parser: parserName(session.mimeType),
+      embeddingModel: EMBEDDING_MODEL,
+      createdBy: session.requestedBy,
+    }).returning({ id: documentVersions.id });
+    if (!version) throw new Error("Document version was not created");
+
+    const [currentDocument] = await tx.update(documents).set({
+      currentVersionId: ids.documentVersionId,
+      updatedAt: now,
+    }).where(eq(documents.id, ids.documentId)).returning({ id: documents.id });
+    if (!currentDocument) throw new Error("Document current version was not updated");
+
+    const [job] = await tx.insert(backgroundJobs).values({
+      id: ids.jobId,
+      organizationId: session.organizationId,
+      kind: "document_indexing",
+      payload: { documentVersionId: ids.documentVersionId },
+      requestedBy: session.requestedBy,
+    }).returning({ id: backgroundJobs.id });
+    if (!job) throw new Error("Document indexing job was not created");
+
+    const [completedSession] = await tx.update(uploadSessions).set({
+      state: "completed",
+      resultLocator: {
+        type: "document_version",
+        id: ids.documentVersionId,
+      },
+      updatedAt: now,
+    }).where(and(
+      eq(uploadSessions.id, session.id),
+      eq(uploadSessions.state, "uploaded"),
+    )).returning({ id: uploadSessions.id });
+    if (!completedSession) throw new Error("Upload session was not completed");
+
+    const [auditEvent] = await tx.insert(auditEvents).values({
+      id: ids.auditEventId,
+      organizationId: session.organizationId,
+      actorUserId: session.requestedBy,
+      eventType: "document.uploaded",
+      entityType: "document_version",
+      entityId: ids.documentVersionId,
+      metadata: { documentId: ids.documentId, jobId: ids.jobId },
+      occurredAt: now,
+    }).returning({ id: auditEvents.id });
+    if (!auditEvent) throw new Error("Document upload audit event was not created");
+
+    return {
+      documentId: ids.documentId,
+      documentVersionId: ids.documentVersionId,
+      replayed: false,
+    };
+  });
+}
+
+function assertUploadIdentity(
+  session: typeof uploadSessions.$inferSelect,
+  upload: Extract<PreparedUploadCompletion, { kind: "verified" }>,
+) {
+  if (
+    session.storageBucket !== upload.storageBucket ||
+    session.storageKey !== upload.storageKey ||
+    session.fileName !== upload.fileName ||
+    session.mimeType !== upload.mimeType ||
+    session.expectedByteSize !== upload.expectedByteSize ||
+    session.expectedHash !== upload.expectedHash ||
+    session.expiresAt.getTime() !== upload.expiresAt.getTime()
+  ) {
+    throw new ApiError(409, "Upload session changed", undefined, "UPLOAD_SESSION_CHANGED");
+  }
+  if (
+    upload.object.byteSize !== session.expectedByteSize ||
+    upload.object.mimeType !== canonicalizeUploadMimeType(session.mimeType) ||
+    (session.expectedHash && upload.object.contentHash !== session.expectedHash)
+  ) {
+    throw new ApiError(422, "Uploaded object does not match the session", undefined, "UPLOAD_OBJECT_MISMATCH");
+  }
+}
+
+function parseDocumentVersionLocator(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const locator = value as { type?: unknown; id?: unknown };
+  return locator.type === "document_version" && typeof locator.id === "string"
+    ? { type: locator.type, id: locator.id }
+    : null;
 }
 
 export async function retryOrganizationDocumentIndexing(userId: string, organizationId: string, documentId: string) {
