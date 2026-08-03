@@ -17,9 +17,7 @@ import {
 } from "@/src/server/definitions";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import {
-  requireOrganizationCapability,
-} from "../auth/capability-service";
+import { withAuthorizedOrganizationCommand, type OrganizationScopeExecutor } from "../auth/organization-scope";
 import { assertCanAccessOrganization } from "../organizations/service";
 import { catalogOptionsForCountry } from "./entity-catalog";
 import { guestSubmittedExpiry } from "./guest-lifecycle";
@@ -272,9 +270,8 @@ export async function submitApplicabilityCheckForUser(
   organizationId: string,
   input: SubmitApplicabilityCheckInput,
 ): Promise<ApplicabilityResultDto> {
-  await requireOrganizationCapability(userId, organizationId, "applicability:submit");
   const prepared = prepareSubmission(input);
-  return db.transaction((tx) => persistSubmission(tx, userId, organizationId, prepared));
+  return withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "applicability:submit" }, ({ executor }) => persistSubmission(executor, userId, organizationId, prepared));
 }
 
 export async function submitApplicabilityCheckForGuest(
@@ -344,12 +341,8 @@ export async function claimGuestApplicabilityCheckForUser(
   checkId: string | undefined,
   input: ClaimGuestApplicabilityCheckInput,
 ): Promise<ApplicabilityResultDto> {
-  await requireOrganizationCapability(
-    userId,
-    input.organizationId,
-    "applicability:submit",
-  );
-  const row = await findGuestCheck(token, checkId ?? input.checkId);
+  return withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId: input.organizationId, capability: "applicability:submit" }, async ({ executor }) => {
+  const row = await findGuestCheck(token, checkId ?? input.checkId, executor);
   if (!row || !token) {
     throw new ApiError(404, "Guest applicability check not found");
   }
@@ -359,8 +352,7 @@ export async function claimGuestApplicabilityCheckForUser(
   const answers = submitApplicabilityCheckSchema.shape.answers.safeParse(row.answerSnapshot);
   if (!answers.success) throw new ApiError(409, "Stored guest answers are invalid");
   const prepared = prepareSubmission({ answers: answers.data, locale: row.locale as Locale });
-  return db.transaction(async (tx) => {
-    const [claimed] = await tx
+    const [claimed] = await executor
       .delete(guestApplicabilityChecks)
       .where(
         and(
@@ -371,7 +363,7 @@ export async function claimGuestApplicabilityCheckForUser(
       )
       .returning({ id: guestApplicabilityChecks.id });
     if (!claimed) throw new ApiError(404, "Guest applicability check not found");
-    return persistSubmission(tx, userId, input.organizationId, prepared);
+    return persistSubmission(executor, userId, input.organizationId, prepared);
   });
 }
 
@@ -700,9 +692,9 @@ async function getCurrentResult(organizationId: string) {
   return revision ? toResultDto(revision) : null;
 }
 
-async function findGuestCheck(token: string | undefined, checkId?: string) {
+async function findGuestCheck(token: string | undefined, checkId?: string, executor: OrganizationScopeExecutor = db) {
   if (!token) return null;
-  const row = await db.query.guestApplicabilityChecks.findFirst({
+  const row = await executor.query.guestApplicabilityChecks.findFirst({
     where: {
       RAW: (table, operators) =>
         and(
@@ -713,7 +705,7 @@ async function findGuestCheck(token: string | undefined, checkId?: string) {
     },
   });
   if (row) return row;
-  await db
+  await executor
     .delete(guestApplicabilityChecks)
     .where(eq(guestApplicabilityChecks.claimTokenHash, hashGuestToken(token)));
   return null;

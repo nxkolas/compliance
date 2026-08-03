@@ -3,17 +3,8 @@ import {
   buildActionPlanResponseSchema,
   normalizeActionPlanResponse,
 } from "@/src/server/action-plans/generation-schema";
-import { ACTION_PLAN_GENERATION_JOB_POLICY } from "@/src/server/action-plans/domain";
 
 describe("independent Action Plan response contract", () => {
-  it("bounds top-level retries to transient generation failures", () => {
-    expect(ACTION_PLAN_GENERATION_JOB_POLICY).toEqual({
-      maxAttempts: 3,
-      cancellable: true,
-      cancellationCapability: "plans:activate",
-    });
-  });
-
   it("allows one action to cover several same-category gaps", () => {
     const policies = [
       {

@@ -3,7 +3,7 @@ import type * as z from "zod";
 import type { AiProviderMode } from "@/lib/ai/types";
 import { db } from "@/src/db";
 import { aiProcessingRunContext, aiProcessingRuns } from "@/src/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { ApiError } from "../../api/errors";
 import {
   GAP_GROUNDING_INSTRUCTION,
@@ -46,6 +46,7 @@ import {
   createAiProcessingRunWithLiveJobGate,
 } from "../generation/job-run-lifecycle";
 import { hashExactPrompt } from "../generation/prompt-provenance";
+import { contentHash } from "../../compliance";
 
 export type PreparedGroundingOperation = {
   policy: Awaited<ReturnType<typeof resolveGroundingPolicy>>;
@@ -57,6 +58,63 @@ export type GroundingExecutionDependencies = {
   providers?: Partial<Record<AiProviderMode, GroundedProvider>>;
   languageDetector?: LanguageDetector;
   embeddingProvider?: DocumentEmbeddingProvider;
+};
+
+type GroundedOperationInput<T> = {
+  operation: "gap_analysis";
+  runOperationKind?:
+    | "gap_analysis"
+    | "gap_conflict_resolution"
+    | "action_plan_generation";
+  actor: { userId: string };
+  organizationId: string;
+  outputLocale: "de" | "en";
+  workflowReleaseId: string;
+  asOfDate: string;
+  organizationEvidenceVersionIds: string[];
+  questionnaireAssertions?: Array<{
+    answerId: string;
+    queryUnitId: string;
+    excerpt: string;
+  }>;
+  queryUnits: QueryUnit[];
+  systemInstruction?: string;
+  outputContract: GroundedOutputContract<T>;
+  idempotencyKey: string;
+  generationReservationKey?: string;
+  generationAttemptKey?: string;
+  durableExecutionAttempt?: number;
+  providerAttempt?: number;
+  assessmentRevisionId?: string;
+  jobId?: string;
+  expectedLeaseOwner?: string;
+  definitionHash?: string;
+  promptMetadata?: {
+    name: string;
+    version: string;
+    templateHash: string;
+    responseSchemaVersion: string;
+  };
+  abortSignal?: AbortSignal;
+  precomputedQueryEmbeddings?: {
+    legal?: number[];
+    organizationDocument?: number[];
+  };
+  preparedGrounding?: PreparedGroundingOperation;
+};
+
+type RecoveryCompatibility = {
+  version: 1;
+  jobId: string | undefined;
+  workflowReleaseId: string;
+  definitionHash: string;
+  outputLocale: "de" | "en";
+  assessmentRevisionId: string | null;
+  asOfDate: string;
+  queryUnits: QueryUnit[];
+  organizationEvidenceVersionIds: string[];
+  pinnedSnapshots: PinnedLegalSnapshot[];
+  promptContract: GroundedOperationInput<unknown>["promptMetadata"] | null;
 };
 
 export async function prepareGroundingOperation(
@@ -82,47 +140,11 @@ export async function prepareGroundingOperation(
 }
 
 export async function runGroundedOperation<T>(
-  input: {
-    operation: "gap_analysis";
-    runOperationKind?:
-      | "gap_analysis"
-      | "gap_conflict_resolution"
-      | "action_plan_generation";
-    actor: { userId: string };
-    organizationId: string;
-    outputLocale: "de" | "en";
-    workflowReleaseId: string;
-    asOfDate: string;
-    organizationEvidenceVersionIds: string[];
-    questionnaireAssertions?: Array<{
-      answerId: string;
-      queryUnitId: string;
-      excerpt: string;
-    }>;
-    queryUnits: QueryUnit[];
-    systemInstruction?: string;
-    outputContract: GroundedOutputContract<T>;
-    idempotencyKey: string;
-    assessmentRevisionId?: string;
-    jobId?: string;
-    expectedLeaseOwner?: string;
-    definitionHash?: string;
-    promptMetadata?: {
-      name: string;
-      version: string;
-      templateHash: string;
-      responseSchemaVersion: string;
-    };
-    abortSignal?: AbortSignal;
-    precomputedQueryEmbeddings?: {
-      legal?: number[];
-      organizationDocument?: number[];
-    };
-    preparedGrounding?: PreparedGroundingOperation;
-  },
+  input: GroundedOperationInput<T>,
   dependencies: GroundingExecutionDependencies = {},
 ) {
   const operationKind = input.runOperationKind ?? "gap_analysis";
+  assertGenerationAttemptInput(input);
   if (input.jobId && input.expectedLeaseOwner) {
     await assertLiveParentJobForAiRun({
       jobId: input.jobId,
@@ -140,45 +162,6 @@ export async function runGroundedOperation<T>(
         ) ?? operators.sql`true`,
     },
   });
-  if (existing?.status === "succeeded") {
-    throw new ApiError(
-      409,
-      "This grounded result was already published",
-      { runId: existing.id },
-      "GROUNDING_RUN_ALREADY_PUBLISHED",
-    );
-  }
-  if (existing?.status === "processing" && existing.validatedOutput !== null) {
-    const persisted = await db.query.aiProcessingRunContext.findMany({
-      where: {
-        RAW: (table, operators) =>
-          eq(table.runId, existing.id) ?? operators.sql`true`,
-      },
-      orderBy: { position: "asc" },
-    });
-    const context = [
-      ...persisted.map(fromPersistedContext),
-      ...questionnaireContext(input.queryUnits, input.questionnaireAssertions),
-    ];
-    return {
-      runId: existing.id,
-      output: input.outputContract.schema(context).parse(existing.validatedOutput),
-      outputLocale: existing.outputLocale,
-      context,
-      claims: [],
-      recovered: true,
-      pinnedSnapshots: snapshotPinsFromManifest(existing.inputManifest),
-    };
-  }
-  if (existing) {
-    throw new ApiError(
-      409,
-      "Grounded operation already exists",
-      { runId: existing.id },
-      "GROUNDING_RUN_EXISTS",
-    );
-  }
-
   const prepared =
     input.preparedGrounding ??
     (await prepareGroundingOperation(
@@ -189,6 +172,62 @@ export async function runGroundedOperation<T>(
       },
       dependencies,
     ));
+  const recoveryCompatibility = buildRecoveryCompatibility(input, prepared);
+  if (input.generationReservationKey) {
+    const recoverable = await db.query.aiProcessingRuns.findFirst({
+      where: {
+        RAW: (table, operators) =>
+          and(
+            eq(table.organizationId, input.organizationId),
+            eq(table.operationKind, operationKind),
+            eq(table.jobId, input.jobId!),
+            eq(
+              table.generationReservationKey,
+              input.generationReservationKey!,
+            ),
+            eq(table.status, "processing"),
+            isNotNull(table.validatedOutput),
+          ) ?? operators.sql`true`,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    const recovered = recoverable
+      ? await recoverValidatedRun(
+          recoverable,
+          input,
+          prepared,
+          recoveryCompatibility,
+        )
+      : null;
+    if (recovered) return recovered;
+  } else if (
+    existing?.status === "processing" &&
+    existing.validatedOutput !== null
+  ) {
+    const recovered = await recoverValidatedRun(
+      existing,
+      input,
+      prepared,
+      undefined,
+    );
+    if (recovered) return recovered;
+  }
+  if (existing?.status === "succeeded") {
+    throw new ApiError(
+      409,
+      "This grounded result was already published",
+      { runId: existing.id },
+      "GROUNDING_RUN_ALREADY_PUBLISHED",
+    );
+  }
+  if (existing) {
+    throw new ApiError(
+      409,
+      "Grounded operation already exists",
+      { runId: existing.id },
+      "GROUNDING_RUN_EXISTS",
+    );
+  }
   const provider = withProviderPermit(prepared.provider, {
     jobId: input.jobId,
     categoryCode:
@@ -259,17 +298,24 @@ export async function runGroundedOperation<T>(
       : { name: "grounded-generation", version: "1" },
   });
   const manifest = {
-    version: 1,
+    version: input.generationReservationKey ? 2 : 1,
     assessmentRevisionId: input.assessmentRevisionId ?? null,
     queryUnits: input.queryUnits,
     organizationEvidenceVersionIds: input.organizationEvidenceVersionIds,
     pinnedSnapshots: prepared.pinnedSnapshots,
     renderedInputHash,
+    ...(recoveryCompatibility
+      ? { recoveryCompatibility }
+      : {}),
   };
   const run = await createAiProcessingRunWithLiveJobGate({
       organizationId: input.organizationId,
       jobId: input.jobId,
       idempotencyKey: input.idempotencyKey,
+      generationReservationKey: input.generationReservationKey,
+      generationAttemptKey: input.generationAttemptKey,
+      durableExecutionAttempt: input.durableExecutionAttempt,
+      providerAttempt: input.providerAttempt,
       operationKind,
       status: "processing",
       provider: provider.provider,
@@ -394,6 +440,7 @@ export async function runGroundedOperation<T>(
       outputLocale: input.outputLocale,
       context,
       claims,
+      recovered: false as const,
       pinnedSnapshots: prepared.pinnedSnapshots,
     };
   } catch (error) {
@@ -413,6 +460,109 @@ export async function runGroundedOperation<T>(
       .where(eq(aiProcessingRuns.id, run.id));
     throw error;
   }
+}
+
+function assertGenerationAttemptInput(input: {
+  idempotencyKey: string;
+  generationReservationKey?: string;
+  generationAttemptKey?: string;
+  durableExecutionAttempt?: number;
+  providerAttempt?: number;
+  jobId?: string;
+  expectedLeaseOwner?: string;
+}) {
+  const values = [
+    input.generationReservationKey,
+    input.generationAttemptKey,
+    input.durableExecutionAttempt,
+    input.providerAttempt,
+  ];
+  if (values.every((value) => value === undefined)) return;
+  if (
+    !input.generationReservationKey ||
+    !input.generationAttemptKey ||
+    input.idempotencyKey !== input.generationAttemptKey ||
+    !Number.isInteger(input.durableExecutionAttempt) ||
+    input.durableExecutionAttempt! < 1 ||
+    !Number.isInteger(input.providerAttempt) ||
+    input.providerAttempt! < 1 ||
+    !input.jobId ||
+    !input.expectedLeaseOwner
+  ) {
+    throw new Error("Grounded generation attempt identity is incomplete");
+  }
+}
+
+function buildRecoveryCompatibility<T>(
+  input: GroundedOperationInput<T>,
+  prepared: PreparedGroundingOperation,
+): RecoveryCompatibility | undefined {
+  if (!input.generationReservationKey) return undefined;
+  return {
+    version: 1,
+    jobId: input.jobId,
+    workflowReleaseId: input.workflowReleaseId,
+    definitionHash: input.definitionHash ?? input.workflowReleaseId,
+    outputLocale: input.outputLocale,
+    assessmentRevisionId: input.assessmentRevisionId ?? null,
+    asOfDate: input.asOfDate,
+    queryUnits: input.queryUnits,
+    organizationEvidenceVersionIds: input.organizationEvidenceVersionIds,
+    pinnedSnapshots: prepared.pinnedSnapshots,
+    promptContract: input.promptMetadata ?? null,
+  };
+}
+
+async function recoverValidatedRun<T>(
+  run: typeof aiProcessingRuns.$inferSelect,
+  input: GroundedOperationInput<T>,
+  prepared: PreparedGroundingOperation,
+  expectedCompatibility: RecoveryCompatibility | undefined,
+) {
+  if (
+    run.status !== "processing" ||
+    run.validatedOutput === null ||
+    run.jobId !== (input.jobId ?? null) ||
+    run.definitionHash !== (input.definitionHash ?? input.workflowReleaseId) ||
+    run.outputLocale !== input.outputLocale
+  ) {
+    return null;
+  }
+  if (expectedCompatibility) {
+    const manifest = isRecord(run.inputManifest) ? run.inputManifest : null;
+    if (
+      !manifest ||
+      manifest.version !== 2 ||
+      contentHash(manifest.recoveryCompatibility) !==
+        contentHash(expectedCompatibility)
+    ) {
+      return null;
+    }
+  }
+  const persisted = await db.query.aiProcessingRunContext.findMany({
+    where: {
+      RAW: (table, operators) =>
+        eq(table.runId, run.id) ?? operators.sql`true`,
+    },
+    orderBy: { position: "asc" },
+  });
+  const context = [
+    ...persisted.map(fromPersistedContext),
+    ...questionnaireContext(input.queryUnits, input.questionnaireAssertions),
+  ];
+  const output = input.outputContract.schema(context).safeParse(run.validatedOutput);
+  if (!output.success) return null;
+  return {
+    runId: run.id,
+    output: output.data,
+    outputLocale: run.outputLocale,
+    context,
+    claims: [],
+    recovered: true as const,
+    pinnedSnapshots: snapshotPinsFromManifest(run.inputManifest).length
+      ? snapshotPinsFromManifest(run.inputManifest)
+      : prepared.pinnedSnapshots,
+  };
 }
 
 function questionnaireContext(

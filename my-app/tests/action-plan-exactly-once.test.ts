@@ -60,6 +60,7 @@ describe("Action Plan generation exactly-once retry", () => {
         organizationId: "00000000-0000-4000-8000-000000000003",
         userId: "00000000-0000-4000-8000-000000000004",
         sourceGapRevisionId: "00000000-0000-4000-8000-000000000005",
+        attemptCount: 1,
         locale: "en",
       }),
     ).resolves.toEqual({ type: "action_plan", id: planId });
@@ -85,6 +86,7 @@ describe("Action Plan generation exactly-once retry", () => {
         organizationId: "00000000-0000-4000-8000-000000000003",
         userId: "00000000-0000-4000-8000-000000000004",
         sourceGapRevisionId: "00000000-0000-4000-8000-000000000005",
+        attemptCount: 1,
         locale: "en",
       }),
     ).rejects.toMatchObject({ code: "ACTION_PLAN_PARTIAL_STATE" });

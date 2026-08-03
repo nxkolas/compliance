@@ -6,7 +6,7 @@ This document describes the current internal JSON API for the Gap Analysis
 workflow. It documents implemented route behavior, not a proposed public API.
 All paths are relative to the application origin.
 
-The direct surface contains 14 method/path combinations under
+The direct surface contains 15 method/path combinations under
 `/api/organizations/:organizationId/gap-analysis`. Gap release publication and
 activation are intentionally not exposed through this HTTP surface; they remain
 server-side publication operations implemented by
@@ -157,6 +157,7 @@ Sources:
 | `GET` | `/api/organizations/:organizationId/gap-analysis` | `200` | Read the complete browser-safe workflow model. |
 | `POST` | `/api/organizations/:organizationId/gap-analysis/assessments` | `201` | Create or reopen the active assessment and questionnaire draft. |
 | `PATCH` | `/api/organizations/:organizationId/gap-analysis/questionnaire-draft/answers/:questionId` | `200` | Create or replace one draft answer. |
+| `GET` | `/api/organizations/:organizationId/gap-analysis/progress` | `200` | Read completion state for every current questionnaire question. |
 | `POST` | `/api/organizations/:organizationId/gap-analysis/questionnaire-submissions` | `201` | Submit an immutable questionnaire revision and deterministic evaluations. |
 | `POST` | `/api/organizations/:organizationId/gap-analysis/cycles` | `201` | Create or reopen an analysis cycle and select evidence. |
 | `GET` | `/api/organizations/:organizationId/gap-analysis/cycles/:cycleId` | `200` | Read one analysis cycle and its pinned input summary. |
@@ -247,6 +248,33 @@ Source: [workflow route](<../../../app/api/organizations/[organizationId]/gap-an
 and [workflow projection](../../../src/server/gap-analysis/workflow-reader.ts).
 
 ## Assessment and questionnaire
+
+### `GET /api/organizations/:organizationId/gap-analysis/progress`
+
+Returns `200` with a compact questionnaire progress projection:
+
+```ts
+{
+  data: {
+    progress: {
+      draftId: UUID | null;
+      answeredRequired: NonNegativeInteger;
+      totalRequired: NonNegativeInteger;
+      complete: boolean;
+      questions: Array<{
+        questionKey: string;
+        required: boolean;
+        answered: boolean;
+      }>;
+    };
+  };
+  meta: { requestId: string };
+}
+```
+
+The endpoint always returns every question from the current code-owned Gap
+definition. With no current draft, `draftId` is `null` and every question is
+unanswered. Only valid stored options count as answered.
 
 ### `POST /api/organizations/:organizationId/gap-analysis/assessments`
 
@@ -703,6 +731,30 @@ response also includes `meta.version` and an `ETag` header for the plan version.
 Source:
 [Action Plan route](<../../../app/api/organizations/[organizationId]/action-plan/route.ts>)
 and [Action Plan reader](../../../src/server/action-plans/service.ts).
+
+### `GET /api/organizations/:organizationId/action-plan/progress`
+
+Returns `200` with counts for all four Action Plan item statuses:
+
+```ts
+{
+  data: {
+    progress: {
+      planId: UUID | null;
+      totalCount: NonNegativeInteger;
+      statuses: {
+        open: NonNegativeInteger;
+        in_progress: NonNegativeInteger;
+        done: NonNegativeInteger;
+        cancelled: NonNegativeInteger;
+      };
+    };
+  };
+  meta: { requestId: string };
+}
+```
+
+When no Action Plan exists, `planId` is `null` and all counts are zero.
 
 ### `PATCH /api/organizations/:organizationId/action-plan/items/:itemId`
 

@@ -18,6 +18,7 @@ export type { ParsedDocument } from "./parser";
 export {
   archiveOrganizationDocument,
   completeDocumentUpload,
+  finalizeDocumentUpload,
   createDocumentSourceAccess,
   createDocumentUploadSession,
   getOrganizationDocumentDetail,

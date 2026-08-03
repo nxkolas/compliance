@@ -18,7 +18,8 @@ import {
 } from "@/src/server/definitions";
 import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { withAuthorizedOrganizationCommand } from "../auth/organization-scope";
+import { enqueueJob } from "../jobs";
 import { getCurrentActionPlan } from "./service";
 import {
   prepareGroundingOperation,
@@ -38,6 +39,9 @@ import {
 import { buildActionPlanCategoryQuery } from "./prompt-contract";
 import {
   coordinateCategoryGeneration,
+  generationCallAttemptIdentity,
+  generationReservationIdentity,
+  parseDurableExecutionAttempt,
   safeGenerationIssues,
 } from "../ai/generation";
 import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
@@ -52,11 +56,7 @@ export async function enqueueActionPlanGeneration(input: {
   organizationId: string;
   sourceGapRevisionId: string;
 }) {
-  await requireOrganizationCapability(
-    input.userId,
-    input.organizationId,
-    "plans:manage",
-  );
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "plans:manage" }, async ({ executor: db }) => {
   if (
     await db.query.actionPlans.findFirst({
       where: {
@@ -124,23 +124,19 @@ export async function enqueueActionPlanGeneration(input: {
       "GAP_DEFINITION_CHANGED",
     );
   }
-  const [job] = await db
-    .insert(backgroundJobs)
-    .values({
-      organizationId: input.organizationId,
-      kind: "action_plan_generation",
-      payload: {
-        sourceGapRevisionId: revision.id,
-        locale: revision.locale,
-        gapDefinitionHash: revision.definitionHash,
-        actionPlanDefinitionHash,
-        buildHash: BUILD_HASH,
-      },
-      requestedBy: input.userId,
-    })
-    .returning();
-  if (!job) throw new Error("Action Plan job was not created");
-  return job;
+  return enqueueJob({
+    organizationId: input.organizationId,
+    requestedByUserId: input.userId,
+    kind: "action_plan_generation",
+    payload: {
+      sourceGapRevisionId: revision.id,
+      locale: revision.locale as "de" | "en",
+      gapDefinitionHash: revision.definitionHash,
+      actionPlanDefinitionHash,
+      buildHash: BUILD_HASH,
+    },
+  }, { executor: db });
+  });
 }
 
 export async function executeActionPlanGenerationJob(input: {
@@ -150,11 +146,14 @@ export async function executeActionPlanGenerationJob(input: {
   workerId: string;
   sourceGapRevisionId: string;
   locale: "de" | "en";
-  attemptCount?: number;
+  attemptCount: number;
   abortSignal?: AbortSignal;
   groundingDependencies?: import("../ai/grounding/gateway").GroundingExecutionDependencies;
 }) {
   if (input.abortSignal?.aborted) throw input.abortSignal.reason;
+  const durableExecutionAttempt = parseDurableExecutionAttempt(
+    input.attemptCount,
+  );
   await assertLiveParentJobForAiRun({
     jobId: input.jobId,
     organizationId: input.organizationId,
@@ -308,9 +307,12 @@ export async function executeActionPlanGenerationJob(input: {
       categoryCode: category.requirement.code,
       taskId: hash({
         operation: "action_plan_generation",
+        generationJobId: input.jobId,
         sourceGapRevisionId: input.sourceGapRevisionId,
         categoryCode: category.requirement.code,
-        attemptCount: input.attemptCount ?? 1,
+        locale: input.locale,
+        definitionHash: actionPlanDefinitionHash,
+        contract: CURRENT_ACTION_PLAN_PROMPT_METADATA.responseSchemaVersion,
       }),
       input: category,
     })),
@@ -323,6 +325,15 @@ export async function executeActionPlanGenerationJob(input: {
       providerAttempt,
     }) {
       const category = task.input;
+      const reservationIdentity = generationReservationIdentity({
+        taskId: task.taskId,
+        phase,
+      });
+      const callAttemptIdentity = generationCallAttemptIdentity({
+        reservationIdentity,
+        durableExecutionAttempt,
+        providerAttempt,
+      });
       const questions = category.requirement.questionStableKeys.map((stableKey) => {
         const question = definition.questions.find((item) => item.stableKey === stableKey);
         const answer = answers.find((item) => item.questionKey === stableKey);
@@ -447,7 +458,11 @@ export async function executeActionPlanGenerationJob(input: {
             }));
           },
         },
-        idempotencyKey: hash({ taskId: task.taskId, phase, providerAttempt }),
+        idempotencyKey: callAttemptIdentity,
+        generationReservationKey: reservationIdentity,
+        generationAttemptKey: callAttemptIdentity,
+        durableExecutionAttempt,
+        providerAttempt,
         assessmentRevisionId: revision.assessmentRevisionId,
         jobId: input.jobId,
         expectedLeaseOwner: input.workerId,
@@ -639,9 +654,9 @@ export async function executeActionPlanGenerationJob(input: {
       .update(aiProcessingRuns)
       .set({
         status: "failed",
-        failureCode: "GENERATION_CANDIDATE_REJECTED",
+        failureCode: "GENERATION_ATTEMPT_SUPERSEDED",
         failureMessage:
-          "A corrected category candidate replaced this generation attempt.",
+          "A selected attempt superseded this generation candidate.",
         completedAt: now,
       })
       .where(

@@ -3,6 +3,7 @@ export {
   getCurrentActionPlan,
   updateActionPlanItem,
 } from "./service";
+export { getActionPlanProgress } from "./progress-service";
 export {
   activateGeneratedActionPlan,
   enqueueActionPlanGeneration,

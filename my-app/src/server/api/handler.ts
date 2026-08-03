@@ -43,7 +43,6 @@ export function apiRoute<TContext = unknown, TOutput = unknown>(
         status = result.status;
         if (status === 202) {
           scheduleAfterResponseDrain({
-            adapter: "after_response",
             requestId,
           });
         }
@@ -58,7 +57,6 @@ export function apiRoute<TContext = unknown, TOutput = unknown>(
       status = result.status ?? 200;
       if (status === 202) {
         scheduleAfterResponseDrain({
-          adapter: "after_response",
           requestId,
         });
       }

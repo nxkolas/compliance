@@ -280,7 +280,7 @@ try {
     & docker @composeArguments exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "select count(*) from app_private.deployment_sql_history;" -c "select extversion from pg_extension where extname='vector';"
   }
   Invoke-Gate "Storage bootstrap idempotence" {
-    & docker @composeArguments run --rm supabase-bootstrap
+    & docker @composeArguments run --rm database-bootstrap
   }
   Invoke-Gate "functional Auth/Storage/AI/retrieval acceptance" {
     & docker @composeArguments exec -T worker node node_modules/tsx/dist/cli.mjs scripts/docker-functional-acceptance.ts
@@ -409,7 +409,7 @@ try {
   Invoke-Gate "Storage restart persistence" {
     & docker @composeArguments restart storage
     & docker @composeArguments up -d --wait storage
-    & docker @composeArguments run --rm supabase-bootstrap
+    & docker @composeArguments run --rm database-bootstrap
   }
   Invoke-Gate "whole-project restart persistence" {
     & docker @composeArguments stop

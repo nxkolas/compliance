@@ -126,6 +126,7 @@ export const actionPlanItemStatusEnum = pgEnum("action_plan_item_status", [
   "open",
   "in_progress",
   "done",
+  "cancelled",
 ]);
 
 export const backgroundJobStateEnum = pgEnum("background_job_state", [
@@ -788,6 +789,10 @@ export const aiProcessingRuns = pgTable.withRLS(
     idempotencyKey: text("idempotency_key")
       .default(sql`gen_random_uuid()::text`)
       .notNull(),
+    generationReservationKey: text("generation_reservation_key"),
+    generationAttemptKey: text("generation_attempt_key"),
+    durableExecutionAttempt: integer("durable_execution_attempt"),
+    providerAttempt: integer("provider_attempt"),
     operationKind: aiOperationKindEnum("operation_kind").notNull(),
     status: processingStatusEnum("status").default("pending").notNull(),
     provider: text("provider").notNull(),
@@ -824,7 +829,23 @@ export const aiProcessingRuns = pgTable.withRLS(
       table.idempotencyKey,
     ),
     index("ai_processing_runs_job_idx").on(table.jobId),
+    index("ai_processing_runs_generation_reservation_idx").on(
+      table.organizationId,
+      table.operationKind,
+      table.generationReservationKey,
+    ),
+    uniqueIndex("ai_processing_runs_generation_attempt_unique")
+      .on(
+        table.organizationId,
+        table.operationKind,
+        table.generationAttemptKey,
+      )
+      .where(sql`${table.generationAttemptKey} is not null`),
     check("ai_processing_runs_locale_check", sql`${table.outputLocale} in ('de', 'en')`),
+    check(
+      "ai_processing_runs_generation_attempt_check",
+      sql`(${table.generationReservationKey} is null and ${table.generationAttemptKey} is null and ${table.durableExecutionAttempt} is null and ${table.providerAttempt} is null) or (${table.generationReservationKey} is not null and ${table.generationAttemptKey} is not null and ${table.durableExecutionAttempt} > 0 and ${table.providerAttempt} > 0)`,
+    ),
     check(
       "ai_processing_runs_lifecycle_check",
       sql`(${table.status} = 'succeeded' and ${table.completedAt} is not null and ${table.validatedOutput} is not null and ${table.failureCode} is null) or (${table.status} = 'failed' and ${table.completedAt} is not null and ${table.failureCode} is not null) or (${table.status} in ('pending', 'processing') and ${table.completedAt} is null)`,

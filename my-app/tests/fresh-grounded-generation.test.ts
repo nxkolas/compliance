@@ -171,6 +171,7 @@ describe("fresh grounded generation", () => {
         userId: "00000000-0000-4000-8000-000000000006",
         organizationId: mocks.cycle.organizationId,
         workerId: "worker-1",
+        attemptCount: 1,
         locale: "en",
       }),
     ).rejects.toThrow();
@@ -233,6 +234,7 @@ describe("fresh grounded generation", () => {
         organizationId: mocks.cycle.organizationId,
         userId: "00000000-0000-4000-8000-000000000006",
         sourceGapRevisionId: "00000000-0000-4000-8000-000000000008",
+        attemptCount: 1,
         locale: "en",
       }),
     ).rejects.toThrow();

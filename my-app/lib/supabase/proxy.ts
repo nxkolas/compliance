@@ -7,8 +7,6 @@ import {
   isPublicRoute,
   parseSafeToolNext,
 } from "../auth/route-policy";
-import { resolveRequestId } from "@/src/server/api/request-id";
-import { jsonError } from "@/src/server/api/response";
 
 function copySessionCookies(
   response: NextResponse,
@@ -50,25 +48,9 @@ function redirectFromGuestOnlyRoute(
   );
 }
 
-function apiError(
-  request: NextRequest,
-  sessionResponse: NextResponse,
-  input: { status: number; code: string; message: string },
-) {
-  const standardResponse = jsonError(
-    input,
-    resolveRequestId(request),
-  );
-  const response = new NextResponse(standardResponse.body, {
-    status: standardResponse.status,
-    statusText: standardResponse.statusText,
-    headers: standardResponse.headers,
-  });
-  return copySessionCookies(response, sessionResponse);
-}
-
 /**
- * Middleware helper that refreshes Supabase session cookies and blocks private routes.
+ * Refreshes page sessions and blocks private navigation. API handlers own API
+ * authentication so direct requests remain independently authorized.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -76,6 +58,12 @@ export async function updateSession(request: NextRequest) {
   });
 
   const pathname = request.nextUrl.pathname;
+  if (isApiRoute(pathname)) {
+    // API handlers authenticate authoritatively at their own boundary. Avoid a
+    // second remote identity lookup here, including for polling and recovery.
+    return supabaseResponse;
+  }
+
   let supabaseEnvironment:
     | ReturnType<typeof getInternalSupabaseEnvironment>
     | undefined;
@@ -88,14 +76,6 @@ export async function updateSession(request: NextRequest) {
   if (!supabaseEnvironment) {
     if (isPublicRoute(pathname)) {
       return supabaseResponse;
-    }
-
-    if (isApiRoute(pathname)) {
-      return apiError(request, supabaseResponse, {
-        status: 503,
-        code: "SERVICE_UNAVAILABLE",
-        message: "Authentication service unavailable",
-      });
     }
 
     return redirectToLogin(request, supabaseResponse);
@@ -139,14 +119,6 @@ export async function updateSession(request: NextRequest) {
   );
 
   if (!isAuthenticated && !isPublicRoute(pathname)) {
-    if (isApiRoute(pathname)) {
-      return apiError(request, supabaseResponse, {
-        status: 401,
-        code: "AUTHENTICATION_REQUIRED",
-        message: "Authentication required",
-      });
-    }
-
     return redirectToLogin(request, supabaseResponse);
   }
 

@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import * as z from "zod";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
@@ -27,11 +26,12 @@ import {
 } from "./render-snapshot";
 import { REPORT_STORAGE_BUCKET } from "./service";
 
-const payloadSchema = z.object({ reportId: z.uuid() });
-
-export async function handleReportRender(job: BackgroundJobRecord, abortSignal?: AbortSignal) {
+export async function handleReportRender(
+  job: BackgroundJobRecord,
+  reportId: string,
+  abortSignal?: AbortSignal,
+) {
   throwIfJobExecutionAborted(abortSignal);
-  const { reportId } = payloadSchema.parse(job.payload);
   if (!job.organizationId) throw new Error("Report job has no organization scope");
   const organizationId = job.organizationId;
   const report = await db.query.reports.findFirst({

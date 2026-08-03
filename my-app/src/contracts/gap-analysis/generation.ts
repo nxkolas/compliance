@@ -37,6 +37,17 @@ export const gapQuestionnaireDraftAnswerSchema = z.object({
   draftId: z.uuid(),
   optionId: z.string().trim().min(1),
 });
+export const gapQuestionnaireProgressSchema = z.object({
+  draftId: z.uuid().nullable(),
+  answeredRequired: z.number().int().nonnegative(),
+  totalRequired: z.number().int().nonnegative(),
+  complete: z.boolean(),
+  questions: z.array(z.object({
+    questionKey: z.string().min(1),
+    required: z.boolean(),
+    answered: z.boolean(),
+  })),
+});
 export const gapAnalysisCycleQuerySchema = z.object({ assessmentId: z.uuid() });
 export const gapAnalysisCyclePrepareSchema = z
   .object({

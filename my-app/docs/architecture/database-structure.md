@@ -69,10 +69,11 @@ Both chunk search vectors are stored generated columns declared by Drizzle;
 their GIN indexes are also Drizzle-owned. Every public application table is
 declared with RLS enabled. Browser roles have
 no policies; application access uses authenticated, capability-checked,
-organization-scoped server services. After every `npm run db:push`, run
-`npm run db:verify:server-only` and require a second push explanation to show
-zero drift.
+organization-scoped server services. Every disposable schema change must use
+the guarded plan/apply workflow, which includes server-only verification and a
+final zero-drift explanation.
 
-This disposable pre-production cutover deliberately uses `npm run db:push`
-without a data migration. The only operator SQL creates the `vector` extension
-before push and the two append-only audit triggers after push.
+This disposable pre-production cutover uses the canonical guarded schema
+workflow without a data migration. The only operator SQL creates the `vector`
+extension before push and the two append-only audit triggers after push. See
+the [disposable schema runbook](../database/drizzle-workflow.md).

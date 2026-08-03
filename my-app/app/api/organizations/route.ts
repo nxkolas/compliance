@@ -7,6 +7,7 @@ import { organizationInputSchema, organizationListQuerySchema } from "@/src/cont
 import { runIdempotentCommand } from "@/src/server/api/idempotency";
 import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import { ApiError } from "@/src/server/api/errors";
+import { synchronizeAuthenticatedActor } from "@/src/server/users";
 
 export const GET = apiRoute(async ({ request }: { request: Request }) => {
   await connection();
@@ -18,6 +19,7 @@ export const GET = apiRoute(async ({ request }: { request: Request }) => {
 
 export const POST = apiRoute(async ({ request }) => {
   const user = await requireApiUser();
+  await synchronizeAuthenticatedActor(user);
   const body = await readJsonBody(request, organizationInputSchema);
   const result = await runIdempotentCommand({
     repository: databaseIdempotencyRepository, request, actorKey: user.id, scope: "organizations", operation: "organization.create",

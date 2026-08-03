@@ -22,7 +22,6 @@ describe("after-response job execution adapter", () => {
 
     expect(
       scheduleAfterResponseDrain({
-        adapter: "after_response",
         requestId: "request-1",
         schedule,
       }),
@@ -44,7 +43,6 @@ describe("after-response job execution adapter", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(
       scheduleAfterResponseDrain({
-        adapter: "polling",
         requestId: "request-2",
         schedule: () => {
           throw new Error("no request work store");
@@ -53,7 +51,7 @@ describe("after-response job execution adapter", () => {
     ).toBe(false);
     expect(error).toHaveBeenCalledWith(
       "Could not schedule after-response job drain",
-      expect.objectContaining({ adapter: "polling", errorType: "Error" }),
+      expect.objectContaining({ adapter: "after_response", errorType: "Error" }),
     );
     error.mockRestore();
   });

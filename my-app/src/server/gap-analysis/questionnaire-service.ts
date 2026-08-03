@@ -1,7 +1,6 @@
-import { db } from "@/src/db";
 import { and, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { authorizeOrganizationRead } from "../auth/organization-scope";
 import { finalizeGapCycleQuestionnaire } from "./analysis-cycle-service";
 
 export async function submitGapQuestionnaire(input: {
@@ -24,8 +23,8 @@ export async function getGapQuestionnaireRevision(
   organizationId: string,
   revisionId: string,
 ) {
-  await requireOrganizationCapability(userId, organizationId, "gap:read");
-  const revision = await db.query.assessmentRevisions.findFirst({
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "gap:read" });
+  const revision = await executor.query.assessmentRevisions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, revisionId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
   if (!revision) throw new ApiError(404, "Gap questionnaire revision not found");

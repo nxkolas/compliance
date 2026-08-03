@@ -1,27 +1,16 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "./server";
+import { resolveAuthenticatedActor } from "@/src/server/auth/authenticated-actor";
+
+const resolveActorForRequest = cache(resolveAuthenticatedActor);
 
 /**
- * Server-component guard that returns the Supabase user or redirects to login.
+ * Server-component guard that returns the safe actor or redirects to login.
  */
 export async function requireAuth() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const actor = await resolveActorForRequest();
+  if (!actor) {
     redirect("/auth/login");
   }
-
-  if (user.is_anonymous) {
-    redirect("/auth/login");
-  }
-
-  if (user.email) {
-    const { syncAuthenticatedUser } = await import("@/src/server/users");
-    await syncAuthenticatedUser(user);
-  }
-  return user;
+  return actor;
 }

@@ -4,7 +4,6 @@ import { and, asc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import type { Locale } from "@/lib/i18n-config";
 import { localizedFilename } from "@/lib/i18n/format";
 import { reportsMessages } from "@/lib/i18n/messages/reports";
-import { db } from "@/src/db";
 import {
   analysisOutputDocumentSources,
   auditEvents,
@@ -14,15 +13,15 @@ import {
 } from "@/src/db/schema";
 import { ApiError } from "@/src/server/api/errors";
 import { getCursorCodec } from "@/src/server/api/pagination";
-import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
-import { toJobDto } from "@/src/server/jobs";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand } from "@/src/server/auth/organization-scope";
+import { enqueueJob, toJobDto } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { assertReportConcurrency } from "./quota";
 
 export const REPORT_STORAGE_BUCKET = "compliance-reports";
 
 export async function createReport(input: { userId: string; organizationId: string; locale: Locale }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "reports:create");
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "reports:create" }, async ({ executor: db }) => {
   const [active] = await db.select({ count: sql<number>`count(*)::int` })
     .from(backgroundJobs)
     .where(and(
@@ -63,15 +62,13 @@ export async function createReport(input: { userId: string; organizationId: stri
 
   const reportId = randomUUID();
   const jobId = randomUUID();
-  return db.transaction(async (tx) => {
-    const [job] = await tx.insert(backgroundJobs).values({
-      id: jobId,
+    const job = await enqueueJob({
       organizationId: input.organizationId,
-      requestedBy: input.userId,
+      requestedByUserId: input.userId,
       kind: "report_render",
       payload: { reportId },
-    }).returning();
-    const [report] = await tx.insert(reports).values({
+    }, { executor: db, jobId });
+    const [report] = await db.insert(reports).values({
       id: reportId,
       organizationId: input.organizationId,
       applicabilityRevisionId,
@@ -81,16 +78,16 @@ export async function createReport(input: { userId: string; organizationId: stri
       locale: input.locale,
       createdBy: input.userId,
     }).returning();
-    if (!job || !report) throw new ApiError(500, "Could not create report", undefined, "REPORT_CREATE_FAILED");
+    if (!report) throw new ApiError(500, "Could not create report", undefined, "REPORT_CREATE_FAILED");
     if (documentSources.length) {
-      await tx.insert(reportDocumentSources).values(documentSources.map((document) => ({
+      await db.insert(reportDocumentSources).values(documentSources.map((document) => ({
         organizationId: input.organizationId,
         reportId,
         documentVersionId: document.documentVersionId,
         position: document.position,
       })));
     }
-    await tx.insert(auditEvents).values({
+    await db.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType: "report.created",
@@ -108,7 +105,7 @@ export async function listReports(userId: string, organizationId: string) {
 
 const reportCursorSchema = z.tuple([z.iso.datetime(), z.uuid()]);
 export async function listReportsPage(input: { userId: string; organizationId: string; limit: number; cursor?: string }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "reports:read");
+  const { executor: db } = await authorizeOrganizationRead({ actorUserId: input.userId, organizationId: input.organizationId, capability: "reports:read" });
   const scope = `reports:${input.organizationId}`;
   const cursor = input.cursor ? reportCursorSchema.parse(getCursorCodec().decode(input.cursor, scope)) : null;
   const rows = await db.select({ report: reports, job: backgroundJobs })
@@ -129,7 +126,7 @@ export async function listReportsPage(input: { userId: string; organizationId: s
 }
 
 export async function getReportDetail(userId: string, organizationId: string, reportId: string) {
-  await requireOrganizationCapability(userId, organizationId, "reports:read");
+  const { executor: db } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "reports:read" });
   const [row] = await db.select({ report: reports, job: backgroundJobs })
     .from(reports)
     .innerJoin(backgroundJobs, eq(reports.renderingJobId, backgroundJobs.id))
@@ -146,8 +143,8 @@ export async function getReportDetail(userId: string, organizationId: string, re
 }
 
 export async function createReportDownload(userId: string, organizationId: string, reportId: string) {
-  await requireOrganizationCapability(userId, organizationId, "reports:read");
-  const report = await db.query.reports.findFirst({
+  const scope = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "reports:read" });
+  const report = await scope.executor.query.reports.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, reportId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
   if (!report?.pdfBucket || !report.pdfKey) throw new ApiError(409, "Report is not ready", undefined, "REPORT_NOT_READY");
@@ -156,13 +153,8 @@ export async function createReportDownload(userId: string, organizationId: strin
   const { data, error } = await getSupabaseAdminClient().storage.from(report.pdfBucket)
     .createSignedUrl(report.pdfKey, 120, { download: fileName });
   if (error || !data) throw new ApiError(503, "Report download is unavailable", undefined, "REPORT_DOWNLOAD_UNAVAILABLE");
-  await db.insert(auditEvents).values({
-    organizationId,
-    actorUserId: userId,
-    eventType: "report.downloaded",
-    entityType: "report",
-    entityId: report.id,
-    metadata: {},
+  await withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "reports:read" }, async ({ executor }) => {
+    await executor.insert(auditEvents).values({ organizationId, actorUserId: userId, eventType: "report.downloaded", entityType: "report", entityId: report.id, metadata: {} });
   });
   return { url: data.signedUrl, expiresInSeconds: 120 };
 }
