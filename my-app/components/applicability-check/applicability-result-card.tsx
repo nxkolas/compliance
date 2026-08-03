@@ -118,7 +118,7 @@ export function ApplicabilityResultCard({
       "unresolved_unsupported_profile",
     );
   const supportedCountries = formatCountryNames(
-    result.release.supportedCountryCodes,
+    result.definition.supportedJurisdictionCodes,
     locale,
   );
   const entityTypeValue = formatEntityTypes(
@@ -143,7 +143,7 @@ export function ApplicabilityResultCard({
 
   return (
     <div className="@container/result-card flex min-w-0 flex-col gap-8">
-      {result.release.isOutdated ? (
+      {result.definition.isOutdated ? (
         <Alert variant="warning" className="grid grid-cols-1 items-center gap-3 rounded-lg p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto]">
           <AlertDescription className="col-start-1 text-sm text-current">
             {labels.outdated}
@@ -428,12 +428,12 @@ export function ApplicabilityResultCard({
         </Alert>
 
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-foreground-subtle @5xl/result-card:mt-5">
-          <Metadata label={labels.release} value={result.release.versionLabel} />
+          <Metadata label={labels.release} value={result.definition.versionLabel} />
           <Metadata
             label={
               labels.basedOn ?? (locale === "en" ? "Based on" : "Basiert auf")
             }
-            value={result.ruleSetVersionLabel ?? labels.unknown}
+            value={result.definition.versionLabel}
           />
           <Metadata
             label={labels.profile}

@@ -20,7 +20,7 @@ export class ApiClientError extends Error {
 }
 
 export type ApiRequestOptions<TInput, TOutput> = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   input?: TInput;
   outputSchema: z.ZodType<TOutput>;
   signal?: AbortSignal;

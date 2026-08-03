@@ -10,7 +10,11 @@ export function assertLiveParentForAiRun(
         leaseExpiresAt: Date | null;
       }
     | undefined,
-  input: { now: Date; organizationId: string | null },
+  input: {
+    now: Date;
+    organizationId: string | null;
+    expectedLeaseOwner?: string;
+  },
 ) {
   if (!parent) {
     throw new GenerationFailure(
@@ -37,7 +41,9 @@ export function assertLiveParentForAiRun(
   if (
     !parent.leaseOwner ||
     !parent.leaseExpiresAt ||
-    parent.leaseExpiresAt <= input.now
+    parent.leaseExpiresAt <= input.now ||
+    (input.expectedLeaseOwner !== undefined &&
+      parent.leaseOwner !== input.expectedLeaseOwner)
   ) {
     throw new GenerationFailure(
       "transient_provider",

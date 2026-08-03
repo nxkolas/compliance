@@ -13,20 +13,12 @@ export const organizationProgressStepKeySchema = z.enum(
   organizationProgressStepKeys,
 );
 
-export const organizationProgressStepStatusSchema = z.enum([
-  "completed",
-  "current",
-  "upcoming",
-  "not_applicable",
-]);
-
 export const organizationProgressStepSchema = z.object({
   key: organizationProgressStepKeySchema,
-  status: organizationProgressStepStatusSchema,
+  completed: z.boolean(),
 });
 
 export const organizationProgressSchema = z.object({
-  currentStep: organizationProgressStepKeySchema.nullable(),
   completedCount: z.number().int().min(0).max(6),
   totalCount: z.union([z.literal(2), z.literal(6)]),
   steps: z.tuple([
@@ -46,7 +38,4 @@ export const organizationProgressSchema = z.object({
 export type OrganizationProgress = z.infer<typeof organizationProgressSchema>;
 export type OrganizationProgressStepKey = z.infer<
   typeof organizationProgressStepKeySchema
->;
-export type OrganizationProgressStepStatus = z.infer<
-  typeof organizationProgressStepStatusSchema
 >;

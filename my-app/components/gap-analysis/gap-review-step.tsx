@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import type { GapWorkflowStep } from "@/src/server/gap-analysis/workflow-state";
 import { GapGenerationProgress } from "./gap-generation-progress";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
+import { GapCategoryIcon } from "./gap-category-icon";
+import type { JobDto } from "@/src/contracts/common/jobs";
 
 export function GapReviewStep({
   workflow,
@@ -14,6 +16,7 @@ export function GapReviewStep({
   selected,
   busy,
   generating,
+  generationJob = null,
   editable = true,
   locale,
   onNavigate,
@@ -27,6 +30,7 @@ export function GapReviewStep({
   selected: string[];
   busy: string | null;
   generating: boolean;
+  generationJob?: JobDto | null;
   editable?: boolean;
   locale: GapLocale;
   onNavigate: (step: GapWorkflowStep) => void;
@@ -39,9 +43,9 @@ export function GapReviewStep({
     (document) => selected.includes(document.id),
   );
   const failed =
-    workflow.reassessment?.draft.status === "failed" ||
-    workflow.reassessment?.draft.status === "cancelled";
-  const draftLocale = workflow.reassessment?.draft.outputLocale;
+    workflow.analysisCycle?.draft.status === "failed" ||
+    workflow.analysisCycle?.draft.status === "cancelled";
+  const draftLocale = workflow.analysisCycle?.draft.outputLocale;
   const resultLocale =
     draftLocale === "de" || draftLocale === "en" ? draftLocale : locale;
   const failureCode = workflow.run?.errorCode;
@@ -76,7 +80,13 @@ export function GapReviewStep({
             .sort((left, right) => left.position - right.position)
             .map((requirement) => (
               <section key={requirement.id}>
-                <h4 className="mb-2 font-medium">{requirement.title}</h4>
+                <h4 className="mb-2 flex items-center gap-2 font-medium">
+                  <GapCategoryIcon
+                    name={requirement.icon}
+                    className="h-4 w-4 shrink-0"
+                  />
+                  {requirement.title}
+                </h4>
                 <dl className="grid gap-3 border-l pl-4">
                   {release.questions
                     .filter((question) =>
@@ -144,15 +154,15 @@ export function GapReviewStep({
           <Technical
             label={labels.technical.baseResult}
             value={
-              workflow.reassessment?.summary.baseAcceptedGapRevisionNumber
-                ? `#${workflow.reassessment.summary.baseAcceptedGapRevisionNumber}`
+              workflow.analysisCycle?.summary.baseAcceptedGapRevisionNumber
+                ? `#${workflow.analysisCycle.summary.baseAcceptedGapRevisionNumber}`
                 : "—"
             }
           />
           <Technical
             label={labels.technical.questionnaireSnapshot}
             value={String(
-              workflow.reassessment?.summary.assessmentRevisionNumber ?? "—",
+              workflow.analysisCycle?.summary.assessmentRevisionNumber ?? "—",
             )}
           />
           <Technical
@@ -162,7 +172,7 @@ export function GapReviewStep({
           <Technical
             label={labels.technical.requirementCount}
             value={String(
-              workflow.reassessment?.summary.requirementCount ??
+              workflow.analysisCycle?.summary.requirementCount ??
                 release.requirements.length,
             )}
           />
@@ -176,9 +186,10 @@ export function GapReviewStep({
       {generating ? (
         <GapGenerationProgress
           labels={labels}
+          job={generationJob}
           cancelling={busy === "cancel-generation"}
           canCancel={Boolean(
-            workflow.reassessment?.draft.generationJobId,
+            workflow.analysisCycle?.draft.generationJobId,
           )}
           onCancel={onCancel}
         />
@@ -199,7 +210,7 @@ export function GapReviewStep({
       ) : (
         <Button
           className="justify-self-start"
-          disabled={Boolean(busy) || !workflow.reassessment}
+          disabled={Boolean(busy) || !workflow.analysisCycle}
           onClick={onGenerate}
         >
           {busy === "generate" ? (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildGroundedPrompt } from "@/src/server/ai/grounding/context-builder";
-import { defaultOrganizationAiProviderPolicy, selectGroundedProvider } from "@/src/server/ai/grounding/provider-policy";
+import { selectGroundedProvider } from "@/src/server/ai/grounding/provider-policy";
 import {
   safeGroundingFailureMessage,
   toGroundingFailureDiagnostic,
@@ -55,24 +55,13 @@ describe("Grounding Gateway safety", () => {
     expect(prompt.prompt).not.toContain("de_bsig.section_30_1");
   });
 
-  it("provisions new organizations without enabling external disclosure", () => {
-    expect(defaultOrganizationAiProviderPolicy).toEqual({
-      allowedProviderModes: ["company_hosted", "self_hosted"],
-      externalDisclosureAllowed: false,
-      retentionClassification: "internal_no_external_disclosure",
-    });
-    expect(defaultOrganizationAiProviderPolicy.allowedProviderModes).not.toContain("openai");
-  });
-
-  it("fails closed when external disclosure is forbidden", () => {
+  it("uses exactly the provider mode selected by the organization", () => {
     expect(() => selectGroundedProvider({
-      allowedModes: ["openai"],
-      externalDisclosureAllowed: false,
+      selectedMode: "self_hosted",
       providers: { openai: provider("openai") },
-    })).toThrowError(expect.objectContaining({ code: "AI_PROVIDER_POLICY_UNSATISFIED" }));
+    })).toThrowError(expect.objectContaining({ code: "AI_PROVIDER_UNAVAILABLE" }));
     expect(selectGroundedProvider({
-      allowedModes: ["openai", "self_hosted"],
-      externalDisclosureAllowed: false,
+      selectedMode: "self_hosted",
       providers: { openai: provider("openai"), self_hosted: provider("self_hosted") },
     }).mode).toBe("self_hosted");
   });

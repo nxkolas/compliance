@@ -12,3 +12,12 @@ This folder contains system architecture, data model, and API design notes.
 - [Organization progress and tutorial boundary](./tutorial/organization-progress.md)
 - [AI generation contract versions](./ai-generation-contract-versions.md)
 - [Generation job reconciliation runbook](../runbooks/generation-job-reconciliation.md)
+- [Portable PostgreSQL job execution](../runbooks/portable-job-execution.md)
+
+## Background jobs
+
+Durable background work uses one PostgreSQL-backed execution module with
+multiple bounded wake-up adapters. Next.js `after()` handles low-latency
+request-driven execution, an authenticated internal route provides scheduled
+recovery, job polling can re-wake non-terminal work, and the optional resident
+worker repeats the same drain for self-hosted throughput.

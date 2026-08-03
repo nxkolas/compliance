@@ -1,5 +1,8 @@
 # Database Column and Persistence Architecture Remediation
 
+> Historical plan: superseded on 2026-08-02 by the schema-simplification
+> architecture and retained only for decision history.
+
 Status: implemented and acceptance-verified on 2026-07-24.
 
 This plan responds to the

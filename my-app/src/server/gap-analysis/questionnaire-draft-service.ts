@@ -1,172 +1,40 @@
 import { db } from "@/src/db";
-import {
-  auditEvents,
-  gapQuestionnaireDraftAnswers,
-  gapQuestionnaireDrafts,
-} from "@/src/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { gapAnalysisCycles } from "@/src/db/schema";
+import { currentGapDefinitionHash, getCurrentGapDefinition } from "@/src/server/definitions";
+import { and, eq, ne } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { assertCanContributeToOrganization } from "../organizations/service";
-import { assertGapInputsMutable } from "./lifecycle-guards";
+import { requireOrganizationCapability } from "../auth/capability-service";
+
+const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentGapDefinitionHash;
 
 export async function createOrOpenQuestionnaireDraft(input: {
   userId: string;
   organizationId: string;
-  assessment: {
-    id: string;
-    organizationId: string;
-    moduleId: string;
-    gapAnalysisReleaseId: string | null;
-    currentRevisionId: string | null;
-  };
-  questionnaireVersionId: string;
+  assessment: { id: string; organizationId: string; currentRevisionId: string | null };
+  questionnaireVersionId?: string;
+  locale?: "de" | "en";
 }) {
-  if (!input.assessment.gapAnalysisReleaseId) {
-    throw new ApiError(409, "Assessment has no Gap release");
-  }
-  const existing = await db.query.gapQuestionnaireDrafts.findFirst({
-    columns: {
-      id: true,
-      organizationId: true,
-      assessmentId: true,
-      gapAnalysisReleaseId: true,
-      questionnaireVersionId: true,
-      status: true,
-      version: true,
-      lastSubmittedAssessmentRevisionId: true,
-      createdBy: true,
-      updatedBy: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-    where: {
-      RAW: (table, operators) =>
-        and(
-          eq(table.assessmentId, input.assessment.id),
-          eq(table.status, "open"),
-        ) ?? operators.sql`true`,
-    },
-  });
-  if (existing) return existing;
-
-  return db.transaction(async (tx) => {
-    const [draft] = await tx
-      .insert(gapQuestionnaireDrafts)
-      .values({
-        organizationId: input.organizationId,
-        assessmentId: input.assessment.id,
-        gapAnalysisReleaseId: input.assessment.gapAnalysisReleaseId!,
-        questionnaireVersionId: input.questionnaireVersionId,
-        createdBy: input.userId,
-        updatedBy: input.userId,
-      })
-      .onConflictDoNothing()
-      .returning();
-    const current =
-      draft ??
-      (await tx.query.gapQuestionnaireDrafts.findFirst({
-        columns: {
-          id: true,
-          organizationId: true,
-          assessmentId: true,
-          gapAnalysisReleaseId: true,
-          questionnaireVersionId: true,
-          status: true,
-          version: true,
-          lastSubmittedAssessmentRevisionId: true,
-          createdBy: true,
-          updatedBy: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        where: {
-          RAW: (table, operators) =>
-            and(
-              eq(table.assessmentId, input.assessment.id),
-              eq(table.status, "open"),
-            ) ?? operators.sql`true`,
-        },
-      }));
-    if (!current) throw new ApiError(500, "Could not create questionnaire draft");
-    if (draft && input.assessment.currentRevisionId) {
-      const answerRows = await tx.query.assessmentAnswers.findMany({
-        columns: { id: true, questionId: true },
-        where: {
-          RAW: (table, operators) =>
-            eq(
-              table.assessmentRevisionId,
-              input.assessment.currentRevisionId!,
-            ) ?? operators.sql`true`,
-        },
-      });
-      const selected = answerRows.length
-        ? await tx.query.assessmentAnswerOptions.findMany({
-            columns: {
-              assessmentAnswerId: true,
-              questionId: true,
-              questionOptionId: true,
-            },
-            where: {
-              RAW: (table, operators) =>
-                inArray(
-                  table.assessmentAnswerId,
-                  answerRows.map((answer) => answer.id),
-                ) ?? operators.sql`true`,
-            },
-          })
-        : [];
-      if (selected.length) {
-        await tx.insert(gapQuestionnaireDraftAnswers).values(
-          selected.map((answer) => ({
-            draftId: current.id,
-            questionId: answer.questionId,
-            questionOptionId: answer.questionOptionId,
-            updatedBy: input.userId,
-          })),
-        );
-      }
-    }
-    return current;
-  });
+  const existing = await findOpenCycle(input.organizationId);
+  if (existing) return toDraft(existing);
+  const [cycle] = await db.insert(gapAnalysisCycles).values({
+    organizationId: input.organizationId,
+    definitionHash: currentGapDefinitionHash,
+    buildHash: BUILD_HASH,
+    locale: input.locale ?? "de",
+    stage: "questions",
+    draftAnswers: {},
+    createdBy: input.userId,
+  }).returning();
+  if (!cycle) throw new Error("Gap questionnaire draft was not created");
+  return toDraft(cycle);
 }
 
 export async function readQuestionnaireDraft(
-  assessmentId: string,
+  _assessmentId: string,
   organizationId: string,
 ) {
-  const draft = await db.query.gapQuestionnaireDrafts.findFirst({
-    columns: {
-      id: true,
-      version: true,
-      status: true,
-      updatedAt: true,
-    },
-    where: {
-      RAW: (table, operators) =>
-        and(
-          eq(table.assessmentId, assessmentId),
-          eq(table.organizationId, organizationId),
-          eq(table.status, "open"),
-        ) ?? operators.sql`true`,
-    },
-  });
-  if (!draft || draft.status !== "open") return null;
-  const rows = await db.query.gapQuestionnaireDraftAnswers.findMany({
-    columns: { questionId: true, questionOptionId: true },
-    where: {
-      RAW: (table, operators) =>
-        eq(table.draftId, draft.id) ?? operators.sql`true`,
-    },
-  });
-  return {
-    id: draft.id,
-    version: draft.version,
-    status: "open" as const,
-    answers: Object.fromEntries(
-      rows.map((row) => [row.questionId, row.questionOptionId]),
-    ),
-    updatedAt: draft.updatedAt.toISOString(),
-  };
+  const cycle = await findOpenCycle(organizationId);
+  return cycle ? { ...toDraft(cycle), answers: answerIds(cycle.draftAnswers) } : null;
 }
 
 export async function saveQuestionnaireDraftAnswer(input: {
@@ -175,139 +43,61 @@ export async function saveQuestionnaireDraftAnswer(input: {
   draftId: string;
   questionId: string;
   optionId: string;
-  expectedVersion: number;
+  expectedVersion?: number;
 }) {
-  await assertCanContributeToOrganization(input.userId, input.organizationId);
-  const draft = await db.query.gapQuestionnaireDrafts.findFirst({
-    columns: {
-      id: true,
-      organizationId: true,
-      assessmentId: true,
-      gapAnalysisReleaseId: true,
-      questionnaireVersionId: true,
-      status: true,
-      version: true,
+  await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
+  const cycle = await db.query.gapAnalysisCycles.findFirst({
+    where: { RAW: (table, operators) => and(eq(table.id, input.draftId), eq(table.organizationId, input.organizationId)) ?? operators.sql`true` },
+  });
+  if (!cycle) throw new ApiError(404, "Gap questionnaire draft not found");
+  if (cycle.stage !== "questions") throw new ApiError(409, "Gap answers are locked", undefined, "GAP_ANSWERS_LOCKED");
+  const definition = getCurrentGapDefinition(cycle.locale as "de" | "en");
+  const question = definition.questions.find((item) => item.id === input.questionId || item.stableKey === input.questionId);
+  if (!question) throw new ApiError(400, "Unknown Gap question");
+  const option = question.options.find((item) => item.id === input.optionId || item.stableValue === input.optionId);
+  if (!option) throw new ApiError(400, "Unknown Gap answer option");
+  const draftAnswers = { ...cycle.draftAnswers, [question.stableKey]: option.stableValue };
+  const [updated] = await db.update(gapAnalysisCycles).set({ draftAnswers, updatedAt: new Date() })
+    .where(and(eq(gapAnalysisCycles.id, cycle.id), eq(gapAnalysisCycles.stage, "questions"))).returning();
+  if (!updated) throw new ApiError(409, "Gap answers changed", undefined, "GAP_QUESTIONNAIRE_DRAFT_CHANGED");
+  return {
+    answer: {
+      draftId: updated.id,
+      questionId: question.id,
+      optionId: option.id,
+      version: 1,
     },
-    where: {
-      RAW: (table, operators) =>
-        and(
-          eq(table.id, input.draftId),
-          eq(table.organizationId, input.organizationId),
-        ) ?? operators.sql`true`,
-    },
+    draft: toDraft(updated),
+  };
+}
+
+function findOpenCycle(organizationId: string) {
+  return db.query.gapAnalysisCycles.findFirst({
+    where: { RAW: (table, operators) => and(eq(table.organizationId, organizationId), ne(table.stage, "generated")) ?? operators.sql`true` },
+    orderBy: { createdAt: "desc" },
   });
-  if (!draft) throw new ApiError(404, "Questionnaire draft not found");
-  if (draft.status !== "open") {
-    throw new ApiError(409, "Questionnaire draft is locked", undefined, "GAP_INPUTS_LOCKED");
-  }
-  const assessment = await db.query.assessments.findFirst({
-    columns: { moduleId: true },
-    where: {
-      RAW: (table, operators) =>
-        eq(table.id, draft.assessmentId) ?? operators.sql`true`,
-    },
-  });
-  if (!assessment) throw new ApiError(404, "Gap assessment not found");
-  await assertGapInputsMutable({
-    organizationId: input.organizationId,
-    moduleId: assessment.moduleId,
-  });
-  const [question, option] = await Promise.all([
-    db.query.questions.findFirst({
-      columns: { id: true, questionnaireVersionId: true },
-      where: {
-        RAW: (table, operators) =>
-          and(
-            eq(table.id, input.questionId),
-            eq(table.questionnaireVersionId, draft.questionnaireVersionId),
-          ) ?? operators.sql`true`,
-      },
-    }),
-    db.query.questionOptions.findFirst({
-      columns: { id: true, questionId: true },
-      where: {
-        RAW: (table, operators) =>
-          and(
-            eq(table.id, input.optionId),
-            eq(table.questionId, input.questionId),
-          ) ?? operators.sql`true`,
-      },
-    }),
-  ]);
-  if (!question || !option) {
-    throw new ApiError(400, "The option does not belong to the draft question");
-  }
-  return db.transaction(async (tx) => {
-    const now = new Date();
-    const [updated] = await tx
-      .update(gapQuestionnaireDrafts)
-      .set({
-        version: input.expectedVersion + 1,
-        updatedBy: input.userId,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(gapQuestionnaireDrafts.id, input.draftId),
-          eq(gapQuestionnaireDrafts.organizationId, input.organizationId),
-          eq(gapQuestionnaireDrafts.status, "open"),
-          eq(gapQuestionnaireDrafts.version, input.expectedVersion),
-        ),
-      )
-      .returning({ version: gapQuestionnaireDrafts.version });
-    if (!updated) {
-      throw new ApiError(
-        412,
-        "A newer questionnaire draft is available",
-        undefined,
-        "GAP_QUESTIONNAIRE_DRAFT_CHANGED",
-      );
-    }
-    await tx
-      .insert(gapQuestionnaireDraftAnswers)
-      .values({
-        draftId: input.draftId,
-        questionId: input.questionId,
-        questionOptionId: input.optionId,
-        updatedBy: input.userId,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [
-          gapQuestionnaireDraftAnswers.draftId,
-          gapQuestionnaireDraftAnswers.questionId,
-        ],
-        set: {
-          questionOptionId: input.optionId,
-          updatedBy: input.userId,
-          updatedAt: now,
-        },
-      });
-    const answered = await tx.query.gapQuestionnaireDraftAnswers.findMany({
-      columns: { questionId: true },
-      where: {
-        RAW: (table, operators) =>
-          eq(table.draftId, input.draftId) ?? operators.sql`true`,
-      },
-    });
-    await tx.insert(auditEvents).values({
-      organizationId: input.organizationId,
-      actorUserId: input.userId,
-      eventType: "gap_questionnaire_draft.updated",
-      entityType: "gap_questionnaire_draft",
-      entityId: input.draftId,
-      metadata: {
-        assessmentId: draft.assessmentId,
-        version: updated.version,
-        answeredCount: answered.length,
-      },
-    });
-    return {
-      draftId: input.draftId,
-      version: updated.version,
-      questionId: input.questionId,
-      optionId: input.optionId,
-      updatedAt: now.toISOString(),
-    };
-  });
+}
+
+function toDraft(cycle: typeof gapAnalysisCycles.$inferSelect) {
+  return {
+    id: cycle.id,
+    organizationId: cycle.organizationId,
+    status: cycle.stage === "questions" ? "open" : "submitted",
+    version: 1,
+    lastSubmittedAssessmentRevisionId: cycle.assessmentRevisionId,
+    createdBy: cycle.createdBy,
+    updatedBy: cycle.createdBy,
+    createdAt: cycle.createdAt,
+    updatedAt: cycle.updatedAt,
+  };
+}
+
+function answerIds(answers: Record<string, unknown>) {
+  const definition = getCurrentGapDefinition("de");
+  return Object.fromEntries(Object.entries(answers).flatMap(([key, value]) => {
+    if (typeof value !== "string") return [];
+    const question = definition.questions.find((item) => item.stableKey === key);
+    const option = question?.options.find((item) => item.stableValue === value);
+    return question && option ? [[question.id, option.id]] : [];
+  }));
 }

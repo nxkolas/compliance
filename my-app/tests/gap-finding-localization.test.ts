@@ -11,6 +11,7 @@ function requirement(
     stableRequirementId: "stable-requirement",
     code: "access-control",
     position: 3,
+    icon: "KeyRound",
     criticality: "high",
     title,
     requirementText,
@@ -47,6 +48,7 @@ describe("Gap finding localization", () => {
       requirement: {
         stableRequirementId: "stable-requirement",
         position: 3,
+        icon: "KeyRound",
         title,
         requirementText: text,
       },

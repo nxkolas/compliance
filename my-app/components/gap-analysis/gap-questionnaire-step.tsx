@@ -4,11 +4,13 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { GapLabels, GapWorkflow } from "./types";
+import { GapCategoryIcon } from "./gap-category-icon";
 
 export function GapQuestionnaireStep({
   workflow,
   labels,
   answers,
+  savedAnswers = answers,
   busy,
   saveState,
   onAnswer,
@@ -17,6 +19,7 @@ export function GapQuestionnaireStep({
   workflow: GapWorkflow;
   labels: GapLabels;
   answers: Record<string, string>;
+  savedAnswers?: Record<string, string>;
   busy: boolean;
   saveState: "idle" | "saving" | "saved" | "error" | "conflict";
   onAnswer: (questionId: string, optionId: string) => Promise<void>;
@@ -44,6 +47,12 @@ export function GapQuestionnaireStep({
   const answeredCount = release.questions.filter(
     (question) => question.required && answers[question.id],
   ).length;
+  const requiredCount = release.questions.filter(
+    (question) => question.required,
+  ).length;
+  const savedAnsweredCount = release.questions.filter(
+    (question) => question.required && savedAnswers[question.id],
+  ).length;
   const isLast = categoryIndex === categories.length - 1;
 
   function move(nextIndex: number) {
@@ -61,15 +70,23 @@ export function GapQuestionnaireStep({
         <h2
           id="gap-step-heading"
           tabIndex={-1}
-          className="mt-1 text-xl font-semibold outline-none"
+          className="mt-1 flex items-center gap-2 text-xl font-semibold outline-none"
         >
+          <GapCategoryIcon name={category.icon} />
           {category.title}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {labels.questionProgress
             .replace("{answered}", String(answeredCount))
-            .replace("{total}", String(release.questions.length))}
+            .replace("{total}", String(requiredCount))}
         </p>
+        {savedAnsweredCount !== answeredCount || saveState === "saving" || saveState === "error" ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {labels.savedQuestionProgress
+              .replace("{answered}", String(savedAnsweredCount))
+              .replace("{total}", String(requiredCount))}
+          </p>
+        ) : null}
       </div>
       <div
         aria-live="polite"

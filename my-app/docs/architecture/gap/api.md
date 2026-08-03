@@ -1,12 +1,12 @@
 # Gap Analysis HTTP API
 
-Status: implemented API, verified against repository sources on 29 July 2026.
+Status: implemented API, verified against repository sources on 2 August 2026.
 
 This document describes the current internal JSON API for the Gap Analysis
 workflow. It documents implemented route behavior, not a proposed public API.
 All paths are relative to the application origin.
 
-The direct surface contains 13 method/path combinations under
+The direct surface contains 14 method/path combinations under
 `/api/organizations/:organizationId/gap-analysis`. Gap release publication and
 activation are intentionally not exposed through this HTTP surface; they remain
 server-side publication operations implemented by
@@ -21,27 +21,30 @@ The normal request order is:
 1. Read the workflow model.
 2. Create or reopen the assessment and its questionnaire draft.
 3. Save questionnaire answers, then submit an immutable questionnaire revision.
-4. Prepare the shared analysis-input draft and select indexed evidence.
+4. Prepare an analysis cycle and select indexed evidence.
 5. Optionally update the evidence selection.
 6. Enqueue Gap generation and poll the returned background job.
-7. Read the generated revision and, when necessary, correct one finding or
-   regenerate one finding's guidance.
-8. Enqueue Action Plan generation to finalize the current Gap revision. A
+7. Read the generated revision and lazily load its Inputs or workflow History
+   when requested.
+8. When necessary, enqueue an asynchronous correction or guidance regeneration
+   and poll the returned job.
+9. Enqueue Action Plan generation to finalize the current Gap revision. A
    successful Action Plan job approves that revision, marks it accepted, and
    creates the active Action Plan in one persistence transaction.
 
-Generation locks the analysis-input draft and the submitted questionnaire
+Generation locks the analysis cycle and the submitted questionnaire
 inputs. A failed or cancelled draft can be retried. Direct approval is disabled;
 finalization is deliberately coupled to successful Action Plan generation.
-The `reassessment` path and model name are legacy infrastructure names: this
-draft also drives the first Gap generation. Once a current Gap revision exists,
-the input lifecycle rejects another preparation or generation with
+The TypeScript, HTTP, client, and UI boundaries use **analysis cycle**. Existing
+`gap_reassessment_*` tables and `gap_reassessment.*` audit events retain their
+physical names for persistence compatibility. Once a current Gap revision
+exists, the input lifecycle rejects another preparation or generation with
 `GAP_ALREADY_GENERATED`; the current implementation does not expose a second
 Gap-analysis/update cycle.
 
 Sources:
 [Gap workflow projection](../../../src/server/gap-analysis/workflow-reader.ts),
-[reassessment generation](../../../src/server/gap-analysis/reassessment-service.ts),
+[analysis-cycle generation](../../../src/server/gap-analysis/analysis-cycle-service.ts),
 [Action Plan finalization](../../../src/server/action-plans/generation-service.ts),
 and [lifecycle guards](../../../src/server/gap-analysis/lifecycle-guards.ts).
 
@@ -59,7 +62,7 @@ The current effective access is:
 | Operation class | Current service capability | Roles |
 | --- | --- | --- |
 | Read the Gap workflow or a Gap revision | `gap:read` | owner, admin, member, auditor |
-| Read a reassessment draft | `organizations:read` | owner, admin, member, auditor |
+| Read an analysis cycle, inputs, or history | `organizations:read` | owner, admin, member, auditor |
 | Create/edit/submit inputs; generate or retry | `plans:contribute` | owner, admin, member |
 | Correct a finding or regenerate its guidance | `plans:manage` | owner, admin |
 | Enqueue Action Plan generation | `plans:manage` | owner, admin |
@@ -124,15 +127,16 @@ Sources:
   return `400 INVALID_ROUTE_PARAMETER`.
 - JSON request bodies are parsed with the route's Zod contract. Invalid JSON or
   invalid fields return `400`.
-- `PATCH` requests for questionnaire answers and reassessment evidence require
+- Questionnaire-answer `PATCH` requests and analysis-cycle evidence `PUT`
+  requests require
   `If-Match`. The header accepts a decimal version with optional quotes and an
   optional weak ETag prefix, for example `"4"` or `W/"4"`.
-- For those two `PATCH` routes, the header version must equal
+- For those two versioned routes, the header version must equal
   `expectedVersion` or `expectedLockVersion` in the body. A disagreement
   returns `400 PRECONDITION_MISMATCH`. A stale version returns the
   route-specific conflict described below.
 - `Idempotency-Key` is required for assessment creation, questionnaire
-  submission, reassessment preparation, generation, retry, correction,
+  submission, analysis-cycle preparation, generation, retry, correction,
   guidance regeneration, and Action Plan generation. It must contain 1-255
   printable ASCII characters with no spaces.
 - Repeating the same operation, actor, scope, key, and input replays the stored
@@ -154,14 +158,15 @@ Sources:
 | `POST` | `/api/organizations/:organizationId/gap-analysis/assessments` | `201` | Create or reopen the active assessment and questionnaire draft. |
 | `PATCH` | `/api/organizations/:organizationId/gap-analysis/questionnaire-draft/answers/:questionId` | `200` | Create or replace one draft answer. |
 | `POST` | `/api/organizations/:organizationId/gap-analysis/questionnaire-submissions` | `201` | Submit an immutable questionnaire revision and deterministic evaluations. |
-| `GET` | `/api/organizations/:organizationId/gap-analysis/reassessment?assessmentId=:assessmentId` | `200` | Read the latest shared analysis-input draft for an assessment. |
-| `POST` | `/api/organizations/:organizationId/gap-analysis/reassessment` | `201` | Create or reopen the shared input draft and select evidence. |
-| `PATCH` | `/api/organizations/:organizationId/gap-analysis/reassessment/evidence` | `200` | Replace the evidence selection on an open input draft. |
-| `POST` | `/api/organizations/:organizationId/gap-analysis/reassessment/generate` | `202` | Lock inputs and enqueue Gap generation. |
-| `POST` | `/api/organizations/:organizationId/gap-analysis/reassessment/retry` | `202` | Retry a failed or cancelled generation draft. |
+| `POST` | `/api/organizations/:organizationId/gap-analysis/cycles` | `201` | Create or reopen an analysis cycle and select evidence. |
+| `GET` | `/api/organizations/:organizationId/gap-analysis/cycles/:cycleId` | `200` | Read one analysis cycle and its pinned input summary. |
+| `PUT` | `/api/organizations/:organizationId/gap-analysis/cycles/:cycleId/evidence` | `200` | Replace evidence on an open analysis cycle. |
+| `POST` | `/api/organizations/:organizationId/gap-analysis/cycles/:cycleId/generation-jobs` | `202` | Start or retry asynchronous Gap generation. |
+| `GET` | `/api/organizations/:organizationId/gap-analysis/history` | `200` | Read workflow history on demand. |
 | `GET` | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId` | `200` | Read one localized immutable revision and its findings. |
-| `POST` | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/correct` | `201` | Correct exactly one finding and create a new revision. |
-| `POST` | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/regenerate-guidance` | `201` | Regenerate one finding's guidance and create a new revision. |
+| `GET` | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/inputs` | `200` | Read generated-input provenance on demand. |
+| `POST` | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/corrections` | `202` | Enqueue one finding correction. |
+| `POST` | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/guidance-regenerations` | `202` | Enqueue one guidance regeneration. |
 | `POST` | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/approve` | none | Always returns `409 GAP_FINALIZATION_REQUIRED`. |
 
 ## Workflow read
@@ -206,7 +211,7 @@ Returns `200` with:
       acceptedRevision: RevisionIdentity | null;
       candidateRevision: RevisionIdentity | null;
       activePlan: null | { sourceGapArtifactRevisionId: UUID };
-      reassessment: ReassessmentWorkflowProjection | null;
+      analysisCycle: AnalysisCycleWorkflowProjection | null;
       prerequisite: ApplicabilityPrerequisite;
       history: WorkflowHistoryItem[];
       generatedInputs: GeneratedInputs | null;
@@ -232,9 +237,11 @@ Returns `200` with:
 The projection intentionally exposes document IDs, not internal document
 version IDs. Findings include their customer-facing status, severity, review
 notice, ordered atomic gaps, localized requirement identity, evidence-source
-links, and manual-change/questionnaire-disagreement indicators. The
-prerequisite reports whether the pinned applicability result is eligible and,
-when not, why the workflow is blocked.
+links, and manual-change/questionnaire-disagreement indicators. The root route
+returns the Results view: `history` is empty and `generatedInputs` is `null`.
+Clients load those heavier projections through their focused endpoints when
+the corresponding tab opens. The prerequisite reports whether the pinned
+applicability result is eligible and, when not, why the workflow is blocked.
 
 Source: [workflow route](<../../../app/api/organizations/[organizationId]/gap-analysis/route.ts>)
 and [workflow projection](../../../src/server/gap-analysis/workflow-reader.ts).
@@ -257,13 +264,12 @@ Returns `201`:
 }
 ```
 
-The command requires an active published Gap release and a current approved,
-eligible applicability artifact compatible with that release. It reuses an
-active assessment already pinned to the active release; otherwise it archives
-the previous active assessment for the module, creates a new assessment, and
-opens a questionnaire draft. Typical prerequisite failures are `503` when the
-active release/questionnaire is unavailable and `409` or `400` applicability
-eligibility errors.
+The command requires the deployed code-owned current Gap definition and a
+current eligible applicability result compatible with it. It reuses an active
+assessment whose definition hash still matches; otherwise it creates the
+current assessment/draft lineage. There is no database Gap release publication
+or activation lookup. Typical prerequisite failures are definition-staleness
+or applicability eligibility errors.
 
 Source:
 [assessment route](<../../../app/api/organizations/[organizationId]/gap-analysis/assessments/route.ts>)
@@ -294,6 +300,11 @@ Returns `200`:
       questionId: UUID;
       optionId: UUID;
       updatedAt: ISODateTime;
+    };
+    completion: {
+      answeredRequired: NonNegativeInteger;
+      totalRequired: NonNegativeInteger;
+      complete: boolean;
     };
   };
   meta: {
@@ -350,55 +361,9 @@ Source:
 [submission route](<../../../app/api/organizations/[organizationId]/gap-analysis/questionnaire-submissions/route.ts>)
 and [questionnaire service](../../../src/server/gap-analysis/questionnaire-service.ts).
 
-## Shared analysis inputs and generation
+## Analysis-cycle inputs and generation
 
-### `GET /api/organizations/:organizationId/gap-analysis/reassessment`
-
-Required query parameter:
-
-```text
-assessmentId=<UUID>
-```
-
-Returns `200` with `{ data: { reassessment }, meta }`, where `reassessment` is
-`null` or:
-
-```ts
-{
-  draft: ReassessmentDraft;
-  selected: Array<{
-    documentId: UUID;
-    documentVersionId: UUID;
-    selectionOrigin:
-      | "approved_carryover"
-      | "version_replacement"
-      | "explicit_addition";
-  }>;
-  summary: {
-    baseAcceptedGapRevisionId: UUID | null;
-    baseAcceptedGapRevisionNumber: number | null;
-    assessmentRevisionId: UUID;
-    assessmentRevisionNumber: number | null;
-    gapAnalysisReleaseId: UUID;
-    gapAnalysisReleaseVersion: string | null;
-    requirementCount: number;
-    carried: UUID[];
-    replaced: UUID[];
-    added: UUID[];
-    removed: UUID[];
-    selectedDocumentVersionIds: UUID[];
-  };
-}
-```
-
-Unlike the top-level browser workflow projection, this focused response
-contains the pinned document-version IDs needed to explain evidence carryover.
-
-Source:
-[reassessment route](<../../../app/api/organizations/[organizationId]/gap-analysis/reassessment/route.ts>)
-and [reassessment reader](../../../src/server/gap-analysis/reassessment-service.ts).
-
-### `POST /api/organizations/:organizationId/gap-analysis/reassessment`
+### `POST /api/organizations/:organizationId/gap-analysis/cycles`
 
 Headers: `Idempotency-Key` is required.
 
@@ -416,14 +381,14 @@ Returns `201`:
 ```ts
 {
   data: {
-    reassessment: ReassessmentSnapshot;
+    analysisCycle: AnalysisCycleSnapshot;
     reused: boolean;
   };
   meta: { requestId: string };
 }
 ```
 
-The operation creates the shared open input draft or reuses the existing one.
+The operation creates an open analysis cycle or reuses the existing one.
 Evidence from an accepted revision is carried forward, replaced with a current
 version when necessary, or removed; the explicit document IDs are added to
 that selection. Every selected document must have a current indexed version.
@@ -431,10 +396,23 @@ Unavailable evidence returns `409 GAP_DOCUMENT_NOT_READY`. A concurrent draft
 creation or edit returns `409 GAP_DRAFT_CHANGED`.
 
 Source:
-[reassessment route](<../../../app/api/organizations/[organizationId]/gap-analysis/reassessment/route.ts>)
-and [reassessment preparation](../../../src/server/gap-analysis/reassessment-service.ts).
+[cycle route](<../../../app/api/organizations/[organizationId]/gap-analysis/cycles/route.ts>)
+and [analysis-cycle preparation](../../../src/server/gap-analysis/analysis-cycle-service.ts).
 
-### `PATCH /api/organizations/:organizationId/gap-analysis/reassessment/evidence`
+### `GET /api/organizations/:organizationId/gap-analysis/cycles/:cycleId`
+
+Returns `200` with `{ data: { analysisCycle }, meta }`. `analysisCycle` is
+`null` when no matching cycle is available. Otherwise it contains the draft,
+selected document/version pairs and selection origins, plus the pinned
+assessment revision, Gap release, requirement count, and evidence carryover
+summary. Unlike the browser-safe workflow projection, this focused response
+contains the pinned document-version IDs needed to explain evidence carryover.
+
+Source:
+[cycle read route](<../../../app/api/organizations/[organizationId]/gap-analysis/cycles/[cycleId]/route.ts>)
+and [analysis-cycle reader](../../../src/server/gap-analysis/analysis-cycle-service.ts).
+
+### `PUT /api/organizations/:organizationId/gap-analysis/cycles/:cycleId/evidence`
 
 Headers: `If-Match` is required.
 
@@ -442,7 +420,6 @@ Body:
 
 ```ts
 {
-  draftId: UUID;
   expectedLockVersion: PositiveInteger;
   selectedDocumentIds: UUID[];
 }
@@ -453,7 +430,7 @@ Returns `200`:
 ```ts
 {
   data: {
-    draft: ReassessmentDraft;
+    analysisCycle: AnalysisCycleDraft;
   };
   meta: {
     requestId: string;
@@ -469,19 +446,28 @@ evidence returns `409 GAP_DOCUMENT_NOT_READY`; a stale lock version returns
 `409 GAP_DRAFT_CHANGED`.
 
 Source:
-[evidence route](<../../../app/api/organizations/[organizationId]/gap-analysis/reassessment/evidence/route.ts>)
-and [evidence update service](../../../src/server/gap-analysis/reassessment-service.ts).
+[evidence route](<../../../app/api/organizations/[organizationId]/gap-analysis/cycles/[cycleId]/evidence/route.ts>)
+and [evidence update service](../../../src/server/gap-analysis/analysis-cycle-service.ts).
 
-### `POST /api/organizations/:organizationId/gap-analysis/reassessment/generate`
+### `POST /api/organizations/:organizationId/gap-analysis/cycles/:cycleId/generation-jobs`
 
 Headers: `Idempotency-Key` is required.
 
-Body:
+Start body:
 
 ```ts
 {
-  draftId: UUID;
+  operation: "start";
   expectedLockVersion: PositiveInteger;
+}
+```
+
+Retry body:
+
+```ts
+{
+  operation: "retry";
+  retryNonce: string; // trimmed, 1-100 characters
 }
 ```
 
@@ -490,15 +476,6 @@ Returns `202`:
 ```ts
 {
   data: {
-    draft: {
-      id: UUID;
-      status: "locked" | "generated" | "failed" | "cancelled";
-      outputLocale: "de" | "en";
-      lockVersion: PositiveInteger;
-      generationJobId: UUID;
-      aiProcessingRunId: UUID | null;
-      outputGapRevisionId: UUID | null;
-    };
     job: Job;
     reused: boolean;
   };
@@ -506,42 +483,33 @@ Returns `202`:
 }
 ```
 
-The command revalidates the pinned Gap release and applicability prerequisite,
-pins the current application locale (`de` or `en`) as the output locale, locks
-the open draft at `expectedLockVersion`, locks the matching questionnaire
-draft, and enqueues a cancellable background job. A changed or non-open draft
-returns `409`. Generation is limited to five requests per user and organization
-per five-minute window; excess requests return `429 RATE_LIMITED` with
+The start operation revalidates the pinned Gap release and applicability
+prerequisite, pins the current application locale (`de` or `en`) as the output
+locale, locks the open cycle at `expectedLockVersion`, locks the matching
+questionnaire draft, and enqueues a cancellable background job. Retry is
+accepted only when the cycle status is `failed` or `cancelled`; it retains the
+locale pinned by the original start and includes `retryNonce` in the
+idempotency fingerprint. A changed or non-open cycle returns `409`.
+Both operations share the limit of five requests per user and organization per
+five-minute window; excess requests return `429 RATE_LIMITED` with
 `Retry-After`.
 
 Source:
-[generate route](<../../../app/api/organizations/[organizationId]/gap-analysis/reassessment/generate/route.ts>),
-[generation enqueue service](../../../src/server/gap-analysis/reassessment-service.ts), and
+[generation-jobs route](<../../../app/api/organizations/[organizationId]/gap-analysis/cycles/[cycleId]/generation-jobs/route.ts>),
+[generation enqueue service](../../../src/server/gap-analysis/analysis-cycle-service.ts), and
 [rate-limit policy](../../../src/server/api/operation-rate-limit.ts).
 
-### `POST /api/organizations/:organizationId/gap-analysis/reassessment/retry`
+## Revision read and review
 
-Headers: `Idempotency-Key` is required.
+### `GET /api/organizations/:organizationId/gap-analysis/history`
 
-Body:
-
-```ts
-{
-  draftId: UUID;
-  retryNonce: string; // trimmed, 1-100 characters
-}
-```
-
-Returns the same `202` response shape as generation. Retry is accepted only
-when the draft status is `failed` or `cancelled`. It retains the locale pinned
-by the original generation request and uses `retryNonce` as part of the
-idempotency fingerprint. It shares the generation rate limit.
+Returns `200` with `{ data: { history }, meta }`. This authorized, localized
+read is separate from the normal Results projection so audit-history work is
+only performed when the History tab opens.
 
 Source:
-[retry route](<../../../app/api/organizations/[organizationId]/gap-analysis/reassessment/retry/route.ts>)
-and [retry implementation](../../../src/server/gap-analysis/reassessment-service.ts).
-
-## Revision read and review
+[history route](<../../../app/api/organizations/[organizationId]/gap-analysis/history/route.ts>)
+and [history reader](../../../src/server/gap-analysis/history-reader.ts).
 
 ### `GET /api/organizations/:organizationId/gap-analysis/revisions/:revisionId`
 
@@ -570,7 +538,17 @@ Source:
 [revision route](<../../../app/api/organizations/[organizationId]/gap-analysis/revisions/[revisionId]/route.ts>)
 and [revision reader](../../../src/server/gap-analysis/workflow-reader.ts).
 
-### `POST /api/organizations/:organizationId/gap-analysis/revisions/:revisionId/correct`
+### `GET /api/organizations/:organizationId/gap-analysis/revisions/:revisionId/inputs`
+
+Returns `200` with `{ data: { inputs }, meta }`. The revision must belong to the
+organization. The response contains the generated-input provenance for that
+revision and loads independently when the Inputs tab opens.
+
+Source:
+[inputs route](<../../../app/api/organizations/[organizationId]/gap-analysis/revisions/[revisionId]/inputs/route.ts>)
+and [focused read models](../../../src/server/gap-analysis/read-models.ts).
+
+### `POST /api/organizations/:organizationId/gap-analysis/revisions/:revisionId/corrections`
 
 Headers: `Idempotency-Key` is required.
 
@@ -595,30 +573,32 @@ Body:
 }
 ```
 
-Returns `201`:
+Returns `202`:
 
 ```ts
 {
   data: {
-    revision: GeneratedArtifactRevision;
+    job: Job;
     reused: boolean;
   };
   meta: { requestId: string };
 }
 ```
 
-The command corrects exactly one finding, regenerates that finding's atomic
-guidance, and creates a new immutable current revision. Supplying any number of
-corrections other than one is rejected. Review changes are blocked while an
-Action Plan generation job reserves the revision
+The command enqueues a cancellable `gap-revision-mutation-v1` job. That job
+corrects exactly one finding, regenerates its atomic guidance, copies unchanged
+categories, and persists a new immutable current revision. Supplying any
+number of corrections other than one is rejected. The client polls the shared
+job endpoint. Review changes are blocked while an Action Plan generation job
+reserves the revision
 (`409 GAP_RESERVED_BY_ACTION_PLAN_GENERATION`) and after an active Action Plan
 exists (`409 GAP_LOCKED_BY_ACTION_PLAN`).
 
 Source:
-[correction route](<../../../app/api/organizations/[organizationId]/gap-analysis/revisions/[revisionId]/correct/route.ts>)
-and [review service](../../../src/server/gap-analysis/review-service.ts).
+[correction route](<../../../app/api/organizations/[organizationId]/gap-analysis/revisions/[revisionId]/corrections/route.ts>)
+and [revision-mutation service](../../../src/server/gap-analysis/revision-mutation-service.ts).
 
-### `POST /api/organizations/:organizationId/gap-analysis/revisions/:revisionId/regenerate-guidance`
+### `POST /api/organizations/:organizationId/gap-analysis/revisions/:revisionId/guidance-regenerations`
 
 Headers: `Idempotency-Key` is required.
 
@@ -632,14 +612,14 @@ Body:
 }
 ```
 
-Returns the same `201` response shape as correction. The command regenerates
-one finding's atomic guidance without directly requesting a status,
+Returns the same `202` job response shape as correction. The asynchronous job
+regenerates one finding's atomic guidance without directly requesting a status,
 evidence-sufficiency, or review-state change, and creates a new immutable
 current revision. The same Action Plan reservation and lock guards apply.
 
 Source:
-[guidance route](<../../../app/api/organizations/[organizationId]/gap-analysis/revisions/[revisionId]/regenerate-guidance/route.ts>)
-and [review service](../../../src/server/gap-analysis/review-service.ts).
+[guidance route](<../../../app/api/organizations/[organizationId]/gap-analysis/revisions/[revisionId]/guidance-regenerations/route.ts>)
+and [revision-mutation service](../../../src/server/gap-analysis/revision-mutation-service.ts).
 
 ### `POST /api/organizations/:organizationId/gap-analysis/revisions/:revisionId/approve`
 
@@ -774,6 +754,15 @@ type Job = {
     | "failed"
     | "cancelled";
   progress: IntegerFrom0To100;
+  phase:
+    | "preparing_evidence"
+    | "generating_categories"
+    | "validating"
+    | "saving_result"
+    | "completed"
+    | null;
+  completedUnits: NonNegativeInteger | null;
+  totalUnits: NonNegativeInteger | null;
   attemptCount: NonNegativeInteger;
   safeError: null | {
     code: string;
@@ -792,8 +781,9 @@ type Job = {
 ```
 
 The Action Plan result is attached only to a succeeded job. Gap generation
-completion is discovered through the workflow/reassessment response's
-`outputGapRevisionId`, not a job `result` object.
+completion is discovered through the workflow's `analysisCycle` projection,
+not a job `result` object. Gap and revision-mutation jobs update phase and unit
+counts monotonically; heartbeats do not manufacture progress.
 
 Sources:
 [job polling route](<../../../app/api/jobs/[jobId]/route.ts>),
@@ -818,7 +808,7 @@ The API uses status codes and stable error codes to distinguish client action:
 | `400 INVALID_IF_MATCH` | `If-Match` is not a valid non-negative integer version. |
 | `400 PRECONDITION_MISMATCH` | `If-Match` and the body version disagree. |
 | `412 GAP_QUESTIONNAIRE_DRAFT_CHANGED` | A questionnaire draft version is stale. |
-| `409 GAP_DRAFT_CHANGED` | Shared reassessment inputs changed concurrently. |
+| `409 GAP_DRAFT_CHANGED` | Analysis-cycle inputs changed concurrently. |
 | `409 GAP_DOCUMENT_NOT_READY` | Selected evidence lacks a current indexed version. |
 | `409 GAP_INPUTS_LOCKED` | Generation has locked mutable Gap inputs. |
 | `409 GAP_ALREADY_GENERATED` | The assessment already has a generated current Gap revision. |

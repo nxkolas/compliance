@@ -14,8 +14,8 @@ function candidate(
 ) {
   return {
     id: `artifact-${outcome}`,
-    checkReleaseId: fixtureCheckReleaseId,
-    status: "approved",
+    definitionHash: fixtureCheckReleaseId,
+    gapEligible: outcome === "essential_entity" || outcome === "important_entity",
     result: storedApplicabilityResult({
       outcome,
       countryCode: outcome === "clarification_required" ? "FR" : "DE",
@@ -64,7 +64,7 @@ describe("Gap applicability eligibility", () => {
   it("rejects an eligible result with no applicable requirements", () => {
     expect(() =>
       resolveGapGenerationPrerequisites({
-        compatibleCheckReleaseId: fixtureCheckReleaseId,
+        compatibleDefinitionHash: fixtureCheckReleaseId,
         artifact: candidate("essential_entity"),
         requirements: [
           { applicabilityOutcomeCodes: ["important_entity"] },

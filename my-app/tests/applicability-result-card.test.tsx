@@ -36,11 +36,9 @@ const labels = {
 };
 
 const result = {
-  artifactRevisionId: "00000000-0000-4000-8000-000000000020",
-  artifactRevisionNumber: 1,
+  outputRevisionId: "00000000-0000-4000-8000-000000000020",
+  outputRevisionNumber: 1,
   createdAt: "2026-07-25T12:00:00.000Z",
-  ruleSetId: "00000000-0000-4000-8000-000000000011",
-  ruleSetVersionLabel: "2026-v1",
   assessmentRevisionId: null,
   evidence: storedApplicabilityResult({
     outcome: "clarification_required",
@@ -71,12 +69,11 @@ const result = {
     disclaimer: "Hinweis",
     disclaimerEn: "Notice",
   },
-  release: {
-    id: "00000000-0000-4000-8000-000000000010",
+  definition: {
+    hash: "definition-hash",
     versionLabel: "2026-v1",
     isOutdated: false,
-    activeVersionLabel: "2026-v1",
-    supportedCountryCodes: ["DE"],
+    supportedJurisdictionCodes: ["DE"],
   },
 } as ApplicabilityResultDto;
 
@@ -171,9 +168,9 @@ function applicabilityResultFor(outcome: Outcome): ApplicabilityResultDto {
       disclaimer: "Automatisierte Einstufung",
       disclaimerEn: "Automated classification",
     },
-    release: {
-      ...result.release,
-      supportedCountryCodes: ["DE"],
+    definition: {
+      ...result.definition,
+      supportedJurisdictionCodes: ["DE"],
     },
   };
 }

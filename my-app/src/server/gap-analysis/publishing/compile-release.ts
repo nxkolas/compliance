@@ -1,18 +1,4 @@
 import { contentHash } from "@/src/server/compliance/domain";
-import {
-  ACTION_PLAN_PROMPT_TEMPLATE_HASH,
-  ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH,
-  ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH,
-  ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH,
-  ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
-} from "@/src/server/action-plans/domain";
-import { ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH } from "../../ai/generation";
-import { GAP_PROMPT_V7_TEMPLATE_HASH } from "../prompt-contract-v7";
-import { GAP_PROMPT_V8_TEMPLATE_HASH } from "../prompt-contract-v8";
-import { GAP_PROMPT_V9_TEMPLATE_HASH } from "../prompt-contract-v9";
-import { GAP_PROMPT_V10_TEMPLATE_HASH } from "../prompt-contract-v10";
-import { GAP_PROMPT_V11_TEMPLATE_HASH } from "../prompt-contract-v11";
-import { GAP_PROMPT_V12_TEMPLATE_HASH } from "../prompt-contract-v12";
 import type { GapAnalysisReleaseDefinition } from "../releases/types";
 
 export function compileGapAnalysisRelease(
@@ -29,35 +15,9 @@ export function compileGapAnalysisRelease(
   unique(release.requiredCorpusFamilies, "required corpus family", errors);
   if (release.requiredCorpusFamilies.length === 0)
     errors.push("At least one corpus family is required");
-  if (
-    release.prompt.templateHash !== GAP_PROMPT_V7_TEMPLATE_HASH &&
-    release.prompt.templateHash !== GAP_PROMPT_V8_TEMPLATE_HASH &&
-    release.prompt.templateHash !== GAP_PROMPT_V9_TEMPLATE_HASH &&
-    release.prompt.templateHash !== GAP_PROMPT_V10_TEMPLATE_HASH &&
-    release.prompt.templateHash !== GAP_PROMPT_V11_TEMPLATE_HASH &&
-    release.prompt.templateHash !== GAP_PROMPT_V12_TEMPLATE_HASH
-  ) {
-    errors.push("Prompt template hash does not match the code-defined prompt");
-  }
-  if (
-    !release.actionPlanPrompt ||
-    (release.actionPlanPrompt.templateHash !==
-      ACTION_PLAN_PROMPT_TEMPLATE_HASH &&
-      release.actionPlanPrompt.templateHash !==
-        ACTION_PLAN_PROMPT_V2_TEMPLATE_HASH &&
-      release.actionPlanPrompt.templateHash !==
-        ACTION_PLAN_PROMPT_V3_TEMPLATE_HASH &&
-      release.actionPlanPrompt.templateHash !==
-        ACTION_PLAN_PROMPT_V4_TEMPLATE_HASH &&
-      release.actionPlanPrompt.templateHash !==
-        ACTION_PLAN_PROMPT_V5_TEMPLATE_HASH &&
-      release.actionPlanPrompt.templateHash !==
-        ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH)
-  ) {
-    errors.push(
-      "Action Plan prompt template hash does not match the code-defined prompt",
-    );
-  }
+  requirePromptMetadata(release.prompt, "Gap prompt", errors);
+  if (!release.actionPlanPrompt) errors.push("Action Plan prompt is required");
+  else requirePromptMetadata(release.actionPlanPrompt, "Action Plan prompt", errors);
   requireLocalizedText(release.title, "module title", errors);
   requireLocalizedText(
     release.questionnaire.title,
@@ -153,6 +113,11 @@ export function compileGapAnalysisRelease(
   const mappedQuestions = new Set<string>();
   const mappingCount = new Map<string, number>();
   for (const requirement of requirements) {
+    requireNonEmpty(
+      requirement.icon,
+      `requirement ${requirement.code} icon`,
+      errors,
+    );
     requireLocalizedText(
       requirement.title,
       `requirement ${requirement.code} title`,
@@ -206,19 +171,6 @@ export function compileGapAnalysisRelease(
     }
   }
 
-  const guidedContract = getSupportedGuidedReleaseContract(
-    release.releaseCode,
-    release.versionLabel,
-  );
-  if (guidedContract) {
-    validateSupportedGuidedRelease(
-      release,
-      mappingCount,
-      guidedContract,
-      errors,
-    );
-  }
-
   if (errors.length > 0) {
     throw new Error(`Invalid gap-analysis release:\n- ${errors.join("\n- ")}`);
   }
@@ -258,147 +210,21 @@ export function compileGapAnalysisRelease(
   };
 }
 
-const guidedOptionValues = [
-  "fully_implemented",
-  "partially_implemented",
-  "not_implemented",
-  "unsure",
-  "not_applicable",
-];
-
-const priorityRank = {
-  low: 0,
-  medium: 1,
-  high: 2,
-  critical: 3,
-} as const;
-
-export type SupportedGuidedReleaseContract = {
-  releaseCode: "nis2-gap";
-  versionLabel: "guided-v6";
-  questionCount: 31;
-  requirementCount: 10;
-  optionValues: readonly string[];
-  evaluatorKind: "nis2_gap_category_v1";
-  evaluatorVersion: 1;
-  promptVersion: "7";
-  responseSchemaVersion: "7";
-};
-
-const supportedGuidedReleaseContracts = {
-  "nis2-gap/guided-v6": {
-    releaseCode: "nis2-gap",
-    versionLabel: "guided-v6",
-    questionCount: 31,
-    requirementCount: 10,
-    optionValues: guidedOptionValues,
-    evaluatorKind: "nis2_gap_category_v1",
-    evaluatorVersion: 1,
-    promptVersion: "7",
-    responseSchemaVersion: "7",
+function requirePromptMetadata(
+  prompt: {
+    name: string;
+    version: string;
+    templateHash: string;
+    responseSchemaVersion: string;
   },
-} as const satisfies Record<string, SupportedGuidedReleaseContract>;
-
-export function getSupportedGuidedReleaseContract(
-  releaseCode: string,
-  versionLabel: string,
-): SupportedGuidedReleaseContract | null {
-  return (
-    supportedGuidedReleaseContracts[
-      `${releaseCode}/${versionLabel}` as keyof typeof supportedGuidedReleaseContracts
-    ] ?? null
-  );
-}
-
-function validateSupportedGuidedRelease(
-  release: GapAnalysisReleaseDefinition,
-  mappingCount: Map<string, number>,
-  contract: SupportedGuidedReleaseContract,
+  label: string,
   errors: string[],
 ) {
-  const questions = release.questionnaire.questions;
-  const requirements = release.requirementSet.requirements;
-  const label = contract.versionLabel;
-  if (questions.length !== contract.questionCount) {
-    errors.push(
-      `${label} must have exactly ${contract.questionCount} questions`,
-    );
-  }
-  if (requirements.length !== contract.requirementCount) {
-    errors.push(
-      `${label} must have exactly ${contract.requirementCount} requirements`,
-    );
-  }
-  if (
-    release.prompt.version !== contract.promptVersion ||
-    release.prompt.responseSchemaVersion !== contract.responseSchemaVersion ||
-    release.evaluator.kind !== contract.evaluatorKind ||
-    release.evaluator.version !== contract.evaluatorVersion
-  ) {
-    errors.push(`${label} prompt or evaluator contract is invalid`);
-  }
-  if (
-    !release.actionPlanPrompt ||
-    release.actionPlanPrompt.version !== "1" ||
-    release.actionPlanPrompt.responseSchemaVersion !== "1"
-  ) {
-    errors.push(`${label} Action Plan prompt contract is invalid`);
-  }
-  unique(
-    questions.map((question) => String(question.sourceNumber)),
-    `${label} source number`,
-    errors,
-  );
-  const sourceNumbers = questions
-    .map((question) => question.sourceNumber)
-    .sort((left, right) => (left ?? 0) - (right ?? 0));
-  if (sourceNumbers.some((number, index) => number !== index + 1)) {
-    errors.push(`${label} source numbers must cover 1 through 31 exactly`);
-  }
-  for (const question of questions) {
-    if (
-      question.options.map((option) => option.stableValue).join("|") !==
-      contract.optionValues.join("|")
-    ) {
-      errors.push(
-        `Question ${question.stableKey} does not use the ${label} option contract`,
-      );
-    }
-    if (!question.legalProvisionKeys?.length) {
-      errors.push(`Question ${question.stableKey} has no legal provision`);
-    }
-    if ((mappingCount.get(question.stableKey) ?? 0) !== 1) {
-      errors.push(`Question ${question.stableKey} must map exactly once`);
-    }
-    if (!question.sourcePriority) {
-      errors.push(`Question ${question.stableKey} has no source priority`);
-    }
-  }
-  const questionByKey = new Map(
-    questions.map((question) => [question.stableKey, question]),
-  );
-  for (const requirement of requirements) {
-    const priorities = requirement.questionStableKeys.flatMap((key) => {
-      const priority = questionByKey.get(key)?.sourcePriority;
-      return priority ? [priority] : [];
-    });
-    const highest = priorities.sort(
-      (left, right) => priorityRank[right] - priorityRank[left],
-    )[0];
-    if (highest && requirement.criticality !== highest) {
-      errors.push(
-        `Requirement ${requirement.code} criticality must equal ${highest}`,
-      );
-    }
-    const outcomes = new Set(requirement.applicableOutcomeCodes);
-    if (
-      !outcomes.has("essential_entity") ||
-      !outcomes.has("important_entity")
-    ) {
-      errors.push(
-        `Requirement ${requirement.code} must cover both applicable outcomes`,
-      );
-    }
+  requireNonEmpty(prompt.name, `${label} name`, errors);
+  requireNonEmpty(prompt.version, `${label} version`, errors);
+  requireNonEmpty(prompt.responseSchemaVersion, `${label} response schema version`, errors);
+  if (!/^[a-f0-9]{64}$/u.test(prompt.templateHash)) {
+    errors.push(`${label} template hash is invalid`);
   }
 }
 

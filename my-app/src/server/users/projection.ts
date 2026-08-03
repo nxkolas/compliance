@@ -12,7 +12,7 @@ export function projectAuthenticatedUser(user: User): SafeUserIdentity | null {
   const candidate = user.user_metadata?.full_name;
   const displayName =
     typeof candidate === "string" && candidate.trim()
-      ? candidate.trim().slice(0, 255)
+      ? candidate.trim().slice(0, 160)
       : null;
   return { userId: user.id, email: email.slice(0, 255), displayName };
 }

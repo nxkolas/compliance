@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import * as z from "zod";
 import {
+  buildGapCategoryResponseSchemaV12,
   normalizeGapCategoryResponseV12,
   type GapResponsePolicyV12,
 } from "@/src/server/gap-analysis/generation-schema-v12";
@@ -50,9 +52,20 @@ const baseValue = {
   },
   evidenceSufficiency: "none" as const,
   assumptions: [],
+  conflictingOrganizationCitationIds: [],
 };
 
 describe("Gap contract v12 contradiction policy", () => {
+  it("emits an OpenAI-compatible root object schema without allOf", () => {
+    const jsonSchema = z.toJSONSchema(buildGapCategoryResponseSchemaV12(policy));
+
+    expect(jsonSchema.type).toBe("object");
+    expect(jsonSchema).not.toHaveProperty("allOf");
+    expect(jsonSchema.properties).toHaveProperty(
+      "conflictingOrganizationCitationIds",
+    );
+  });
+
   it("normalizes missing documentary support to a non-review finding", () => {
     const result = normalizeGapCategoryResponseV12({
       policy,
@@ -77,7 +90,10 @@ describe("Gap contract v12 contradiction policy", () => {
 
   it("preserves a review warning for an actual contradiction", () => {
     const result = normalizeGapCategoryResponseV12({
-      policy,
+      policy: {
+        ...policy,
+        admittedOrganizationCitationIds: ["ORG:policy"],
+      },
       value: {
         ...baseValue,
         reviewNotice:
@@ -85,6 +101,7 @@ describe("Gap contract v12 contradiction policy", () => {
         contradictions: [
           "Der Fragebogen meldet eine fehlende Maßnahme, das Dokument beschreibt sie als umgesetzt.",
         ],
+        conflictingOrganizationCitationIds: ["ORG:policy"],
         requiresReview: true,
       },
     });

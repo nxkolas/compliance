@@ -11,7 +11,8 @@ a critical security fix.
 4. Build the web, worker, and hardened platform targets from one revision. Run
    tests, every Compose configuration, template validation, SBOM generation,
    vulnerability scans, and signing.
-5. Recreate two empty databases from committed migrations/operator SQL and
+5. Recreate two empty disposable test databases from the vector bootstrap,
+   current Drizzle schema, append-only audit bootstrap, and storage bootstrap;
    compare deployment history/schema evidence.
 6. Deploy staging by digest, run isolated acceptance and backup/restore, and
    observe metrics.

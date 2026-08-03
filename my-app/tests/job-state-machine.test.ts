@@ -1,8 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { canLeaseJob, cancellationTransition, nextFailureState } from "@/src/server/jobs/state-machine";
+import { jobDtoSchema } from "@/src/contracts/common/jobs";
 
 describe("durable job state machine", () => {
   const now = new Date("2026-07-22T12:00:00Z");
+
+  it("parses legacy job DTOs without progress detail", () => {
+    const parsed = jobDtoSchema.parse({
+      id: "00000000-0000-4000-8000-000000000001",
+      kind: "legacy",
+      state: "running",
+      progress: 25,
+      attemptCount: 1,
+      safeError: null,
+      createdAt: "2026-08-01T12:00:00.000Z",
+      updatedAt: "2026-08-01T12:00:01.000Z",
+      startedAt: "2026-08-01T12:00:01.000Z",
+      finishedAt: null,
+      cancellable: true,
+      resultLink: null,
+    });
+    expect(parsed).toMatchObject({
+      phase: null,
+      completedUnits: null,
+      totalUnits: null,
+    });
+  });
 
   it("leases due queued work and recovers expired leases", () => {
     expect(canLeaseJob({ state: "queued", runAfter: now, leaseExpiresAt: null }, now)).toBe(true);

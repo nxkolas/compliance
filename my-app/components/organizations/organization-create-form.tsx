@@ -84,7 +84,7 @@ export function OrganizationCreateForm({
       const result = await organizationsClient.create({
         name: organizationForm.name,
         legalName: organizationForm.legalName || null,
-        country: organizationForm.country || "DE",
+        countryCode: organizationForm.country || "DE",
       });
 
       const organizationHref =

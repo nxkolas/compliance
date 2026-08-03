@@ -5,9 +5,14 @@ export const relations = defineRelations(schema, (r) => ({
   organizations: {
     memberships: r.many.organizationMemberships(),
     invitations: r.many.organizationInvitations(),
-    factValues: r.many.organizationFactValues(),
     assessments: r.many.assessments(),
-    generatedArtifacts: r.many.generatedArtifacts(),
+    outputs: r.many.analysisOutputs(),
+    gapCycles: r.many.gapAnalysisCycles(),
+    documents: r.many.documents(),
+    aiRuns: r.many.aiProcessingRuns(),
+    actionPlans: r.many.actionPlans(),
+    reports: r.many.reports(),
+    jobs: r.many.backgroundJobs(),
   },
   organizationMemberships: {
     organization: r.one.organizations({
@@ -23,169 +28,11 @@ export const relations = defineRelations(schema, (r) => ({
       optional: false,
     }),
   },
-  organizationFactDefinitions: {
-    values: r.many.organizationFactValues(),
-    questionMappings: r.many.questionFactMappings(),
-  },
-  organizationFactValues: {
-    organization: r.one.organizations({
-      from: r.organizationFactValues.organizationId,
-      to: r.organizations.id,
-      optional: false,
-    }),
-    definition: r.one.organizationFactDefinitions({
-      from: r.organizationFactValues.factKey,
-      to: r.organizationFactDefinitions.key,
-      optional: false,
-    }),
-  },
-  complianceFrameworks: {
-    versions: r.many.complianceFrameworkVersions(),
-  },
-  complianceFrameworkVersions: {
-    framework: r.one.complianceFrameworks({
-      from: r.complianceFrameworkVersions.frameworkId,
-      to: r.complianceFrameworks.id,
-      optional: false,
-    }),
-    nameContentRevision: r.one.contentRevisions({
-      from: r.complianceFrameworkVersions.nameContentRevisionId,
-      to: r.contentRevisions.id,
-      optional: false,
-    }),
-    descriptionContentRevision: r.one.contentRevisions({
-      from: r.complianceFrameworkVersions.descriptionContentRevisionId,
-      to: r.contentRevisions.id,
-      optional: false,
-    }),
-    modules: r.many.complianceModules(),
-  },
-  complianceModules: {
-    frameworkVersion: r.one.complianceFrameworkVersions({
-      from: r.complianceModules.frameworkVersionId,
-      to: r.complianceFrameworkVersions.id,
-      optional: false,
-    }),
-    nameContentRevision: r.one.contentRevisions({
-      from: r.complianceModules.nameContentRevisionId,
-      to: r.contentRevisions.id,
-      optional: false,
-    }),
-    questionnaires: r.many.questionnaires(),
-    assessments: r.many.assessments(),
-    ruleSets: r.many.ruleSets(),
-    generatedArtifacts: r.many.generatedArtifacts(),
-  },
-  questionnaires: {
-    module: r.one.complianceModules({
-      from: r.questionnaires.moduleId,
-      to: r.complianceModules.id,
-      optional: false,
-    }),
-    versions: r.many.questionnaireVersions(),
-    assessments: r.many.assessments(),
-  },
-  questionnaireVersions: {
-    questionnaire: r.one.questionnaires({
-      from: r.questionnaireVersions.questionnaireId,
-      to: r.questionnaires.id,
-      optional: false,
-    }),
-    titleContentRevision: r.one.contentRevisions({
-      from: r.questionnaireVersions.titleContentRevisionId,
-      to: r.contentRevisions.id,
-      optional: false,
-    }),
-    questions: r.many.questions(),
-    assessmentRevisions: r.many.assessmentRevisions(),
-  },
-  gapRequirementSets: {
-    versions: r.many.gapRequirementSetVersions(),
-  },
-  gapRequirementSetVersions: {
-    requirementSet: r.one.gapRequirementSets({
-      from: r.gapRequirementSetVersions.requirementSetId,
-      to: r.gapRequirementSets.id,
-      optional: false,
-    }),
-    titleContentRevision: r.one.contentRevisions({
-      from: r.gapRequirementSetVersions.titleContentRevisionId,
-      to: r.contentRevisions.id,
-      optional: false,
-    }),
-    members: r.many.gapRequirementSetMembers(),
-  },
-  gapRequirementSetMembers: {
-    requirementSetVersion: r.one.gapRequirementSetVersions({
-      from: r.gapRequirementSetMembers.requirementSetVersionId,
-      to: r.gapRequirementSetVersions.id,
-      optional: false,
-    }),
-  },
-  gapRequirementVersions: {
-    requirement: r.one.gapRequirements({
-      from: r.gapRequirementVersions.requirementId,
-      to: r.gapRequirements.id,
-      optional: false,
-    }),
-    titleContentRevision: r.one.contentRevisions({
-      from: r.gapRequirementVersions.titleContentRevisionId,
-      to: r.contentRevisions.id,
-      optional: false,
-    }),
-    requirementTextContentRevision: r.one.contentRevisions({
-      from: r.gapRequirementVersions.requirementTextContentRevisionId,
-      to: r.contentRevisions.id,
-      optional: false,
-    }),
-  },
-  questions: {
-    questionnaireVersion: r.one.questionnaireVersions({
-      from: r.questions.questionnaireVersionId,
-      to: r.questionnaireVersions.id,
-      optional: false,
-    }),
-    options: r.many.questionOptions(),
-    factMappings: r.many.questionFactMappings(),
-  },
-  questionOptions: {
-    question: r.one.questions({
-      from: r.questionOptions.questionId,
-      to: r.questions.id,
-      optional: false,
-    }),
-  },
-  questionFactMappings: {
-    question: r.one.questions({
-      from: r.questionFactMappings.questionId,
-      to: r.questions.id,
-      optional: false,
-    }),
-    factDefinition: r.one.organizationFactDefinitions({
-      from: r.questionFactMappings.factKey,
-      to: r.organizationFactDefinitions.key,
-      optional: false,
-    }),
-  },
   assessments: {
     organization: r.one.organizations({
       from: r.assessments.organizationId,
       to: r.organizations.id,
       optional: false,
-    }),
-    module: r.one.complianceModules({
-      from: r.assessments.moduleId,
-      to: r.complianceModules.id,
-      optional: false,
-    }),
-    questionnaire: r.one.questionnaires({
-      from: r.assessments.questionnaireId,
-      to: r.questionnaires.id,
-      optional: false,
-    }),
-    currentRevision: r.one.assessmentRevisions({
-      from: r.assessments.currentRevisionId,
-      to: r.assessmentRevisions.id,
     }),
     revisions: r.many.assessmentRevisions(),
   },
@@ -195,13 +42,8 @@ export const relations = defineRelations(schema, (r) => ({
       to: r.assessments.id,
       optional: false,
     }),
-    questionnaireVersion: r.one.questionnaireVersions({
-      from: r.assessmentRevisions.questionnaireVersionId,
-      to: r.questionnaireVersions.id,
-      optional: false,
-    }),
-    parentRevision: r.one.assessmentRevisions({
-      from: r.assessmentRevisions.parentRevisionId,
+    previousRevision: r.one.assessmentRevisions({
+      from: r.assessmentRevisions.previousRevisionId,
       to: r.assessmentRevisions.id,
     }),
     answers: r.many.assessmentAnswers(),
@@ -212,124 +54,129 @@ export const relations = defineRelations(schema, (r) => ({
       to: r.assessmentRevisions.id,
       optional: false,
     }),
-    question: r.one.questions({
-      from: r.assessmentAnswers.questionId,
-      to: r.questions.id,
-      optional: false,
-    }),
   },
-  guestApplicabilityChecks: {
-    checkRelease: r.one.complianceCheckReleases({
-      from: r.guestApplicabilityChecks.checkReleaseId,
-      to: r.complianceCheckReleases.id,
-      optional: false,
-    }),
-    claimedOrganization: r.one.organizations({
-      from: r.guestApplicabilityChecks.claimedOrganizationId,
-      to: r.organizations.id,
-    }),
-  },
-  ruleSets: {
-    module: r.one.complianceModules({
-      from: r.ruleSets.moduleId,
-      to: r.complianceModules.id,
-      optional: false,
-    }),
-    generatedArtifactRevisions: r.many.generatedArtifactRevisions(),
-  },
-  generatedArtifacts: {
+  analysisOutputs: {
     organization: r.one.organizations({
-      from: r.generatedArtifacts.organizationId,
+      from: r.analysisOutputs.organizationId,
       to: r.organizations.id,
       optional: false,
     }),
-    module: r.one.complianceModules({
-      from: r.generatedArtifacts.moduleId,
-      to: r.complianceModules.id,
-      optional: false,
-    }),
-    currentRevision: r.one.generatedArtifactRevisions({
-      from: r.generatedArtifacts.currentRevisionId,
-      to: r.generatedArtifactRevisions.id,
-      alias: "artifact_current_revision",
-    }),
-    acceptedRevision: r.one.generatedArtifactRevisions({
-      from: r.generatedArtifacts.acceptedRevisionId,
-      to: r.generatedArtifactRevisions.id,
-      alias: "artifact_accepted_revision",
-    }),
-    revisions: r.many.generatedArtifactRevisions(),
+    revisions: r.many.analysisOutputRevisions(),
   },
-  generatedArtifactRevisions: {
-    artifact: r.one.generatedArtifacts({
-      from: r.generatedArtifactRevisions.artifactId,
-      to: r.generatedArtifacts.id,
-      optional: false,
-    }),
-    ruleSet: r.one.ruleSets({
-      from: r.generatedArtifactRevisions.ruleSetId,
-      to: r.ruleSets.id,
-    }),
-    parentRevision: r.one.generatedArtifactRevisions({
-      from: r.generatedArtifactRevisions.parentRevisionId,
-      to: r.generatedArtifactRevisions.id,
-    }),
-    assessmentSources: r.many.artifactRevisionAssessmentSources(),
-    artifactSources: r.many.artifactRevisionArtifactSources({
-      alias: "artifact_revision_artifact_sources_owner",
-    }),
-    documentSources: r.many.artifactRevisionDocumentSources(),
-  },
-  artifactRevisionAssessmentSources: {
-    artifactRevision: r.one.generatedArtifactRevisions({
-      from: r.artifactRevisionAssessmentSources.artifactRevisionId,
-      to: r.generatedArtifactRevisions.id,
+  analysisOutputRevisions: {
+    output: r.one.analysisOutputs({
+      from: r.analysisOutputRevisions.outputId,
+      to: r.analysisOutputs.id,
       optional: false,
     }),
     assessmentRevision: r.one.assessmentRevisions({
-      from: r.artifactRevisionAssessmentSources.assessmentRevisionId,
+      from: r.analysisOutputRevisions.assessmentRevisionId,
       to: r.assessmentRevisions.id,
       optional: false,
     }),
-  },
-  artifactRevisionArtifactSources: {
-    artifactRevision: r.one.generatedArtifactRevisions({
-      from: r.artifactRevisionArtifactSources.artifactRevisionId,
-      to: r.generatedArtifactRevisions.id,
-      optional: false,
-      alias: "artifact_revision_artifact_sources_owner",
+    sourceApplicabilityRevision: r.one.analysisOutputRevisions({
+      from: r.analysisOutputRevisions.sourceApplicabilityRevisionId,
+      to: r.analysisOutputRevisions.id,
     }),
-    sourceArtifactRevision: r.one.generatedArtifactRevisions({
-      from: r.artifactRevisionArtifactSources.sourceArtifactRevisionId,
-      to: r.generatedArtifactRevisions.id,
-      optional: false,
-      alias: "artifact_revision_artifact_sources_source",
-    }),
+    documents: r.many.analysisOutputDocumentSources(),
+    findings: r.many.gapFindings(),
   },
-  artifactRevisionDocumentSources: {
-    artifactRevision: r.one.generatedArtifactRevisions({
-      from: r.artifactRevisionDocumentSources.artifactRevisionId,
-      to: r.generatedArtifactRevisions.id,
+  analysisOutputDocumentSources: {
+    outputRevision: r.one.analysisOutputRevisions({
+      from: r.analysisOutputDocumentSources.outputRevisionId,
+      to: r.analysisOutputRevisions.id,
       optional: false,
     }),
     documentVersion: r.one.documentVersions({
-      from: r.artifactRevisionDocumentSources.documentVersionId,
+      from: r.analysisOutputDocumentSources.documentVersionId,
       to: r.documentVersions.id,
       optional: false,
     }),
   },
-  gapFindings: {
-    gaps: r.many.gapItems(),
-    evidence: r.many.gapFindingEvidence(),
-    actions: r.many.actionPlanItems(),
-  },
-  gapFindingEvidence: {
-    finding: r.one.gapFindings({
-      from: r.gapFindingEvidence.findingId,
-      to: r.gapFindings.id,
+  gapAnalysisCycles: {
+    organization: r.one.organizations({
+      from: r.gapAnalysisCycles.organizationId,
+      to: r.organizations.id,
       optional: false,
     }),
-    gapLinks: r.many.gapItemEvidence(),
+    documents: r.many.gapAnalysisCycleDocuments(),
+  },
+  gapAnalysisCycleDocuments: {
+    cycle: r.one.gapAnalysisCycles({
+      from: r.gapAnalysisCycleDocuments.cycleId,
+      to: r.gapAnalysisCycles.id,
+      optional: false,
+    }),
+    documentVersion: r.one.documentVersions({
+      from: r.gapAnalysisCycleDocuments.documentVersionId,
+      to: r.documentVersions.id,
+      optional: false,
+    }),
+  },
+  documents: {
+    organization: r.one.organizations({
+      from: r.documents.organizationId,
+      to: r.organizations.id,
+      optional: false,
+    }),
+    versions: r.many.documentVersions(),
+  },
+  documentVersions: {
+    document: r.one.documents({
+      from: r.documentVersions.documentId,
+      to: r.documents.id,
+      optional: false,
+    }),
+    chunks: r.many.documentChunks(),
+  },
+  documentChunks: {
+    version: r.one.documentVersions({
+      from: r.documentChunks.documentVersionId,
+      to: r.documentVersions.id,
+      optional: false,
+    }),
+  },
+  backgroundJobs: {
+    organization: r.one.organizations({
+      from: r.backgroundJobs.organizationId,
+      to: r.organizations.id,
+    }),
+  },
+  aiProcessingRuns: {
+    organization: r.one.organizations({
+      from: r.aiProcessingRuns.organizationId,
+      to: r.organizations.id,
+      optional: false,
+    }),
+    job: r.one.backgroundJobs({
+      from: r.aiProcessingRuns.jobId,
+      to: r.backgroundJobs.id,
+    }),
+    context: r.many.aiProcessingRunContext(),
+  },
+  aiProcessingRunContext: {
+    run: r.one.aiProcessingRuns({
+      from: r.aiProcessingRunContext.runId,
+      to: r.aiProcessingRuns.id,
+      optional: false,
+    }),
+    documentChunk: r.one.documentChunks({
+      from: r.aiProcessingRunContext.documentChunkId,
+      to: r.documentChunks.id,
+    }),
+    legalChunk: r.one.legalSourceChunks({
+      from: r.aiProcessingRunContext.legalSourceChunkId,
+      to: r.legalSourceChunks.id,
+    }),
+  },
+  gapFindings: {
+    outputRevision: r.one.analysisOutputRevisions({
+      from: r.gapFindings.outputRevisionId,
+      to: r.analysisOutputRevisions.id,
+      optional: false,
+    }),
+    items: r.many.gapItems(),
+    contextLinks: r.many.gapFindingContextLinks(),
   },
   gapItems: {
     finding: r.one.gapFindings({
@@ -337,22 +184,43 @@ export const relations = defineRelations(schema, (r) => ({
       to: r.gapFindings.id,
       optional: false,
     }),
-    evidenceLinks: r.many.gapItemEvidence(),
-    actionLinks: r.many.actionPlanItemGaps(),
+    contextLinks: r.many.gapItemContextLinks(),
   },
-  gapItemEvidence: {
-    gap: r.one.gapItems({
-      from: r.gapItemEvidence.gapItemId,
+  gapFindingContextLinks: {
+    finding: r.one.gapFindings({
+      from: r.gapFindingContextLinks.findingId,
+      to: r.gapFindings.id,
+      optional: false,
+    }),
+    context: r.one.aiProcessingRunContext({
+      from: r.gapFindingContextLinks.contextId,
+      to: r.aiProcessingRunContext.id,
+      optional: false,
+    }),
+  },
+  gapItemContextLinks: {
+    item: r.one.gapItems({
+      from: r.gapItemContextLinks.gapItemId,
       to: r.gapItems.id,
       optional: false,
     }),
-    evidence: r.one.gapFindingEvidence({
-      from: r.gapItemEvidence.gapFindingEvidenceId,
-      to: r.gapFindingEvidence.id,
+    context: r.one.aiProcessingRunContext({
+      from: r.gapItemContextLinks.contextId,
+      to: r.aiProcessingRunContext.id,
       optional: false,
     }),
   },
   actionPlans: {
+    organization: r.one.organizations({
+      from: r.actionPlans.organizationId,
+      to: r.organizations.id,
+      optional: false,
+    }),
+    sourceGapRevision: r.one.analysisOutputRevisions({
+      from: r.actionPlans.sourceGapRevisionId,
+      to: r.analysisOutputRevisions.id,
+      optional: false,
+    }),
     items: r.many.actionPlanItems(),
   },
   actionPlanItems: {
@@ -361,15 +229,15 @@ export const relations = defineRelations(schema, (r) => ({
       to: r.actionPlans.id,
       optional: false,
     }),
-    sourceFinding: r.one.gapFindings({
-      from: r.actionPlanItems.sourceFindingId,
+    finding: r.one.gapFindings({
+      from: r.actionPlanItems.findingId,
       to: r.gapFindings.id,
       optional: false,
     }),
-    gapLinks: r.many.actionPlanItemGaps(),
+    gaps: r.many.actionPlanItemGaps(),
   },
   actionPlanItemGaps: {
-    action: r.one.actionPlanItems({
+    item: r.one.actionPlanItems({
       from: r.actionPlanItemGaps.actionPlanItemId,
       to: r.actionPlanItems.id,
       optional: false,
@@ -377,6 +245,120 @@ export const relations = defineRelations(schema, (r) => ({
     gap: r.one.gapItems({
       from: r.actionPlanItemGaps.gapItemId,
       to: r.gapItems.id,
+      optional: false,
+    }),
+  },
+  reports: {
+    organization: r.one.organizations({
+      from: r.reports.organizationId,
+      to: r.organizations.id,
+      optional: false,
+    }),
+    documents: r.many.reportDocumentSources(),
+  },
+  reportDocumentSources: {
+    report: r.one.reports({
+      from: r.reportDocumentSources.reportId,
+      to: r.reports.id,
+      optional: false,
+    }),
+    documentVersion: r.one.documentVersions({
+      from: r.reportDocumentSources.documentVersionId,
+      to: r.documentVersions.id,
+      optional: false,
+    }),
+  },
+  legalCorpusFamilies: {
+    sources: r.many.legalSources(),
+    snapshots: r.many.legalCorpusSnapshots(),
+  },
+  legalSources: {
+    family: r.one.legalCorpusFamilies({
+      from: r.legalSources.familyId,
+      to: r.legalCorpusFamilies.id,
+      optional: false,
+    }),
+    versions: r.many.legalSourceVersions(),
+  },
+  legalSourceVersions: {
+    source: r.one.legalSources({
+      from: r.legalSourceVersions.sourceId,
+      to: r.legalSources.id,
+      optional: false,
+    }),
+    renditions: r.many.legalSourceRenditions(),
+    processingGenerations: r.many.legalSourceProcessingGenerations(),
+  },
+  legalSourceRenditions: {
+    sourceVersion: r.one.legalSourceVersions({
+      from: r.legalSourceRenditions.sourceVersionId,
+      to: r.legalSourceVersions.id,
+      optional: false,
+    }),
+  },
+  legalSourceProcessingGenerations: {
+    sourceVersion: r.one.legalSourceVersions({
+      from: r.legalSourceProcessingGenerations.sourceVersionId,
+      to: r.legalSourceVersions.id,
+      optional: false,
+    }),
+    rendition: r.one.legalSourceRenditions({
+      from: r.legalSourceProcessingGenerations.renditionId,
+      to: r.legalSourceRenditions.id,
+      optional: false,
+    }),
+    chunks: r.many.legalSourceChunks(),
+  },
+  legalSourceChunks: {
+    generation: r.one.legalSourceProcessingGenerations({
+      from: r.legalSourceChunks.processingGenerationId,
+      to: r.legalSourceProcessingGenerations.id,
+      optional: false,
+    }),
+    embeddings: r.many.legalSourceChunkEmbeddings(),
+    provisionBindings: r.many.legalProvisionChunkBindings(),
+  },
+  legalSourceChunkEmbeddings: {
+    chunk: r.one.legalSourceChunks({
+      from: r.legalSourceChunkEmbeddings.chunkId,
+      to: r.legalSourceChunks.id,
+      optional: false,
+    }),
+  },
+  legalProvisionChunkBindings: {
+    chunk: r.one.legalSourceChunks({
+      from: r.legalProvisionChunkBindings.chunkId,
+      to: r.legalSourceChunks.id,
+      optional: false,
+    }),
+  },
+  legalCorpusSnapshots: {
+    family: r.one.legalCorpusFamilies({
+      from: r.legalCorpusSnapshots.familyId,
+      to: r.legalCorpusFamilies.id,
+      optional: false,
+    }),
+    members: r.many.legalCorpusSnapshotMembers(),
+  },
+  legalCorpusSnapshotMembers: {
+    snapshot: r.one.legalCorpusSnapshots({
+      from: r.legalCorpusSnapshotMembers.snapshotId,
+      to: r.legalCorpusSnapshots.id,
+      optional: false,
+    }),
+    sourceVersion: r.one.legalSourceVersions({
+      from: r.legalCorpusSnapshotMembers.sourceVersionId,
+      to: r.legalSourceVersions.id,
+      optional: false,
+    }),
+    rendition: r.one.legalSourceRenditions({
+      from: r.legalCorpusSnapshotMembers.renditionId,
+      to: r.legalSourceRenditions.id,
+      optional: false,
+    }),
+    processingGeneration: r.one.legalSourceProcessingGenerations({
+      from: r.legalCorpusSnapshotMembers.processingGenerationId,
+      to: r.legalSourceProcessingGenerations.id,
       optional: false,
     }),
   },

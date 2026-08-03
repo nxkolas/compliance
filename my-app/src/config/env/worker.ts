@@ -14,13 +14,6 @@ export const workerEnvironmentSchema = commonApplicationEnvironmentSchema
     WORKER_DEBUG_ERRORS: z
       .union([z.literal("0"), z.literal("1")])
       .default("0"),
-    AI_GROUNDED_MAX_OUTPUT_TOKENS: z.coerce
-      .number()
-      .int()
-      .min(512)
-      .max(12000)
-      .default(9000),
-    DOCLING_SERVICE_URL: z.url().optional(),
   })
   .superRefine((environment, context) => {
     if (environment.APP_ENV === "production" && !environment.WORKER_ID) {

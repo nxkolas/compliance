@@ -29,6 +29,7 @@ Compliance Checker app.
 
 ## Implementation Plans
 
+- [Gap Analysis cycle, performance, progress, and async revisions](./plans/done/gap-analysis-cycle-performance-progress-and-async-revisions.md)
 - [Asynchronous organization document processing](./plans/pending/organization-document-processing-worker.md)
 - [Localized compliance-definition metadata](./plans/done/localized-compliance-definition-metadata.md)
 - [Guided gap analysis UX and status corrections](./plans/done/gap-analysis-guided-ux-and-status-corrections.md)

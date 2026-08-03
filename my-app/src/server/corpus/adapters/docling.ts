@@ -10,7 +10,12 @@ export type DoclingResult = {
 export async function parseWithDocling(
   bytes: Uint8Array,
   mimeType: string,
-  options: { endpoint: string; timeoutMs: number; maxOutputCharacters: number },
+  options: {
+    endpoint: string;
+    timeoutMs: number;
+    maxOutputCharacters: number;
+    signal?: AbortSignal;
+  },
 ): Promise<DoclingResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs);
@@ -31,7 +36,9 @@ export async function parseWithDocling(
       method: "POST",
       headers: { accept: "application/json" },
       body: form,
-      signal: controller.signal,
+      signal: options.signal
+        ? AbortSignal.any([controller.signal, options.signal])
+        : controller.signal,
     });
     if (!response.ok) throw new ApiError(502, "OCR service failed", undefined, "DOCLING_FAILED");
     const result = await response.json() as {

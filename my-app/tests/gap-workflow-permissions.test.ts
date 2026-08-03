@@ -5,18 +5,15 @@ import {
   canReviewOrganizationWorkflow,
 } from "@/src/server/organizations/workflow-permissions";
 
-describe("gap workflow permissions", () => {
-  it("allows owners and admins to correct, resolve, and approve", () => {
-    expect(canManageOrganizationWorkflow("owner")).toBe(true);
-    expect(canManageOrganizationWorkflow("admin")).toBe(true);
-    expect(canManageOrganizationWorkflow("member")).toBe(false);
-    expect(canManageOrganizationWorkflow("auditor")).toBe(false);
-  });
-
-  it("allows members to answer and upload but keeps auditors read/review only", () => {
-    expect(canContributeToOrganizationWorkflow("member")).toBe(true);
-    expect(canContributeToOrganizationWorkflow("auditor")).toBe(false);
-    expect(canReviewOrganizationWorkflow("auditor")).toBe(true);
-    expect(canReviewOrganizationWorkflow("member")).toBe(false);
+describe("Gap workflow permissions", () => {
+  it("allows owners and contributors to work while viewers remain read-only", () => {
+    for (const role of ["owner", "contributor"] as const) {
+      expect(canManageOrganizationWorkflow(role)).toBe(true);
+      expect(canContributeToOrganizationWorkflow(role)).toBe(true);
+      expect(canReviewOrganizationWorkflow(role)).toBe(true);
+    }
+    expect(canManageOrganizationWorkflow("viewer")).toBe(false);
+    expect(canContributeToOrganizationWorkflow("viewer")).toBe(false);
+    expect(canReviewOrganizationWorkflow("viewer")).toBe(false);
   });
 });

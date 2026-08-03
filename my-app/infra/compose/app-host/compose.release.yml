@@ -50,12 +50,12 @@ services:
     environment:
       WORKER_ID: ${APP_ENV}-green
 
-  migrate:
+  database-bootstrap:
     <<: *app-security
     image: ${WORKER_IMAGE}
     env_file: ["${APP_ENV_FILE}"]
     restart: "no"
-    command: [node, node_modules/tsx/dist/cli.mjs, scripts/migrate.ts]
+    command: [node, node_modules/tsx/dist/cli.mjs, scripts/bootstrap-disposable-schema.ts]
     networks: [data]
     mem_limit: 1g
     cpus: 1

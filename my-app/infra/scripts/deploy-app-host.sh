@@ -59,7 +59,11 @@ fi
 
 "${platform[@]}" up -d --wait
 "${release[@]}" --profile "$color" up -d "web-$color"
-"${release[@]}" run --rm migrate
+if [[ "$app_environment" == "staging" ]]; then
+  "${release[@]}" run --rm database-bootstrap
+else
+  echo "Skipping disposable Drizzle bootstrap in production; use the reviewed production baseline procedure."
+fi
 "${release[@]}" run --rm supabase-bootstrap
 "${release[@]}" --profile "$color" up -d --wait "web-$color"
 

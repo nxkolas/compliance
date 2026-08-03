@@ -4,52 +4,35 @@ import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import postgres from "postgres";
 
-const approvedFiles = new Set([
-  "scripts/sql/api-corpus-integrity-additions.sql",
-  "scripts/sql/audit-events-append-only.sql",
-  "scripts/sql/database-integrity-triggers.sql",
-  "scripts/sql/legal-corpus-indexes.sql",
-  "scripts/sql/organization-management-user-directory.sql",
-  "supabase/sql-editor/003_guest_retention_cleanup.sql",
-  "supabase/sql-editor/004_gap_evidence_infrastructure.sql",
-]);
+const STAGES = {
+  "pre-push": ["infra/config/supabase/db-init/00-vector.sql"],
+  "post-push": ["scripts/sql/audit-events-append-only.sql"],
+} as const;
+
+type Stage = keyof typeof STAGES;
 
 const databaseUrl = process.env.DRIZZLE_DATABASE_URL ?? process.env.DATABASE_URL;
-if (!databaseUrl) throw new Error("DRIZZLE_DATABASE_URL or DATABASE_URL is required");
-
-const requestedFiles = process.argv.slice(2);
-if (requestedFiles.length === 0) {
-  throw new Error("Pass at least one approved repository SQL file");
+if (!databaseUrl) {
+  throw new Error("DRIZZLE_DATABASE_URL or DATABASE_URL is required");
 }
 
-const repositoryRoot = resolve(process.cwd());
-const files = requestedFiles.map((file) => {
-  const absolutePath = resolve(repositoryRoot, file);
-  const repositoryPath = relative(repositoryRoot, absolutePath).replaceAll("\\", "/");
-  if (!approvedFiles.has(repositoryPath)) {
-    throw new Error(`Refusing to execute unapproved SQL file: ${repositoryPath}`);
-  }
-  return { absolutePath, repositoryPath };
-});
+const requestedStage = process.argv[2];
+if (requestedStage !== "pre-push" && requestedStage !== "post-push") {
+  throw new Error("Pass exactly one database bootstrap stage: pre-push or post-push");
+}
+const databaseBootstrapStage = requestedStage as Stage;
 
 async function main() {
   const client = postgres(databaseUrl!, { prepare: false, max: 1 });
   try {
-    for (const file of files) {
-      if (file.repositoryPath === "scripts/sql/api-corpus-integrity-additions.sql") {
-        const [state] = await client<{ schemaReady: boolean }[]>`
-          select to_regclass('public.background_jobs') is not null as "schemaReady"
-        `;
-        if (!state.schemaReady) {
-          console.log(
-            `Deferred ${file.repositoryPath}; application tables are not present yet.`,
-          );
-          continue;
-        }
+    for (const repositoryPath of STAGES[databaseBootstrapStage]) {
+      const absolutePath = resolve(process.cwd(), repositoryPath);
+      const resolvedPath = relative(process.cwd(), absolutePath).replaceAll("\\", "/");
+      if (resolvedPath !== repositoryPath) {
+        throw new Error(`Database bootstrap path escaped the repository: ${repositoryPath}`);
       }
-      const sql = await readFile(file.absolutePath, "utf8");
-      await client.unsafe(sql);
-      console.log(`Applied ${file.repositoryPath}.`);
+      await client.unsafe(await readFile(absolutePath, "utf8"));
+      console.log(`Applied ${databaseBootstrapStage} database bootstrap: ${repositoryPath}`);
     }
   } finally {
     await client.end();
@@ -57,6 +40,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error(error instanceof Error ? error.message : "Database bootstrap failed");
   process.exitCode = 1;
 });

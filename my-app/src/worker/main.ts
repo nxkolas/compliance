@@ -17,23 +17,34 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 async function main() {
   const [
     { closeDatabaseConnection },
-    { runOneJob },
-    { ensureScheduledCleanupJob },
-    { ensureScheduledLegalSourceMonitorJobs },
+    { drainPortableJobs },
   ] = await Promise.all([
     import("@/src/server/database-lifecycle"),
-    import("./runtime"),
-    import("@/src/server/api/cleanup"),
-    import("@/src/server/corpus"),
+    import("@/src/server/job-execution"),
   ]);
 
   try {
-    await ensureScheduledCleanupJob();
-    await ensureScheduledLegalSourceMonitorJobs();
     while (!draining) {
-      const worked = await runOneJob(workerId);
+      const controller = new AbortController();
+      const stop = () => controller.abort("resident_worker_shutdown");
+      for (const signal of ["SIGINT", "SIGTERM"] as const) {
+        process.once(signal, stop);
+      }
+      const result = await drainPortableJobs({
+        invocationId: workerId,
+        adapter: "resident_worker",
+        maxJobs: once ? 1 : 100,
+        deadline: new Date(Date.now() + 4 * 60 * 1000),
+        signal: controller.signal,
+        abortStopReason: "graceful_shutdown",
+      });
+      for (const signal of ["SIGINT", "SIGTERM"] as const) {
+        process.off(signal, stop);
+      }
       if (once || draining) break;
-      if (!worked) await new Promise((resolve) => setTimeout(resolve, 1_000));
+      if (result.claimed === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      }
     }
   } finally {
     await closeDatabaseConnection();

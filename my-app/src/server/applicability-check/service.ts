@@ -1,50 +1,63 @@
-import { db } from "@/src/db";
-import { assessmentAnswerOptions, assessmentAnswers, assessmentRevisions, assessments, complianceCheckReleases, generatedArtifactRevisions, generatedArtifacts, gapAnalysisReleases, guestApplicabilityChecks, questionOptions, questions, ruleSets } from "@/src/db/schema";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Locale } from "@/lib/i18n-config";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { createHash, randomBytes } from "node:crypto";
-import { ApiError } from "../api/errors";
-import { assertCanAccessOrganization } from "../organizations/service";
-import { NIS2_CHECK_CODE, nextCachedRuntimeReleaseReader } from "@/src/server/compliance";
-import type {
-  ResolvedComplianceRelease,
-  RuntimeReleaseReader,
-} from "@/src/server/compliance";
+import { db } from "@/src/db";
 import {
-  parseStoredRuleEvaluationResult,
-  type StoredRuleEvaluationResult,
-} from "./rule-evaluation-schema";
+  analysisOutputRevisions,
+  analysisOutputs,
+  assessmentAnswers,
+  assessmentRevisions,
+  assessments,
+  auditEvents,
+  guestApplicabilityChecks,
+} from "@/src/db/schema";
+import {
+  currentApplicabilityDefinitionHash,
+  getCurrentApplicabilityDefinition,
+  SUPPORTED_JURISDICTION_CODES,
+} from "@/src/server/definitions";
+import { and, asc, eq, gt } from "drizzle-orm";
+import { ApiError } from "../api/errors";
+import {
+  requireOrganizationCapability,
+} from "../auth/capability-service";
+import { assertCanAccessOrganization } from "../organizations/service";
+import { catalogOptionsForCountry } from "./entity-catalog";
+import { guestSubmittedExpiry } from "./guest-lifecycle";
+import {
+  localizeEvaluation,
+  type LocalizedRuleEvaluationResult,
+} from "./localize-evaluation";
 import {
   getVisibleQuestions,
   isAnswered,
   type ApplicabilityAnswerValue,
 } from "./question-visibility";
+import {
+  parseStoredRuleEvaluationResult,
+  type StoredRuleEvaluationResult,
+} from "./rule-evaluation-schema";
 import { evaluateRuleSet } from "./rules";
-import { getSupportedCountryCodes } from "./country-support";
-import { catalogOptionsForCountry } from "./entity-catalog";
-import { guestStartedExpiry, guestSubmittedExpiry } from "./guest-lifecycle";
-import {
-  localizeEvaluation,
-  type LocalizedRuleEvaluationResult,
-} from "./localize-evaluation";
-import { persistApplicabilitySubmission } from "./submission-persistence";
-import {
-  assertApplicabilityRecalculationUnlocked,
-  deriveApplicabilityRecalculationLock,
-  deriveApplicabilityRecalculationLockForPrerequisite,
-  type ApplicabilityRecalculationLock,
-} from "./recalculation-lock";
-import { evaluateGapApplicabilityPrerequisite } from "../gap-analysis/domain";
 import {
   submitApplicabilityCheckSchema,
   type SubmitApplicabilityCheckInput,
 } from "./validation";
+import type { ApplicabilityRecalculationLock } from "./recalculation-lock";
 
+const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentApplicabilityDefinitionHash;
+const APPLICABILITY_KIND = "applicability" as const;
+
+type Definition = ReturnType<typeof getCurrentApplicabilityDefinition>;
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export type ApplicabilityOptionDto = Definition["questions"][number]["options"][number];
+export type ApplicabilityQuestionDto = Omit<
+  Definition["questions"][number],
+  "factMappings"
+>;
 
 export type ApplicabilityQuestionnaireDto = {
   id: string;
-  moduleId: string;
-  questionnaireVersionId: string;
+  locale: Locale;
   title: string;
   code: string;
   versionLabel: string;
@@ -52,44 +65,19 @@ export type ApplicabilityQuestionnaireDto = {
   entityCatalogs: Record<string, ApplicabilityOptionDto[]>;
   defaultAnswers: Record<string, ApplicabilityAnswerValue>;
   latestAnswers: Record<string, ApplicabilityAnswerValue>;
-  release: {
-    id: string;
+  definition: {
+    hash: string;
     versionLabel: string;
-    aggregateHash: string;
-    isActive: boolean;
-    activeVersionLabel: string;
-    supportedCountryCodes: string[];
+    supportedJurisdictionCodes: string[];
   };
   guestSession?: GuestApplicabilitySession;
-};
-
-export type ApplicabilityQuestionDto = {
-  id: string;
-  stableKey: string;
-  position: number;
-  questionText: string;
-  helpText: string | null;
-  tooltipText: string | null;
-  answerType: string;
-  required: boolean;
-  config: unknown;
-  options: ApplicabilityOptionDto[];
-};
-
-export type ApplicabilityOptionDto = {
-  id: string;
-  stableValue: string;
-  catalogCode: string;
-  label: string;
-  position: number;
-  metadata: unknown;
 };
 
 export type ApplicabilityOverviewDto = {
   assessmentId: string;
   assessmentRevisionId: string;
   assessmentRevisionNumber: number;
-  submittedAt: string | null;
+  submittedAt: string;
   result: ApplicabilityResultDto | null;
 };
 
@@ -97,7 +85,7 @@ export type ApplicabilityAnswersDto = {
   assessmentId: string;
   assessmentRevisionId: string;
   assessmentRevisionNumber: number;
-  submittedAt: string | null;
+  submittedAt: string;
   answers: Array<{
     questionId: string;
     questionStableKey: string;
@@ -111,173 +99,84 @@ export type ApplicabilityAnswersDto = {
 };
 
 export type ApplicabilityResultDto = {
-  artifactRevisionId: string;
-  artifactRevisionNumber: number;
+  outputRevisionId: string;
+  outputRevisionNumber: number;
   createdAt: string;
-  ruleSetId: string | null;
-  ruleSetVersionLabel: string | null;
   assessmentRevisionId: string | null;
   evidence: StoredRuleEvaluationResult;
   result: LocalizedRuleEvaluationResult;
-  release: {
-    id: string;
+  definition: {
+    hash: string;
     versionLabel: string;
     isOutdated: boolean;
-    activeVersionLabel: string;
-    supportedCountryCodes: string[];
+    supportedJurisdictionCodes: string[];
   };
 };
 
-export type GuestApplicabilitySession = {
-  id: string;
-  token: string;
-};
-
+export type GuestApplicabilitySession = { id: string; token: string };
 export type GuestApplicabilityCheckDto = {
   id: string;
   submittedAt: string;
   expiresAt: string;
   result: ApplicabilityResultDto;
 };
-
 export type ClaimGuestApplicabilityCheckInput = {
   organizationId: string;
   checkId?: string;
 };
 
-type ActiveDefinition = {
-  checkReleaseId: string;
-  aggregateHash: string;
-  isActive: boolean;
-  activeReleaseVersionLabel: string;
-  moduleId: string;
-  questionnaireId: string;
-  questionnaireVersionId: string;
-  questionnaireTitle: string;
-  questionnaireCode: string;
-  versionLabel: string;
-  ruleSet: typeof ruleSets.$inferSelect;
-  questions: Array<
-    ApplicabilityQuestionDto & {
-      factMappings: Array<{ factKey: string; transform: unknown }>;
-    }
-  >;
-};
-
 type ValidatedAnswer = {
   questionId: string;
   questionStableKey: string;
+  questionText: string;
+  questionPosition: number;
   answerValue: ApplicabilityAnswerValue;
-  answerLabel: string;
-  optionIds: string[];
+  selectedOptionLabels: string[];
 };
 
-export type { LocalizedRuleEvaluationResult } from "./localize-evaluation";
-
-type PreparedApplicabilitySubmission = {
-  definition: ActiveDefinition;
-  ruleSet: typeof ruleSets.$inferSelect;
-  validatedAnswers: ValidatedAnswer[];
-  facts: Record<string, unknown>;
-  answerContext: Record<string, ApplicabilityAnswerValue>;
-  evaluation: ReturnType<typeof evaluateRuleSet>;
-  localizedResult: LocalizedRuleEvaluationResult;
+type PreparedSubmission = {
+  definition: Definition;
+  locale: Locale;
+  answers: ValidatedAnswer[];
+  evidence: StoredRuleEvaluationResult;
+  result: LocalizedRuleEvaluationResult;
   inputHash: string;
   now: Date;
 };
 
-type ApplicabilityRuntimeDependencies = {
-  runtimeReleaseReader?: RuntimeReleaseReader;
+type StoredResultSnapshot = {
+  evidence: StoredRuleEvaluationResult;
+  result: LocalizedRuleEvaluationResult;
+  versionLabel: string;
 };
+
+export type { LocalizedRuleEvaluationResult } from "./localize-evaluation";
 
 export async function getApplicabilityQuestionnaireForUser(
   userId: string,
   organizationId: string,
   locale: Locale,
-  dependencies: ApplicabilityRuntimeDependencies = {},
-): Promise<ApplicabilityQuestionnaireDto | null> {
+): Promise<ApplicabilityQuestionnaireDto> {
   await assertCanAccessOrganization(userId, organizationId);
-
-  const definition = await getActiveDefinition(
-    locale,
-    dependencies.runtimeReleaseReader,
-  );
-
-  if (!definition) {
-    return null;
-  }
-
-  const latestAnswers = await getLatestAnswerMap(
-    organizationId,
-    definition.moduleId,
-  );
-  const organization = await db.query.organizations.findFirst({
-    columns: { country: true },
-    where: { RAW: (table, operators) => (eq(table.id, organizationId)) ?? operators.sql`true` },
-  });
-
-  return {
-    id: definition.questionnaireId,
-    moduleId: definition.moduleId,
-    questionnaireVersionId: definition.questionnaireVersionId,
-    title: definition.questionnaireTitle,
-    code: definition.questionnaireCode,
-    versionLabel: definition.versionLabel,
-    questions: definition.questions.map(({ factMappings, ...question }) => {
-      void factMappings;
-      return question;
+  const [latestAnswers, organization] = await Promise.all([
+    getLatestAnswerMap(organizationId),
+    db.query.organizations.findFirst({
+      columns: { countryCode: true },
+      where: { RAW: (table, operators) => eq(table.id, organizationId) ?? operators.sql`true` },
     }),
-    entityCatalogs: getEntityCatalogs(definition.questions),
-    defaultAnswers: getOrganizationCountryDefault({
-      questions: definition.questions,
-      latestAnswers,
-      organizationCountry: organization?.country ?? null,
-    }),
-    latestAnswers,
-    release: toQuestionnaireRelease(definition),
-  };
+  ]);
+  return toQuestionnaire(locale, latestAnswers, organization?.countryCode ?? null);
 }
 
 export async function getApplicabilityQuestionnaireForGuest(
   locale: Locale,
-  dependencies: ApplicabilityRuntimeDependencies = {},
-): Promise<ApplicabilityQuestionnaireDto | null> {
-  const definition = await getActiveDefinition(
-    locale,
-    dependencies.runtimeReleaseReader,
-  );
-
-  if (!definition) {
-    return null;
-  }
-
-  const token = randomBytes(32).toString("base64url");
-  const now = new Date();
-  const [guestCheck] = await db.insert(guestApplicabilityChecks).values({
-    tokenHash: hashGuestToken(token),
-    checkReleaseId: definition.checkReleaseId,
-    status: "started",
-    expiresAt: createGuestStartedExpiryDate(now),
-    startedAt: now,
-  }).returning();
-
-  return {
-    id: definition.questionnaireId,
-    moduleId: definition.moduleId,
-    questionnaireVersionId: definition.questionnaireVersionId,
-    title: definition.questionnaireTitle,
-    code: definition.questionnaireCode,
-    versionLabel: definition.versionLabel,
-    questions: definition.questions.map(({ factMappings, ...question }) => {
-      void factMappings;
-      return question;
-    }),
-    entityCatalogs: getEntityCatalogs(definition.questions),
-    defaultAnswers: {},
-    latestAnswers: {},
-    release: toQuestionnaireRelease(definition),
-    guestSession: { id: guestCheck.id, token },
+): Promise<ApplicabilityQuestionnaireDto> {
+  const questionnaire = toQuestionnaire(locale, {}, null);
+  questionnaire.guestSession = {
+    id: randomUUID(),
+    token: randomBytes(32).toString("base64url"),
   };
+  return questionnaire;
 }
 
 export async function getApplicabilityRecalculationLockForUser(
@@ -285,960 +184,199 @@ export async function getApplicabilityRecalculationLockForUser(
   organizationId: string,
 ): Promise<ApplicabilityRecalculationLock> {
   await assertCanAccessOrganization(userId, organizationId);
-  return getApplicabilityRecalculationLock(organizationId);
+  return { locked: false, gapAssessmentId: null };
 }
 
 export async function getApplicabilityOverviewForUser(
   userId: string,
   organizationId: string,
-  dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<ApplicabilityOverviewDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
-  const current = await getLatestAssessmentWithCurrentRevision(organizationId);
-  if (!current) {
-    return null;
-  }
-
+  const current = await getCurrentAssessmentRevision(organizationId);
+  if (!current) return null;
   return {
-    assessmentId: current.assessment.id,
-    assessmentRevisionId: current.revision.id,
-    assessmentRevisionNumber: current.revision.revisionNumber,
-    submittedAt: current.revision.submittedAt?.toISOString() ?? null,
-    result: await getCurrentResult(
-      organizationId,
-      dependencies.runtimeReleaseReader,
+    assessmentId: current.assessmentId,
+    assessmentRevisionId: current.id,
+    assessmentRevisionNumber: await revisionNumber(
+      assessmentRevisions,
+      assessmentRevisions.assessmentId,
+      current.assessmentId,
+      current.id,
     ),
+    submittedAt: current.submittedAt.toISOString(),
+    result: await getCurrentResult(organizationId),
   };
 }
 
 export async function getApplicabilityAnswersForUser(
   userId: string,
   organizationId: string,
-  locale: Locale,
 ): Promise<ApplicabilityAnswersDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
-  const assessment = await getLatestAssessment(organizationId);
-
-  if (!assessment?.currentRevisionId || !assessment.checkReleaseId) {
-    return null;
-  }
-  const pinnedRelease = await nextCachedRuntimeReleaseReader.getPublished({
-    checkReleaseId: assessment.checkReleaseId,
-    locale,
-  });
-  const definition = pinnedRelease
-    ? toActiveDefinition({
-        published: pinnedRelease,
-        activePointer: null,
-        isActive: false,
-      })
-    : null;
-  if (!definition) return null;
-
-  const revision = await db.query.assessmentRevisions.findFirst({ columns: { id: true, assessmentId: true, questionnaireVersionId: true, revisionNumber: true, parentRevisionId: true, status: true, createdBy: true, createdAt: true, submittedAt: true },
-    where: { RAW: (table, operators) => (eq(table.id, assessment.currentRevisionId!)) ?? operators.sql`true` },
-  });
-
-  if (!revision) {
-    return null;
-  }
-
+  const current = await getCurrentAssessmentRevision(organizationId);
+  if (!current) return null;
   const rows = await db
-    .select({
-      questionId: assessmentAnswers.questionId,
-      questionStableKey: assessmentAnswers.questionStableKey,
-      questionConfig: questions.config,
-      questionPosition: questions.position,
-      answerId: assessmentAnswers.id,
-    })
+    .select()
     .from(assessmentAnswers)
-    .innerJoin(questions, eq(assessmentAnswers.questionId, questions.id))
-    .where(eq(assessmentAnswers.assessmentRevisionId, revision.id))
-    .orderBy(asc(questions.position));
-  const answerOptionRows = rows.length > 0
-    ? await db.select({ answerId: assessmentAnswerOptions.assessmentAnswerId, stableValue: questionOptions.stableValue })
-        .from(assessmentAnswerOptions)
-        .innerJoin(questionOptions, eq(assessmentAnswerOptions.questionOptionId, questionOptions.id))
-        .where(inArray(assessmentAnswerOptions.assessmentAnswerId, rows.map((row) => row.answerId)))
-    : [];
-
+    .where(eq(assessmentAnswers.assessmentRevisionId, current.id))
+    .orderBy(asc(assessmentAnswers.position));
   return {
-    assessmentId: assessment.id,
-    assessmentRevisionId: revision.id,
-    assessmentRevisionNumber: revision.revisionNumber,
-    submittedAt: revision.submittedAt?.toISOString() ?? null,
-    answers: rows.map((row) => {
-      const question = definition.questions.find(
-        (candidate) => candidate.id === row.questionId,
-      );
-      const selectedValues = answerOptionRows.filter((option) => option.answerId === row.answerId).map((option) => option.stableValue);
-      const answerValue: ApplicabilityAnswerValue = question?.answerType === "multi_choice" ? selectedValues : selectedValues[0] ?? "";
-      const translatedAnswerLabel = getTranslatedAnswerLabel(
-        question?.options ?? [],
-        answerValue,
-      );
-
-      return {
-        ...row,
-        questionText: question?.questionText ?? row.questionStableKey,
-        answerValue,
-        answerLabel: translatedAnswerLabel,
-        answerMetadata: getAnswerMetadata(
-          question?.options ?? [],
-          answerValue,
-        ),
-      };
-    }),
+    assessmentId: current.assessmentId,
+    assessmentRevisionId: current.id,
+    assessmentRevisionNumber: await revisionNumber(
+      assessmentRevisions,
+      assessmentRevisions.assessmentId,
+      current.assessmentId,
+      current.id,
+    ),
+    submittedAt: current.submittedAt.toISOString(),
+    answers: rows.map((row) => ({
+      questionId: row.questionKey,
+      questionStableKey: row.questionKey,
+      questionText: row.questionText,
+      questionConfig: null,
+      questionPosition: row.position,
+      answerValue: row.answerValue,
+      answerLabel: row.selectedOptionLabels.join(", ") || null,
+      answerMetadata: null,
+    })),
   };
 }
 
 export async function getApplicabilityResultForUser(
   userId: string,
   organizationId: string,
-  dependencies: ApplicabilityRuntimeDependencies = {},
 ): Promise<ApplicabilityResultDto | null> {
   await assertCanAccessOrganization(userId, organizationId);
-  return getCurrentResult(
-    organizationId,
-    dependencies.runtimeReleaseReader,
-  );
+  return getCurrentResult(organizationId);
+}
+
+export async function getApplicabilityResultRevisionForUser(
+  userId: string,
+  organizationId: string,
+  revisionId: string,
+): Promise<ApplicabilityResultDto | null> {
+  await assertCanAccessOrganization(userId, organizationId);
+  const row = await db.query.analysisOutputRevisions.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(eq(table.id, revisionId), eq(table.organizationId, organizationId)) ??
+        operators.sql`true`,
+    },
+  });
+  return row ? toResultDto(row) : null;
 }
 
 export async function submitApplicabilityCheckForUser(
   userId: string,
   organizationId: string,
   input: SubmitApplicabilityCheckInput,
-  options?: {
-    checkReleaseId?: string;
-    claimGuestCheckId?: string;
-    runtimeReleaseReader?: RuntimeReleaseReader;
-  },
 ): Promise<ApplicabilityResultDto> {
-  await assertCanAccessOrganization(userId, organizationId);
-  await assertApplicabilityRecalculationMutable(organizationId);
-  const prepared = await prepareApplicabilitySubmission(
-    input,
-    options?.checkReleaseId,
-    options?.runtimeReleaseReader,
-  );
-  return persistApplicabilitySubmission({
-    userId,
-    organizationId,
-    release: {
-      checkCode: NIS2_CHECK_CODE,
-      checkReleaseId: prepared.definition.checkReleaseId,
-      moduleId: prepared.definition.moduleId,
-      questionnaireId: prepared.definition.questionnaireId,
-      questionnaireVersionId: prepared.definition.questionnaireVersionId,
-      versionLabel: prepared.definition.versionLabel,
-      isActive: prepared.definition.isActive,
-      activeReleaseVersionLabel:
-        prepared.definition.activeReleaseVersionLabel,
-      evaluatorKind: prepared.definition.ruleSet.evaluatorKind,
-      supportedCountryCodes: getSupportedCountryCodes(
-        prepared.definition.ruleSet.rules,
-      ),
-    },
-    ruleSet: prepared.ruleSet,
-    answers: prepared.validatedAnswers,
-    facts: prepared.facts,
-    evaluation: prepared.evaluation,
-    localizedResult: prepared.localizedResult,
-    inputHash: prepared.inputHash,
-    now: prepared.now,
-    claimGuestCheckId: options?.claimGuestCheckId,
-  });
-}
-
-async function assertApplicabilityRecalculationMutable(
-  organizationId: string,
-) {
-  const lock = await getApplicabilityRecalculationLock(organizationId);
-  assertApplicabilityRecalculationUnlocked(lock);
-}
-
-async function getApplicabilityRecalculationLock(
-  organizationId: string,
-): Promise<ApplicabilityRecalculationLock> {
-  const [row] = await db
-    .select({
-      assessmentId: assessments.id,
-      compatibleCheckReleaseId:
-        gapAnalysisReleases.compatibleCheckReleaseId,
-      artifactId: generatedArtifactRevisions.id,
-      artifactCheckReleaseId:
-        generatedArtifactRevisions.checkReleaseId,
-      artifactStatus: generatedArtifactRevisions.status,
-      artifactResult: generatedArtifactRevisions.result,
-    })
-    .from(assessments)
-    .innerJoin(
-      gapAnalysisReleases,
-      eq(assessments.gapAnalysisReleaseId, gapAnalysisReleases.id),
-    )
-    .leftJoin(
-      generatedArtifactRevisions,
-      eq(
-        assessments.applicabilityArtifactRevisionId,
-        generatedArtifactRevisions.id,
-      ),
-    )
-    .where(
-      and(
-        eq(assessments.organizationId, organizationId),
-        eq(assessments.status, "active"),
-      ),
-    )
-    .limit(1);
-  if (!row) return deriveApplicabilityRecalculationLock(null);
-  const prerequisite = evaluateGapApplicabilityPrerequisite(
-    row.compatibleCheckReleaseId,
-    row.artifactId
-      ? {
-          id: row.artifactId,
-          checkReleaseId: row.artifactCheckReleaseId,
-          status: row.artifactStatus ?? "",
-          result: row.artifactResult,
-        }
-      : null,
-  );
-  if (
-    prerequisite.status === "invalid" ||
-    prerequisite.status === "release_incompatible"
-  ) {
-    console.warn("Ignoring invalid Gap recalculation lock state", {
-      organizationId,
-      gapAssessmentId: row.assessmentId,
-      prerequisiteStatus: prerequisite.status,
-    });
-  }
-  return deriveApplicabilityRecalculationLockForPrerequisite(
-    row.assessmentId,
-    prerequisite,
-  );
-}
-
-export async function getApplicabilityResultRevisionForUser(
-  userId: string,
-  organizationId: string,
-  artifactRevisionId: string,
-  dependencies: ApplicabilityRuntimeDependencies = {},
-) {
-  await assertCanAccessOrganization(userId, organizationId);
-  return getCurrentResult(organizationId, dependencies.runtimeReleaseReader, artifactRevisionId);
+  await requireOrganizationCapability(userId, organizationId, "applicability:submit");
+  const prepared = prepareSubmission(input);
+  return db.transaction((tx) => persistSubmission(tx, userId, organizationId, prepared));
 }
 
 export async function submitApplicabilityCheckForGuest(
   input: SubmitApplicabilityCheckInput,
-  dependencies: ApplicabilityRuntimeDependencies = {},
-): Promise<GuestApplicabilitySession & { result: ApplicabilityResultDto }> {
-  if (!input.guestSession) throw new ApiError(400, "Guest session is required");
-  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.id, input.guestSession!.id),
-      eq(table.tokenHash, hashGuestToken(input.guestSession!.token)),
-    )) ?? operators.sql`true` },
-  });
-  if (!guestCheck || guestCheck.status !== "started" || guestCheck.expiresAt <= new Date()) {
-    throw new ApiError(409, "Guest session is invalid or expired");
-  }
-  const prepared = await prepareApplicabilitySubmission(
-    input,
-    guestCheck.checkReleaseId,
-    dependencies.runtimeReleaseReader,
-  );
-  const expiresAt = createGuestExpiryDate(prepared.now);
-  const inputHash = hashRuleInput({
-    answers: prepared.answerContext,
-    facts: prepared.facts,
-    questionnaireVersionId: prepared.definition.questionnaireVersionId,
-    ruleSetId: prepared.ruleSet.id,
-    ruleSetVersionLabel: prepared.ruleSet.versionLabel,
-  });
-  const storedResult: StoredRuleEvaluationResult = {
-    ...prepared.evaluation,
-    checkReleaseId: prepared.definition.checkReleaseId,
-    ruleSetId: prepared.ruleSet.id,
-    inputHash,
-    evaluatedAt: prepared.now.toISOString(),
-  };
-
-  const [submittedCheck] = await db
-    .update(guestApplicabilityChecks)
-    .set({
-      status: "submitted",
-      answers: input.answers,
-      facts: prepared.facts,
-      result: storedResult,
-      inputHash,
-      expiresAt,
-      claimExpiresAt: expiresAt,
+): Promise<{ id: string; token: string; result: ApplicabilityResultDto }> {
+  const prepared = prepareSubmission(input);
+  const id = input.guestSession?.id ?? randomUUID();
+  const token = input.guestSession?.token ?? randomBytes(32).toString("base64url");
+  const expiresAt = guestSubmittedExpiry(prepared.now);
+  const result = guestResultDto(id, prepared);
+  try {
+    await db.insert(guestApplicabilityChecks).values({
+      id,
+      claimTokenHash: hashGuestToken(token),
+      definitionHash: currentApplicabilityDefinitionHash,
+      buildHash: BUILD_HASH,
+      locale: prepared.locale,
+      answerSnapshot: input.answers,
+      resultSnapshot: {
+        evidence: prepared.evidence,
+        result: prepared.result,
+        versionLabel: prepared.definition.releaseVersionLabel,
+      } satisfies StoredResultSnapshot,
       submittedAt: prepared.now,
-      updatedAt: prepared.now,
-    })
-    .where(eq(guestApplicabilityChecks.id, guestCheck.id))
-    .returning();
-
-  return {
-    id: submittedCheck.id,
-    token: input.guestSession.token,
-    result: (
-      await toGuestApplicabilityCheckDto(
-        submittedCheck,
-        dependencies.runtimeReleaseReader,
-      )
-    ).result,
-  };
+      expiresAt,
+    });
+  } catch {
+    throw new ApiError(409, "This guest applicability check was already submitted");
+  }
+  return { id, token, result };
 }
 
 export async function getGuestApplicabilityCheck(
   token: string | undefined,
-  guestCheckId?: string,
+  checkId?: string,
 ): Promise<GuestApplicabilityCheckDto | null> {
-  const guestCheck = await findGuestApplicabilityCheck(token, guestCheckId);
-
-  if (!guestCheck) {
-    return null;
-  }
-
-  return toGuestApplicabilityCheckDto(guestCheck);
+  const row = await findGuestCheck(token, checkId);
+  if (!row) return null;
+  return {
+    id: row.id,
+    submittedAt: row.submittedAt.toISOString(),
+    expiresAt: row.expiresAt.toISOString(),
+    result: guestStoredResultDto(row),
+  };
 }
 
 export async function deleteGuestApplicabilityCheck(
   token: string | undefined,
-  guestCheckId?: string,
+  checkId?: string,
 ): Promise<void> {
-  const guestCheck = await findGuestApplicabilityCheck(token, guestCheckId);
-
-  if (!guestCheck) {
-    return;
-  }
-
+  if (!token) return;
   await db
-    .update(guestApplicabilityChecks)
-    .set({
-      status: "deleted",
-      deletedAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .where(eq(guestApplicabilityChecks.id, guestCheck.id));
+    .delete(guestApplicabilityChecks)
+    .where(
+      checkId
+        ? and(
+            eq(guestApplicabilityChecks.id, checkId),
+            eq(guestApplicabilityChecks.claimTokenHash, hashGuestToken(token)),
+          )
+        : eq(guestApplicabilityChecks.claimTokenHash, hashGuestToken(token)),
+    );
 }
 
 export async function claimGuestApplicabilityCheckForUser(
   userId: string,
   token: string | undefined,
-  guestCheckId: string | undefined,
+  checkId: string | undefined,
   input: ClaimGuestApplicabilityCheckInput,
-): Promise<{ organizationId: string; result: ApplicabilityResultDto }> {
-  const guestCheck = await findGuestApplicabilityCheck(token, guestCheckId);
-
-  if (!guestCheck) {
-    throw new ApiError(404, "Guest applicability check not found");
-  }
-
-  await assertCanAccessOrganization(userId, input.organizationId);
-  const result = await submitApplicabilityCheckForUser(
+): Promise<ApplicabilityResultDto> {
+  await requireOrganizationCapability(
     userId,
     input.organizationId,
-    { answers: parseGuestAnswers(guestCheck.answers) },
-    { checkReleaseId: guestCheck.checkReleaseId, claimGuestCheckId: guestCheck.id },
+    "applicability:submit",
   );
-
-  return {
-    organizationId: input.organizationId,
-    result,
-  };
-}
-
-async function getActiveDefinition(
-  locale: Locale = "de",
-  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
-): Promise<ActiveDefinition | null> {
-  const release = await reader.getActive({
-    checkCode: NIS2_CHECK_CODE,
-    locale,
-  });
-  return release ? toActiveDefinition(release) : null;
-}
-
-async function prepareApplicabilitySubmission(
-  input: SubmitApplicabilityCheckInput,
-  checkReleaseId?: string,
-  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
-): Promise<PreparedApplicabilitySubmission> {
-  const resolved = checkReleaseId
-    ? await resolvePinnedRelease(reader, checkReleaseId, "de")
-    : await reader.getActive({ checkCode: NIS2_CHECK_CODE, locale: "de" });
-  const definition = resolved ? toActiveDefinition(resolved) : null;
-
-  if (!definition) {
-    throw new ApiError(404, "Betroffenheitscheck questionnaire is not seeded");
+  const row = await findGuestCheck(token, checkId ?? input.checkId);
+  if (!row || !token) {
+    throw new ApiError(404, "Guest applicability check not found");
   }
-
-  const ruleSet = definition.ruleSet;
-
-  const validatedAnswers = validateAnswers(definition, input);
-  const facts = deriveFacts(definition, validatedAnswers);
-  const answerContext = Object.fromEntries(
-    validatedAnswers.map((answer) => [
-      answer.questionStableKey,
-      answer.answerValue,
-    ]),
-  );
-  const evaluation = evaluateRuleSet(ruleSet.rules, {
-    facts,
-    answers: answerContext,
-  });
-  const now = new Date();
-  const inputHash = hashRuleInput({
-    answers: answerContext,
-    facts,
-    checkReleaseId: definition.checkReleaseId,
-    ruleSetId: ruleSet.id,
-  });
-  const releaseEn = await reader.getPublished({
-    checkReleaseId: definition.checkReleaseId,
-    locale: "en",
-  });
-  if (!releaseEn || !resolved) {
-    throw new ApiError(409, "Pinned compliance release is unavailable");
+  if (row.definitionHash !== currentApplicabilityDefinitionHash) {
+    throw new ApiError(409, "The guest check uses an obsolete definition and cannot be claimed");
   }
-  const localizedResult = localizeEvaluation(
-    {
-      ...evaluation,
-      checkReleaseId: definition.checkReleaseId,
-      ruleSetId: ruleSet.id,
-      inputHash,
-      evaluatedAt: now.toISOString(),
-    },
-    resolved.published,
-    releaseEn,
-  );
-
-  return {
-    definition,
-    ruleSet,
-    validatedAnswers,
-    facts,
-    answerContext,
-    evaluation,
-    localizedResult,
-    inputHash,
-    now,
-  };
-}
-
-async function resolvePinnedRelease(
-  reader: RuntimeReleaseReader,
-  checkReleaseId: string,
-  locale: Locale,
-): Promise<ResolvedComplianceRelease | null> {
-  const published = await reader.getPublished({ checkReleaseId, locale });
-  if (!published) return null;
-  const activePointer = await reader.getActivePointer(published.checkCode);
-  return {
-    published,
-    activePointer,
-    isActive: activePointer?.checkReleaseId === published.checkReleaseId,
-  };
-}
-
-async function findGuestApplicabilityCheck(
-  token: string | undefined,
-  guestCheckId?: string,
-) {
-  if (!token) {
-    return null;
-  }
-
-  const guestCheck = await db.query.guestApplicabilityChecks.findFirst({ columns: { id: true, tokenHash: true, status: true, checkReleaseId: true, answers: true, facts: true, result: true, inputHash: true, expiresAt: true, startedAt: true, submittedAt: true, claimExpiresAt: true, claimedByUserId: true, claimedOrganizationId: true, claimedAt: true, deletedAt: true, createdAt: true, updatedAt: true },
-    where: { RAW: (table, operators) => (guestCheckId
-      ? and(
-          eq(table.id, guestCheckId),
-          eq(table.tokenHash, hashGuestToken(token)),
-        )
-      : eq(table.tokenHash, hashGuestToken(token))) ?? operators.sql`true` },
-  });
-
-  if (!guestCheck) {
-    return null;
-  }
-
-  if (guestCheck.status !== "submitted" || guestCheck.expiresAt <= new Date()) {
-    if (guestCheck.status === "submitted") {
-      await db
-        .update(guestApplicabilityChecks)
-        .set({ status: "expired", updatedAt: new Date() })
-        .where(eq(guestApplicabilityChecks.id, guestCheck.id));
-    }
-
-    return null;
-  }
-
-  return guestCheck;
-}
-
-async function toGuestApplicabilityCheckDto(
-  guestCheck: typeof guestApplicabilityChecks.$inferSelect,
-  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
-): Promise<GuestApplicabilityCheckDto> {
-  if (!guestCheck.result || !guestCheck.submittedAt) {
-    throw new ApiError(409, "Guest applicability check has not been submitted");
-  }
-  const result = parseStoredRuleEvaluationResult(guestCheck.result);
-  const [release, releaseEn, activePointer] = await Promise.all([
-    reader.getPublished({
-      checkReleaseId: guestCheck.checkReleaseId,
-      locale: "de",
-    }),
-    reader.getPublished({
-      checkReleaseId: guestCheck.checkReleaseId,
-      locale: "en",
-    }),
-    reader.getActivePointer(NIS2_CHECK_CODE),
-  ]);
-  if (!release || !releaseEn) {
-    throw new ApiError(409, "Pinned compliance release is unavailable");
-  }
-
-  return {
-    id: guestCheck.id,
-    submittedAt: guestCheck.submittedAt.toISOString(),
-    expiresAt: guestCheck.expiresAt.toISOString(),
-    result: {
-      artifactRevisionId: guestCheck.id,
-      artifactRevisionNumber: 1,
-      createdAt: guestCheck.submittedAt.toISOString(),
-      ruleSetId: release.ruleSet.id,
-      ruleSetVersionLabel: release.releaseVersionLabel,
-      assessmentRevisionId: null,
-      evidence: result,
-      result: localizeEvaluation(result, release, releaseEn),
-      release: {
-        id: release.checkReleaseId,
-        versionLabel: release.releaseVersionLabel,
-        isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
-        activeVersionLabel:
-          activePointer?.versionLabel ?? release.releaseVersionLabel,
-        supportedCountryCodes: getSupportedCountryCodes(
-          release.ruleSet.rules,
+  const answers = submitApplicabilityCheckSchema.shape.answers.safeParse(row.answerSnapshot);
+  if (!answers.success) throw new ApiError(409, "Stored guest answers are invalid");
+  const prepared = prepareSubmission({ answers: answers.data, locale: row.locale as Locale });
+  return db.transaction(async (tx) => {
+    const [claimed] = await tx
+      .delete(guestApplicabilityChecks)
+      .where(
+        and(
+          eq(guestApplicabilityChecks.id, row.id),
+          eq(guestApplicabilityChecks.claimTokenHash, hashGuestToken(token)),
+          gt(guestApplicabilityChecks.expiresAt, new Date()),
         ),
-      },
-    },
-  };
-}
-
-function parseGuestAnswers(value: unknown): SubmitApplicabilityCheckInput["answers"] {
-  const parsed = submitApplicabilityCheckSchema.shape.answers.safeParse(value);
-
-  if (!parsed.success) {
-    throw new ApiError(409, "Stored guest answers are no longer valid");
-  }
-
-  return parsed.data;
-}
-
-function createGuestExpiryDate(from: Date): Date {
-  return guestSubmittedExpiry(from);
+      )
+      .returning({ id: guestApplicabilityChecks.id });
+    if (!claimed) throw new ApiError(404, "Guest applicability check not found");
+    return persistSubmission(tx, userId, input.organizationId, prepared);
+  });
 }
 
 export function hashGuestToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
-}
-
-async function getCurrentAssessment(organizationId: string, moduleId: string) {
-  return db.query.assessments.findFirst({ columns: { id: true, organizationId: true, moduleId: true, questionnaireId: true, checkReleaseId: true, gapAnalysisReleaseId: true, applicabilityArtifactRevisionId: true, currentRevisionId: true, status: true, createdBy: true, createdAt: true },
-    where: { RAW: (table, operators) => (and(
-      eq(table.organizationId, organizationId),
-      eq(table.moduleId, moduleId),
-      eq(table.status, "active"),
-    )) ?? operators.sql`true` },
-  });
-}
-
-async function getLatestAnswerMap(organizationId: string, moduleId: string) {
-  const assessment = await getCurrentAssessment(organizationId, moduleId);
-
-  if (!assessment?.currentRevisionId) {
-    return {};
-  }
-
-  const rows = await db.select({
-    answerId: assessmentAnswers.id,
-    questionId: assessmentAnswers.questionId,
-    answerType: questions.answerType,
-  }).from(assessmentAnswers)
-    .innerJoin(questions, eq(assessmentAnswers.questionId, questions.id))
-    .where(eq(assessmentAnswers.assessmentRevisionId, assessment.currentRevisionId));
-  if (rows.length === 0) return {};
-  const optionRows = await db.select({
-    answerId: assessmentAnswerOptions.assessmentAnswerId,
-    stableValue: questionOptions.stableValue,
-  }).from(assessmentAnswerOptions)
-    .innerJoin(questionOptions, eq(assessmentAnswerOptions.questionOptionId, questionOptions.id))
-    .where(inArray(assessmentAnswerOptions.assessmentAnswerId, rows.map((row) => row.answerId)));
-  return Object.fromEntries(rows.flatMap((answer) => {
-    const values = optionRows.filter((option) => option.answerId === answer.answerId).map((option) => option.stableValue);
-    const value: ApplicabilityAnswerValue | undefined = answer.answerType === "multi_choice" ? values : values[0];
-    return isApplicabilityAnswerValue(value) ? [[answer.questionId, value] as const] : [];
-  }));
-}
-
-async function getLatestAssessment(organizationId: string) {
-  const rows = await db.select({ assessment: assessments })
-    .from(assessments)
-    .innerJoin(complianceCheckReleases, eq(assessments.checkReleaseId, complianceCheckReleases.id))
-    .where(and(
-      eq(assessments.organizationId, organizationId),
-      eq(complianceCheckReleases.checkCode, NIS2_CHECK_CODE),
-    ))
-    .orderBy(desc(assessments.createdAt))
-    .limit(1);
-  return rows[0]?.assessment ?? null;
-}
-
-async function getLatestAssessmentWithCurrentRevision(organizationId: string) {
-  const rows = await db
-    .select({ assessment: assessments, revision: assessmentRevisions })
-    .from(assessments)
-    .innerJoin(
-      complianceCheckReleases,
-      eq(assessments.checkReleaseId, complianceCheckReleases.id),
-    )
-    .innerJoin(
-      assessmentRevisions,
-      eq(assessments.currentRevisionId, assessmentRevisions.id),
-    )
-    .where(
-      and(
-        eq(assessments.organizationId, organizationId),
-        eq(complianceCheckReleases.checkCode, NIS2_CHECK_CODE),
-      ),
-    )
-    .orderBy(desc(assessments.createdAt))
-    .limit(1);
-  return rows[0] ?? null;
-}
-
-function createGuestStartedExpiryDate(from: Date): Date {
-  return guestStartedExpiry(from);
-}
-
-async function getCurrentResult(
-  organizationId: string,
-  reader: RuntimeReleaseReader = nextCachedRuntimeReleaseReader,
-  artifactRevisionId?: string,
-): Promise<ApplicabilityResultDto | null> {
-  const row = await db
-    .select({
-      artifactRevisionId: generatedArtifactRevisions.id,
-      artifactRevisionNumber: generatedArtifactRevisions.revisionNumber,
-      createdAt: generatedArtifactRevisions.createdAt,
-      ruleSetId: generatedArtifactRevisions.ruleSetId,
-      ruleSetVersionLabel: ruleSets.versionLabel,
-      result: generatedArtifactRevisions.result,
-    })
-    .from(generatedArtifacts)
-    .innerJoin(
-      generatedArtifactRevisions,
-      eq(generatedArtifacts.id, generatedArtifactRevisions.artifactId),
-    )
-    .leftJoin(ruleSets, eq(generatedArtifactRevisions.ruleSetId, ruleSets.id))
-    .innerJoin(complianceCheckReleases, eq(generatedArtifactRevisions.checkReleaseId, complianceCheckReleases.id))
-    .where(
-      and(
-        eq(generatedArtifacts.organizationId, organizationId),
-        eq(generatedArtifacts.artifactType, "affectedness_result"),
-        eq(complianceCheckReleases.checkCode, NIS2_CHECK_CODE),
-        artifactRevisionId
-          ? eq(generatedArtifactRevisions.id, artifactRevisionId)
-          : eq(generatedArtifacts.currentRevisionId, generatedArtifactRevisions.id),
-      ),
-    )
-    .orderBy(desc(generatedArtifactRevisions.evaluatedAt))
-    .limit(1);
-
-  const resultRow = row[0];
-
-  if (!resultRow) {
-    return null;
-  }
-
-  const result = parseStoredRuleEvaluationResult(resultRow.result);
-  const [release, releaseEn, activePointer] = await Promise.all([
-    reader.getPublished({
-      checkReleaseId: result.checkReleaseId,
-      locale: "de",
-    }),
-    reader.getPublished({
-      checkReleaseId: result.checkReleaseId,
-      locale: "en",
-    }),
-    reader.getActivePointer(NIS2_CHECK_CODE),
-  ]);
-  if (!release || !releaseEn) {
-    throw new ApiError(409, "Pinned compliance release is unavailable");
-  }
-
-  return {
-    artifactRevisionId: resultRow.artifactRevisionId,
-    artifactRevisionNumber: resultRow.artifactRevisionNumber,
-    createdAt: resultRow.createdAt.toISOString(),
-    ruleSetId: resultRow.ruleSetId,
-    ruleSetVersionLabel: resultRow.ruleSetVersionLabel,
-    assessmentRevisionId: result.assessmentRevisionId ?? null,
-    evidence: result,
-    result: localizeEvaluation(result, release, releaseEn),
-    release: {
-      id: release.checkReleaseId,
-      versionLabel: release.releaseVersionLabel,
-      isOutdated: activePointer?.checkReleaseId !== release.checkReleaseId,
-      activeVersionLabel:
-        activePointer?.versionLabel ?? release.releaseVersionLabel,
-      supportedCountryCodes: getSupportedCountryCodes(release.ruleSet.rules),
-    },
-  };
-}
-
-function validateAnswers(
-  definition: ActiveDefinition,
-  input: SubmitApplicabilityCheckInput,
-): ValidatedAnswer[] {
-  const questionById = new Map(
-    definition.questions.map((question) => [question.id, question]),
-  );
-  const answerByQuestionId = new Map<string, ApplicabilityAnswerValue>();
-
-  for (const answer of input.answers) {
-    if (!questionById.has(answer.questionId)) {
-      throw new ApiError(400, "Unknown questionId");
-    }
-
-    if (answerByQuestionId.has(answer.questionId)) {
-      throw new ApiError(400, "Each question can only be answered once");
-    }
-
-    answerByQuestionId.set(answer.questionId, answer.value);
-  }
-
-  const answersRecord = Object.fromEntries(answerByQuestionId);
-  const countryQuestion = definition.questions.find((question) =>
-    question.factMappings.some(
-      (mapping) => mapping.factKey === "jurisdiction_country",
-    ),
-  );
-  const countryAnswer = countryQuestion
-    ? answerByQuestionId.get(countryQuestion.id)
-    : undefined;
-  const countryCode = typeof countryAnswer === "string" ? countryAnswer : null;
-  const visibleQuestions = getVisibleQuestions(
-    definition.questions,
-    answersRecord,
-  );
-
-  for (const question of visibleQuestions) {
-    const answerValue = answerByQuestionId.get(question.id);
-
-    if (question.required && !isAnswered(answerValue)) {
-      throw new ApiError(400, "All required questions must be answered");
-    }
-  }
-
-  return visibleQuestions.flatMap<ValidatedAnswer>((question) => {
-    const answerValue = answerByQuestionId.get(question.id);
-    if (!isAnswered(answerValue)) {
-      return [];
-    }
-
-    if (question.answerType === "multi_choice") {
-      if (!Array.isArray(answerValue)) {
-        throw new ApiError(400, "Multi-choice answers must be arrays");
-      }
-
-      const uniqueValues = [...new Set(answerValue)];
-      if (uniqueValues.length !== answerValue.length) {
-        throw new ApiError(400, "Multi-choice answers cannot contain duplicates");
-      }
-
-      const exclusiveValues = uniqueValues.filter((value) =>
-        ["none_of_these", "unsure"].includes(value),
-      );
-      if (exclusiveValues.length > 0 && uniqueValues.length > 1) {
-        throw new ApiError(400, "Exclusive answers cannot be combined");
-      }
-
-      const allowedOptions = catalogOptionsForCountry(
-        question.options,
-        countryCode,
-      );
-      const selectedOptions = uniqueValues.map((value) => {
-        const option = allowedOptions.find(
-          (candidate) => candidate.stableValue === value,
-        );
-        if (!option) {
-          throw new ApiError(400, "Invalid answer value");
-        }
-        return option;
-      });
-
-      return [
-        {
-          questionId: question.id,
-          questionStableKey: question.stableKey,
-          answerValue: uniqueValues,
-          answerLabel: selectedOptions.map((option) => option.label).join(", "),
-          optionIds: selectedOptions.map((option) => option.id),
-        },
-      ];
-    }
-
-    if (Array.isArray(answerValue)) {
-      throw new ApiError(400, "Single-choice answers must be strings");
-    }
-
-    const option = catalogOptionsForCountry(
-      question.options,
-      countryCode,
-    ).find(
-      (candidate) => candidate.stableValue === answerValue,
-    );
-    if (!option) {
-      throw new ApiError(400, "Invalid answer value");
-    }
-
-    return [
-      {
-        questionId: question.id,
-        questionStableKey: question.stableKey,
-        answerValue,
-        answerLabel: option.label,
-        optionIds: [option.id],
-      },
-    ];
-  });
-}
-
-function deriveFacts(
-  definition: ActiveDefinition,
-  validatedAnswers: ValidatedAnswer[],
-) {
-  const answerByQuestionId = new Map(
-    validatedAnswers.map((answer) => [answer.questionId, answer]),
-  );
-  const facts: Record<string, unknown> = {};
-
-  for (const question of definition.questions) {
-    const answer = answerByQuestionId.get(question.id);
-
-    if (!answer) {
-      continue;
-    }
-
-    for (const mapping of question.factMappings) {
-      facts[mapping.factKey] = answer.answerValue;
-    }
-  }
-
-  return facts;
-}
-
-function getTranslatedAnswerLabel(
-  options: ApplicabilityOptionDto[],
-  value: unknown,
-): string | null {
-  const values = Array.isArray(value) ? value : [value];
-  const labels = values.flatMap((item) => {
-    const option = options.find(
-      (candidate) => candidate.stableValue === item,
-    );
-    return option ? [option.label] : [];
-  });
-
-  return labels.length > 0 ? labels.join(", ") : null;
-}
-
-function getAnswerMetadata(
-  options: ApplicabilityOptionDto[],
-  value: unknown,
-): unknown {
-  const values = Array.isArray(value) ? value : [value];
-  const metadata = values.flatMap((item) => {
-    const option = options.find(
-      (candidate) => candidate.stableValue === item,
-    );
-    return option ? [option.metadata] : [];
-  });
-
-  return Array.isArray(value) ? metadata : metadata[0] ?? null;
-}
-
-function isApplicabilityAnswerValue(
-  value: unknown,
-): value is ApplicabilityAnswerValue {
-  return (
-    (typeof value === "string" && value.length > 0) ||
-    (Array.isArray(value) &&
-      value.length > 0 &&
-      value.every((item) => typeof item === "string" && item.length > 0))
-  );
-}
-
-function getEntityCatalogs(
-  questions: ActiveDefinition["questions"],
-): Record<string, ApplicabilityOptionDto[]> {
-  const entityQuestion = questions.find((question) =>
-    question.factMappings.some(
-      (mapping) => mapping.factKey === "nis2_entity_types",
-    ),
-  );
-  if (!entityQuestion) return {};
-
-  const catalogCodes = new Set(
-    entityQuestion.options
-      .map((option) => option.catalogCode)
-      .filter((catalogCode) => catalogCode !== "all"),
-  );
-  return Object.fromEntries(
-    [...catalogCodes].map((catalogCode) => [
-      catalogCode,
-      entityQuestion.options.filter(
-        (option) =>
-          option.catalogCode === "all" || option.catalogCode === catalogCode,
-      ),
-    ]),
-  );
-}
-
-function toActiveDefinition(release: ResolvedComplianceRelease): ActiveDefinition {
-  const published = release.published;
-  return {
-    checkReleaseId: published.checkReleaseId,
-    aggregateHash: published.aggregateHash,
-    isActive: release.isActive,
-    activeReleaseVersionLabel:
-      release.activePointer?.versionLabel ?? published.releaseVersionLabel,
-    moduleId: published.moduleId,
-    questionnaireId: published.questionnaireId,
-    questionnaireVersionId: published.questionnaireVersionId,
-    questionnaireTitle: published.questionnaireTitle,
-    questionnaireCode: published.questionnaireCode,
-    versionLabel: published.releaseVersionLabel,
-    ruleSet: published.ruleSet,
-    questions: published.questions,
-  };
-}
-
-function toQuestionnaireRelease(definition: ActiveDefinition) {
-  return {
-    id: definition.checkReleaseId,
-    versionLabel: definition.versionLabel,
-    aggregateHash: definition.aggregateHash,
-    isActive: definition.isActive,
-    activeVersionLabel: definition.activeReleaseVersionLabel,
-    supportedCountryCodes: getSupportedCountryCodes(
-      definition.ruleSet.rules,
-    ),
-  };
 }
 
 export function getOrganizationCountryDefault(input: {
@@ -1246,29 +384,478 @@ export function getOrganizationCountryDefault(input: {
   latestAnswers: Record<string, ApplicabilityAnswerValue>;
   organizationCountry: string | null;
 }): Record<string, ApplicabilityAnswerValue> {
-  const countryQuestion = input.questions.find(
-    (question) => question.stableKey === "bc.jurisdiction_country",
+  const question = input.questions.find(
+    (candidate) => candidate.stableKey === "bc.jurisdiction_country",
   );
-  if (!countryQuestion || input.latestAnswers[countryQuestion.id]) return {};
+  if (!question || input.latestAnswers[question.id]) return {};
   const countryCode = input.organizationCountry?.trim().toUpperCase();
   if (!countryCode || countryCode.length !== 2) return {};
-  const offered = countryQuestion.options.some(
+  return question.options.some(
     (option) => option.stableValue.toUpperCase() === countryCode,
+  )
+    ? { [question.id]: countryCode }
+    : {};
+}
+
+function toQuestionnaire(
+  locale: Locale,
+  latestAnswers: Record<string, ApplicabilityAnswerValue>,
+  organizationCountry: string | null,
+): ApplicabilityQuestionnaireDto {
+  const definition = getCurrentApplicabilityDefinition(locale);
+  const questions = definition.questions.map(({ factMappings, ...question }) => {
+    void factMappings;
+    return question;
+  });
+  return {
+    id: definition.questionnaireId,
+    locale,
+    title: definition.questionnaireTitle,
+    code: definition.questionnaireCode,
+    versionLabel: definition.releaseVersionLabel,
+    questions,
+    entityCatalogs: getEntityCatalogs(definition.questions),
+    defaultAnswers: getOrganizationCountryDefault({
+      questions,
+      latestAnswers,
+      organizationCountry,
+    }),
+    latestAnswers,
+    definition: {
+      hash: currentApplicabilityDefinitionHash,
+      versionLabel: definition.releaseVersionLabel,
+      supportedJurisdictionCodes: [...SUPPORTED_JURISDICTION_CODES],
+    },
+  };
+}
+
+function prepareSubmission(input: SubmitApplicabilityCheckInput): PreparedSubmission {
+  const locale = input.locale as Locale;
+  const definition = getCurrentApplicabilityDefinition(locale);
+  const definitionEn = getCurrentApplicabilityDefinition("en");
+  const answers = validateAnswers(definition, input);
+  const facts = deriveFacts(definition, answers);
+  const answerContext = Object.fromEntries(
+    answers.map((answer) => [answer.questionStableKey, answer.answerValue]),
   );
-  return offered ? { [countryQuestion.id]: countryCode } : {};
+  const now = new Date();
+  const inputHash = hashRuleInput({
+    answers: answerContext,
+    facts,
+    definitionHash: currentApplicabilityDefinitionHash,
+  });
+  const evaluation = evaluateRuleSet(definition.ruleSet.rules, {
+    facts,
+    answers: answerContext,
+  });
+  const evidence = parseStoredRuleEvaluationResult({
+    ...evaluation,
+    checkReleaseId: currentApplicabilityDefinitionHash,
+    ruleSetId: currentApplicabilityDefinitionHash,
+    inputHash,
+    evaluatedAt: now.toISOString(),
+  });
+  return {
+    definition,
+    locale,
+    answers,
+    evidence,
+    result: localizeEvaluation(evidence, definition, definitionEn),
+    inputHash,
+    now,
+  };
+}
+
+function validateAnswers(
+  definition: Definition,
+  input: SubmitApplicabilityCheckInput,
+): ValidatedAnswer[] {
+  const questionById = new Map(definition.questions.map((question) => [question.id, question]));
+  const values = new Map<string, ApplicabilityAnswerValue>();
+  for (const answer of input.answers) {
+    if (!questionById.has(answer.questionId)) throw new ApiError(400, "Unknown questionId");
+    if (values.has(answer.questionId)) throw new ApiError(400, "Each question can only be answered once");
+    values.set(answer.questionId, answer.value);
+  }
+  const record = Object.fromEntries(values);
+  const countryQuestion = definition.questions.find((question) =>
+    question.factMappings.some((mapping) => mapping.factKey === "jurisdiction_country"),
+  );
+  const countryValue = countryQuestion ? values.get(countryQuestion.id) : undefined;
+  const countryCode = typeof countryValue === "string" ? countryValue : null;
+  const visible = getVisibleQuestions(definition.questions, record);
+  for (const question of visible) {
+    if (question.required && !isAnswered(values.get(question.id))) {
+      throw new ApiError(400, "All required questions must be answered");
+    }
+  }
+  return visible.flatMap((question): ValidatedAnswer[] => {
+    const value = values.get(question.id);
+    if (!isAnswered(value)) return [];
+    const allowed = catalogOptionsForCountry(question.options, countryCode);
+    const selectedValues = Array.isArray(value) ? [...new Set(value)] : [value];
+    if (Array.isArray(value) !== (question.answerType === "multi_choice")) {
+      throw new ApiError(400, "Answer value has the wrong shape");
+    }
+    if (selectedValues.length !== (Array.isArray(value) ? value.length : 1)) {
+      throw new ApiError(400, "Multi-choice answers cannot contain duplicates");
+    }
+    if (
+      selectedValues.length > 1 &&
+      selectedValues.some((item) => item === "none_of_these" || item === "unsure")
+    ) {
+      throw new ApiError(400, "Exclusive answers cannot be combined");
+    }
+    const options = selectedValues.map((selected) => {
+      const option = allowed.find((candidate) => candidate.stableValue === selected);
+      if (!option) throw new ApiError(400, "Invalid answer value");
+      return option;
+    });
+    return [{
+      questionId: question.id,
+      questionStableKey: question.stableKey,
+      questionText: question.questionText,
+      questionPosition: question.position,
+      answerValue: value,
+      selectedOptionLabels: options.map((option) => option.label),
+    }];
+  });
+}
+
+function deriveFacts(definition: Definition, answers: ValidatedAnswer[]) {
+  const byId = new Map(answers.map((answer) => [answer.questionId, answer.answerValue]));
+  const facts: Record<string, unknown> = {};
+  for (const question of definition.questions) {
+    const value = byId.get(question.id);
+    if (value === undefined) continue;
+    for (const mapping of question.factMappings) facts[mapping.factKey] = value;
+  }
+  return facts;
+}
+
+async function persistSubmission(
+  tx: Transaction,
+  userId: string,
+  organizationId: string,
+  prepared: PreparedSubmission,
+): Promise<ApplicabilityResultDto> {
+  await tx
+    .insert(assessments)
+    .values({ organizationId, kind: APPLICABILITY_KIND })
+    .onConflictDoNothing({ target: [assessments.organizationId, assessments.kind] });
+  const assessment = await tx.query.assessments.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(eq(table.organizationId, organizationId), eq(table.kind, APPLICABILITY_KIND)) ??
+        operators.sql`true`,
+    },
+  });
+  if (!assessment) throw new Error("Applicability assessment was not created");
+  const [revision] = await tx
+    .insert(assessmentRevisions)
+    .values({
+      organizationId,
+      assessmentId: assessment.id,
+      previousRevisionId: assessment.currentRevisionId,
+      definitionHash: currentApplicabilityDefinitionHash,
+      buildHash: BUILD_HASH,
+      locale: prepared.locale,
+      deterministicEvaluations: { applicability: prepared.evidence },
+      inputHash: prepared.inputHash,
+      submittedBy: userId,
+      submittedAt: prepared.now,
+    })
+    .returning();
+  if (!revision) throw new Error("Applicability revision was not created");
+  await tx.insert(assessmentAnswers).values(
+    prepared.answers.map((answer) => ({
+      organizationId,
+      assessmentRevisionId: revision.id,
+      questionKey: answer.questionStableKey,
+      questionText: answer.questionText,
+      answerValue: answer.answerValue,
+      selectedOptionLabels: answer.selectedOptionLabels,
+      position: answer.questionPosition,
+    })),
+  );
+  await tx
+    .update(assessments)
+    .set({ currentRevisionId: revision.id, updatedAt: prepared.now })
+    .where(eq(assessments.id, assessment.id));
+
+  await tx
+    .insert(analysisOutputs)
+    .values({ organizationId, kind: APPLICABILITY_KIND })
+    .onConflictDoNothing({ target: [analysisOutputs.organizationId, analysisOutputs.kind] });
+  const output = await tx.query.analysisOutputs.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(eq(table.organizationId, organizationId), eq(table.kind, APPLICABILITY_KIND)) ??
+        operators.sql`true`,
+    },
+  });
+  if (!output) throw new Error("Applicability output was not created");
+  const snapshot: StoredResultSnapshot = {
+    evidence: prepared.evidence,
+    result: prepared.result,
+    versionLabel: prepared.definition.releaseVersionLabel,
+  };
+  const [outputRevision] = await tx
+    .insert(analysisOutputRevisions)
+    .values({
+      organizationId,
+      outputId: output.id,
+      previousRevisionId: output.currentRevisionId,
+      assessmentRevisionId: revision.id,
+      sourceApplicabilityRevisionId: null,
+      definitionHash: currentApplicabilityDefinitionHash,
+      buildHash: BUILD_HASH,
+      locale: prepared.locale,
+      inputHash: prepared.inputHash,
+      result: snapshot,
+      jurisdictionCode: prepared.evidence.jurisdiction.countryCode,
+      outcomeCode: prepared.evidence.outcome,
+      gapEligible: isGapEligible(prepared.evidence),
+      createdBy: userId,
+      createdAt: prepared.now,
+    })
+    .returning();
+  if (!outputRevision) throw new Error("Applicability output revision was not created");
+  await tx
+    .update(analysisOutputs)
+    .set({ currentRevisionId: outputRevision.id, updatedAt: prepared.now })
+    .where(eq(analysisOutputs.id, output.id));
+  await tx.insert(auditEvents).values({
+    organizationId,
+    actorUserId: userId,
+    eventType: "applicability.submitted",
+    entityType: "analysis_output_revision",
+    entityId: outputRevision.id,
+    metadata: {
+      assessmentRevisionId: revision.id,
+      definitionHash: currentApplicabilityDefinitionHash,
+      outcome: prepared.evidence.outcome,
+    },
+  });
+  return toResultDto(outputRevision, 1 + (output.currentRevisionId ? await countPriorOutputRevisions(tx, output.id) : 0));
+}
+
+function isGapEligible(evidence: StoredRuleEvaluationResult) {
+  return (
+    evidence.jurisdiction.countryCode === "DE" &&
+    (evidence.outcome === "essential_entity" || evidence.outcome === "important_entity")
+  );
+}
+
+async function getCurrentAssessmentRevision(organizationId: string) {
+  const assessment = await db.query.assessments.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(eq(table.organizationId, organizationId), eq(table.kind, APPLICABILITY_KIND)) ??
+        operators.sql`true`,
+    },
+  });
+  if (!assessment?.currentRevisionId) return null;
+  return db.query.assessmentRevisions.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, assessment.currentRevisionId!),
+          eq(table.organizationId, organizationId),
+        ) ?? operators.sql`true`,
+    },
+  });
+}
+
+async function getLatestAnswerMap(organizationId: string) {
+  const revision = await getCurrentAssessmentRevision(organizationId);
+  if (!revision) return {};
+  const rows = await db
+    .select({ questionKey: assessmentAnswers.questionKey, value: assessmentAnswers.answerValue })
+    .from(assessmentAnswers)
+    .where(eq(assessmentAnswers.assessmentRevisionId, revision.id));
+  return Object.fromEntries(
+    rows.filter((row): row is typeof row & { value: ApplicabilityAnswerValue } =>
+      isApplicabilityAnswerValue(row.value),
+    ).map((row) => [row.questionKey, row.value]),
+  );
+}
+
+async function getCurrentResult(organizationId: string) {
+  const output = await db.query.analysisOutputs.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(eq(table.organizationId, organizationId), eq(table.kind, APPLICABILITY_KIND)) ??
+        operators.sql`true`,
+    },
+  });
+  if (!output?.currentRevisionId) return null;
+  const revision = await db.query.analysisOutputRevisions.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(eq(table.id, output.currentRevisionId!), eq(table.organizationId, organizationId)) ??
+        operators.sql`true`,
+    },
+  });
+  return revision ? toResultDto(revision) : null;
+}
+
+async function findGuestCheck(token: string | undefined, checkId?: string) {
+  if (!token) return null;
+  const row = await db.query.guestApplicabilityChecks.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.claimTokenHash, hashGuestToken(token)),
+          gt(table.expiresAt, new Date()),
+          ...(checkId ? [eq(table.id, checkId)] : []),
+        ) ?? operators.sql`true`,
+    },
+  });
+  if (row) return row;
+  await db
+    .delete(guestApplicabilityChecks)
+    .where(eq(guestApplicabilityChecks.claimTokenHash, hashGuestToken(token)));
+  return null;
+}
+
+function guestResultDto(id: string, prepared: PreparedSubmission): ApplicabilityResultDto {
+  return {
+    outputRevisionId: id,
+    outputRevisionNumber: 1,
+    createdAt: prepared.now.toISOString(),
+    assessmentRevisionId: null,
+    evidence: prepared.evidence,
+    result: prepared.result,
+    definition: {
+      hash: currentApplicabilityDefinitionHash,
+      versionLabel: prepared.definition.releaseVersionLabel,
+      isOutdated: false,
+      supportedJurisdictionCodes: [...SUPPORTED_JURISDICTION_CODES],
+    },
+  };
+}
+
+function guestStoredResultDto(row: typeof guestApplicabilityChecks.$inferSelect) {
+  const snapshot = parseResultSnapshot(row.resultSnapshot);
+  return {
+    outputRevisionId: row.id,
+    outputRevisionNumber: 1,
+    createdAt: row.submittedAt.toISOString(),
+    assessmentRevisionId: null,
+    evidence: snapshot.evidence,
+    result: snapshot.result,
+    definition: {
+      hash: row.definitionHash,
+      versionLabel: snapshot.versionLabel,
+      isOutdated: row.definitionHash !== currentApplicabilityDefinitionHash,
+      supportedJurisdictionCodes: [...SUPPORTED_JURISDICTION_CODES],
+    },
+  } satisfies ApplicabilityResultDto;
+}
+
+async function toResultDto(
+  row: typeof analysisOutputRevisions.$inferSelect,
+  knownRevisionNumber?: number,
+): Promise<ApplicabilityResultDto> {
+  const snapshot = parseResultSnapshot(row.result);
+  return {
+    outputRevisionId: row.id,
+    outputRevisionNumber:
+      knownRevisionNumber ??
+      (await revisionNumber(
+        analysisOutputRevisions,
+        analysisOutputRevisions.outputId,
+        row.outputId,
+        row.id,
+      )),
+    createdAt: row.createdAt.toISOString(),
+    assessmentRevisionId: row.assessmentRevisionId,
+    evidence: snapshot.evidence,
+    result: snapshot.result,
+    definition: {
+      hash: row.definitionHash,
+      versionLabel: snapshot.versionLabel,
+      isOutdated: row.definitionHash !== currentApplicabilityDefinitionHash,
+      supportedJurisdictionCodes: [...SUPPORTED_JURISDICTION_CODES],
+    },
+  };
+}
+
+function parseResultSnapshot(value: unknown): StoredResultSnapshot {
+  if (!value || typeof value !== "object") throw new ApiError(409, "Stored result is invalid");
+  const candidate = value as Partial<StoredResultSnapshot>;
+  if (!candidate.result || typeof candidate.versionLabel !== "string") {
+    throw new ApiError(409, "Stored result is invalid");
+  }
+  return {
+    evidence: parseStoredRuleEvaluationResult(candidate.evidence),
+    result: candidate.result,
+    versionLabel: candidate.versionLabel,
+  };
+}
+
+async function revisionNumber(
+  table: typeof assessmentRevisions | typeof analysisOutputRevisions,
+  parentColumn: typeof assessmentRevisions.assessmentId | typeof analysisOutputRevisions.outputId,
+  parentId: string,
+  revisionId: string,
+) {
+  const rows = await db
+    .select({ id: table.id })
+    .from(table)
+    .where(eq(parentColumn, parentId))
+    .orderBy(
+      asc(
+        table === assessmentRevisions
+          ? assessmentRevisions.submittedAt
+          : analysisOutputRevisions.createdAt,
+      ),
+    );
+  const index = rows.findIndex((row) => row.id === revisionId);
+  return index < 0 ? 1 : index + 1;
+}
+
+async function countPriorOutputRevisions(tx: Transaction, outputId: string) {
+  return (
+    await tx
+      .select({ id: analysisOutputRevisions.id })
+      .from(analysisOutputRevisions)
+      .where(eq(analysisOutputRevisions.outputId, outputId))
+  ).length - 1;
+}
+
+function isApplicabilityAnswerValue(value: unknown): value is ApplicabilityAnswerValue {
+  return (
+    (typeof value === "string" && value.length > 0) ||
+    (Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === "string" && item.length > 0))
+  );
+}
+
+function getEntityCatalogs(questions: Definition["questions"]) {
+  const entityQuestion = questions.find((question) =>
+    question.factMappings.some((mapping) => mapping.factKey === "nis2_entity_types"),
+  );
+  if (!entityQuestion) return {};
+  const codes = new Set(
+    entityQuestion.options
+      .map((option) => option.catalogCode)
+      .filter((code) => code !== "all"),
+  );
+  return Object.fromEntries(
+    [...codes].map((code) => [
+      code,
+      entityQuestion.options.filter((option) => option.catalogCode === "all" || option.catalogCode === code),
+    ]),
+  );
 }
 
 function hashRuleInput(input: unknown) {
-  return createHash("sha256")
-    .update(JSON.stringify(sortJson(input)))
-    .digest("hex");
+  return createHash("sha256").update(JSON.stringify(sortJson(input))).digest("hex");
 }
 
 function sortJson(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortJson);
-  }
-
+  if (Array.isArray(value)) return value.map(sortJson);
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
@@ -1276,6 +863,5 @@ function sortJson(value: unknown): unknown {
         .map(([key, child]) => [key, sortJson(child)]),
     );
   }
-
   return value;
 }

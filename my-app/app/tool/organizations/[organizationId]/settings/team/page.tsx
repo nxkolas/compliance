@@ -39,7 +39,12 @@ export default async function OrganizationTeamPage({ params }: Props) {
       <OrganizationMemberRoster
         organizationId={organizationId}
         initialMembers={serialize(memberResult.members)}
-        controls={memberResult.controls}
+        controls={{
+          actorUserId: user.id,
+          canManage,
+          canManageOwners:
+            authorization.membership?.role === "owner",
+        }}
         labels={dictionary.teamManagement}
       />
       <OrganizationInvitePanel

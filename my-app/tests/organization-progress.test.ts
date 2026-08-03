@@ -15,47 +15,43 @@ const initialSignals: OrganizationProgressSignals = {
 };
 
 describe("organization progress derivation", () => {
-  it("starts with welcome as the current step", () => {
+  it("starts with every step incomplete", () => {
     const progress = deriveOrganizationProgress(initialSignals);
 
     expect(progress).toEqual({
-      currentStep: "welcome",
       completedCount: 0,
       totalCount: 6,
       steps: [
-        { key: "welcome", status: "current" },
-        { key: "applicability_check", status: "upcoming" },
-        { key: "gap_analysis", status: "upcoming" },
-        { key: "documents_uploaded", status: "upcoming" },
-        { key: "action_plan", status: "upcoming" },
-        { key: "next_steps", status: "upcoming" },
+        { key: "welcome", completed: false },
+        { key: "applicability_check", completed: false },
+        { key: "gap_analysis", completed: false },
+        { key: "documents_uploaded", completed: false },
+        { key: "action_plan", completed: false },
+        { key: "next_steps", completed: false },
       ],
     });
   });
 
-  it("does not expose out-of-order completion", () => {
+  it("exposes completed steps even when an earlier step is still incomplete", () => {
     const progress = deriveOrganizationProgress({
       ...initialSignals,
       hasAcceptedApplicability: true,
       applicabilityOutcome: "important_entity",
-      hasUploadedDocument: true,
       hasActivatedActionPlan: true,
-      activeActionPlanItemStatuses: ["done"],
     });
 
-    expect(progress.completedCount).toBe(2);
-    expect(progress.currentStep).toBe("gap_analysis");
+    expect(progress.completedCount).toBe(3);
     expect(progress.steps).toEqual([
-      { key: "welcome", status: "completed" },
-      { key: "applicability_check", status: "completed" },
-      { key: "gap_analysis", status: "current" },
-      { key: "documents_uploaded", status: "upcoming" },
-      { key: "action_plan", status: "upcoming" },
-      { key: "next_steps", status: "upcoming" },
+      { key: "welcome", completed: true },
+      { key: "applicability_check", completed: true },
+      { key: "gap_analysis", completed: false },
+      { key: "documents_uploaded", completed: false },
+      { key: "action_plan", completed: true },
+      { key: "next_steps", completed: false },
     ]);
   });
 
-  it("keeps next steps current while an active plan has open work", () => {
+  it("keeps next steps incomplete while an active plan has open work", () => {
     const progress = deriveOrganizationProgress({
       ...initialSignals,
       hasAcceptedApplicability: true,
@@ -67,10 +63,9 @@ describe("organization progress derivation", () => {
     });
 
     expect(progress.completedCount).toBe(5);
-    expect(progress.currentStep).toBe("next_steps");
     expect(progress.steps[5]).toEqual({
       key: "next_steps",
-      status: "current",
+      completed: false,
     });
   });
 
@@ -82,14 +77,11 @@ describe("organization progress derivation", () => {
       hasAcceptedGapAnalysis: true,
       hasUploadedDocument: true,
       hasActivatedActionPlan: true,
-      activeActionPlanItemStatuses: ["done", "cancelled"],
+      activeActionPlanItemStatuses: ["done", "done"],
     });
 
     expect(progress.completedCount).toBe(6);
-    expect(progress.currentStep).toBeNull();
-    expect(progress.steps.every((step) => step.status === "completed")).toBe(
-      true,
-    );
+    expect(progress.steps.every((step) => step.completed)).toBe(true);
   });
 
   it("treats an empty active plan as complete", () => {
@@ -102,8 +94,6 @@ describe("organization progress derivation", () => {
       hasActivatedActionPlan: true,
       activeActionPlanItemStatuses: [],
     });
-
-    expect(progress.currentStep).toBeNull();
     expect(progress.completedCount).toBe(6);
   });
 
@@ -115,23 +105,22 @@ describe("organization progress derivation", () => {
     });
 
     expect(progress).toEqual({
-      currentStep: null,
       completedCount: 2,
       totalCount: 2,
       steps: [
-        { key: "welcome", status: "completed" },
-        { key: "applicability_check", status: "completed" },
-        { key: "gap_analysis", status: "not_applicable" },
-        { key: "documents_uploaded", status: "not_applicable" },
-        { key: "action_plan", status: "not_applicable" },
-        { key: "next_steps", status: "not_applicable" },
+        { key: "welcome", completed: true },
+        { key: "applicability_check", completed: true },
+        { key: "gap_analysis", completed: false },
+        { key: "documents_uploaded", completed: false },
+        { key: "action_plan", completed: false },
+        { key: "next_steps", completed: false },
       ],
     });
   });
 });
 
 describe("local welcome completion", () => {
-  it("advances a fresh journey to the applicability check without mutation", () => {
+  it("completes welcome locally without mutation", () => {
     const serverProgress = deriveOrganizationProgress(initialSignals);
     const snapshot = structuredClone(serverProgress);
 
@@ -139,13 +128,12 @@ describe("local welcome completion", () => {
 
     expect(serverProgress).toEqual(snapshot);
     expect(localProgress).toMatchObject({
-      currentStep: "applicability_check",
       completedCount: 1,
       totalCount: 6,
     });
     expect(localProgress.steps.slice(0, 2)).toEqual([
-      { key: "welcome", status: "completed" },
-      { key: "applicability_check", status: "current" },
+      { key: "welcome", completed: true },
+      { key: "applicability_check", completed: false },
     ]);
   });
 

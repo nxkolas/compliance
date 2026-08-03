@@ -7,15 +7,15 @@ export const databaseRateLimitStore: RateLimitStore = {
     const { db } = await import("@/src/db");
     const [row] = await db
       .insert(apiRateLimitWindows)
-      .values({ key, windowStartedAt, expiresAt, count: 1 })
+      .values({ key, windowStartedAt, expiresAt, requestCount: 1 })
       .onConflictDoUpdate({
         target: [apiRateLimitWindows.key, apiRateLimitWindows.windowStartedAt],
         set: {
-          count: sql`${apiRateLimitWindows.count} + 1`,
+          requestCount: sql`${apiRateLimitWindows.requestCount} + 1`,
           updatedAt: new Date(),
         },
       })
-      .returning({ count: apiRateLimitWindows.count });
+      .returning({ count: apiRateLimitWindows.requestCount });
     return row.count;
   },
 };

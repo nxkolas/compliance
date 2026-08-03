@@ -45,10 +45,16 @@ describe("compliance report renderer", () => {
       inputHash: "a".repeat(64),
       snapshot: {
         capturedAt: "2026-07-22T12:00:00.000Z",
-        applicabilityRevisionId: null,
-        gapRevisionId: null,
+        locale,
+        applicabilityRevisionId: "applicability",
+        gapRevisionId: "gap",
         actionPlanId: null,
         documentVersionIds: [],
+        content: {
+          applicability: { outcome: "-", jurisdiction: null, answers: [] },
+          findings: [],
+          actions: [],
+        },
       },
     });
     expect(pdf.byteLength).toBeGreaterThan(500);
@@ -58,6 +64,63 @@ describe("compliance report renderer", () => {
     for (const label of expected) {
       expect(text).toContain(label);
     }
+  });
+
+  it("renders the pinned historical compliance content", async () => {
+    const pdf = await renderComplianceReport({
+      reportId: "00000000-0000-4000-8000-000000000001",
+      organizationId: "00000000-0000-4000-8000-000000000002",
+      locale: "en",
+      inputHash: "b".repeat(64),
+      snapshot: {
+        capturedAt: "2026-08-02T12:00:00.000Z",
+        locale: "en",
+        applicabilityRevisionId: "00000000-0000-4000-8000-000000000003",
+        gapRevisionId: "00000000-0000-4000-8000-000000000004",
+        actionPlanId: "00000000-0000-4000-8000-000000000005",
+        documentVersionIds: ["00000000-0000-4000-8000-000000000006"],
+        content: {
+          applicability: {
+            outcome: "Covered by NIS2",
+            jurisdiction: "DE",
+            answers: [
+              { question: "Does the organization provide digital services?", answer: "Yes" },
+            ],
+          },
+          findings: [
+            {
+              title: "Governance",
+              status: "Not fulfilled",
+              summary: "DUPLICATE_SUMMARY_SENTINEL",
+              hasOrganizationDocument: true,
+              reviewNotice: "The documented owner conflicts with the questionnaire.",
+              gaps: ["Security owner is not assigned."],
+              sources: ["Security policy.pdf — page 2"],
+            },
+          ],
+          actions: [
+            {
+              title: "Assign security owner",
+              description: "A named owner is approved and documented.",
+              status: "Open",
+            },
+          ],
+        },
+      },
+    });
+    const text = await extractText(pdf);
+    for (const expected of [
+      "Covered by NIS2",
+      "Does the organization provide digital services?",
+      "Document provided",
+      "The documented owner conflicts with the questionnaire.",
+      "Security owner is not assigned.",
+      "Security policy.pdf",
+      "Assign security owner",
+    ]) {
+      expect(text).toContain(expected);
+    }
+    expect(text).not.toContain("DUPLICATE_SUMMARY_SENTINEL");
   });
 });
 

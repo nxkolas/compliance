@@ -6,9 +6,7 @@ Organization Progress is a small NIS2-specific read model for tutorial
 navigation and workflow steppers. It answers:
 
 - which of the six ordered workflow steps are complete;
-- which step is current;
-- which later steps are upcoming; and
-- whether the affectedness result makes later work not applicable.
+- how many applicable steps are complete.
 
 It does not measure compliance quality. Freshness, outdated inputs, open
 findings, and other health indicators remain dashboard concerns.
@@ -43,28 +41,22 @@ The ordered step keys are stable API identifiers:
 Presentation labels such as “Betroffenheitscheck” and “Maßnahmenplan” belong in
 the localization layer, not the API.
 
-Each step has one of four statuses:
-
-- `completed`: this step and all applicable prerequisites are complete;
-- `current`: the first incomplete applicable step;
-- `upcoming`: an incomplete step after the current step; or
-- `not_applicable`: the affectedness result ended the workflow before this
-  step.
+Each step has a `completed` boolean. It is `true` when the retained workflow
+record for that step is complete and `false` otherwise.
 
 A normal response is:
 
 ```json
 {
-  "currentStep": "gap_analysis",
   "completedCount": 2,
   "totalCount": 6,
   "steps": [
-    { "key": "welcome", "status": "completed" },
-    { "key": "applicability_check", "status": "completed" },
-    { "key": "gap_analysis", "status": "current" },
-    { "key": "documents_uploaded", "status": "upcoming" },
-    { "key": "action_plan", "status": "upcoming" },
-    { "key": "next_steps", "status": "upcoming" }
+    { "key": "welcome", "completed": true },
+    { "key": "applicability_check", "completed": true },
+    { "key": "gap_analysis", "completed": false },
+    { "key": "documents_uploaded", "completed": false },
+    { "key": "action_plan", "completed": false },
+    { "key": "next_steps", "completed": false }
   ]
 }
 ```
@@ -76,22 +68,19 @@ The HTTP success envelope nests this object under `data.progress`.
 | Step | Live source and completion rule |
 | --- | --- |
 | Welcome | Complete on the server when an accepted affectedness result exists. Before that, a browser may overlay local tutorial completion. |
-| Applicability Check | A generated `affectedness_result` artifact has an accepted revision. |
+| Applicability Check | A generated `affectedness_result` artifact has an accepted revision. Legacy deterministic submissions whose accepted pointer was not persisted also count when their current revision is `approved`. |
 | Gap Analysis | A generated `gap_analysis_result` artifact has an accepted revision. |
-| Documents Uploaded | Gap Analysis is complete and any organization document has a current version. Archived documents count because they prove a successful earlier upload. |
-| Action Plan | Documents Uploaded is complete and any active or archived organization plan has an activation timestamp. Archived plans count because they prove the milestone was reached. |
-| Next Steps | Action Plan is complete, an active plan exists, and every item in that active plan is `done` or `cancelled`. An empty active plan satisfies this rule. |
+| Documents Uploaded | Any organization document has a current version. Archived documents count because they prove a successful earlier upload. |
+| Action Plan | Any active or archived organization plan has an activation timestamp. Archived plans count because they prove the milestone was reached. |
+| Next Steps | An active plan exists and every item in that active plan is `done` or `cancelled`. An empty active plan satisfies this rule. |
 
-The derivation applies these rules sequentially. Facts for a later step remain
-hidden as `upcoming` until all earlier applicable steps complete. For example,
-a document uploaded before the Gap Analysis does not make Documents Uploaded
-appear complete. Once an accepted Gap Analysis exists, the same retained
-document makes that step complete automatically.
+The derivation reports each retained completion fact independently. A later
+step can be completed even when an earlier prerequisite is incomplete.
 
 Steps one through five behave like onboarding milestones because their source
 records are retained after archival or replacement. Next Steps intentionally
-reflects current execution: reopening a completed action item makes it
-`current` again.
+reflects current execution: reopening a completed action item sets its
+`completed` value back to `false`.
 
 ## Out-of-scope organizations
 
@@ -100,16 +89,15 @@ The accepted affectedness revision supplies its existing `outcomeCode`.
 
 ```json
 {
-  "currentStep": null,
   "completedCount": 2,
   "totalCount": 2,
   "steps": [
-    { "key": "welcome", "status": "completed" },
-    { "key": "applicability_check", "status": "completed" },
-    { "key": "gap_analysis", "status": "not_applicable" },
-    { "key": "documents_uploaded", "status": "not_applicable" },
-    { "key": "action_plan", "status": "not_applicable" },
-    { "key": "next_steps", "status": "not_applicable" }
+    { "key": "welcome", "completed": true },
+    { "key": "applicability_check", "completed": true },
+    { "key": "gap_analysis", "completed": false },
+    { "key": "documents_uploaded", "completed": false },
+    { "key": "action_plan", "completed": false },
+    { "key": "next_steps", "completed": false }
   ]
 }
 ```
@@ -135,10 +123,10 @@ const progress = applyWelcomeCompletion(
 );
 ```
 
-When the boolean is true, the helper changes a current Welcome step to
-`completed` and makes Applicability Check current. It does not mutate the
-server response. Once Applicability Check is accepted, the server itself marks
-Welcome complete on every device, so the local overlay becomes unnecessary.
+When the boolean is true, the helper changes Welcome's `completed` value to
+`true`. It does not mutate the server response. Once Applicability Check is
+accepted, the server itself marks Welcome complete on every device, so the
+local overlay becomes unnecessary.
 
 The future tutorial UI owns whether the short-lived boolean lives in
 `localStorage`, session state, or another browser mechanism.

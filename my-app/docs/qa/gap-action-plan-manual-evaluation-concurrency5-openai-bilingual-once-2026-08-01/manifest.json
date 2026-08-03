@@ -1,0 +1,179 @@
+{
+  "runId": "concurrency5-openai-bilingual-once-2026-08-01",
+  "startedAt": "2026-08-01T21:54:41.722Z",
+  "completedAt": "2026-08-01T22:23:07.259Z",
+  "outputDirectory": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\docs\\qa\\gap-action-plan-manual-evaluation-concurrency5-openai-bilingual-once-2026-08-01",
+  "userId": "b8a2c5f7-7f69-4893-af62-de06c8438432",
+  "localeSummaries": {
+    "en": {
+      "workflows": 5,
+      "automaticChecksPassed": 5,
+      "generationJobs": 10,
+      "successfulJobs": 10,
+      "categoryCount": 75,
+      "initialAccepted": 75,
+      "firstPassRate": 1,
+      "repairRequested": 0,
+      "repairAccepted": 0,
+      "repairExhausted": 0,
+      "providerRuns": 75,
+      "providerLatencyMs": {
+        "count": 75,
+        "average": 17974,
+        "p95": 26740,
+        "maximum": 27103
+      },
+      "workflowLatencyMs": {
+        "count": 10,
+        "average": 22932,
+        "p95": 32429,
+        "maximum": 32429
+      },
+      "tokens": {
+        "input": 998926,
+        "output": 262743,
+        "cachedInput": 0
+      },
+      "terminalJobsWithProcessingRuns": 0,
+      "offlineQuality": {
+        "passed": false,
+        "violationCount": 1,
+        "violations": [
+          {
+            "caseNumber": 7,
+            "requirementCode": "NIS2-ASSURE-08",
+            "dimension": "action_result_sentence_count"
+          }
+        ]
+      }
+    },
+    "de": {
+      "workflows": 5,
+      "automaticChecksPassed": 5,
+      "generationJobs": 10,
+      "successfulJobs": 10,
+      "categoryCount": 75,
+      "initialAccepted": 75,
+      "firstPassRate": 1,
+      "repairRequested": 0,
+      "repairAccepted": 0,
+      "repairExhausted": 0,
+      "providerRuns": 75,
+      "providerLatencyMs": {
+        "count": 75,
+        "average": 19228,
+        "p95": 27375,
+        "maximum": 27714
+      },
+      "workflowLatencyMs": {
+        "count": 10,
+        "average": 24133,
+        "p95": 34532,
+        "maximum": 34532
+      },
+      "tokens": {
+        "input": 1025115,
+        "output": 316981,
+        "cachedInput": 0
+      },
+      "terminalJobsWithProcessingRuns": 0,
+      "offlineQuality": {
+        "passed": true,
+        "violationCount": 0,
+        "violations": []
+      }
+    }
+  },
+  "cases": [
+    {
+      "number": 1,
+      "slug": "mature-baseline-en",
+      "organizationId": "4bc8cdfe-496f-49b8-82a1-88e81121acc1",
+      "generatedRevisionId": "768a6d38-7464-4c58-bd77-76b05dac8adc",
+      "finalRevisionId": "768a6d38-7464-4c58-bd77-76b05dac8adc",
+      "actionPlanId": "54c0a8bf-c562-44ec-9733-6aecc05eab45",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 2,
+      "slug": "mature-baseline-de",
+      "organizationId": "e4a2f90c-3ac8-44fd-ab6f-a2c9baaaaa9a",
+      "generatedRevisionId": "0eb06f99-9bc3-4ad8-a4f3-1f3d3dfc29dd",
+      "finalRevisionId": "0eb06f99-9bc3-4ad8-a4f3-1f3d3dfc29dd",
+      "actionPlanId": "6220d135-74cd-4fe6-b897-1c37dd3b0234",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 3,
+      "slug": "absent-controls-en",
+      "organizationId": "cd41bee0-f9f5-4f52-8835-9f564ffa9925",
+      "generatedRevisionId": "9473d3db-e1b4-4e7d-b17a-2660d617cc4d",
+      "finalRevisionId": "9473d3db-e1b4-4e7d-b17a-2660d617cc4d",
+      "actionPlanId": "f3f81947-c3c4-451b-a8de-03e04200a417",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 4,
+      "slug": "absent-controls-de",
+      "organizationId": "e5d64477-c3a6-4707-ab20-8b5e161afa38",
+      "generatedRevisionId": "e9010cff-f9b8-4ac4-b09a-792b7a552fe1",
+      "finalRevisionId": "e9010cff-f9b8-4ac4-b09a-792b7a552fe1",
+      "actionPlanId": "f13ce4b6-080e-4ead-90f9-1a883d03a60d",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 5,
+      "slug": "mixed-maturity-en",
+      "organizationId": "fa3f3feb-b861-4992-8e12-7fe89650dc83",
+      "generatedRevisionId": "fb3c82db-9454-4238-9d9d-b44f1543aef5",
+      "finalRevisionId": "fb3c82db-9454-4238-9d9d-b44f1543aef5",
+      "actionPlanId": "cdfb4b81-420d-4edd-8a73-74b4bf00b4b2",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 6,
+      "slug": "mixed-maturity-de",
+      "organizationId": "7152f6b0-d51b-4c63-b781-a3856c872fc6",
+      "generatedRevisionId": "bb56e23a-e06e-4d46-9556-f4225da66124",
+      "finalRevisionId": "bb56e23a-e06e-4d46-9556-f4225da66124",
+      "actionPlanId": "2cbaa480-feaa-4177-b411-be8a52274b84",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 7,
+      "slug": "uncertain-evidence-en",
+      "organizationId": "a34ef8c5-80d5-4ef9-b4b6-c4c7bf0212a8",
+      "generatedRevisionId": "7a169e04-40c6-431a-9853-35d19cbbc4ae",
+      "finalRevisionId": "7a169e04-40c6-431a-9853-35d19cbbc4ae",
+      "actionPlanId": "3aaea49d-c93f-4f84-9504-fc013410f90c",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 8,
+      "slug": "uncertain-evidence-de",
+      "organizationId": "ae637fed-0384-444a-95c1-b144a5fd7d6f",
+      "generatedRevisionId": "ede28bed-736c-4466-8499-e0ea59f89920",
+      "finalRevisionId": "ede28bed-736c-4466-8499-e0ea59f89920",
+      "actionPlanId": "ff008952-ca34-4848-b6a8-09423f0585d8",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 9,
+      "slug": "contradictory-backup-evidence-en",
+      "organizationId": "83d5b67f-5c20-4c5c-baca-9769d79b6646",
+      "generatedRevisionId": "a95d9533-481f-44d2-80aa-2ded33ba2b58",
+      "finalRevisionId": "5dc0e1f8-e2b1-480a-ad99-e2057a3acf0c",
+      "actionPlanId": "d0f4870f-6599-4f32-a479-426cc52121ba",
+      "automaticChecksPassed": true
+    },
+    {
+      "number": 10,
+      "slug": "contradictory-backup-evidence-de",
+      "organizationId": "3a6fbbdb-fbb1-4981-935b-2cdfc5b378af",
+      "generatedRevisionId": "f406f7c5-34b5-4d28-a524-99c1ac833a72",
+      "finalRevisionId": "92e03cea-0c82-4d23-b966-f7dff9848ad3",
+      "actionPlanId": "1a9d19db-c6ed-4901-afc0-209aee6ebcc6",
+      "automaticChecksPassed": true
+    }
+  ]
+}

@@ -5,6 +5,7 @@ const policies = {
   "uploads:create": { limit: 30, windowSeconds: 60 },
   "uploads:complete": { limit: 20, windowSeconds: 60 },
   "gap:generate": { limit: 5, windowSeconds: 300 },
+  "plans:generate": { limit: 5, windowSeconds: 300 },
   "reports:create": { limit: 5, windowSeconds: 300 },
   "invitations:write": { limit: 20, windowSeconds: 3600 },
   "corpus:operate": { limit: 20, windowSeconds: 300 },
