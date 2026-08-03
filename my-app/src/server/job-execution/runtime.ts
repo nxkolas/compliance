@@ -160,6 +160,7 @@ async function executeHandler(job: BackgroundJobRecord, signal: AbortSignal) {
       userId: job.requestedBy,
       organizationId: job.organizationId,
       workerId: job.leaseOwner!,
+      attemptCount: job.attemptCount,
       retryNonce: payload.retryNonce,
       abortSignal: signal,
     });

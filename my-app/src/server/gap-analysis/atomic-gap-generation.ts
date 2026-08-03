@@ -27,6 +27,9 @@ import {
 } from "./current-contract";
 import {
   coordinateCategoryGeneration,
+  generationCallAttemptIdentity,
+  generationReservationIdentity,
+  parseDurableExecutionAttempt,
   safeGenerationIssues,
 } from "../ai/generation";
 import { contentHash } from "../compliance";
@@ -74,6 +77,7 @@ export async function generateAtomicGapBatch(input: {
   asOfDate?: string;
   jobId?: string;
   workerId?: string;
+  durableExecutionAttempt: number;
   runOperationKind?: "gap_analysis";
   abortSignal?: AbortSignal;
   onAcceptedCategory?: (categoryCode: string) => Promise<void> | void;
@@ -98,6 +102,9 @@ async function generateAtomicGapCategoriesCurrent(
   runIdsByCategory: Record<string, string>;
 }> {
   const signal = input.abortSignal ?? new AbortController().signal;
+  const durableExecutionAttempt = parseDurableExecutionAttempt(
+    input.durableExecutionAttempt,
+  );
   const contextByCategory = new Map<string, GroundingContextItem[]>();
   const runIdsByCategory: Record<string, string> = {};
   const preparedGrounding = await prepareGroundingOperation(
@@ -149,6 +156,15 @@ async function generateAtomicGapCategoriesCurrent(
       providerAttempt,
     }) {
       const item = task.input;
+      const reservationIdentity = generationReservationIdentity({
+        taskId: task.taskId,
+        phase,
+      });
+      const callAttemptIdentity = generationCallAttemptIdentity({
+        reservationIdentity,
+        durableExecutionAttempt,
+        providerAttempt,
+      });
       let responsePolicy: GapResponsePolicy | undefined;
       const queryUnit = phase === "initial"
         ? initialQueryUnits.get(item.requirement.code)!
@@ -233,11 +249,11 @@ async function generateAtomicGapCategoriesCurrent(
             return value.requiresReview || Boolean(item.reviewCorrection);
           },
         },
-        idempotencyKey: contentHash({
-          taskId: task.taskId,
-          phase,
-          providerAttempt,
-        }),
+        idempotencyKey: callAttemptIdentity,
+        generationReservationKey: reservationIdentity,
+        generationAttemptKey: callAttemptIdentity,
+        durableExecutionAttempt,
+        providerAttempt,
         assessmentRevisionId: input.assessmentRevisionId,
         jobId: input.jobId,
         expectedLeaseOwner: input.workerId,

@@ -19,6 +19,7 @@ export async function handleGapGeneration(
     workerId: job.leaseOwner!,
     organizationId: job.organizationId,
     userId: job.requestedBy,
+    attemptCount: job.attemptCount,
     abortSignal,
     ...payload,
   });

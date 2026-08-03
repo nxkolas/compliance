@@ -102,7 +102,23 @@ vi.mock("@/src/server/ai/grounding/organization-retrieval", () => ({
   ]),
 }));
 
+vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
+  assertLiveParentJobForAiRun: vi.fn().mockResolvedValue(undefined),
+  createAiProcessingRunWithLiveJobGate: vi.fn(async (values) => {
+    mocks.runValues.push(values);
+    return {
+      id: "00000000-0000-4000-8000-000000000010",
+      ...values,
+    };
+  }),
+}));
+
 import { runGroundedOperation } from "@/src/server/ai/grounding/gateway";
+import {
+  generationCallAttemptIdentity,
+  generationReservationIdentity,
+  parseDurableExecutionAttempt,
+} from "@/src/server/ai/generation/attempt-identity";
 
 describe("grounding gateway provenance", () => {
   beforeEach(() => {
@@ -218,4 +234,188 @@ describe("grounding gateway provenance", () => {
       },
     });
   });
+
+  it("allocates a fresh provider-call identity after a failed durable execution", async () => {
+    const reservationIdentity = generationReservationIdentity({
+      taskId: "gap-category-task",
+      phase: "initial",
+    });
+    const firstAttemptIdentity = generationCallAttemptIdentity({
+      reservationIdentity,
+      durableExecutionAttempt: parseDurableExecutionAttempt(1),
+      providerAttempt: 1,
+    });
+    const secondAttemptIdentity = generationCallAttemptIdentity({
+      reservationIdentity,
+      durableExecutionAttempt: parseDurableExecutionAttempt(2),
+      providerAttempt: 1,
+    });
+    const providerError = new Error("provider unavailable");
+    mocks.providerRun
+      .mockRejectedValueOnce(providerError)
+      .mockResolvedValueOnce({
+        output: { value: "validated" },
+        usage: { inputTokens: 1, outputTokens: 1, cachedInputTokens: 0 },
+      });
+    mocks.findRun.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+
+    await expect(
+      runDurableGroundedAttempt({
+        reservationIdentity,
+        attemptIdentity: firstAttemptIdentity,
+        durableExecutionAttempt: 1,
+      }),
+    ).rejects.toBe(providerError);
+
+    const failedRun = {
+      ...(mocks.runValues[0] as Record<string, unknown>),
+      id: "00000000-0000-4000-8000-000000000010",
+      status: "failed",
+      validatedOutput: null,
+    };
+    mocks.findRun
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(failedRun);
+
+    await expect(
+      runDurableGroundedAttempt({
+        reservationIdentity,
+        attemptIdentity: secondAttemptIdentity,
+        durableExecutionAttempt: 2,
+      }),
+    ).resolves.toMatchObject({ output: { value: "validated" } });
+
+    expect(firstAttemptIdentity).not.toBe(secondAttemptIdentity);
+    expect(mocks.providerRun).toHaveBeenCalledTimes(2);
+    expect(mocks.runValues).toEqual([
+      expect.objectContaining({
+        generationReservationKey: reservationIdentity,
+        generationAttemptKey: firstAttemptIdentity,
+        durableExecutionAttempt: 1,
+      }),
+      expect.objectContaining({
+        generationReservationKey: reservationIdentity,
+        generationAttemptKey: secondAttemptIdentity,
+        durableExecutionAttempt: 2,
+      }),
+    ]);
+  });
+
+  it("recovers a compatible validated category without another provider call", async () => {
+    const reservationIdentity = generationReservationIdentity({
+      taskId: "gap-category-task",
+      phase: "initial",
+    });
+    const firstAttemptIdentity = generationCallAttemptIdentity({
+      reservationIdentity,
+      durableExecutionAttempt: parseDurableExecutionAttempt(1),
+      providerAttempt: 1,
+    });
+    mocks.providerRun.mockResolvedValue({
+      output: { value: "validated" },
+      usage: { inputTokens: 1, outputTokens: 1, cachedInputTokens: 0 },
+    });
+    mocks.findRun.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    await runDurableGroundedAttempt({
+      reservationIdentity,
+      attemptIdentity: firstAttemptIdentity,
+      durableExecutionAttempt: 1,
+    });
+
+    const persisted = mocks.runValues[0] as Record<string, unknown>;
+    const recoverableRun = {
+      ...persisted,
+      id: "00000000-0000-4000-8000-000000000010",
+      status: "processing",
+      validatedOutput: { value: "validated" },
+    };
+    const secondAttemptIdentity = generationCallAttemptIdentity({
+      reservationIdentity,
+      durableExecutionAttempt: parseDurableExecutionAttempt(2),
+      providerAttempt: 1,
+    });
+    mocks.findRun
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(recoverableRun);
+
+    await expect(
+      runDurableGroundedAttempt({
+        reservationIdentity,
+        attemptIdentity: secondAttemptIdentity,
+        durableExecutionAttempt: 2,
+      }),
+    ).resolves.toMatchObject({
+      runId: "00000000-0000-4000-8000-000000000010",
+      output: { value: "validated" },
+      recovered: true,
+    });
+
+    expect(mocks.providerRun).toHaveBeenCalledOnce();
+    expect(mocks.runValues).toHaveLength(1);
+  });
 });
+
+function runDurableGroundedAttempt(input: {
+  reservationIdentity: string;
+  attemptIdentity: string;
+  durableExecutionAttempt: number;
+}) {
+  const outputSchema = z.object({ value: z.string() });
+  return runGroundedOperation({
+    operation: "gap_analysis",
+    runOperationKind: "gap_analysis",
+    actor: { userId: "00000000-0000-4000-8000-000000000001" },
+    organizationId: "00000000-0000-4000-8000-000000000002",
+    outputLocale: "en",
+    workflowReleaseId: "definition-hash",
+    definitionHash: "definition-hash",
+    asOfDate: "2026-08-03",
+    organizationEvidenceVersionIds: [],
+    queryUnits: [{ id: "REQ", query: "Policy governance" }],
+    outputContract: {
+      schema: () => outputSchema,
+      languagePolicy: "language_neutral",
+      claims: () => [
+        {
+          key: "REQ:1",
+          queryUnitId: "REQ",
+          kind: "legal" as const,
+          binding: true,
+          citationIds: ["LEGAL:REQ:1"],
+          text: "validated",
+        },
+      ],
+    },
+    idempotencyKey: input.attemptIdentity,
+    generationReservationKey: input.reservationIdentity,
+    generationAttemptKey: input.attemptIdentity,
+    durableExecutionAttempt: input.durableExecutionAttempt,
+    providerAttempt: 1,
+    assessmentRevisionId: "00000000-0000-4000-8000-000000000003",
+    jobId: "00000000-0000-4000-8000-000000000004",
+    expectedLeaseOwner: "worker-1",
+    promptMetadata: {
+      name: "test-gap-category",
+      version: "1",
+      templateHash: "template-hash",
+      responseSchemaVersion: "1",
+    },
+    preparedGrounding: {
+      policy: {} as never,
+      pinnedSnapshots: [
+        {
+          familyId: "00000000-0000-4000-8000-000000000030",
+          familyCode: "nis2-eu-primary",
+          snapshotId: "00000000-0000-4000-8000-000000000031",
+          snapshotHash: "snapshot-hash",
+        },
+      ],
+      provider: {
+        mode: "openai",
+        provider: "openai",
+        model: "gpt-grounded-test",
+        run: mocks.providerRun,
+      },
+    },
+  });
+}

@@ -281,6 +281,7 @@ export async function executeGapGenerationJob(input: {
   userId: string;
   organizationId: string;
   workerId: string;
+  attemptCount: number;
   locale: Locale;
   retryNonce?: string;
   abortSignal?: AbortSignal;
@@ -377,6 +378,7 @@ export async function executeGapGenerationJob(input: {
     asOfDate: new Date().toISOString().slice(0, 10),
     jobId: input.jobId,
     workerId: input.workerId,
+    durableExecutionAttempt: input.attemptCount,
     abortSignal: input.abortSignal,
     groundingDependencies: input.groundingDependencies,
   });
@@ -393,9 +395,17 @@ export async function executeGapGenerationJob(input: {
     const [job] = await tx.select({
       state: backgroundJobs.state,
       leaseOwner: backgroundJobs.leaseOwner,
+      leaseExpiresAt: backgroundJobs.leaseExpiresAt,
       cancellationRequestedAt: backgroundJobs.cancellationRequestedAt,
     }).from(backgroundJobs).where(eq(backgroundJobs.id, input.jobId)).limit(1).for("update");
-    if (!job || job.state !== "running" || job.leaseOwner !== input.workerId || job.cancellationRequestedAt) {
+    if (
+      !job ||
+      job.state !== "running" ||
+      job.leaseOwner !== input.workerId ||
+      !job.leaseExpiresAt ||
+      job.leaseExpiresAt <= now ||
+      job.cancellationRequestedAt
+    ) {
       throw new ApiError(409, "Gap generation no longer owns publication", undefined, "GAP_GENERATION_RESERVATION_INVALID");
     }
     await tx.insert(analysisOutputs).values({ organizationId: input.organizationId, kind: "gap" })
@@ -516,8 +526,8 @@ export async function executeGapGenerationJob(input: {
       if (completed.length !== runIds.length) throw new Error("Grounded Gap run publication is incomplete");
       await tx.update(aiProcessingRuns).set({
         status: "failed",
-        failureCode: "GENERATION_CANDIDATE_REJECTED",
-        failureMessage: "A corrected category candidate replaced this generation attempt.",
+        failureCode: "GENERATION_ATTEMPT_SUPERSEDED",
+        failureMessage: "A selected attempt superseded this generation candidate.",
         completedAt: now,
       }).where(and(
         eq(aiProcessingRuns.jobId, input.jobId),
