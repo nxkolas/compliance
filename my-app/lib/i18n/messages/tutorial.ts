@@ -39,7 +39,7 @@ export const tutorialMessages = defineFeatureMessages({
         "Verwalten Sie Ihren Fortschritt im Dashboard.",
       nextStepsDescription:
         "Dort finden Sie Ihre Ergebnisse, offenen Maßnahmen und den aktuellen Bearbeitungsstand. Aufgaben können verwaltet und Ergebnisse bei Bedarf als PDF exportiert werden.",
-      whyOrderTitle: "Warum diese Reihenfolge?",
+      whyOrderTitle: "Möchten Sie das Puzzle fortsetzen?",
       whyOrderMorePrefix: "Mehr zum von",
       whyOrderMoreSuffix: "erfahren",
       dashboardAction: "Zum Dashboard",
@@ -101,7 +101,7 @@ export const tutorialMessages = defineFeatureMessages({
         "Manage your progress in the dashboard.",
       nextStepsDescription:
         "There you will find your results, outstanding actions, and current progress. Tasks can be managed and results exported as a PDF when needed.",
-      whyOrderTitle: "Why this order?",
+      whyOrderTitle: "Would you like to continue the puzzle?",
       whyOrderMorePrefix: "Learn more about",
       whyOrderMoreSuffix: "",
       dashboardAction: "Go to dashboard",

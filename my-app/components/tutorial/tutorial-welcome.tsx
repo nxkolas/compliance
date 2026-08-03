@@ -6,7 +6,6 @@ import {
   ArrowBigRightDash,
   BarChart3,
   ChevronLeft,
-  ExternalLink,
   FileSearch,
   FolderOpen,
   TrendingUp,
@@ -119,8 +118,19 @@ export function TutorialWelcome({
     });
   }
 
+  function goToStep(stepIndex: number) {
+    setCurrentStepIndex((currentIndex) => {
+      const previousStepIndex = Math.min(
+        Math.max(Math.trunc(stepIndex), 0),
+        currentIndex,
+      );
+      storeTutorialProgress(storageKey, previousStepIndex);
+      return previousStepIndex;
+    });
+  }
+
   return (
-    <section className="flex min-h-[calc(100svh-6.75rem)] w-full flex-col text-foreground sm:min-h-[calc(100svh-7.25rem)] md:min-h-[calc(100svh-7.75rem)] [@media(min-width:1280px)_and_(min-height:801px)]:-mb-4 [@media(min-width:1280px)_and_(min-height:801px)]:h-[calc(100svh-4.375rem)] [@media(min-width:1280px)_and_(min-height:801px)]:min-h-0 [@media(min-width:1280px)_and_(min-height:801px)]:overflow-hidden">
+    <section className="flex min-h-[calc(100svh-6.75rem)] w-full flex-col text-foreground sm:min-h-[calc(100svh-7.25rem)] md:min-h-[calc(100svh-7.75rem)] [@media(min-width:1280px)_and_(min-height:801px)]:-mb-4 [@media(min-width:1280px)_and_(min-height:801px)]:h-[calc(100svh-4.375rem)] [@media(min-width:1280px)_and_(min-height:801px)]:min-h-0">
       <header className="w-full">
         <h1 className="flex w-full flex-wrap items-center gap-x-2 text-3xl leading-9 tracking-tight sm:text-4xl">
           <span className="font-bold">{labels.titlePrefix}</span>
@@ -162,6 +172,9 @@ export function TutorialWelcome({
               status={status}
               stepKey={key}
               stepLabel={labels.stepLabel}
+              onSelect={
+                index < currentStepIndex ? () => goToStep(index) : undefined
+              }
             />
           );
         })}
@@ -436,35 +449,33 @@ export function TutorialWelcome({
           </div>
 
           {currentStepIndex === stepKeys.length - 1 ? (
-            <div className="absolute top-[calc(100%+18px)] right-0 z-30 h-24 w-96 rounded-xl bg-gradient-to-br from-gray-900 to-slate-800 outline outline-1 outline-offset-[-1px] outline-indigo-50/20">
-              <div className="absolute top-6 left-[29px] inline-flex w-96 flex-col items-start justify-start">
-                <div className="w-72 justify-start font-['Space_Grotesk'] text-xl leading-5 font-semibold text-white">
-                  {labels.whyOrderTitle}
-                </div>
-              </div>
-              <div
-                data-eigenschaft-1="Standard"
-                className="absolute top-[52px] left-[29px] h-6 w-[568px]"
-              >
-                <ExternalLink
-                  className="absolute top-px left-0 size-5 text-white"
-                  strokeWidth={1.33}
-                  aria-hidden="true"
-                />
-                <div className="absolute top-0 left-[26px] inline-flex w-80 items-baseline gap-1 whitespace-nowrap font-['Space_Grotesk'] text-base leading-6 font-normal text-white/90">
-                  <span>{labels.whyOrderMorePrefix}</span>
-                  <span className="inline-flex items-baseline">
-                    <span>comply</span>
-                    <Image
-                      src="/images/comply-x.svg"
-                      alt=""
-                      aria-hidden="true"
-                      width={12}
-                      height={16}
-                      className="h-4 w-3 brightness-0 invert"
-                    />
-                  </span>
-                  <span>{labels.whyOrderMoreSuffix}</span>
+            <div className="absolute top-[calc(100%+18px)] right-1 z-30 h-24 w-96 rounded-xl bg-gradient-to-br from-gray-900 to-slate-800 outline outline-1 outline-offset-[-1px] outline-indigo-50/20">
+              <div className="absolute inset-x-0 top-6 flex justify-center px-4">
+                <div className="flex flex-col items-start gap-3">
+                  <div className="whitespace-nowrap font-['Space_Grotesk'] text-xl leading-5 font-semibold text-white">
+                    {labels.whyOrderTitle}
+                  </div>
+                  <div
+                    data-eigenschaft-1="Standard"
+                    className="inline-flex h-6 items-center gap-1.5"
+                  >
+                    <ContinuePuzzleIcon className="size-5 shrink-0 text-white" />
+                    <div className="inline-flex items-baseline gap-1 whitespace-nowrap font-['Space_Grotesk'] text-base leading-6 font-normal text-white/90">
+                      <span>{labels.whyOrderMorePrefix}</span>
+                      <span className="inline-flex items-baseline">
+                        <span>comply</span>
+                        <Image
+                          src="/images/comply-x.svg"
+                          alt=""
+                          aria-hidden="true"
+                          width={12}
+                          height={16}
+                          className="h-4 w-3 brightness-0 invert"
+                        />
+                      </span>
+                      <span>{labels.whyOrderMoreSuffix}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -472,7 +483,7 @@ export function TutorialWelcome({
         </article>
       </div>
 
-      <p className="mt-auto max-w-[787px] pt-8 text-sm font-normal leading-6 text-zinc-500">
+      <p className="mt-auto max-w-[787px] translate-y-2 pt-8 text-sm font-normal leading-6 text-zinc-500">
         {labels.disclaimer}
       </p>
     </section>
@@ -664,18 +675,40 @@ function ActionPlanStepIcon({ className }: { className?: string }) {
   );
 }
 
+function ContinuePuzzleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M6.66667 10H13.3333M10 6.66667L13.3333 10L10 13.3333M4.16667 2.5H15.8333C16.7538 2.5 17.5 3.24619 17.5 4.16667V15.8333C17.5 16.7538 16.7538 17.5 15.8333 17.5H4.16667C3.24619 17.5 2.5 16.7538 2.5 15.8333V4.16667C2.5 3.24619 3.24619 2.5 4.16667 2.5Z"
+        stroke="currentColor"
+        strokeWidth="1.33"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function TutorialStep({
   index,
   label,
   status,
   stepKey,
   stepLabel,
+  onSelect,
 }: {
   index: number;
   label: string;
   status: OrganizationProgressStepStatus;
   stepKey: OrganizationProgressStepKey;
   stepLabel: string;
+  onSelect?: () => void;
 }) {
   const Icon = stepKey === "welcome" ? null : stepIcons[stepKey];
   const isCurrent = status === "current";
@@ -685,59 +718,71 @@ function TutorialStep({
   return (
     <li
       aria-current={isCurrent ? "step" : undefined}
-      className={`inline-flex h-36 w-40 min-w-0 flex-col items-center justify-start gap-2 text-center transition-opacity ${
-        isInactive ? "opacity-20" : "opacity-100"
-      }`}
+      className="h-36 w-40 min-w-0"
     >
-      <div className="flex flex-col items-start justify-start pb-2">
-        <span className="text-xs font-medium leading-4">
-          {stepLabel} {index + 1}
-        </span>
-      </div>
-      <span
-        className={`inline-flex size-14 shrink-0 items-center justify-center rounded-full text-white outline outline-[1.5px] outline-offset-[-1.5px] ${
-          isCompleted
-            ? "bg-[#46A95A] outline-white"
-            : "bg-primary outline-foreground"
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={!onSelect}
+        aria-label={onSelect ? `${stepLabel} ${index + 1}: ${label}` : undefined}
+        className={`inline-flex h-full w-full min-w-0 flex-col items-center justify-start gap-2 rounded-lg border-0 bg-transparent p-0 text-center text-inherit transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+          isInactive ? "opacity-20" : "opacity-100"
+        } ${
+          onSelect
+            ? "cursor-pointer hover:opacity-80"
+            : "cursor-default"
         }`}
       >
-        {stepKey === "welcome" ? (
-          <Image
-            src="/images/comply-x.svg"
-            alt=""
-            aria-hidden="true"
-            width={20}
-            height={28}
-            className="h-7 w-5"
-          />
-        ) : (
-          Icon ? <Icon className="size-5" strokeWidth={1.5} /> : null
-        )}
-      </span>
-      <div className="flex flex-col items-start justify-start pt-3">
-        {stepKey === "welcome" ? (
-          <span className="text-center text-base font-normal leading-5">
-            {label.split(" ").slice(0, -1).join(" ")}
-            <br />
-            <span className="inline-flex items-baseline">
-              {label.split(" ").at(-1)}
-              <Image
-                src="/images/comply-x.svg"
-                alt=""
-                aria-hidden="true"
-                width={8}
-                height={11}
-                className="ml-0.5 h-[11px] w-2 brightness-0 dark:brightness-100"
-              />
+        <div className="flex flex-col items-start justify-start pb-2">
+          <span className="text-xs font-medium leading-4">
+            {stepLabel} {index + 1}
+          </span>
+        </div>
+        <span
+          className={`inline-flex size-14 shrink-0 items-center justify-center rounded-full text-white outline outline-[1.5px] outline-offset-[-1.5px] ${
+            isCompleted
+              ? "bg-[#46A95A] outline-white"
+              : "bg-primary outline-foreground"
+          }`}
+        >
+          {stepKey === "welcome" ? (
+            <Image
+              src="/images/comply-x.svg"
+              alt=""
+              aria-hidden="true"
+              width={20}
+              height={28}
+              className="h-7 w-5"
+            />
+          ) : (
+            Icon ? <Icon className="size-5" strokeWidth={1.5} /> : null
+          )}
+        </span>
+        <div className="flex flex-col items-start justify-start pt-3">
+          {stepKey === "welcome" ? (
+            <span className="text-center text-base font-normal leading-5">
+              {label.split(" ").slice(0, -1).join(" ")}
+              <br />
+              <span className="inline-flex items-baseline">
+                {label.split(" ").at(-1)}
+                <Image
+                  src="/images/comply-x.svg"
+                  alt=""
+                  aria-hidden="true"
+                  width={8}
+                  height={11}
+                  className="ml-0.5 h-[11px] w-2 brightness-0 dark:brightness-100"
+                />
+              </span>
             </span>
-          </span>
-        ) : (
-          <span className="max-w-40 text-center text-base font-normal leading-5">
-            {label}
-          </span>
-        )}
-      </div>
-      <div className="h-7 w-14 pt-2" />
+          ) : (
+            <span className="max-w-40 text-center text-base font-normal leading-5">
+              {label}
+            </span>
+          )}
+        </div>
+        <div className="h-7 w-14 pt-2" />
+      </button>
     </li>
   );
 }
