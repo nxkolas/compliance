@@ -9,29 +9,21 @@ browser access.
 
 ## Bootstrap order
 
-1. `npm run db:apply-operator-sql -- pre-push` creates `extensions.vector`.
-2. `npm run db:push` creates the ordinary schema and generated search vectors.
-3. `npm run db:apply-operator-sql -- post-push` installs only the organization
-   and platform append-only audit triggers.
-4. `npm run storage:bootstrap` creates/verifies private legal-corpus, document,
-   and report buckets and policies.
+The guarded apply phase creates `extensions.vector`, pushes the ordinary schema,
+installs only the organization and platform append-only audit triggers, and
+reconciles the three private Storage buckets. Use the exact plan and apply
+commands in the canonical [disposable schema runbook](drizzle-workflow.md).
 
 No SQL Editor migration chain, guest cleanup function, search-vector trigger,
 release publisher, or schema-discovery runner is part of this workflow.
 
 ## Verification
 
-```powershell
-npm run db:verify:server-only
-npm run db:verify:integrity
-npm run storage:verify
-```
-
-The first command requires the exact Drizzle table inventory, RLS on every
-table, zero browser policies, and both audit triggers. The integrity command
-checks current constraints/indexes, both stored generated search expressions,
-the vector extension schema, exactly the two non-internal public triggers, and
-persisted current-pointer/job/Action Plan invariants.
+Verification is mandatory inside the guarded apply phase. It requires the exact
+Drizzle table inventory, RLS on every table, zero browser policies, both audit
+triggers, current constraints and indexes, stored generated search expressions,
+the vector extension schema, persisted current-pointer/job/Action Plan
+invariants, private Storage, and a final zero-drift explanation.
 
 When separately authorized, a direct `anon` or `authenticated` table query
 should return no rows or a permission error. Server API smoke must cover login,

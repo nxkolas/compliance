@@ -1,7 +1,6 @@
 # Disposable Schema Workflow and System-Overview Polish
 
-Status: proposed operator and documentation consolidation after runtime plans
-are implemented.
+Status: implemented on 3 August 2026.
 
 This plan supersedes only the disposable bootstrap command sequence and
 system-overview documentation portions of older schema plans. It does not

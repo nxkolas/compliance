@@ -25,10 +25,10 @@ or other Supabase schemas.
 
 ## Build and verify the clean schema
 
-Follow the ordered four-stage commands in
-[the Drizzle workflow](drizzle-workflow.md). For a disposable local/staging
-container, `npm run db:bootstrap:disposable` performs pre-push, Drizzle push,
-and post-push in that order; storage remains its explicit fourth stage.
+Use the plan and guarded apply phases in the canonical
+[disposable schema runbook](drizzle-workflow.md). The apply phase owns operator
+SQL, Drizzle push, Storage bootstrap, verification, and the final zero-drift
+proof; there is no shorter bootstrap command.
 
 Then provision the real corpus manifest, drain legal-source processing jobs,
 bind reviewed stable provisions, validate completeness, and only then activate
@@ -44,5 +44,6 @@ npm run db:activate:legal-snapshot -- <family-code> <generation-id,...>
 ```
 
 Do not activate fixture-only, empty, pending, failed, unembedded, or
-incompletely bound generations. Finish with integrity verification and a second
-Drizzle explanation showing no drift.
+incompletely bound generations. After corpus provisioning, rerun the canonical
+plan/apply workflow if those operations intentionally changed Drizzle-owned
+state.

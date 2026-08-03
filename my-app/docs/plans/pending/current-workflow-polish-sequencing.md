@@ -16,7 +16,7 @@ authentication, tenancy, and operator-workflow knowledge.
 3. [Background-job module deepening](./background-job-module-deepening.md)
 4. [Job polling and authentication hot-path cleanup](../done/job-polling-and-auth-hot-path-cleanup.md) (implemented)
 5. [Organization-scope locality](./organization-scope-locality.md)
-6. [Operator workflow and overview polish](./operator-workflow-and-system-overview-polish.md)
+6. [Operator workflow and overview polish](../done/operator-workflow-and-system-overview-polish.md) (implemented)
 
 ## Recommended order
 
