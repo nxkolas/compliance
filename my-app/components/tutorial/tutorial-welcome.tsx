@@ -11,16 +11,19 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n";
-import type {
-  OrganizationProgressStepKey,
-  OrganizationProgressStepStatus,
-} from "@/src/contracts/organization-progress";
+import type { OrganizationProgressStepKey } from "@/src/contracts/organization-progress";
 import { useEffect, useState } from "react";
 
 type TutorialWelcomeProps = {
   organizationId: string;
   labels: Dictionary["tutorial"];
 };
+
+type TutorialStepStatus =
+  | "completed"
+  | "current"
+  | "upcoming"
+  | "not_applicable";
 
 const stepKeys = [
   "welcome",
@@ -157,7 +160,7 @@ export function TutorialWelcome({
         className="mt-10 grid min-w-[760px] grid-cols-6 gap-3 overflow-visible pb-2 max-lg:min-w-0 max-lg:grid-cols-3 max-sm:grid-cols-2 xl:mt-16"
       >
         {stepKeys.map((key, index) => {
-          const status: OrganizationProgressStepStatus =
+          const status: TutorialStepStatus =
             index < currentStepIndex
               ? "completed"
               : index === currentStepIndex
@@ -705,7 +708,7 @@ function TutorialStep({
 }: {
   index: number;
   label: string;
-  status: OrganizationProgressStepStatus;
+  status: TutorialStepStatus;
   stepKey: OrganizationProgressStepKey;
   stepLabel: string;
   onSelect?: () => void;
