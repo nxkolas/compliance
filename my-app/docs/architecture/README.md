@@ -4,6 +4,7 @@ This folder contains system architecture, data model, and API design notes.
 
 ## Guides
 
+- [System architecture overview](./system-overview.md)
 - [End-to-end compliance workflow](./end-to-end-compliance-workflow.md)
 - [Database structure](./database-structure.md)
 - [Framework change and extension effort](./framework-change-effort.md)
