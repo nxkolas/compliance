@@ -22,10 +22,11 @@ export default async function ActionPlanPage({
   const current = await getCurrentActionPlan(user.id, organizationId);
 
   return (
-    <section className="flex w-full flex-col gap-8">
+    <section className="flex w-full min-w-0 flex-col gap-8 xl:pl-[17px]">
       <PageHeader
         title={dictionary.modules.actionPlan.title}
         subtitle={dictionary.modules.actionPlan.description}
+        className="max-w-[1274px] [&>p]:max-w-[1130px]"
       />
       <ActionPlanWorkflow
         organizationId={organizationId}
