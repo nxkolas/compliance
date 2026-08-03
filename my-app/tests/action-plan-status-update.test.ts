@@ -62,6 +62,23 @@ describe("action-plan status update route", () => {
     });
   });
 
+  it("accepts cancelled as the fourth item status", async () => {
+    mocks.updateActionPlanItem.mockResolvedValue({
+      id: itemId,
+      status: "cancelled",
+    });
+
+    const response = await PATCH(request({ status: "cancelled" }), context);
+
+    expect(response.status).toBe(200);
+    expect(mocks.updateActionPlanItem).toHaveBeenCalledWith({
+      userId,
+      organizationId,
+      itemId,
+      status: "cancelled",
+    });
+  });
+
   it.each([
     { status: "open", ownerUserId: userId },
     { status: "open", dueDate: "2026-08-31" },

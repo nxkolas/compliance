@@ -34,7 +34,7 @@ export async function updateActionPlanItem(input: {
   userId: string;
   organizationId: string;
   itemId: string;
-  status: "open" | "in_progress" | "done";
+  status: "open" | "in_progress" | "done" | "cancelled";
   expectedVersion?: number;
 }) {
   return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "plans:contribute" }, async ({ executor }) => {

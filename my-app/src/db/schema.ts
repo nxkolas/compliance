@@ -126,6 +126,7 @@ export const actionPlanItemStatusEnum = pgEnum("action_plan_item_status", [
   "open",
   "in_progress",
   "done",
+  "cancelled",
 ]);
 
 export const backgroundJobStateEnum = pgEnum("background_job_state", [

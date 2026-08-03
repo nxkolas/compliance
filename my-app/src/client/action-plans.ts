@@ -3,12 +3,19 @@ import {
   actionPlanItemSchema,
   actionPlanGenerationRequestSchema,
   actionPlanItemUpdateSchema,
+  actionPlanProgressSchema,
 } from "@/src/contracts/action-plans";
 import { jobDtoSchema } from "@/src/contracts/common/jobs";
 import { request } from "./api-client";
 
 const base = (id: string) => `/api/organizations/${encodeURIComponent(id)}/action-plan`;
 export const actionPlansClient = {
+  getProgress(organizationId: string, signal?: AbortSignal) {
+    return request(`${base(organizationId)}/progress`, {
+      outputSchema: z.object({ progress: actionPlanProgressSchema }),
+      signal,
+    });
+  },
   generate(organizationId: string, input: z.input<typeof actionPlanGenerationRequestSchema>) {
     return request(base(organizationId), { method: "POST", input: actionPlanGenerationRequestSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ job: jobDtoSchema, reused: z.boolean() }) });
   },
