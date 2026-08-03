@@ -15,6 +15,7 @@ import { modulesMessages } from "@/lib/i18n/messages/modules";
 import { guestMessages } from "@/lib/i18n/messages/guest";
 import { homeMessages } from "@/lib/i18n/messages/home";
 import { reportsMessages } from "@/lib/i18n/messages/reports";
+import { tutorialMessages } from "@/lib/i18n/messages/tutorial";
 
 export { defaultLocale, localeCookieName, locales, type Locale };
 
@@ -30,6 +31,7 @@ const dictionaries = {
     ...guestMessages.de,
     ...homeMessages.de,
     ...reportsMessages.de,
+    ...tutorialMessages.de,
   },
   en: {
     ...coreMessages.en,
@@ -42,6 +44,7 @@ const dictionaries = {
     ...guestMessages.en,
     ...homeMessages.en,
     ...reportsMessages.en,
+    ...tutorialMessages.en,
   },
 } as const;
 
