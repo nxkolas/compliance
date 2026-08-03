@@ -1,7 +1,7 @@
 import type { JobDto, JobProgressPhase } from "@/src/contracts/common/jobs";
 import { db } from "@/src/db";
 import { aiProcessingRuns, backgroundJobs } from "@/src/db/schema";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand } from "../auth/organization-scope";
 import { ApiError } from "../api/errors";
 import { and, asc, eq, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import {
@@ -57,8 +57,12 @@ export async function getAuthorizedJob(userId: string, jobId: string) {
   if (!job?.organizationId) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
   const capability = getJobDefinition(job.kind).readCapability;
   if (!capability) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
-  await requireOrganizationCapability(userId, job.organizationId, capability);
-  return toJobDto(job);
+  const { executor } = await authorizeOrganizationRead({ actorUserId: userId, organizationId: job.organizationId, capability });
+  const authorizedJob = await executor.query.backgroundJobs.findFirst({
+    where: { RAW: (table, operators) => and(eq(table.id, jobId), eq(table.organizationId, job.organizationId!)) ?? operators.sql`true` },
+  });
+  if (!authorizedJob) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
+  return toJobDto(authorizedJob);
 }
 
 export async function leaseNextJob(input: {
@@ -209,32 +213,41 @@ export async function requestJobCancellation(userId: string, jobId: string) {
   if (!job?.organizationId) throw new ApiError(404, "Job not found");
   const definition = getJobDefinition(job.kind);
   if (!definition.cancellable || !definition.cancellationCapability) {
+    if (!definition.readCapability) {
+      throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
+    }
+    await authorizeOrganizationRead({
+      actorUserId: userId,
+      organizationId: job.organizationId,
+      capability: definition.readCapability,
+    });
     throw new ApiError(409, "The job cannot be cancelled", undefined, "JOB_NOT_CANCELLABLE");
   }
-  await requireOrganizationCapability(userId, job.organizationId, definition.cancellationCapability);
-  if (!["queued", "leased", "running"].includes(job.state)) return toJobDto(job);
-  const now = new Date();
-  const [updated] = await db.transaction(async (tx) => {
-    const rows = await tx.update(backgroundJobs).set({
+  return withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId: job.organizationId, capability: definition.cancellationCapability }, async ({ executor }) => {
+    const current = await executor.query.backgroundJobs.findFirst({ where: { RAW: (table, operators) => and(eq(table.id, jobId), eq(table.organizationId, job.organizationId!)) ?? operators.sql`true` } });
+    if (!current) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
+    if (!["queued", "leased", "running"].includes(current.state)) return toJobDto(current);
+    const now = new Date();
+    const rows = await executor.update(backgroundJobs).set({
       cancellationRequestedAt: now,
-      state: job.state === "queued" ? "cancelled" : job.state,
-      finishedAt: job.state === "queued" ? now : null,
+      state: current.state === "queued" ? "cancelled" : current.state,
+      finishedAt: current.state === "queued" ? now : null,
       updatedAt: now,
-    }).where(eq(backgroundJobs.id, job.id)).returning();
-    if (job.state === "queued") {
-      await tx.update(aiProcessingRuns).set({
+    }).where(and(eq(backgroundJobs.id, current.id), eq(backgroundJobs.organizationId, job.organizationId!))).returning();
+    if (current.state === "queued") {
+      await executor.update(aiProcessingRuns).set({
         status: "failed",
         failureCode: "GENERATION_JOB_CANCELLED",
         failureMessage: "The generation job was cancelled before publication.",
         completedAt: now,
       }).where(and(
-        eq(aiProcessingRuns.jobId, job.id),
+        eq(aiProcessingRuns.jobId, current.id),
+        eq(aiProcessingRuns.organizationId, job.organizationId!),
         eq(aiProcessingRuns.status, "processing"),
       ));
     }
-    return rows;
+    return toJobDto(rows[0]!);
   });
-  return toJobDto(updated!);
 }
 
 export async function finalizeJobCancellation(jobId: string, workerId: string) {

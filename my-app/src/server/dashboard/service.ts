@@ -1,10 +1,9 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { db } from "@/src/db";
 import { currentApplicabilityDefinitionHash, currentGapDefinitionHash } from "@/src/server/definitions";
-import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
+import { authorizeOrganizationRead } from "@/src/server/auth/organization-scope";
 
 export async function getOrganizationDashboard(userId: string, organizationId: string) {
-  await requireOrganizationCapability(userId, organizationId, "organizations:read");
+  const { executor: db } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "organizations:read" });
   const [outputs, plan, documentRows, latestReport] = await Promise.all([
     db.query.analysisOutputs.findMany({
       where: { RAW: (table, operators) => and(eq(table.organizationId, organizationId), inArray(table.kind, ["applicability", "gap"])) ?? operators.sql`true` },

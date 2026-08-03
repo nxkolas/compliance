@@ -1,6 +1,6 @@
 # Organization-Scope Locality
 
-Status: proposed incremental authorization and persistence refactor.
+Status: implemented.
 
 ## Problem Statement
 

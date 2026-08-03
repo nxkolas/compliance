@@ -160,10 +160,28 @@ Supabase proves user identity. Application services then resolve membership and
 capabilities from PostgreSQL. Organization-scoped operations must use a service
 that performs this check; possession of an organization UUID is not authority.
 
+`src/server/auth/organization-scope.ts` is the required database seam for
+human organization access. `authorizeOrganizationRead()` resolves actor,
+organization, capability, and archive policy once and returns immutable scope
+identity plus the executor that domain queries must use.
+`withAuthorizedOrganizationCommand()` locks the organization and actor
+membership, re-evaluates the same policy, and runs the domain callback on that
+transaction executor. Resource lookups remain explicit and include their
+organization predicate; the scope is not a generic repository.
+
 All ordinary public application tables have RLS enabled, but browser roles have
 no application-table policies. The browser does not query the domain tables
 directly. Trusted web/worker code connects through `DATABASE_URL` and enforces
-organization scope and capabilities in the server service layer.
+organization scope and capabilities in the server service layer. Browser
+default-deny RLS protects the direct data plane; trusted-server organization
+scopes protect tenant locality in application operations. Neither substitutes
+for the other.
+
+Remote storage and AI calls stay outside database transactions. A command that
+publishes their results re-enters an authorized command transaction before its
+durable write. Worker handlers do not replay human membership checks: they use
+the organization identity persisted in the job plus lease and publication
+fences.
 
 ## Background jobs
 

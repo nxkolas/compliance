@@ -1,4 +1,3 @@
-import { db } from "@/src/db";
 import {
   actionPlanItemGaps,
   actionPlanItems,
@@ -9,26 +8,26 @@ import {
 } from "@/src/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand, type OrganizationScopeExecutor } from "../auth/organization-scope";
 import { parseActionDescription } from "./action-description";
 
 type ActionPriority = "low" | "medium" | "high" | "critical";
 
 export async function getCurrentActionPlan(userId: string, organizationId: string) {
-  await requireOrganizationCapability(userId, organizationId, "plans:read");
-  const plan = await db.query.actionPlans.findFirst({
+  const scope = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "plans:read" });
+  const plan = await scope.executor.query.actionPlans.findFirst({
     where: { RAW: (table, operators) => eq(table.organizationId, organizationId) ?? operators.sql`true` },
   });
   if (!plan) return null;
-  return loadBundle(plan);
+  return loadBundle(plan, scope.executor);
 }
 
 export async function getActionPlanDetail(userId: string, organizationId: string, planId: string) {
-  await requireOrganizationCapability(userId, organizationId, "plans:read");
-  const plan = await db.query.actionPlans.findFirst({
+  const scope = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "plans:read" });
+  const plan = await scope.executor.query.actionPlans.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, planId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
-  return plan ? loadBundle(plan) : null;
+  return plan ? loadBundle(plan, scope.executor) : null;
 }
 
 export async function updateActionPlanItem(input: {
@@ -38,30 +37,31 @@ export async function updateActionPlanItem(input: {
   status: "open" | "in_progress" | "done";
   expectedVersion?: number;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "plans:contribute");
-  const [item] = await db.update(actionPlanItems).set({ status: input.status, updatedAt: new Date() })
-    .where(and(eq(actionPlanItems.id, input.itemId), eq(actionPlanItems.organizationId, input.organizationId))).returning();
-  if (!item) throw new ApiError(404, "Action Plan item not found");
-  await db.insert(auditEvents).values({
-    organizationId: input.organizationId,
-    actorUserId: input.userId,
-    eventType: "action_plan_item.status_changed",
-    entityType: "action_plan_item",
-    entityId: item.id,
-    metadata: { status: item.status },
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "plans:contribute" }, async ({ executor }) => {
+    const [item] = await executor.update(actionPlanItems).set({ status: input.status, updatedAt: new Date() })
+      .where(and(eq(actionPlanItems.id, input.itemId), eq(actionPlanItems.organizationId, input.organizationId))).returning();
+    if (!item) throw new ApiError(404, "Action Plan item not found");
+    await executor.insert(auditEvents).values({
+      organizationId: input.organizationId,
+      actorUserId: input.userId,
+      eventType: "action_plan_item.status_changed",
+      entityType: "action_plan_item",
+      entityId: item.id,
+      metadata: { status: item.status },
+    });
+    return item;
   });
-  return item;
 }
 
-async function loadBundle(plan: typeof actionPlans.$inferSelect) {
-  const items = await db.select().from(actionPlanItems)
+async function loadBundle(plan: typeof actionPlans.$inferSelect, executor: OrganizationScopeExecutor) {
+  const items = await executor.select().from(actionPlanItems)
     .where(eq(actionPlanItems.actionPlanId, plan.id)).orderBy(asc(actionPlanItems.position));
   const findingIds = [...new Set(items.map((item) => item.findingId))];
-  const findings = findingIds.length ? await db.select().from(gapFindings).where(inArray(gapFindings.id, findingIds)) : [];
-  const links = items.length ? await db.select().from(actionPlanItemGaps).where(inArray(actionPlanItemGaps.actionPlanItemId, items.map((item) => item.id))) : [];
+  const findings = findingIds.length ? await executor.select().from(gapFindings).where(inArray(gapFindings.id, findingIds)) : [];
+  const links = items.length ? await executor.select().from(actionPlanItemGaps).where(inArray(actionPlanItemGaps.actionPlanItemId, items.map((item) => item.id))) : [];
   const gapIds = [...new Set(links.map((link) => link.gapItemId))];
-  const gaps = gapIds.length ? await db.select().from(gapItems).where(inArray(gapItems.id, gapIds)) : [];
-  const currentGap = await db.query.analysisOutputs.findFirst({
+  const gaps = gapIds.length ? await executor.select().from(gapItems).where(inArray(gapItems.id, gapIds)) : [];
+  const currentGap = await executor.query.analysisOutputs.findFirst({
     columns: { currentRevisionId: true },
     where: { RAW: (table, operators) => and(eq(table.organizationId, plan.organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
   });

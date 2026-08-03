@@ -18,7 +18,7 @@ import { createAiSdkGroundedProvider } from "@/src/server/ai/grounding/providers
 import type { GroundedProvider } from "@/src/server/ai/grounding/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { withAuthorizedOrganizationCommand, type OrganizationScopeExecutor } from "../auth/organization-scope";
 import { enqueueJob } from "../jobs";
 import { resolvedFindingLinkDisposition } from "./evidence-link-policy";
 
@@ -53,19 +53,9 @@ export async function enqueueGapContradictionResolution(input: {
   findingId: string;
   sourceChoice: ContradictionSourceChoice;
 }) {
-  await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
-  await requireResolvableFinding(input.organizationId, input.revisionId, input.findingId);
-  return enqueueJob({
-    organizationId: input.organizationId,
-    requestedByUserId: input.userId,
-    kind: "gap_conflict_resolution",
-    payload: {
-      sourceRevisionId: input.revisionId,
-      findingId: input.findingId,
-      sourceChoice: input.sourceChoice,
-      definitionHash: currentGapDefinitionHash,
-      buildHash: BUILD_HASH,
-    },
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "gap:contribute" }, async ({ executor }) => {
+    await requireResolvableFinding(input.organizationId, input.revisionId, input.findingId, executor);
+    return enqueueJob({ organizationId: input.organizationId, requestedByUserId: input.userId, kind: "gap_conflict_resolution", payload: { sourceRevisionId: input.revisionId, findingId: input.findingId, sourceChoice: input.sourceChoice, definitionHash: currentGapDefinitionHash, buildHash: BUILD_HASH } }, { executor });
   });
 }
 
@@ -368,21 +358,21 @@ async function regenerateFromDocument(input: {
   return { output, manifest, citationIds, usage: response.usage, provider: provider.provider, model: provider.model, definition };
 }
 
-async function requireResolvableFinding(organizationId: string, revisionId: string, findingId: string) {
-  const output = await db.query.analysisOutputs.findFirst({
+async function requireResolvableFinding(organizationId: string, revisionId: string, findingId: string, executor: OrganizationScopeExecutor = db) {
+  const output = await executor.query.analysisOutputs.findFirst({
     where: { RAW: (table, operators) => and(eq(table.organizationId, organizationId), eq(table.kind, "gap")) ?? operators.sql`true` },
   });
   if (!output || output.currentRevisionId !== revisionId) {
     throw new ApiError(409, "Contradictions can only be resolved on the current Gap result", undefined, "GAP_REVISION_NOT_CURRENT");
   }
-  const revision = await db.query.analysisOutputRevisions.findFirst({
+  const revision = await executor.query.analysisOutputRevisions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, revisionId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
   if (!revision) throw new ApiError(404, "Gap revision not found", undefined, "GAP_REVISION_NOT_FOUND");
   if (revision.definitionHash !== currentGapDefinitionHash) {
     throw new ApiError(409, "The Gap result uses an outdated definition", undefined, "GAP_DEFINITION_CHANGED");
   }
-  const finding = await db.query.gapFindings.findFirst({
+  const finding = await executor.query.gapFindings.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, findingId), eq(table.outputRevisionId, revisionId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
   if (!finding) throw new ApiError(404, "Gap finding not found", undefined, "GAP_FINDING_NOT_FOUND");

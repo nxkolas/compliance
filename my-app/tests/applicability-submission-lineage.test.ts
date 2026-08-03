@@ -32,6 +32,11 @@ describe("applicability submission lineage", () => {
     mocks.authorize.mockResolvedValue({});
 
     const tx = {
+      select: vi.fn(() => ({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        for: vi.fn().mockResolvedValue([]),
+      })),
       query: {
         assessments: {
           findFirst: vi.fn().mockResolvedValue({

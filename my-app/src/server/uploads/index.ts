@@ -1,7 +1,10 @@
 export {
   createUploadSession,
+  failPreparedUploadSession,
   expireUploadSessions,
   listUnreferencedFailedUploads,
+  prepareUploadSession,
+  signPreparedUploadSession,
   verifyUploadedObject,
 } from "./service";
 export type { UploadPolicy } from "./service";

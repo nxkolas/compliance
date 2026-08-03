@@ -1,10 +1,9 @@
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { db } from "@/src/db";
 import { deriveOrganizationProgress } from "@/src/organization-progress/model";
-import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
+import { authorizeOrganizationRead } from "@/src/server/auth/organization-scope";
 
 export async function getOrganizationProgress(userId: string, organizationId: string) {
-  await requireOrganizationCapability(userId, organizationId, "organizations:read");
+  const { executor: db } = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "organizations:read" });
   const [outputs, uploadedDocument, plan] = await Promise.all([
     db.query.analysisOutputs.findMany({
       columns: { kind: true, currentRevisionId: true },

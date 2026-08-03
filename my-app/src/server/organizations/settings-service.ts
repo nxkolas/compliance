@@ -1,10 +1,6 @@
-import { db } from "@/src/db";
 import { auditEvents, organizations } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
-import {
-  requireOrganizationCapability,
-  resolveOrganizationCapabilities,
-} from "@/src/server/auth/capability-service";
+import { authorizeOrganizationRead, withAuthorizedOrganizationCommand } from "@/src/server/auth/organization-scope";
 import type * as z from "zod";
 import type { organizationSettingsUpdateSchema } from "@/src/contracts/organizations";
 import { ApiError } from "../api/errors";
@@ -13,9 +9,8 @@ export async function getOrganizationSettings(
   userId: string,
   organizationId: string,
 ) {
-  const resolved = await resolveOrganizationCapabilities(userId, organizationId);
-  if (!resolved.membership) throw organizationNotFound();
-  const organization = await db.query.organizations.findFirst({
+  const scope = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "organizations:read" });
+  const organization = await scope.executor.query.organizations.findFirst({
     columns: {
       id: true,
       name: true,
@@ -35,7 +30,7 @@ export async function getOrganizationSettings(
   return {
     organization,
     allowedActions: {
-      edit: resolved.capabilities.has("organizations:update") && !organization.archivedAt,
+      edit: scope.membership.role === "owner" && !organization.archivedAt,
     },
   };
 }
@@ -46,13 +41,8 @@ export async function updateOrganizationSettings(input: {
   values: z.infer<typeof organizationSettingsUpdateSchema>;
   requestId?: string;
 }) {
-  await requireOrganizationCapability(
-    input.userId,
-    input.organizationId,
-    "organizations:update",
-  );
-  await db.transaction(async (tx) => {
-    const [organization] = await tx
+  await withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "organizations:update" }, async ({ executor }) => {
+    const [organization] = await executor
       .update(organizations)
       .set({
         name: input.values.organization.name.trim(),
@@ -64,7 +54,7 @@ export async function updateOrganizationSettings(input: {
       .where(eq(organizations.id, input.organizationId))
       .returning();
     if (!organization) throw organizationNotFound();
-    await tx.insert(auditEvents).values({
+    await executor.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
       eventType: "organization.settings_updated",

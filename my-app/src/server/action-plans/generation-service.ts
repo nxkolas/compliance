@@ -18,7 +18,7 @@ import {
 } from "@/src/server/definitions";
 import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requireOrganizationCapability } from "../auth/capability-service";
+import { withAuthorizedOrganizationCommand } from "../auth/organization-scope";
 import { enqueueJob } from "../jobs";
 import { getCurrentActionPlan } from "./service";
 import {
@@ -56,11 +56,7 @@ export async function enqueueActionPlanGeneration(input: {
   organizationId: string;
   sourceGapRevisionId: string;
 }) {
-  await requireOrganizationCapability(
-    input.userId,
-    input.organizationId,
-    "plans:manage",
-  );
+  return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "plans:manage" }, async ({ executor: db }) => {
   if (
     await db.query.actionPlans.findFirst({
       where: {
@@ -139,6 +135,7 @@ export async function enqueueActionPlanGeneration(input: {
       actionPlanDefinitionHash,
       buildHash: BUILD_HASH,
     },
+  }, { executor: db });
   });
 }
 

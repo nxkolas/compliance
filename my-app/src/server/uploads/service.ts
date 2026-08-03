@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { uploadSessions } from "@/src/db/schema";
 import type { UploadSessionDto } from "@/src/contracts/common/uploads";
 import { ApiError } from "../api/errors";
+import type { OrganizationScopeExecutor } from "../auth/organization-scope";
 import {
   canonicalizeUploadMimeType,
   validateUploadInput,
@@ -52,13 +53,37 @@ export async function createUploadSession(input: {
   signUpload: UploadSigner;
   now?: Date;
 }): Promise<UploadSessionDto> {
+  const session = await prepareUploadSession(input);
+  try {
+    return await signPreparedUploadSession(
+      session,
+      input.signUpload,
+      input.policy.expiresInSeconds,
+    );
+  } catch (error) {
+    await failPreparedUploadSession(session.id);
+    throw error;
+  }
+}
+
+export async function prepareUploadSession(input: {
+  organizationId?: string;
+  userId: string;
+  scope: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  sha256?: string;
+  policy: UploadPolicy;
+  now?: Date;
+}, executor: OrganizationScopeExecutor = db) {
   if (!input.organizationId) throw new ApiError(400, "Organization upload scope is required");
   const now = input.now ?? new Date();
   validateUploadInput(input.fileName, input.mimeType, input.size, input.sha256, input.policy);
   const safeFileName = input.fileName.trim().replace(/[^a-zA-Z0-9._-]+/g, "-");
   const storageKey = `${input.scope}/${input.organizationId}/${randomUUID()}/${safeFileName}`;
   const expiresAt = new Date(now.getTime() + input.policy.expiresInSeconds * 1000);
-  const [session] = await db.insert(uploadSessions).values({
+  const [session] = await executor.insert(uploadSessions).values({
     organizationId: input.organizationId,
     storageBucket: input.policy.bucket,
     storageKey,
@@ -70,17 +95,28 @@ export async function createUploadSession(input: {
     expiresAt,
   }).returning();
   if (!session) throw new Error("Upload session was not created");
-  try {
-    const uploadToken = await input.signUpload({
-      bucket: session.storageBucket,
-      objectPath: session.storageKey,
-      expiresInSeconds: input.policy.expiresInSeconds,
-    });
-    return { ...toDto(session), uploadToken };
-  } catch (error) {
-    await db.update(uploadSessions).set({ state: "failed", updatedAt: new Date() }).where(eq(uploadSessions.id, session.id));
-    throw error;
-  }
+  return session;
+}
+
+export async function signPreparedUploadSession(
+  session: typeof uploadSessions.$inferSelect,
+  signUpload: UploadSigner,
+  expiresInSeconds: number,
+): Promise<UploadSessionDto> {
+  const uploadToken = await signUpload({
+    bucket: session.storageBucket,
+    objectPath: session.storageKey,
+    expiresInSeconds,
+  });
+  return { ...toDto(session), uploadToken };
+}
+
+export async function failPreparedUploadSession(
+  sessionId: string,
+  executor: OrganizationScopeExecutor = db,
+) {
+  await executor.update(uploadSessions).set({ state: "failed", updatedAt: new Date() })
+    .where(eq(uploadSessions.id, sessionId));
 }
 
 export async function verifyUploadedObject(input: {
