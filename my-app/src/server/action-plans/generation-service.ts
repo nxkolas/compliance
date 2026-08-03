@@ -19,6 +19,7 @@ import {
 import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { requireOrganizationCapability } from "../auth/capability-service";
+import { enqueueJob } from "../jobs";
 import { getCurrentActionPlan } from "./service";
 import {
   prepareGroundingOperation,
@@ -127,23 +128,18 @@ export async function enqueueActionPlanGeneration(input: {
       "GAP_DEFINITION_CHANGED",
     );
   }
-  const [job] = await db
-    .insert(backgroundJobs)
-    .values({
-      organizationId: input.organizationId,
-      kind: "action_plan_generation",
-      payload: {
-        sourceGapRevisionId: revision.id,
-        locale: revision.locale,
-        gapDefinitionHash: revision.definitionHash,
-        actionPlanDefinitionHash,
-        buildHash: BUILD_HASH,
-      },
-      requestedBy: input.userId,
-    })
-    .returning();
-  if (!job) throw new Error("Action Plan job was not created");
-  return job;
+  return enqueueJob({
+    organizationId: input.organizationId,
+    requestedByUserId: input.userId,
+    kind: "action_plan_generation",
+    payload: {
+      sourceGapRevisionId: revision.id,
+      locale: revision.locale as "de" | "en",
+      gapDefinitionHash: revision.definitionHash,
+      actionPlanDefinitionHash,
+      buildHash: BUILD_HASH,
+    },
+  });
 }
 
 export async function executeActionPlanGenerationJob(input: {

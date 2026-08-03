@@ -1,6 +1,6 @@
 # Background-Job Module Deepening
 
-Status: proposed internal refactor after the retry and upload correctness fixes.
+Status: implemented on 3 August 2026.
 
 ## Problem Statement
 

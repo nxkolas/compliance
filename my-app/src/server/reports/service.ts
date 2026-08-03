@@ -15,7 +15,7 @@ import {
 import { ApiError } from "@/src/server/api/errors";
 import { getCursorCodec } from "@/src/server/api/pagination";
 import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
-import { toJobDto } from "@/src/server/jobs";
+import { enqueueJob, toJobDto } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { assertReportConcurrency } from "./quota";
 
@@ -64,13 +64,12 @@ export async function createReport(input: { userId: string; organizationId: stri
   const reportId = randomUUID();
   const jobId = randomUUID();
   return db.transaction(async (tx) => {
-    const [job] = await tx.insert(backgroundJobs).values({
-      id: jobId,
+    const job = await enqueueJob({
       organizationId: input.organizationId,
-      requestedBy: input.userId,
+      requestedByUserId: input.userId,
       kind: "report_render",
       payload: { reportId },
-    }).returning();
+    }, { executor: tx, jobId });
     const [report] = await tx.insert(reports).values({
       id: reportId,
       organizationId: input.organizationId,
@@ -81,7 +80,7 @@ export async function createReport(input: { userId: string; organizationId: stri
       locale: input.locale,
       createdBy: input.userId,
     }).returning();
-    if (!job || !report) throw new ApiError(500, "Could not create report", undefined, "REPORT_CREATE_FAILED");
+    if (!report) throw new ApiError(500, "Could not create report", undefined, "REPORT_CREATE_FAILED");
     if (documentSources.length) {
       await tx.insert(reportDocumentSources).values(documentSources.map((document) => ({
         organizationId: input.organizationId,

@@ -13,6 +13,7 @@ import {
 } from "@/src/db/schema";
 import { expireUploadSessions, listUnreferencedFailedUploads } from "@/src/server/uploads";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { enqueueJob } from "@/src/server/jobs";
 
 export async function cleanupExpiredApiPrimitives(now = new Date()) {
   return db.transaction(async (tx) => {
@@ -75,11 +76,8 @@ export async function runMaintenanceCleanup(now = new Date()) {
 }
 
 export async function ensureScheduledCleanupJob(runAfter = new Date(Date.now() + 24 * 60 * 60 * 1_000)) {
-  const [job] = await db.insert(backgroundJobs).values({
+  return enqueueJob({
     kind: "maintenance_cleanup",
     payload: { version: 1 },
-    maxAttempts: 3,
-    availableAt: runAfter,
-  }).onConflictDoNothing().returning();
-  return job ?? null;
+  }, { runAfter, onConflictDoNothing: true });
 }

@@ -3,7 +3,6 @@ import type { DocumentDto, DocumentListQuery } from "@/src/contracts/documents";
 import { db } from "@/src/db";
 import {
   auditEvents,
-  backgroundJobs,
   documentChunks,
   documentVersions,
   documents,
@@ -13,6 +12,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { hasOrganizationCapability } from "../auth/capabilities";
 import { requireOrganizationCapability } from "../auth/capability-service";
+import { enqueueJob } from "../jobs";
 import { getSupabaseAdminClient } from "../supabase-admin";
 import {
   canonicalizeUploadMimeType,
@@ -376,14 +376,12 @@ export async function finalizeDocumentUpload(input: {
     }).where(eq(documents.id, ids.documentId)).returning({ id: documents.id });
     if (!currentDocument) throw new Error("Document current version was not updated");
 
-    const [job] = await tx.insert(backgroundJobs).values({
-      id: ids.jobId,
+    await enqueueJob({
       organizationId: session.organizationId,
+      requestedByUserId: session.requestedBy,
       kind: "document_indexing",
       payload: { documentVersionId: ids.documentVersionId },
-      requestedBy: session.requestedBy,
-    }).returning({ id: backgroundJobs.id });
-    if (!job) throw new Error("Document indexing job was not created");
+    }, { executor: tx, jobId: ids.jobId });
 
     const [completedSession] = await tx.update(uploadSessions).set({
       state: "completed",
@@ -460,7 +458,12 @@ export async function retryOrganizationDocumentIndexing(userId: string, organiza
   await db.transaction(async (tx) => {
     await tx.delete(documentChunks).where(eq(documentChunks.documentVersionId, version.id));
     await tx.update(documentVersions).set({ indexingStatus: "pending", failureCode: null, failureMessage: null, indexingStartedAt: null, indexingCompletedAt: null }).where(eq(documentVersions.id, version.id));
-    await tx.insert(backgroundJobs).values({ organizationId, kind: "document_indexing", payload: { documentVersionId: version.id }, requestedBy: userId });
+    await enqueueJob({
+      organizationId,
+      requestedByUserId: userId,
+      kind: "document_indexing",
+      payload: { documentVersionId: version.id },
+    }, { executor: tx });
   });
   return getOrganizationDocumentDetail(userId, organizationId, documentId);
 }

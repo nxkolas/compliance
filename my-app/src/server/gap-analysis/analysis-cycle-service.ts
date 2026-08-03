@@ -28,6 +28,7 @@ import {
 import { and, asc, eq, inArray, isNull, ne, notInArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { requireOrganizationCapability } from "../auth/capability-service";
+import { enqueueJob, toJobDto } from "../jobs";
 import { evaluateGapRequirement } from "./deterministic-evaluator";
 import { deriveAtomicGapTriggerPolicy } from "./trigger-policy";
 import { generateAtomicGapBatch } from "./atomic-gap-generation";
@@ -247,10 +248,10 @@ async function enqueueCycle(
       cycle,
       locale: input.locale,
     }, tx));
-    const [job] = await tx.insert(backgroundJobs).values({
+    const job = await enqueueJob({
       organizationId: input.organizationId,
+      requestedByUserId: input.userId,
       kind: "gap_analysis",
-      state: "queued",
       payload: {
         cycleId: cycle.id,
         locale: input.locale,
@@ -259,9 +260,7 @@ async function enqueueCycle(
         idempotencyKey: input.idempotencyKey,
         retryNonce: input.retryNonce,
       },
-      requestedBy: input.userId,
-    }).returning();
-    if (!job) throw new Error("Gap generation job was not created");
+    }, { executor: tx });
     await tx.update(gapAnalysisCycles).set({
       stage: "generating",
       assessmentRevisionId,
@@ -731,28 +730,6 @@ async function currentApplicabilityRevision(organizationId: string) {
   return db.query.analysisOutputRevisions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, output.currentRevisionId!), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
   });
-}
-
-function toJobDto(job: typeof backgroundJobs.$inferSelect) {
-  const completed = job.progressCurrent ?? 0;
-  const total = job.progressTotal ?? 100;
-  return {
-    id: job.id,
-    kind: job.kind,
-    state: job.state === "leased" ? "running" as const : job.state,
-    progress: total > 0 ? Math.round((completed / total) * 100) : 0,
-    phase: null,
-    completedUnits: job.progressCurrent,
-    totalUnits: job.progressTotal,
-    attemptCount: job.attemptCount,
-    safeError: job.errorCode ? { code: job.errorCode, message: job.errorMessage ?? "Job failed" } : null,
-    createdAt: job.createdAt.toISOString(),
-    updatedAt: job.updatedAt.toISOString(),
-    startedAt: job.startedAt?.toISOString() ?? null,
-    finishedAt: job.finishedAt?.toISOString() ?? null,
-    cancellable: ["queued", "leased", "running"].includes(job.state),
-    resultLink: null,
-  };
 }
 
 function summaryForStatus(status: string, locale: Locale) {

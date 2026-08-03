@@ -1,32 +1,51 @@
 import type { JobDto, JobProgressPhase } from "@/src/contracts/common/jobs";
 import { db } from "@/src/db";
 import { aiProcessingRuns, backgroundJobs } from "@/src/db/schema";
-import type { OrganizationCapability } from "../auth/capabilities";
 import { requireOrganizationCapability } from "../auth/capability-service";
 import { ApiError } from "../api/errors";
 import { and, asc, eq, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
+import {
+  JOB_KINDS,
+  getJobDefinition,
+  projectJobResult,
+  validateJobCommand,
+  type BackgroundJobRecord,
+  type JobCommand,
+  type JobResultLocator,
+} from "./definitions";
 
-export type EnqueueJobInput = {
-  kind: typeof backgroundJobs.$inferInsert["kind"];
-  payload: Record<string, unknown>;
-  organizationId?: string;
-  requestedByUserId?: string;
-  maxAttempts?: number;
-  cancellable?: boolean;
-  cancellationCapability?: OrganizationCapability;
+type JobExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export type EnqueueJobOptions = {
+  executor?: JobExecutor;
+  jobId?: string;
   runAfter?: Date;
+  onConflictDoNothing?: boolean;
 };
-export type BackgroundJobRecord = typeof backgroundJobs.$inferSelect;
 
-export async function enqueueJob(input: EnqueueJobInput) {
-  const [job] = await db.insert(backgroundJobs).values({
+export function enqueueJob(
+  command: JobCommand,
+  options: EnqueueJobOptions & { onConflictDoNothing: true },
+): Promise<BackgroundJobRecord | null>;
+export function enqueueJob(
+  command: JobCommand,
+  options?: EnqueueJobOptions & { onConflictDoNothing?: false },
+): Promise<BackgroundJobRecord>;
+export async function enqueueJob(command: JobCommand, options: EnqueueJobOptions = {}) {
+  const input = validateJobCommand(command);
+  const executor = options.executor ?? db;
+  let insert = executor.insert(backgroundJobs).values({
+    id: options.jobId,
     kind: input.kind,
     payload: input.payload,
     organizationId: input.organizationId,
     requestedBy: input.requestedByUserId,
-    maxAttempts: input.maxAttempts ?? 3,
-    availableAt: input.runAfter ?? new Date(),
-  }).returning();
+    maxAttempts: input.maxAttempts,
+    availableAt: options.runAfter ?? new Date(),
+  });
+  if (options.onConflictDoNothing) insert = insert.onConflictDoNothing() as typeof insert;
+  const [job] = await insert.returning();
+  if (options.onConflictDoNothing && !job) return null;
   if (!job) throw new Error("Job was not created");
   return job;
 }
@@ -36,13 +55,15 @@ export async function getAuthorizedJob(userId: string, jobId: string) {
     where: { RAW: (table, operators) => eq(table.id, jobId) ?? operators.sql`true` },
   });
   if (!job?.organizationId) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
-  await requireOrganizationCapability(userId, job.organizationId, capabilityForJob(job.kind));
+  const capability = getJobDefinition(job.kind).readCapability;
+  if (!capability) throw new ApiError(404, "Job not found", undefined, "JOB_NOT_FOUND");
+  await requireOrganizationCapability(userId, job.organizationId, capability);
   return toJobDto(job);
 }
 
 export async function leaseNextJob(input: {
   workerId: string;
-  kinds: string[];
+    kinds?: string[];
   leaseSeconds: number;
   now?: Date;
 }) {
@@ -50,7 +71,10 @@ export async function leaseNextJob(input: {
   const expiresAt = new Date(now.getTime() + input.leaseSeconds * 1000);
   return db.transaction(async (tx) => {
     const [candidate] = await tx.select().from(backgroundJobs).where(and(
-      inArray(backgroundJobs.kind, input.kinds as Array<typeof backgroundJobs.$inferSelect.kind>),
+      inArray(
+        backgroundJobs.kind,
+        (input.kinds ?? [...JOB_KINDS]) as BackgroundJobRecord["kind"][],
+      ),
       or(
         and(eq(backgroundJobs.state, "queued"), lte(backgroundJobs.availableAt, now)),
         and(inArray(backgroundJobs.state, ["leased", "running"]), isNotNull(backgroundJobs.leaseExpiresAt), lte(backgroundJobs.leaseExpiresAt, now)),
@@ -106,7 +130,7 @@ export async function advanceJobProgress(input: {
   return job;
 }
 
-export async function succeedJob(input: { jobId: string; workerId: string; result?: { type: string; id: string }; now?: Date }) {
+export async function succeedJob(input: { jobId: string; workerId: string; result: JobResultLocator; now?: Date }) {
   const now = input.now ?? new Date();
   const [job] = await db.update(backgroundJobs).set({
     state: "succeeded",
@@ -183,7 +207,11 @@ export async function requestJobCancellation(userId: string, jobId: string) {
     where: { RAW: (table, operators) => eq(table.id, jobId) ?? operators.sql`true` },
   });
   if (!job?.organizationId) throw new ApiError(404, "Job not found");
-  await requireOrganizationCapability(userId, job.organizationId, cancellationCapabilityForJob(job.kind));
+  const definition = getJobDefinition(job.kind);
+  if (!definition.cancellable || !definition.cancellationCapability) {
+    throw new ApiError(409, "The job cannot be cancelled", undefined, "JOB_NOT_CANCELLABLE");
+  }
+  await requireOrganizationCapability(userId, job.organizationId, definition.cancellationCapability);
   if (!["queued", "leased", "running"].includes(job.state)) return toJobDto(job);
   const now = new Date();
   const [updated] = await db.transaction(async (tx) => {
@@ -236,7 +264,7 @@ export async function finalizeJobCancellation(jobId: string, workerId: string) {
 export function toJobDto(job: BackgroundJobRecord): JobDto {
   const total = job.progressTotal;
   const progress = total && job.progressCurrent !== null ? Math.round(job.progressCurrent / total * 100) : job.state === "succeeded" ? 100 : 0;
-  const locator = parseLocator(job.resultLocator);
+  const projection = projectJobResult(job);
   return {
     id: job.id,
     kind: job.kind,
@@ -253,40 +281,9 @@ export function toJobDto(job: BackgroundJobRecord): JobDto {
     updatedAt: job.updatedAt.toISOString(),
     startedAt: job.startedAt?.toISOString() ?? null,
     finishedAt: job.finishedAt?.toISOString() ?? null,
-    cancellable: isCancellableKind(job.kind) && !["succeeded", "failed", "cancelled"].includes(job.state),
-    resultLink: locator?.type === "analysis_output_revision" && job.organizationId ? `/api/organizations/${job.organizationId}/gap-analysis/revisions/${locator.id}` : null,
-    result: locator?.type === "action_plan" ? { actionPlanId: locator.id } : null,
+    cancellable: getJobDefinition(job.kind).cancellable && !["succeeded", "failed", "cancelled"].includes(job.state),
+    ...projection,
   };
-}
-
-export function toJobResultValues(_jobId: string, result: { type: string; id: string }) {
-  return result;
-}
-
-function capabilityForJob(kind: BackgroundJobRecord["kind"]): OrganizationCapability {
-  if (kind === "document_indexing") return "documents:read";
-  if (kind === "report_render") return "reports:read";
-  if (kind === "action_plan_generation") return "plans:read";
-  return "gap:read";
-}
-
-function cancellationCapabilityForJob(
-  kind: BackgroundJobRecord["kind"],
-): OrganizationCapability {
-  if (kind === "document_indexing") return "documents:write";
-  if (kind === "report_render") return "reports:create";
-  if (kind === "action_plan_generation") return "plans:manage";
-  return "gap:contribute";
-}
-
-function isCancellableKind(kind: BackgroundJobRecord["kind"]) {
-  return ["gap_analysis", "gap_conflict_resolution", "action_plan_generation", "report_render", "document_indexing"].includes(kind);
-}
-
-function parseLocator(value: unknown): { type: string; id: string } | null {
-  if (!value || typeof value !== "object") return null;
-  const locator = value as { type?: unknown; id?: unknown };
-  return typeof locator.type === "string" && typeof locator.id === "string" ? { type: locator.type, id: locator.id } : null;
 }
 
 function isProgressPhase(value: string | null): value is JobProgressPhase {

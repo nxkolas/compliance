@@ -8,7 +8,6 @@ import {
   analysisOutputRevisions,
   analysisOutputs,
   auditEvents,
-  backgroundJobs,
   gapFindingContextLinks,
   gapFindings,
   gapItemContextLinks,
@@ -20,6 +19,7 @@ import type { GroundedProvider } from "@/src/server/ai/grounding/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { requireOrganizationCapability } from "../auth/capability-service";
+import { enqueueJob } from "../jobs";
 import { resolvedFindingLinkDisposition } from "./evidence-link-policy";
 
 const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentGapDefinitionHash;
@@ -55,8 +55,9 @@ export async function enqueueGapContradictionResolution(input: {
 }) {
   await requireOrganizationCapability(input.userId, input.organizationId, "gap:contribute");
   await requireResolvableFinding(input.organizationId, input.revisionId, input.findingId);
-  const [job] = await db.insert(backgroundJobs).values({
+  return enqueueJob({
     organizationId: input.organizationId,
+    requestedByUserId: input.userId,
     kind: "gap_conflict_resolution",
     payload: {
       sourceRevisionId: input.revisionId,
@@ -65,10 +66,7 @@ export async function enqueueGapContradictionResolution(input: {
       definitionHash: currentGapDefinitionHash,
       buildHash: BUILD_HASH,
     },
-    requestedBy: input.userId,
-  }).returning();
-  if (!job) throw new Error("Conflict-resolution job was not created");
-  return job;
+  });
 }
 
 export async function executeGapContradictionResolutionJob(input: {
