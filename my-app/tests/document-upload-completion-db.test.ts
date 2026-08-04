@@ -5,7 +5,7 @@ import type { PreparedUploadCompletion } from "@/src/server/uploads";
 
 const isDisposableDatabase =
   process.env.APP_ENV === "test" &&
-  process.env.COMPOSE_PROJECT_NAME === "compliancetool-test";
+  process.env.DISPOSABLE_DATABASE === "1";
 const databaseUrl = isDisposableDatabase ? process.env.DATABASE_URL : undefined;
 const adminDatabaseUrl = isDisposableDatabase
   ? process.env.DRIZZLE_DATABASE_URL

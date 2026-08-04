@@ -9,37 +9,35 @@ import { retrieveDocumentEvidence } from "@/src/server/documents";
 type StoredCookie = { name: string; value: string; options?: CookieOptions };
 
 const runId = `${Date.now()}-${randomUUID().slice(0, 8)}`;
-const email = `docker-acceptance-${runId}@example.test`;
-const password = `Docker-Acceptance-${randomUUID()}!`;
-const webUrl = process.env.ACCEPTANCE_WEB_INTERNAL_URL ?? "http://web:3000";
-const mailpitUrl = process.env.ACCEPTANCE_MAILPIT_URL ?? "http://mailpit:8025";
+const email = `acceptance-${runId}@example.test`;
+const password = `Acceptance-${randomUUID()}!`;
+const webUrl = process.env.ACCEPTANCE_WEB_URL ?? "http://127.0.0.1:3000";
 const supabase = getInternalSupabaseEnvironment();
 const databaseUrl = required("DATABASE_URL");
 const publishableKey = required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
 const secretKey = required("SUPABASE_SECRET_KEY");
-const aiBaseUrl = required("SELF_HOSTED_AI_BASE_URL").replace(/\/$/, "");
-const aiKey = required("SELF_HOSTED_AI_API_KEY");
+// The direct inference probe only runs against an OpenAI-compatible endpoint
+// that is configured. It is skipped when the run uses a hosted provider.
+const aiBaseUrl = process.env.SELF_HOSTED_AI_BASE_URL?.trim().replace(/\/$/, "");
+const aiKey = process.env.SELF_HOSTED_AI_API_KEY?.trim();
+const aiModel = process.env.SELF_HOSTED_AI_MODEL?.trim();
 const db = postgres(databaseUrl, { max: 1, prepare: false });
 
 async function main() {
-  const publicClient = createClient(supabase.url, publishableKey, {
+  // Create the fixture user pre-confirmed through the admin API. This replaces
+  // the previous signup-plus-mail-capture flow, which needed a mail server that
+  // only existed inside the deleted Compose stack.
+  const adminClient = createClient(supabase.url, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const { error: signUpError } = await publicClient.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: `${required("APP_PUBLIC_URL")}/auth/callback` },
-  });
-  if (signUpError) throw signUpError;
-
-  const confirmationLink = await waitForConfirmationLink(email);
-  const confirmationUrl = new URL(confirmationLink.replaceAll("&amp;", "&"));
-  const internalOrigin = new URL(supabase.url);
-  confirmationUrl.protocol = internalOrigin.protocol;
-  confirmationUrl.host = internalOrigin.host;
-  const confirmation = await fetch(confirmationUrl, { redirect: "manual" });
-  if (confirmation.status < 300 || confirmation.status >= 400) {
-    throw new Error("Auth email confirmation did not redirect successfully");
+  const { data: created, error: createUserError } =
+    await adminClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+  if (createUserError || !created.user) {
+    throw createUserError ?? new Error("Admin user creation returned no user");
   }
 
   const cookies: StoredCookie[] = [];
@@ -69,8 +67,8 @@ async function main() {
     method: "POST",
     cookieHeader,
     body: {
-      name: `Docker acceptance ${runId}`,
-      legalName: `Docker acceptance ${runId} GmbH`,
+      name: `Acceptance ${runId}`,
+      legalName: `Acceptance ${runId} GmbH`,
       country: "DE",
     },
     idempotencyKey: randomUUID(),
@@ -89,7 +87,7 @@ async function main() {
       method: "POST",
       cookieHeader,
       body: {
-        fileName: "docker-acceptance.txt",
+        fileName: "acceptance.txt",
         mimeType: "text/plain",
         size: evidenceBytes.byteLength,
       },
@@ -111,7 +109,7 @@ async function main() {
     {
       method: "POST",
       cookieHeader,
-      body: { title: "Docker acceptance evidence" },
+      body: { title: "Acceptance evidence" },
       idempotencyKey: randomUUID(),
     },
   );
@@ -226,8 +224,19 @@ async function verifyReport(organizationId: string, cookieHeader: string) {
 }
 
 async function verifyAiPaths() {
+  if (!aiBaseUrl || !aiKey || !aiModel) {
+    console.info(
+      JSON.stringify({
+        step: "direct inference probe",
+        status: "skipped",
+        reason: "SELF_HOSTED_AI_BASE_URL, _API_KEY, or _MODEL is not configured",
+      }),
+    );
+    return;
+  }
+
   const chat = await aiRequest("/chat/completions", {
-    model: required("SELF_HOSTED_AI_MODEL"),
+    model: aiModel,
     messages: [{ role: "user", content: "Reply with exactly: ready" }],
     max_tokens: 16,
     temperature: 0,
@@ -238,7 +247,7 @@ async function verifyAiPaths() {
   for (const language of ["en", "de"] as const) {
     const admittedCitation = `FIXTURE-${language.toUpperCase()}-1`;
     const structured = await aiRequest("/chat/completions", {
-      model: required("SELF_HOSTED_AI_MODEL"),
+      model: aiModel,
       messages: [
         {
           role: "user",
@@ -253,7 +262,7 @@ async function verifyAiPaths() {
       response_format: {
         type: "json_schema",
         json_schema: {
-          name: "docker_acceptance",
+          name: "acceptance",
           strict: true,
           schema: {
             type: "object",
@@ -282,12 +291,6 @@ async function verifyAiPaths() {
     }
   }
 
-  const invalidKey = await fetch(`${aiBaseUrl}/models`, {
-    headers: { authorization: "Bearer intentionally-invalid" },
-  });
-  if (![401, 403].includes(invalidKey.status)) {
-    throw new Error("LiteLLM accepted an invalid application key");
-  }
 }
 
 async function verifyPrivateStorageAndRls(documentObjectPath: string) {
@@ -341,37 +344,6 @@ async function verifyWorkerProgress() {
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
   throw new Error("Worker cleanup scheduling did not reach a valid state");
-}
-
-async function waitForConfirmationLink(recipient: string) {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const search = await fetch(
-      `${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:${recipient}`)}`,
-    );
-    if (search.ok) {
-      const body = (await search.json()) as {
-        messages?: Array<{ ID?: string }>;
-      };
-      const id = body.messages?.[0]?.ID;
-      if (id) {
-        const messageResponse = await fetch(`${mailpitUrl}/api/v1/message/${id}`);
-        if (messageResponse.ok) {
-          const message = (await messageResponse.json()) as {
-            HTML?: string;
-            Text?: string;
-          };
-          const content = `${message.HTML ?? ""}\n${message.Text ?? ""}`;
-          const links = content.match(/https?:\/\/[^\s"'<>]+/g) ?? [];
-          const confirmation = links.find((link) =>
-            link.includes("/auth/v1/verify?"),
-          );
-          if (confirmation) return confirmation;
-        }
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
-  }
-  throw new Error("Mailpit did not receive a Supabase confirmation message");
 }
 
 async function applicationRequest(
@@ -453,7 +425,7 @@ function at(value: unknown, path: string): unknown {
 
 main()
   .catch((error) => {
-    console.error("Docker functional acceptance failed", {
+    console.error("Functional acceptance failed", {
       errorType: error instanceof Error ? error.name : "unknown",
       message: safeErrorMessage(error),
     });

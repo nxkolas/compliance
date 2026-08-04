@@ -160,7 +160,7 @@ export const commonApplicationEnvironmentSchema = z
           context.addIssue({
             code: "custom",
             path: ["SELF_HOSTED_AI_BASE_URL"],
-            message: "must target the private application or WireGuard network",
+            message: "must target a private network in a self-hosted deployment",
           });
         }
       }
