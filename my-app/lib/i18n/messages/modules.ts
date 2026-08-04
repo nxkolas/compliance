@@ -256,9 +256,14 @@ export const modulesMessages = defineFeatureMessages({
               { label: "Fortschritt", value: "Pro Aufgabe" },
             ],
             workflow: {
-              noPlan: "Noch wurde kein Maßnahmenplan erstellt.",
-              noApprovedRevision: "Erstellen Sie den Maßnahmenplan aus der Gap-Analyse.",
-              openGapAnalysis: "Gap-Analyse öffnen",
+              noPlan: "Ihr Maßnahmenplan ist noch nicht verfügbar",
+              noApprovedRevision:
+                "Der Maßnahmenplan entsteht aus Ihren Ergebnissen. Starten Sie zuerst mit dem Betroffenheitscheck und anschließend mit der Gap-Analyse.",
+              openGapAnalysis: "Betroffenheitscheck durchführen",
+              whySequence: "Warum diese Reihenfolge?",
+              infoTitle: "Gut zu wissen",
+              infoDescription:
+                "Sie müssen nicht alles auf einmal erledigen.\nComplyX führt Sie Schritt für Schritt durch den Prozess.\nNach dem Betroffenheitscheck geht es mit der Gap-Analyse weiter.",
               generate: "Maßnahmenplan erstellen",
               generating: "Plan wird erstellt …",
               stale: "Dieser Plan ist veraltet.",
@@ -898,9 +903,14 @@ export const modulesMessages = defineFeatureMessages({
               { label: "Progress", value: "Per task" },
             ],
             workflow: {
-              noPlan: "No action plan has been created yet.",
-              noApprovedRevision: "Generate the action plan from the Gap Analysis.",
-              openGapAnalysis: "Open Gap Analysis",
+              noPlan: "Your action plan is not available yet",
+              noApprovedRevision:
+                "The action plan is created from your results. Start with the applicability check and then continue with the gap analysis.",
+              openGapAnalysis: "Run applicability check",
+              whySequence: "Why this sequence?",
+              infoTitle: "Good to know",
+              infoDescription:
+                "You do not have to complete everything at once.\nComplyX guides you through the process step by step.\nAfter the applicability check, continue with the gap analysis.",
               generate: "Create action plan",
               generating: "Creating plan…",
               stale: "This plan is stale.",
