@@ -188,7 +188,7 @@ export const organizations = pgTable.withRLS(
     legalName: varchar("legal_name", { length: 240 }),
     countryCode: varchar("country_code", { length: 2 }).default("DE").notNull(),
     aiProviderMode: aiProviderModeEnum("ai_provider_mode")
-      .default("company_hosted")
+      .default("openai")
       .notNull(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: createdAt(),
