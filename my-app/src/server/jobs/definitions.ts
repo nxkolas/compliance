@@ -40,6 +40,9 @@ const payloadSchemas = {
   }).strict(),
   report_render: z.object({ reportId: z.uuid() }).strict(),
   document_indexing: z.object({ documentVersionId: z.uuid() }).strict(),
+  // The target provider lives on the migration row, not here, so the payload
+  // and the recorded intent cannot drift apart.
+  organization_reembedding: z.object({ migrationId: z.uuid() }).strict(),
   legal_source_processing: z.object({ processingGenerationId: z.uuid() }).strict(),
   maintenance_cleanup: z.object({ version: z.literal(1) }).strict(),
 } satisfies Record<JobKind, z.ZodType>;
@@ -68,6 +71,7 @@ export type JobCommand =
   | OrganizationJobCommand<"action_plan_generation">
   | OrganizationJobCommand<"report_render">
   | OrganizationJobCommand<"document_indexing">
+  | OrganizationJobCommand<"organization_reembedding">
   | UnscopedJobCommand<"legal_source_processing">
   | UnscopedJobCommand<"maintenance_cleanup">;
 
@@ -255,6 +259,33 @@ export const jobDefinitions = {
         documentVersionId: payload.documentVersionId as string,
         organizationId: job.organizationId!,
       });
+    },
+    classifyFailure: ordinaryFailure,
+    projectResult: () => noResult,
+  },
+  organization_reembedding: {
+    payloadSchema: payloadSchemas.organization_reembedding,
+    organizationScoped: true,
+    requesterRequired: true,
+    // A partially re-embedded organization must surface rather than be retried
+    // against a half-replaced vector set.
+    maxAttempts: 1,
+    readCapability: "documents:read",
+    cancellationCapability: "documents:write",
+    cancellable: true,
+    resultSchema: locator("organization"),
+    async execute(job, payload, signal) {
+      const { executeOrganizationReembeddingJob } = await import(
+        "../documents/service"
+      );
+      return executeOrganizationReembeddingJob(
+        {
+          organizationId: job.organizationId!,
+          migrationId: payload.migrationId as string,
+          jobId: job.id,
+        },
+        signal,
+      );
     },
     classifyFailure: ordinaryFailure,
     projectResult: () => noResult,

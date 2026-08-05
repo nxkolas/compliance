@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DISPOSABLE_APPLY_STAGES } from "@/src/server/operator-commands/disposable-schema-workflow";
@@ -6,11 +6,13 @@ import { DISPOSABLE_APPLY_STAGES } from "@/src/server/operator-commands/disposab
 const sqlRoots = ["scripts/sql", "supabase/sql-editor"];
 
 describe("operator SQL RLS ownership", () => {
-  it("retains only the two approved database bootstrap resources", () => {
+  it("retains only the approved database bootstrap resources", () => {
     const operatorFiles = sqlRoots.flatMap(sqlFiles).map((file) =>
       relative(process.cwd(), file).replaceAll("\\", "/"),
     );
-    expect(operatorFiles).toEqual(["scripts/sql/audit-events-append-only.sql"]);
+    expect(operatorFiles.sort()).toEqual([
+      "scripts/sql/audit-events-append-only.sql",
+    ]);
     expect(readFileSync("infra/config/supabase/db-init/00-vector.sql", "utf8"))
       .toMatch(/create extension if not exists vector/i);
   });
@@ -60,6 +62,9 @@ describe("operator SQL RLS ownership", () => {
 });
 
 function sqlFiles(directory: string): string[] {
+  // A configured SQL root that does not exist simply contributes no files.
+  // Treating it as a hard error made every assertion here unreachable.
+  if (!existsSync(directory)) return [];
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
 

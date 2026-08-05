@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
 import {
   actionPlanItemGaps,
@@ -21,6 +21,7 @@ import {
   getCurrentActionPlan,
 } from "@/src/server/action-plans";
 import { resolvePinnedLegalScope } from "@/src/server/ai/grounding/legal-retrieval";
+import { EMBEDDING_DIMENSIONS } from "@/src/server/documents/document-config";
 import { getCurrentGapDefinition } from "@/src/server/definitions";
 import {
   createOrOpenGapAssessment,
@@ -310,13 +311,9 @@ function provider(): "company_hosted" | "openai" | "self_hosted" {
 async function deterministicGroundingDependencies(
   mode: "company_hosted" | "openai" | "self_hosted",
 ): Promise<GroundingExecutionDependencies> {
-  const dimensionResult = await db.execute<{ dimensions: number }>(sql`
-    select vector_dims(embedding)::int as dimensions
-    from legal_source_chunk_embeddings
-    limit 1
-  `);
-  const dimensions = Array.from(dimensionResult)[0]?.dimensions;
-  if (!dimensions) throw new Error("Deterministic qualification could not resolve embedding dimensions");
+  // Only organization documents carry vectors now, and their dimension is a
+  // fixed contract rather than something to discover from stored rows.
+  const dimensions = EMBEDDING_DIMENSIONS;
   const provider: GroundedProvider = {
     mode,
     provider: "deterministic-fixture",

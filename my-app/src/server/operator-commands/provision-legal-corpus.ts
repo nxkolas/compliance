@@ -43,7 +43,6 @@ export const legalCorpusProvisionManifestSchema = z.object({
     }),
     processing: z.object({
       parser: z.string().trim().min(1),
-      embeddingModel: z.string().trim().min(1),
     }),
   })).min(1),
 });
@@ -138,7 +137,6 @@ export async function provisionLegalCorpus(
         target: [
           legalSourceProcessingGenerations.renditionId,
           legalSourceProcessingGenerations.parser,
-          legalSourceProcessingGenerations.embeddingModel,
         ],
       });
       const generation = await tx.query.legalSourceProcessingGenerations.findFirst({
@@ -147,7 +145,6 @@ export async function provisionLegalCorpus(
             and(
               eq(table.renditionId, rendition.id),
               eq(table.parser, sourceInput.processing.parser),
-              eq(table.embeddingModel, sourceInput.processing.embeddingModel),
             ) ?? operators.sql`true`,
         },
       });

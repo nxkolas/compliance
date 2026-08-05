@@ -2,18 +2,55 @@ import type { AiProviderMode } from "@/lib/ai/types";
 
 export const DOCUMENT_STORAGE_BUCKET = "organization-evidence";
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
-export const EMBEDDING_PROVIDER = configuredProvider();
-export const EMBEDDING_MODEL = configuredEmbeddingModel(EMBEDDING_PROVIDER);
-export const EMBEDDING_MODEL_REVISION =
-  configuredValue(
-    EMBEDDING_PROVIDER === "self_hosted"
-      ? "SELF_HOSTED_AI_EMBEDDING_REVISION"
-      : undefined,
-  ) ?? EMBEDDING_MODEL;
 export const EMBEDDING_DIMENSIONS = configuredEmbeddingDimensions();
-export const EMBEDDING_RETRIEVAL_INSTRUCTION_ID =
-  EMBEDDING_PROVIDER === "self_hosted" ? "qwen3-query-v1" : "none";
 export const CHUNKING_VERSION = "paragraph-v1";
+
+/**
+ * Server-wide fallback embedding provider. Organizations carry their own
+ * `ai_provider_mode`; this is only used where no organization is in scope,
+ * such as legal corpus provisioning and operator commands.
+ */
+export const DEFAULT_EMBEDDING_PROVIDER = configuredProvider();
+
+export type EmbeddingConfig = {
+  provider: AiProviderMode;
+  model: string;
+  modelRevision: string;
+  dimensions: number;
+  retrievalInstructionId: string;
+};
+
+/**
+ * Resolves the embedding coordinates for one provider family. Vectors are only
+ * comparable within a single embedding model, so every read and write of a
+ * document embedding must resolve this from the same provider mode.
+ */
+export function resolveEmbeddingConfig(
+  providerMode: AiProviderMode = DEFAULT_EMBEDDING_PROVIDER,
+): EmbeddingConfig {
+  const model = configuredEmbeddingModel(providerMode);
+  return {
+    provider: providerMode,
+    model,
+    modelRevision:
+      configuredValue(
+        providerMode === "self_hosted"
+          ? "SELF_HOSTED_AI_EMBEDDING_REVISION"
+          : undefined,
+      ) ?? model,
+    dimensions: EMBEDDING_DIMENSIONS,
+    retrievalInstructionId:
+      providerMode === "self_hosted" ? "qwen3-query-v1" : "none",
+  };
+}
+
+const defaultEmbeddingConfig = resolveEmbeddingConfig();
+
+export const EMBEDDING_PROVIDER = defaultEmbeddingConfig.provider;
+export const EMBEDDING_MODEL = defaultEmbeddingConfig.model;
+export const EMBEDDING_MODEL_REVISION = defaultEmbeddingConfig.modelRevision;
+export const EMBEDDING_RETRIEVAL_INSTRUCTION_ID =
+  defaultEmbeddingConfig.retrievalInstructionId;
 
 export const SUPPORTED_DOCUMENT_TYPES = new Set([
   "application/pdf",

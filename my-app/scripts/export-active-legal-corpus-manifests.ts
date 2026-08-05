@@ -2,7 +2,7 @@ import "dotenv/config";
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
 import {
   legalCorpusFamilies,
@@ -52,7 +52,6 @@ async function main() {
       storageKey: legalSourceRenditions.storageKey,
       renditionContentHash: legalSourceRenditions.contentHash,
       parser: legalSourceProcessingGenerations.parser,
-      embeddingModel: legalSourceProcessingGenerations.embeddingModel,
     }).from(legalCorpusFamilies)
       .innerJoin(
         legalCorpusSnapshots,
@@ -126,7 +125,7 @@ async function main() {
           storageKey: row.storageKey,
           contentHash: row.renditionContentHash,
         },
-        processing: { parser: row.parser, embeddingModel: row.embeddingModel },
+        processing: { parser: row.parser },
       })),
     };
     const path = resolve(absoluteOutput, `${familyCode}.manifest.json`);
@@ -137,22 +136,8 @@ async function main() {
     console.log(`Exported ${familyCode} active corpus manifest to ${path}`);
   }
 
-  const dimensionRows = await db.execute<{ dimensions: number }>(
-    // Kept out of the manifest because the model owns it, but retained beside
-    // the manifests for deterministic reprocessing after recreation.
-    sql`
-      select vector_dims(embedding)::int as dimensions
-      from legal_source_chunk_embeddings
-      limit 1
-    `,
-  );
-  const dimension = Array.from(dimensionRows)[0]?.dimensions;
-  if (!dimension) throw new Error("Could not determine retained embedding dimensions");
-  await writeFile(
-    resolve(absoluteOutput, "embedding-dimensions.json"),
-    `${JSON.stringify({ dimensions: dimension }, null, 2)}\n`,
-    { flag: "wx" },
-  );
+  // The legal corpus stores no vectors, so there is no embedding dimension to
+  // retain alongside the manifests for deterministic reprocessing.
 }
 
 main().catch((error) => {

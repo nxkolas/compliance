@@ -3,9 +3,8 @@ import { retrieveDocumentEvidence } from "@/src/server/documents";
 import {
   CHUNKING_VERSION,
   EMBEDDING_DIMENSIONS,
-  EMBEDDING_MODEL,
-  EMBEDDING_PROVIDER,
 } from "@/src/server/documents/domain";
+import { resolveOrganizationEmbeddingConfig } from "@/src/server/documents/service";
 import type { GroundingContextItem } from "./types";
 import { admitOrganizationEvidence } from "./organization-evidence-policy";
 
@@ -25,10 +24,13 @@ export async function retrieveOrganizationContext(input: {
     query: input.query,
     limit: Math.max(input.limit ?? 0, 12),
   }, { queryEmbedding: input.queryEmbedding });
+  const embedding = await resolveOrganizationEmbeddingConfig(
+    input.organizationId,
+  );
   const decision = admitOrganizationEvidence({
     operation: "gap_analysis",
-    provider: EMBEDDING_PROVIDER,
-    model: EMBEDDING_MODEL,
+    provider: embedding.provider,
+    model: embedding.model,
     dimensions: EMBEDDING_DIMENSIONS,
     chunkingVersion: CHUNKING_VERSION,
     candidates: evidence.map((row) => ({

@@ -1,25 +1,21 @@
 import { createHash } from "node:crypto";
 import { db } from "@/src/db";
 import {
-  legalSourceChunkEmbeddings,
   legalSourceChunks,
   legalSourceProcessingGenerations,
   legalSourceRenditions,
 } from "@/src/db/schema";
 import {
-  createContentEmbedder,
   legalContentParser,
   paragraphContentChunker,
 } from "@/src/server/content-processing/defaults";
-import type { ContentChunker, ContentEmbedder, ContentParser } from "@/src/server/content-processing/types";
-import { validateEmbeddings } from "@/src/server/documents/domain";
+import type { ContentChunker, ContentParser } from "@/src/server/content-processing/types";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { and, eq } from "drizzle-orm";
 
 type Dependencies = {
   parser?: ContentParser;
   chunker?: ContentChunker;
-  embedder?: ContentEmbedder;
   download?: (bucket: string, key: string) => Promise<Uint8Array>;
 };
 
@@ -49,10 +45,6 @@ export async function executeLegalSourceProcessingJob(
 
   const parser = dependencies.parser ?? legalContentParser;
   const chunker = dependencies.chunker ?? paragraphContentChunker;
-  const embedder = dependencies.embedder ?? createContentEmbedder();
-  if (embedder.model !== target.generation.embeddingModel) {
-    throw new Error("The processing generation embedding model does not match the deployed embedder");
-  }
   const download = dependencies.download ?? downloadRendition;
   await db.update(legalSourceProcessingGenerations).set({
     jobId: input.jobId,
@@ -68,12 +60,10 @@ export async function executeLegalSourceProcessingJob(
     if (input.abortSignal?.aborted) throw input.abortSignal.reason;
     const parsed = await parser.parse(bytes, inferMimeType(target.rendition.storageKey));
     const chunks = chunker.chunk(parsed.pages);
-    const embeddings = await embedder.embed(chunks.map((chunk) => chunk.content));
-    validateEmbeddings(embeddings, chunks.length, embedder.dimensions);
     await db.transaction(async (tx) => {
       await tx.delete(legalSourceChunks).where(eq(legalSourceChunks.processingGenerationId, target.generation.id));
       if (chunks.length) {
-        const inserted = await tx.insert(legalSourceChunks).values(chunks.map((chunk, position) => ({
+        await tx.insert(legalSourceChunks).values(chunks.map((chunk, position) => ({
           processingGenerationId: target.generation.id,
           sourceVersionId: target.generation.sourceVersionId,
           renditionId: target.generation.renditionId,
@@ -82,11 +72,6 @@ export async function executeLegalSourceProcessingJob(
           sectionPath: chunk.sectionLabel,
           text: chunk.content,
           contentHash: createHash("sha256").update(chunk.content).digest("hex"),
-        }))).returning({ id: legalSourceChunks.id, position: legalSourceChunks.position });
-        await tx.insert(legalSourceChunkEmbeddings).values(inserted.map((chunk) => ({
-          chunkId: chunk.id,
-          model: embedder.model,
-          embedding: embeddings[chunk.position]!,
         })));
       }
       await tx.update(legalSourceProcessingGenerations).set({

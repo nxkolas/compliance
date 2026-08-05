@@ -96,8 +96,9 @@ type GroundedOperationInput<T> = {
     responseSchemaVersion: string;
   };
   abortSignal?: AbortSignal;
+  // Legal grounding needs no embedding: it resolves reviewed provision
+  // bindings and otherwise ranks lexically.
   precomputedQueryEmbeddings?: {
-    legal?: number[];
     organizationDocument?: number[];
   };
   preparedGrounding?: PreparedGroundingOperation;
@@ -247,10 +248,6 @@ export async function runGroundedOperation<T>(
                 unit.preferredMappedLegalProvisionKeys,
               tierLimits: unit.legalTierLimits,
               pinnedSnapshots: prepared.pinnedSnapshots,
-            },
-            {
-              queryEmbedding: input.precomputedQueryEmbeddings?.legal,
-              embeddingProvider: dependencies.embeddingProvider,
             },
           ),
           input.organizationEvidenceVersionIds.length

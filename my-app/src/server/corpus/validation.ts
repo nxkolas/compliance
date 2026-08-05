@@ -3,7 +3,6 @@ import { db } from "@/src/db";
 import {
   legalCorpusFamilies,
   legalProvisionChunkBindings,
-  legalSourceChunkEmbeddings,
   legalSourceChunks,
   legalSourceProcessingGenerations,
   legalSources,
@@ -27,7 +26,6 @@ export async function validateLegalCorpusActivationCandidate(input: {
   const generations = await db.select({
     id: legalSourceProcessingGenerations.id,
     status: legalSourceProcessingGenerations.status,
-    embeddingModel: legalSourceProcessingGenerations.embeddingModel,
     familyCode: legalCorpusFamilies.code,
   }).from(legalSourceProcessingGenerations)
     .innerJoin(legalSourceVersions, eq(legalSourceVersions.id, legalSourceProcessingGenerations.sourceVersionId))
@@ -53,7 +51,6 @@ export async function validateLegalCorpusActivationCandidate(input: {
     text: legalSourceChunks.text,
   }).from(legalSourceChunks)
     .where(inArray(legalSourceChunks.processingGenerationId, generationIds));
-  const generationById = new Map(generations.map((row) => [row.id, row]));
   for (const id of generationIds) {
     if (!chunks.some((chunk) => chunk.processingGenerationId === id)) {
       throw new Error(`Processing generation ${id} has no chunks`);
@@ -63,20 +60,10 @@ export async function validateLegalCorpusActivationCandidate(input: {
     throw new Error("A selected legal citation chunk is empty");
   }
 
+  // The corpus stores no vectors. The reviewed provision bindings checked below
+  // are the only guarantee that an activated snapshot can ground a Gap
+  // requirement, so that check carries the whole correctness burden here.
   const chunkIds = chunks.map((chunk) => chunk.id);
-  const embeddings = await db.select({
-    chunkId: legalSourceChunkEmbeddings.chunkId,
-    model: legalSourceChunkEmbeddings.model,
-  }).from(legalSourceChunkEmbeddings)
-    .where(inArray(legalSourceChunkEmbeddings.chunkId, chunkIds));
-  const embedded = new Set(embeddings.map((row) => `${row.chunkId}\0${row.model}`));
-  const missingEmbedding = chunks.find((chunk) => {
-    const model = generationById.get(chunk.processingGenerationId)?.embeddingModel;
-    return !model || !embedded.has(`${chunk.id}\0${model}`);
-  });
-  if (missingEmbedding) {
-    throw new Error(`Legal chunk ${missingEmbedding.id} has no matching embedding`);
-  }
 
   const bindings = await db.select({
     stableProvisionKey: legalProvisionChunkBindings.stableProvisionKey,

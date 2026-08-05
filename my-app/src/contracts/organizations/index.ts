@@ -42,6 +42,7 @@ export const organizationSchema = z.object({
   name: z.string(),
   legalName: z.string().nullable(),
   countryCode: z.string().length(2),
+  /** The committed provider choice, governing generation and embeddings alike. */
   aiProviderMode: aiProviderModeSchema,
   archivedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
@@ -96,8 +97,18 @@ export const acceptOrganizationInvitationSchema = z.object({
   token: z.string().trim().min(1),
 });
 
+/** Reported while a provider change is rebuilding this organization's vectors. */
+export const embeddingMigrationSchema = z.object({
+  id: z.uuid(),
+  toProviderMode: aiProviderModeSchema,
+  status: z.enum(["pending", "processing"]),
+  documentVersionsTotal: z.number().int().nonnegative(),
+  documentVersionsCompleted: z.number().int().nonnegative(),
+});
+
 export const organizationSettingsSchema = z.object({
   organization: organizationSchema,
+  pendingEmbeddingMigration: embeddingMigrationSchema.nullable(),
   allowedActions: z.object({ edit: z.boolean() }),
 });
 

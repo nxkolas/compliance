@@ -6,7 +6,6 @@ import {
   NIS2_CORPUS_BOOTSTRAP_FIXTURE,
   NIS2_CORPUS_BOOTSTRAP_NOTICE,
 } from "@/src/server/corpus";
-import { createContentEmbedder } from "@/src/server/content-processing/defaults";
 import { provisionLegalCorpus } from "@/src/server/operator-commands/provision-legal-corpus";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 
@@ -17,7 +16,6 @@ async function main() {
   }
 
   console.log(NIS2_CORPUS_BOOTSTRAP_NOTICE);
-  const embeddingModel = createContentEmbedder().model;
   for (const fixture of NIS2_CORPUS_BOOTSTRAP_FIXTURE) {
     const bytes = await downloadOfficialPdf(fixture.import.exactUrl);
     const hash = createHash("sha256").update(bytes).digest("hex");
@@ -62,7 +60,6 @@ async function main() {
         },
         processing: {
           parser: "pdf-parse",
-          embeddingModel,
         },
       }],
     });

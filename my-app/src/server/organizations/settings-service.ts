@@ -4,6 +4,10 @@ import { authorizeOrganizationRead, withAuthorizedOrganizationCommand } from "@/
 import type * as z from "zod";
 import type { organizationSettingsUpdateSchema } from "@/src/contracts/organizations";
 import { ApiError } from "../api/errors";
+import {
+  readActiveEmbeddingMigration,
+  requestProviderChange,
+} from "./embedding-migration-service";
 
 export async function getOrganizationSettings(
   userId: string,
@@ -27,10 +31,21 @@ export async function getOrganizationSettings(
     },
   });
   if (!organization) throw organizationNotFound();
+  const pendingEmbeddingMigration = await readActiveEmbeddingMigration(
+    organizationId,
+    scope.executor,
+  );
   return {
     organization,
+    // Present while a provider change is rebuilding vectors. `aiProviderMode`
+    // above still reports the committed choice, so the UI shows what is live
+    // and what is being switched to at the same time.
+    pendingEmbeddingMigration,
     allowedActions: {
-      edit: scope.membership.role === "owner" && !organization.archivedAt,
+      edit:
+        scope.membership.role === "owner" &&
+        !organization.archivedAt &&
+        !pendingEmbeddingMigration,
     },
   };
 }
@@ -48,12 +63,21 @@ export async function updateOrganizationSettings(input: {
         name: input.values.organization.name.trim(),
         legalName: input.values.organization.legalName?.trim() || null,
         countryCode: input.values.organization.countryCode,
-        aiProviderMode: input.values.organization.aiProviderMode,
         updatedAt: new Date(),
       })
       .where(eq(organizations.id, input.organizationId))
       .returning();
     if (!organization) throw organizationNotFound();
+
+    // The provider is never written here. It governs the embedding model, so
+    // it may only advance together with the vectors it describes.
+    const change = await requestProviderChange({
+      userId: input.userId,
+      organizationId: input.organizationId,
+      targetProviderMode: input.values.organization.aiProviderMode,
+      executor,
+    });
+
     await executor.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: input.userId,
@@ -62,7 +86,11 @@ export async function updateOrganizationSettings(input: {
       entityId: input.organizationId,
       metadata: {
         countryCode: organization.countryCode,
-        aiProviderMode: organization.aiProviderMode,
+        requestedAiProviderMode: input.values.organization.aiProviderMode,
+        providerChangeApplied: change.applied,
+        ...(change.migrationId
+          ? { embeddingMigrationId: change.migrationId }
+          : {}),
       },
       requestId: input.requestId,
     });

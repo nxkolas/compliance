@@ -39,6 +39,7 @@ import {
   createDocumentEmbeddingProvider,
   validateEmbeddings,
 } from "@/src/server/documents";
+import { resolveOrganizationEmbeddingConfig } from "@/src/server/documents/service";
 import { emitGenerationMetric } from "../ai/generation/metrics";
 import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
 
@@ -121,11 +122,17 @@ async function generateAtomicGapCategoriesCurrent(
       currentGapQueryUnit(input, item, "initial"),
     ]),
   );
+  // The precomputed vector must come from the organization's own embedder:
+  // document retrieval filters rows on that model, so a query embedded by the
+  // server default would be compared against a different vector space.
   const preparedEmbeddings = await prepareQueryEmbeddings(
     [...initialQueryUnits.values()],
     input.jobId,
     input.selectedDocumentVersionIds.length > 0,
-    input.groundingDependencies?.embeddingProvider,
+    input.groundingDependencies?.embeddingProvider ??
+      createDocumentEmbeddingProvider(
+        (await resolveOrganizationEmbeddingConfig(input.organizationId)).provider,
+      ),
   );
   const coordinated = await coordinateCategoryGeneration<
     AtomicGapRequirementInput,
@@ -169,7 +176,6 @@ async function generateAtomicGapCategoriesCurrent(
       const queryUnit = phase === "initial"
         ? initialQueryUnits.get(item.requirement.code)!
         : currentGapQueryUnit(input, item, phase, rejectedCandidate);
-      const legalQuery = resolveGroundingRetrievalQuery(queryUnit, "legal");
       const organizationQuery = resolveGroundingRetrievalQuery(
         queryUnit,
         "organization_document",
@@ -260,10 +266,7 @@ async function generateAtomicGapCategoriesCurrent(
         abortSignal: taskSignal,
         promptMetadata: CURRENT_GAP_PROMPT_METADATA,
         precomputedQueryEmbeddings: phase === "initial"
-          ? {
-              legal: preparedEmbeddings.get(legalQuery),
-              organizationDocument: preparedEmbeddings.get(organizationQuery),
-            }
+          ? { organizationDocument: preparedEmbeddings.get(organizationQuery) }
           : undefined,
         preparedGrounding,
       }, input.groundingDependencies);
@@ -348,12 +351,18 @@ async function prepareQueryEmbeddings(
   includeOrganizationDocuments = true,
   embeddingProvider?: ReturnType<typeof createDocumentEmbeddingProvider>,
 ) {
-  const queries = [...new Set(queryUnits.flatMap((unit) => [
-    resolveGroundingRetrievalQuery(unit, "legal"),
-    ...(includeOrganizationDocuments
-      ? [resolveGroundingRetrievalQuery(unit, "organization_document")]
-      : []),
-  ]))];
+  // Only organization documents are retrieved by similarity. Legal grounding
+  // resolves reviewed provision bindings and ranks lexically, so embedding a
+  // legal query here would be a wasted provider call.
+  const queries = includeOrganizationDocuments
+    ? [
+        ...new Set(
+          queryUnits.map((unit) =>
+            resolveGroundingRetrievalQuery(unit, "organization_document"),
+          ),
+        ),
+      ]
+    : [];
   const provider = embeddingProvider ?? createDocumentEmbeddingProvider();
   const vectors = new Map<string, number[]>();
   const batchSize = embeddingBatchSize();

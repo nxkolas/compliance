@@ -144,6 +144,7 @@ export const backgroundJobKindEnum = pgEnum("background_job_kind", [
   "action_plan_generation",
   "report_render",
   "document_indexing",
+  "organization_reembedding",
   "legal_source_processing",
   "maintenance_cleanup",
 ]);
@@ -187,6 +188,9 @@ export const organizations = pgTable.withRLS(
     name: varchar("name", { length: 200 }).notNull(),
     legalName: varchar("legal_name", { length: 240 }),
     countryCode: varchar("country_code", { length: 2 }).default("DE").notNull(),
+    // The organization's single AI provider choice, governing generation and
+    // embeddings alike. It advances only once a re-embedding migration has
+    // rebuilt every stored vector, so it can never disagree with the data.
     aiProviderMode: aiProviderModeEnum("ai_provider_mode")
       .default("openai")
       .notNull(),
@@ -200,6 +204,70 @@ export const organizations = pgTable.withRLS(
       sql`${table.countryCode} ~ '^[A-Z]{2}$'`,
     ),
     uniqueIndex("organizations_id_identity_unique").on(table.id),
+  ],
+);
+
+/**
+ * One row per requested change of an organization's AI provider.
+ *
+ * Changing the provider changes the embedding model, which invalidates every
+ * stored vector. `organizations.ai_provider_mode` therefore stays on the old
+ * value until a migration here reaches `succeeded`, at which point both advance
+ * in the same transaction. Keeping the in-flight state out of `organizations`
+ * is what makes a disagreement between the choice and the vectors unable to
+ * exist rather than merely discouraged.
+ */
+export const organizationEmbeddingMigrations = pgTable.withRLS(
+  "organization_embedding_migrations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id").references(() => backgroundJobs.id, {
+      onDelete: "set null",
+    }),
+    fromProviderMode: aiProviderModeEnum("from_provider_mode").notNull(),
+    toProviderMode: aiProviderModeEnum("to_provider_mode").notNull(),
+    status: processingStatusEnum("status").default("pending").notNull(),
+    documentVersionsTotal: integer("document_versions_total")
+      .default(0)
+      .notNull(),
+    documentVersionsCompleted: integer("document_versions_completed")
+      .default(0)
+      .notNull(),
+    failureCode: text("failure_code"),
+    failureMessage: text("failure_message"),
+    createdAt: createdAt(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    // Shortened deliberately: the conventional
+    // "<table>_organization_id_identity_unique" name exceeds PostgreSQL's
+    // 63-character identifier limit for this table and would be truncated.
+    uniqueIndex("organization_embedding_migrations_identity_unique").on(
+      table.organizationId,
+      table.id,
+    ),
+    // At most one migration may be outstanding per organization. This replaces
+    // a nullable "pending" column: a terminal row cannot strand the guard.
+    uniqueIndex("organization_embedding_migrations_active_unique")
+      .on(table.organizationId)
+      .where(sql`${table.status} in ('pending', 'processing')`),
+    check(
+      "organization_embedding_migrations_lifecycle_check",
+      sql`(${table.status} = 'succeeded' and ${table.completedAt} is not null and ${table.failureCode} is null) or (${table.status} = 'failed' and ${table.completedAt} is not null and ${table.failureCode} is not null) or (${table.status} in ('pending', 'processing') and ${table.completedAt} is null)`,
+    ),
+    check(
+      "organization_embedding_migrations_progress_check",
+      sql`${table.documentVersionsCompleted} >= 0 and ${table.documentVersionsCompleted} <= ${table.documentVersionsTotal}`,
+    ),
+    // A migration that changes nothing has no reason to exist.
+    check(
+      "organization_embedding_migrations_direction_check",
+      sql`${table.fromProviderMode} <> ${table.toProviderMode}`,
+    ),
   ],
 );
 
@@ -759,6 +827,9 @@ export const backgroundJobs = pgTable.withRLS(
     uniqueIndex("background_jobs_cleanup_active_unique")
       .on(table.kind)
       .where(sql`${table.kind} = 'maintenance_cleanup' and ${table.state} in ('queued', 'leased', 'running')`),
+    uniqueIndex("background_jobs_reembedding_active_unique")
+      .on(table.organizationId)
+      .where(sql`${table.kind} = 'organization_reembedding' and ${table.state} in ('queued', 'leased', 'running')`),
     index("background_jobs_claim_idx").on(table.state, table.availableAt),
     index("background_jobs_lease_idx").on(table.leaseExpiresAt),
     check(
@@ -969,7 +1040,6 @@ export const legalSourceProcessingGenerations = pgTable.withRLS(
     }),
     status: processingStatusEnum("status").default("pending").notNull(),
     parser: text("parser").notNull(),
-    embeddingModel: text("embedding_model").notNull(),
     failureCode: text("failure_code"),
     failureMessage: text("failure_message"),
     createdAt: createdAt(),
@@ -977,10 +1047,11 @@ export const legalSourceProcessingGenerations = pgTable.withRLS(
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (table) => [
+    // The legal corpus carries no vectors, so the parser is the only
+    // processing configuration that distinguishes generations of a rendition.
     uniqueIndex("legal_processing_rendition_config_unique").on(
       table.renditionId,
       table.parser,
-      table.embeddingModel,
     ),
     check(
       "legal_processing_lifecycle_check",
@@ -1023,18 +1094,6 @@ export const legalSourceChunks = pgTable.withRLS(
   ],
 );
 
-export const legalSourceChunkEmbeddings = pgTable.withRLS(
-  "legal_source_chunk_embeddings",
-  {
-    chunkId: uuid("chunk_id")
-      .notNull()
-      .references(() => legalSourceChunks.id, { onDelete: "cascade" }),
-    model: text("model").notNull(),
-    embedding: vector("embedding").notNull(),
-    createdAt: createdAt(),
-  },
-  (table) => [primaryKey({ columns: [table.chunkId, table.model] })],
-);
 
 export const legalProvisionChunkBindings = pgTable.withRLS(
   "legal_provision_chunk_bindings",
