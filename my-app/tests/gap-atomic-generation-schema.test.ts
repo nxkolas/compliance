@@ -13,7 +13,6 @@ describe("atomic Gap response contract", () => {
           satisfiedQuestionStableKeys: [],
         },
         statementBasisHash: "hash",
-        evidenceSufficiency: "none",
         gaps: [
           {
             questionStableKey: "trigger",

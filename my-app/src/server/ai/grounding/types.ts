@@ -5,6 +5,15 @@ export type GroundingChannel = "legal" | "organization_document" | "questionnair
 export type GroundingContextItem = {
   channel: GroundingChannel;
   citationId: string;
+  /**
+   * Short prompt-facing handle such as `D1`, `L1`, `Q1`.
+   *
+   * `citationId` embeds a chunk or answer UUID, and the generation contract
+   * forbids raw identifiers in prose. Showing the model UUIDs it must reference
+   * but never echo is a trap small models fall into, so the prompt and the
+   * response schema use labels and the server maps them back.
+   */
+  label: string;
   queryUnitId: string;
   sourceId: string;
   excerpt: string;

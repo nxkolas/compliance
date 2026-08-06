@@ -15,9 +15,9 @@ import {
 } from "@/src/server/action-plans/current-contract";
 
 describe("current code-owned generation contracts", () => {
-  it("preserves the characterized Gap v12 definition and prompt behavior", () => {
+  it("preserves the characterized Gap v13 definition and prompt behavior", () => {
     expect(CURRENT_GAP_PROMPT_METADATA.templateHash).toBe(
-      "4df9677e7cff980aff8d730a1c7f98b7e47c5c75c1c586fede8f7b5a9f4a9293",
+      "329e2fbeb9b9e9b5b17d11013488204f33829cacd5a4c1ef346ea14f145da2f9",
     );
     expect(currentGapContractDefinition.versionLabel).toBe("reliability-v8");
     expect(gapPrompt({ locale: "en", semanticContexts: [] })).toContain(
@@ -33,7 +33,6 @@ describe("current code-owned generation contracts", () => {
             supportingOrganizationCitationIds: [],
           }],
         },
-        evidenceSufficiency: "none",
         reviewNotice: "Document support is missing.",
         assumptions: [],
         contradictions: [],
@@ -51,8 +50,10 @@ describe("current code-owned generation contracts", () => {
   it("accepts only an exact unique organization-citation conflict subset", () => {
     const policy = {
       ...gapPolicy(),
-      admittedOrganizationCitationIds: ["ORG:policy", "ORG:runbook"],
-      forcedEvidenceSufficiency: undefined,
+      admittedOrganizationCitations: [
+        { label: "D1", citationId: "ORG:policy" },
+        { label: "D2", citationId: "ORG:runbook" },
+      ],
     };
     const value = {
       gaps: {
@@ -61,11 +62,10 @@ describe("current code-owned generation contracts", () => {
           supportingOrganizationCitationIds: [],
         }],
       },
-      evidenceSufficiency: "partial" as const,
       reviewNotice: "The policy conflicts with the questionnaire.",
       assumptions: [],
       contradictions: ["The policy says the control is implemented."],
-      conflictingOrganizationCitationIds: ["ORG:policy"],
+      conflictingOrganizationCitationIds: ["D1"],
       requiresReview: true,
     };
 
@@ -78,7 +78,7 @@ describe("current code-owned generation contracts", () => {
         policy,
         value: {
           ...value,
-          conflictingOrganizationCitationIds: ["ORG:policy", "ORG:policy"],
+          conflictingOrganizationCitationIds: ["D1", "D1"],
         },
       }),
     ).toThrow();
@@ -168,11 +168,10 @@ function gapPolicy(): GapResponsePolicy {
         expectedKind: "missing",
       },
     },
-    admittedOrganizationCitationIds: [],
+    admittedOrganizationCitations: [],
     questionnaireCitationIdsByQuestion: {
       "gap.protect.control": "Q:answer",
     },
     preferredPrimaryLegalCitationId: "LEGAL:protect",
-    forcedEvidenceSufficiency: "none",
   };
 }

@@ -404,6 +404,7 @@ export async function runGroundedOperation<T>(
             metadata: {
               ...item.metadata,
               citationId: item.citationId,
+              label: item.label,
               queryUnitId: item.queryUnitId,
               excerptHash: item.excerptHash,
               rank: item.rank,
@@ -584,6 +585,7 @@ function questionnaireContext(
     return {
       channel: "questionnaire_assertion",
       citationId: `Q:${assertion.queryUnitId}:${assertion.answerId}`,
+      label: `Q${index + 1}`,
       queryUnitId: assertion.queryUnitId,
       sourceId: assertion.answerId,
       excerpt: assertion.excerpt,
@@ -612,6 +614,11 @@ function fromPersistedContext(
       typeof metadata.citationId === "string"
         ? metadata.citationId
         : `${channel === "legal" ? "LEGAL" : "DOC"}:${row.id}`,
+    // Persisted so a recovered run rebuilds the exact labels the model saw.
+    label:
+      typeof metadata.label === "string"
+        ? metadata.label
+        : `${channel === "legal" ? "L" : "D"}${row.position + 1}`,
     queryUnitId:
       typeof metadata.queryUnitId === "string" ? metadata.queryUnitId : "",
     sourceId,

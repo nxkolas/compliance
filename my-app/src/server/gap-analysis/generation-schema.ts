@@ -41,10 +41,14 @@ export type GapResponsePolicy = {
   statementBasis: GapStatementBasis;
   semanticContextByQuestion: Record<string, GapStatementSemanticContext>;
   statementMaximumByQuestion?: Record<string, number>;
-  admittedOrganizationCitationIds: string[];
+  /**
+   * Admitted organization evidence, paired label to citation ID. The model
+   * selects by label; the normalizer resolves back to citation IDs, which is
+   * what every downstream consumer keys on.
+   */
+  admittedOrganizationCitations: Array<{ label: string; citationId: string }>;
   questionnaireCitationIdsByQuestion: Record<string, string>;
   preferredPrimaryLegalCitationId: string;
-  forcedEvidenceSufficiency?: "sufficient" | "partial" | "none";
   forcedRequiresReview?: boolean;
 };
 
@@ -56,7 +60,6 @@ export type GapCategoryResponse = {
       supportingOrganizationCitationIds: string[];
     }>
   >;
-  evidenceSufficiency: "sufficient" | "partial" | "none";
   reviewNotice: string | null;
   assumptions: string[];
   contradictions: string[];
@@ -68,7 +71,6 @@ export type ValidatedCategoryGapResult = {
   requirementCode: string;
   statementBasis: GapStatementBasis;
   statementBasisHash: string;
-  evidenceSufficiency: "sufficient" | "partial" | "none";
   gaps: Array<{
     questionStableKey: string;
     sourceAssessmentAnswerId: string;
@@ -125,8 +127,8 @@ export function defaultGapStatementMaximum(
 export function buildGapCategoryResponseSchema(
   policy: GapResponsePolicy,
 ): z.ZodType<GapCategoryResponse> {
-  const organizationCitation = policy.admittedOrganizationCitationIds.length
-    ? z.enum(policy.admittedOrganizationCitationIds as [string, ...string[]])
+  const organizationCitation = policy.admittedOrganizationCitations.length
+    ? z.enum(organizationLabels(policy) as [string, ...string[]])
     : z.string().max(0);
   const schema = buildGapCategoryBaseSchema(policy)
     .extend({
@@ -142,20 +144,10 @@ export function buildGapCategoryResponseSchema(
           message: "Conflicting organization citation IDs must be unique",
         });
       }
-      if (value.requiresReview && conflicts.length === 0) {
-        context.addIssue({
-          code: "custom",
-          path: ["conflictingOrganizationCitationIds"],
-          message: "Review-required findings must identify an exact conflict",
-        });
-      }
-      if (!value.requiresReview && conflicts.length > 0) {
-        context.addIssue({
-          code: "custom",
-          path: ["conflictingOrganizationCitationIds"],
-          message: "Non-review findings cannot identify conflicting citations",
-        });
-      }
+      // Agreement between `requiresReview` and this list is deliberately NOT
+      // enforced here. Cross-field rules are invisible to a provider grammar,
+      // so a small model fails them structurally rather than semantically.
+      // `reconcileConflictCitations` repairs the disagreement instead.
     });
   return schema as unknown as z.ZodType<GapCategoryResponse>;
 }
@@ -194,18 +186,12 @@ export function normalizeGapCategoryResponse(input: {
     policy: input.policy,
   });
 
+  // A review claim with no contradiction behind it is downgraded rather than
+  // rejected; any conflict citations it named go with it.
   if (
     normalized.value.contradictions.length === 0 &&
     normalized.value.requiresReview
   ) {
-    if (conflictingOrganizationCitationIds.length > 0) {
-      throw new GenerationContentValidationError([
-        {
-          code: "content_invalid",
-          path: ["conflictingOrganizationCitationIds"],
-        },
-      ]);
-    }
     return {
       ...normalized,
       value: {
@@ -217,6 +203,9 @@ export function normalizeGapCategoryResponse(input: {
       normalizationCodes: [
         ...normalized.normalizationCodes,
         "normalized_review_without_contradiction" as const,
+        ...(conflictingOrganizationCitationIds.length
+          ? (["normalized_conflict_citations_cleared"] as const)
+          : []),
       ],
     };
   }
@@ -224,31 +213,94 @@ export function normalizeGapCategoryResponse(input: {
   const parsed = buildGapCategoryResponseSchema(input.policy).parse(
     input.value,
   ) as GapCategoryResponse;
+  const conflicts = reconcileConflictCitations({
+    named: resolveOrganizationCitations(
+      input.policy,
+      parsed.conflictingOrganizationCitationIds,
+    ),
+    requiresReview: normalized.value.requiresReview,
+    admitted: input.policy.admittedOrganizationCitations.map(
+      (citation) => citation.citationId,
+    ),
+  });
   return {
     ...normalized,
     value: {
       ...normalized.value,
       citationIds: [
-        ...new Set([
-          ...normalized.value.citationIds,
-          ...parsed.conflictingOrganizationCitationIds,
-        ]),
+        ...new Set([...normalized.value.citationIds, ...conflicts.value]),
       ],
-      conflictingOrganizationCitationIds:
-        parsed.conflictingOrganizationCitationIds,
+      conflictingOrganizationCitationIds: conflicts.value,
     },
+    normalizationCodes: [
+      ...normalized.normalizationCodes,
+      ...conflicts.codes,
+    ],
+  };
+}
+
+/**
+ * Reconciles the model's conflict citations with the review flag.
+ *
+ * The model naming the exact conflicting excerpt is worth keeping — downstream
+ * contradiction resolution regenerates from it and rejects that one link. What
+ * is not worth failing a job over is the bookkeeping around it, so a
+ * disagreement is repaired here:
+ *
+ * - review required but nothing named -> fall back to every admitted excerpt,
+ *   which keeps `GAP_CONTRADICTION_CITATIONS_MISSING` unreachable downstream
+ * - no review but citations named -> drop them
+ */
+function organizationLabels(policy: GapResponsePolicy) {
+  return policy.admittedOrganizationCitations.map(
+    (citation) => citation.label,
+  );
+}
+
+/**
+ * Resolves prompt-facing labels back to citation IDs, dropping anything the
+ * policy does not admit. The schema enum already bounds this, so an unknown
+ * value here means a caller bypassed validation rather than a model error.
+ */
+function resolveOrganizationCitations(
+  policy: GapResponsePolicy,
+  labels: string[],
+) {
+  const byLabel = new Map(
+    policy.admittedOrganizationCitations.map((citation) => [
+      citation.label,
+      citation.citationId,
+    ]),
+  );
+  return labels.flatMap((label) => {
+    const citationId = byLabel.get(label);
+    return citationId ? [citationId] : [];
+  });
+}
+
+function reconcileConflictCitations(input: {
+  named: string[];
+  requiresReview: boolean;
+  admitted: string[];
+}): { value: string[]; codes: NormalizationCode[] } {
+  const named = [...new Set(input.named)];
+  if (!input.requiresReview) {
+    return named.length
+      ? { value: [], codes: ["normalized_conflict_citations_cleared"] }
+      : { value: [], codes: [] };
+  }
+  if (named.length) return { value: named, codes: [] };
+  return {
+    value: [...input.admitted],
+    codes: ["normalized_conflict_citations_defaulted"],
   };
 }
 
 function buildGapCategoryBaseSchema(policy: GapResponsePolicy) {
   assertSemanticContext(policy);
   const organizationCitations =
-    policy.admittedOrganizationCitationIds.length > 0
-      ? z.array(
-          z.enum(
-            policy.admittedOrganizationCitationIds as [string, ...string[]],
-          ),
-        )
+    policy.admittedOrganizationCitations.length > 0
+      ? z.array(z.enum(organizationLabels(policy) as [string, ...string[]]))
       : z.array(z.string()).max(0);
   const gaps = Object.fromEntries(
     policy.statementBasis.triggeringQuestions.map((trigger) => {
@@ -281,12 +333,13 @@ function buildGapCategoryBaseSchema(policy: GapResponsePolicy) {
   return z
     .object({
       gaps: z.object(gaps).strict(),
-      evidenceSufficiency: policy.forcedEvidenceSufficiency
-        ? z.literal(policy.forcedEvidenceSufficiency)
-        : policy.admittedOrganizationCitationIds.length > 0
-          ? z.enum(["sufficient", "partial", "none"])
-          : z.literal("none"),
-      reviewNotice: nonblank.max(1_000).nullable(),
+      // Pinning the notice alongside the flag matters: a literal `false` on its
+      // own still lets a model emit prose here and trip `review_notice_state`.
+      // Both become JSON Schema constants, which a provider grammar enforces.
+      reviewNotice:
+        policy.forcedRequiresReview === false
+          ? z.null()
+          : nonblank.max(1_000).nullable(),
       assumptions: z.array(nonblank.max(1_000)).max(10),
       contradictions: z.array(nonblank.max(1_000)).max(10),
       requiresReview:
@@ -383,8 +436,15 @@ function normalizeBaseCategoryResponse(input: {
     assertSafeProse(value, ["contradictions", index]),
   );
 
+  // Labels leave the model here and never travel further: everything below
+  // this point, and every downstream consumer, keys on real citation IDs.
   const allOptional = Object.values(parsed.gaps).flatMap((gaps) =>
-    gaps.flatMap((gap) => gap.supportingOrganizationCitationIds),
+    gaps.flatMap((gap) =>
+      resolveOrganizationCitations(
+        input.policy,
+        gap.supportingOrganizationCitationIds,
+      ),
+    ),
   );
   const gaps = input.policy.statementBasis.triggeringQuestions.flatMap(
     (trigger) =>
@@ -395,7 +455,10 @@ function normalizeBaseCategoryResponse(input: {
         statement: gap.statement,
         citationIds: [
           input.policy.questionnaireCitationIdsByQuestion[trigger.stableKey]!,
-          ...gap.supportingOrganizationCitationIds,
+          ...resolveOrganizationCitations(
+            input.policy,
+            gap.supportingOrganizationCitationIds,
+          ),
         ],
       })),
   );
@@ -404,7 +467,6 @@ function normalizeBaseCategoryResponse(input: {
       requirementCode: input.policy.requirementCode,
       statementBasis: input.policy.statementBasis,
       statementBasisHash: contentHash(input.policy.statementBasis),
-      evidenceSufficiency: parsed.evidenceSufficiency,
       gaps,
       reviewNotice: parsed.reviewNotice,
       assumptions: parsed.assumptions,

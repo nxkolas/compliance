@@ -3,7 +3,9 @@ export type NormalizationCode =
   | "normalized_line_wrap"
   | "normalized_duplicate"
   | "normalized_period"
-  | "normalized_review_without_contradiction";
+  | "normalized_review_without_contradiction"
+  | "normalized_conflict_citations_defaulted"
+  | "normalized_conflict_citations_cleared";
 
 export type NormalizedValue<T> = {
   value: T;

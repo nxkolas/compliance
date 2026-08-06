@@ -392,6 +392,7 @@ function shapeGroundingItems(input: {
   return [...input.rows.values()].map((row, index) => ({
     channel: "legal",
     citationId: `LEGAL:${input.queryUnitId}:${row.chunkId}`,
+    label: `L${index + 1}`,
     queryUnitId: input.queryUnitId,
     sourceId: row.chunkId,
     excerpt: row.text,

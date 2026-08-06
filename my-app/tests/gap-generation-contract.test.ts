@@ -11,6 +11,11 @@ import {
   gapPrompt,
   gapRepairPrompt,
 } from "@/src/server/gap-analysis/prompt-contract";
+import { buildGroundedPrompt } from "@/src/server/ai/grounding/context-builder";
+import type { GroundingContextItem } from "@/src/server/ai/grounding/types";
+
+const UUID_PATTERN =
+  /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu;
 
 const protectPolicy: GapResponsePolicy = {
   requirementCode: "NIS2-PROTECT-10",
@@ -35,12 +40,11 @@ const protectPolicy: GapResponsePolicy = {
       expectedKind: "missing",
     },
   },
-  admittedOrganizationCitationIds: [],
+  admittedOrganizationCitations: [],
   questionnaireCitationIdsByQuestion: {
     "gap.protect.control": "Q:answer",
   },
   preferredPrimaryLegalCitationId: "LEGAL:protect",
-  forcedEvidenceSufficiency: "none",
 };
 
 const protectValue = {
@@ -52,7 +56,6 @@ const protectValue = {
       },
     ],
   },
-  evidenceSufficiency: "none" as const,
   assumptions: [],
   conflictingOrganizationCitationIds: [],
 };
@@ -96,7 +99,9 @@ describe("Gap contract contradiction policy", () => {
     const result = normalizeGapCategoryResponse({
       policy: {
         ...protectPolicy,
-        admittedOrganizationCitationIds: ["ORG:policy"],
+        admittedOrganizationCitations: [
+          { label: "D1", citationId: "ORG:policy" },
+        ],
       },
       value: {
         ...protectValue,
@@ -105,7 +110,7 @@ describe("Gap contract contradiction policy", () => {
         contradictions: [
           "Der Fragebogen meldet eine fehlende Maßnahme, das Dokument beschreibt sie als umgesetzt.",
         ],
-        conflictingOrganizationCitationIds: ["ORG:policy"],
+        conflictingOrganizationCitationIds: ["D1"],
         requiresReview: true,
       },
     });
@@ -120,7 +125,7 @@ describe("Gap contract contradiction policy", () => {
     expect(prompt).toContain(
       "Missing, insufficient, irrelevant, or uncited organization-document evidence is not a contradiction",
     );
-    expect(GAP_PROMPT_VERSION).toBe("12");
+    expect(GAP_PROMPT_VERSION).toBe("13");
   });
 
   it("makes concision and absence of legal exposition explicit writing goals", () => {
@@ -131,6 +136,234 @@ describe("Gap contract contradiction policy", () => {
       "Do not name laws, directives, articles, sections, obligations, or citations",
     );
     expect(prompt).toContain("writing constraints");
+  });
+});
+
+const conflictPolicy: GapResponsePolicy = {
+  ...protectPolicy,
+  outputLocale: "en",
+  semanticContextByQuestion: {
+    "gap.protect.control": {
+      locale: "en",
+      questionStableKey: "gap.protect.control",
+      questionText: "Is the protection control implemented?",
+      selectedAnswer: "not_implemented",
+      expectedKind: "missing",
+    },
+  },
+  admittedOrganizationCitations: [
+    { label: "D1", citationId: "ORG:policy" },
+    { label: "D2", citationId: "ORG:runbook" },
+  ],
+};
+
+const conflictValue = {
+  gaps: {
+    "gap.protect.control": [
+      {
+        statement: "The protection control is not implemented.",
+        supportingOrganizationCitationIds: [],
+      },
+    ],
+  },
+  assumptions: [],
+};
+
+describe("Gap contract citation labels", () => {
+  const chunkUuid = "0e6f5a2c-9b31-4d7e-8a4f-2c1d3e4f5a6b";
+  const answerUuid = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+  const context: GroundingContextItem[] = [
+    {
+      channel: "legal",
+      citationId: `LEGAL:NIS2-PROTECT-10:${chunkUuid}`,
+      label: "L1",
+      queryUnitId: "NIS2-PROTECT-10",
+      sourceId: chunkUuid,
+      excerpt: "The entity shall implement protection measures.",
+      excerptHash: "a",
+      rank: 1,
+      score: 1,
+      metadata: {},
+    },
+    {
+      channel: "organization_document",
+      citationId: `DOC:NIS2-PROTECT-10:${chunkUuid}`,
+      label: "D1",
+      queryUnitId: "NIS2-PROTECT-10",
+      sourceId: chunkUuid,
+      excerpt: "Our policy states the control is implemented.",
+      excerptHash: "b",
+      rank: 1,
+      score: 1,
+      metadata: {},
+    },
+    {
+      channel: "questionnaire_assertion",
+      citationId: `Q:NIS2-PROTECT-10:${answerUuid}`,
+      label: "Q1",
+      queryUnitId: "NIS2-PROTECT-10",
+      sourceId: answerUuid,
+      excerpt: "Is the protection control implemented?: Not implemented",
+      excerptHash: "c",
+      rank: 1,
+      score: 1,
+      metadata: {},
+    },
+  ];
+
+  it("shows the model labels and never a raw identifier", () => {
+    const { prompt } = buildGroundedPrompt(
+      [{ id: "NIS2-PROTECT-10", query: "protection control" }],
+      context,
+    );
+
+    expect(prompt).toContain("[L1]");
+    expect(prompt).toContain("[D1]");
+    expect(prompt).toContain("[Q1]");
+    expect(prompt).not.toMatch(UUID_PATTERN);
+    expect(prompt).not.toContain("DOC:NIS2-PROTECT-10");
+  });
+
+  it("resolves a selected label back to its citation ID", () => {
+    const citationId = `DOC:NIS2-PROTECT-10:${chunkUuid}`;
+    const result = normalizeGapCategoryResponse({
+      policy: {
+        ...conflictPolicy,
+        admittedOrganizationCitations: [{ label: "D1", citationId }],
+      },
+      value: {
+        ...conflictValue,
+        gaps: {
+          "gap.protect.control": [
+            {
+              statement: "The protection control is not implemented.",
+              supportingOrganizationCitationIds: ["D1"],
+            },
+          ],
+        },
+        reviewNotice: null,
+        contradictions: [],
+        conflictingOrganizationCitationIds: [],
+        requiresReview: false,
+      },
+    });
+
+    expect(result.value.gaps[0]?.citationIds).toContain(citationId);
+    expect(result.value.gaps[0]?.citationIds).not.toContain("D1");
+    expect(result.value.citationIds).toContain(citationId);
+  });
+});
+
+describe("Gap contract review-branch pinning", () => {
+  it("pins requiresReview and reviewNotice when nothing was admitted", () => {
+    const schema = z.toJSONSchema(
+      buildGapCategoryResponseSchema({
+        ...protectPolicy,
+        forcedRequiresReview: false,
+      }),
+    ) as {
+      properties: Record<string, { const?: unknown; type?: unknown }>;
+    };
+
+    expect(schema.properties.requiresReview).toMatchObject({ const: false });
+    expect(schema.properties.reviewNotice).toMatchObject({ type: "null" });
+  });
+
+  it("leaves both free when organization evidence was admitted", () => {
+    const schema = z.toJSONSchema(
+      buildGapCategoryResponseSchema(conflictPolicy),
+    ) as {
+      properties: Record<string, { const?: unknown; type?: unknown }>;
+    };
+
+    expect(schema.properties.requiresReview).not.toHaveProperty("const");
+    expect(schema.properties.reviewNotice).not.toMatchObject({ type: "null" });
+  });
+});
+
+describe("Gap contract conflict-citation reconciliation", () => {
+  it("keeps the exact citation the model named", () => {
+    const result = normalizeGapCategoryResponse({
+      policy: conflictPolicy,
+      value: {
+        ...conflictValue,
+        reviewNotice: "The policy conflicts with the questionnaire.",
+        contradictions: ["The policy says the control is implemented."],
+        conflictingOrganizationCitationIds: ["D1"],
+        requiresReview: true,
+      },
+    });
+
+    expect(result.value.conflictingOrganizationCitationIds).toEqual([
+      "ORG:policy",
+    ]);
+    expect(result.normalizationCodes).not.toContain(
+      "normalized_conflict_citations_defaulted",
+    );
+  });
+
+  it("falls back to every admitted citation when review names none", () => {
+    const result = normalizeGapCategoryResponse({
+      policy: conflictPolicy,
+      value: {
+        ...conflictValue,
+        reviewNotice: "The policy conflicts with the questionnaire.",
+        contradictions: ["The policy says the control is implemented."],
+        conflictingOrganizationCitationIds: [],
+        requiresReview: true,
+      },
+    });
+
+    expect(result.value.conflictingOrganizationCitationIds).toEqual([
+      "ORG:policy",
+      "ORG:runbook",
+    ]);
+    expect(result.normalizationCodes).toContain(
+      "normalized_conflict_citations_defaulted",
+    );
+  });
+
+  it("drops conflict citations on a non-review finding", () => {
+    const result = normalizeGapCategoryResponse({
+      policy: conflictPolicy,
+      value: {
+        ...conflictValue,
+        reviewNotice: null,
+        contradictions: [],
+        conflictingOrganizationCitationIds: ["D1"],
+        requiresReview: false,
+      },
+    });
+
+    expect(result.value.conflictingOrganizationCitationIds).toEqual([]);
+    expect(result.normalizationCodes).toContain(
+      "normalized_conflict_citations_cleared",
+    );
+  });
+
+  it("clears conflicts when a review claim has no contradiction behind it", () => {
+    const result = normalizeGapCategoryResponse({
+      policy: conflictPolicy,
+      value: {
+        ...conflictValue,
+        reviewNotice: "Document support is missing.",
+        contradictions: [],
+        conflictingOrganizationCitationIds: ["D1"],
+        requiresReview: true,
+      },
+    });
+
+    expect(result.value).toMatchObject({
+      requiresReview: false,
+      reviewNotice: null,
+      conflictingOrganizationCitationIds: [],
+    });
+    expect(result.normalizationCodes).toEqual(
+      expect.arrayContaining([
+        "normalized_review_without_contradiction",
+        "normalized_conflict_citations_cleared",
+      ]),
+    );
   });
 });
 
@@ -160,12 +393,11 @@ const riskPolicy: GapResponsePolicy = {
       expectedKind: "missing",
     },
   },
-  admittedOrganizationCitationIds: [],
+  admittedOrganizationCitations: [],
   questionnaireCitationIdsByQuestion: {
     "gap.risk.critical_dependencies": "Q:answer",
   },
   preferredPrimaryLegalCitationId: "LEGAL:risk",
-  forcedEvidenceSufficiency: "none",
   forcedRequiresReview: false,
 };
 
@@ -179,7 +411,6 @@ const riskValue = {
       },
     ],
   },
-  evidenceSufficiency: "none" as const,
   reviewNotice: null,
   assumptions: [],
   contradictions: [],
@@ -341,7 +572,6 @@ describe("Gap contract objective prose safety", () => {
         },
         value: {
           gaps: {},
-          evidenceSufficiency: "none",
           reviewNotice: null,
           assumptions: [],
           contradictions: ["The supplied records conflict."],

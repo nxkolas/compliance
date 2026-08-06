@@ -49,6 +49,7 @@ export async function retrieveOrganizationContext(input: {
   return decision.admitted.map((row, index) => ({
     channel: "organization_document",
     citationId: `DOC:${input.queryUnitId}:${row.chunkId}`,
+    label: `D${index + 1}`,
     queryUnitId: input.queryUnitId,
     sourceId: row.chunkId,
     excerpt: row.content,
