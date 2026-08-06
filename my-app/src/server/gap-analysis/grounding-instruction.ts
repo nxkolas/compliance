@@ -22,6 +22,9 @@ export function gapOutputLocaleInstruction(locale: "de" | "en") {
   return [
     `Write every generated free-form field in ${language}.`,
     "Keep supplied labels unchanged.",
-    "Evidence excerpts are source quotations: they may be in another language and must not be translated, rewritten, or included as generated prose.",
+    // "Evidence" previously named both the supplied excerpts and the output
+    // field, so this rule read as permission to keep a copied artifact name in
+    // its source language. It applies to supplied material only.
+    "Supplied source excerpts are quotations: they may be in another language and must not be translated, rewritten, or included as generated prose.",
   ].join(" ");
 }

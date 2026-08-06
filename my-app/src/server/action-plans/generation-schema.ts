@@ -85,7 +85,11 @@ export function buildActionPlanCategoryResponseSchema(
         )
       : z.array(z.string()).max(0);
   const common = {
-    recommendedArtifacts: z.array(prose.max(240)).min(1).max(5),
+    // Minimum two, not one. A weaker model treats the floor as the target: with
+    // `.min(1)` every local action returned one or two artifacts while gpt-5.6
+    // volunteered three to five unprompted. The floor serializes to JSON Schema
+    // `minItems`, which a provider grammar enforces, so it cannot be ignored.
+    recommendedArtifacts: z.array(prose.max(240)).min(2).max(5),
     supportingOrganizationCitationIds: optionalCitations,
   };
   const variants: z.ZodType[] = [];

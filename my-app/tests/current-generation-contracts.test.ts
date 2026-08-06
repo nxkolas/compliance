@@ -93,9 +93,9 @@ describe("current code-owned generation contracts", () => {
     ).toThrow();
   });
 
-  it("preserves the characterized Action Plan v7 prompt and owns a domain hash", () => {
+  it("preserves the characterized Action Plan v9 prompt and owns a domain hash", () => {
     expect(CURRENT_ACTION_PLAN_PROMPT_METADATA.templateHash).toBe(
-      "ac1641ba168780632ac3356462ff867c1e8c1989139a0d381253b4a638e854ea",
+      "96c519bd29de3e5e1733e4c421dcff2087221c7fc93eb6ed039305bb4f4e9927",
     );
     expect(actionPlanPrompt("en")).toContain(
       "verificationResult contains only the completed verification work and its documented outcome",

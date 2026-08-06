@@ -20,8 +20,8 @@ export const ACTION_PLAN_GROUNDING_INSTRUCTION = [
 ].join(" ");
 
 export const ACTION_PLAN_PROMPT_NAME = "nis2_action_plan";
-export const ACTION_PLAN_PROMPT_VERSION = "7";
-export const ACTION_PLAN_RESPONSE_SCHEMA_VERSION = "7";
+export const ACTION_PLAN_PROMPT_VERSION = "9";
+export const ACTION_PLAN_RESPONSE_SCHEMA_VERSION = "9";
 
 export function actionPlanPrompt(locale: "de" | "en") {
   const language =
@@ -34,7 +34,7 @@ Cover every supplied gap. Do not reference another category. Same-kind gaps may 
 Use mode "remediation" only for confirmed missing or partial gaps. Use mode "verification" only for uncertain gaps. Never mix uncertain and confirmed gaps in one action.
 For verification mode, verificationResult contains only the completed verification work and its documented outcome. Do not put if, when, unless, conditional, or equivalent wording in verificationResult.
 For verification mode, conditionalRemediation contains only the remediation work, without a condition or conditional lead-in, or null. The server adds the localized condition exactly once.
-Use an imperative title of at most 12 words. Make each rendered result one or two sentences and at most 40 words. Use one to five concrete evidence names, each at most 12 words.
+Use an imperative title of at most 12 words. Make each rendered result one or two sentences and at most 40 words. Use two to five concrete document or record names, each at most 12 words.
 For verification mode, use verificationResult at most 18 words and conditionalRemediation at most 16 words so the server-rendered result remains concise.
 Do not name or discuss laws, directives, statutes, articles, sections, obligations, regulators, or citations in customer-visible prose. Write only operational work and outcomes.
 These are writing constraints for offline qualification, not additional response fields or runtime lexical gates.

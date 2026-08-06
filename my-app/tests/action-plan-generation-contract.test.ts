@@ -71,7 +71,7 @@ describe("Action Plan contract prompt", () => {
 
     expect(prompt).toContain("verificationResult at most 18 words");
     expect(prompt).toContain("conditionalRemediation at most 16 words");
-    expect(ACTION_PLAN_PROMPT_VERSION).toBe("7");
+    expect(ACTION_PLAN_PROMPT_VERSION).toBe("9");
   });
 
   it("explains the objective raw-identifier issue without style gates", () => {
@@ -155,7 +155,7 @@ describe("Action Plan contract schema", () => {
             verificationResult:
               "A defensible picture of privileged access now exists.",
             conditionalRemediation: null,
-            recommendedArtifacts: ["Access landscape record"],
+            recommendedArtifacts: ["Access landscape record", "Access review log"],
             supportingOrganizationCitationIds: [],
           },
           {
@@ -164,7 +164,7 @@ describe("Action Plan contract schema", () => {
             title: "Shape a durable response process",
             result:
               "Teams share one operational path for handling security events.",
-            recommendedArtifacts: ["Response process record"],
+            recommendedArtifacts: ["Response process record", "Response runbook"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -187,7 +187,7 @@ describe("Action Plan contract schema", () => {
             gapKeys: ["G1"],
             title: "Map access",
             result: "The access landscape exists.",
-            recommendedArtifacts: ["Access record"],
+            recommendedArtifacts: ["Access record", "Access approval log"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -205,7 +205,7 @@ describe("Action Plan contract schema", () => {
               verificationTitle: "Map access",
               verificationResult: "The access landscape now exists.",
               conditionalRemediation: null,
-              recommendedArtifacts: ["Access record"],
+              recommendedArtifacts: ["Access record", "Access approval log"],
               supportingOrganizationCitationIds: [],
             },
           ],
@@ -228,7 +228,7 @@ describe("Action Plan contract schema", () => {
             gapKeys: ["G2"],
             title: "Shape a durable response process",
             result: "Teams share one operational path.",
-            recommendedArtifacts: ["Response process record"],
+            recommendedArtifacts: ["Response process record", "Response runbook"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -250,7 +250,7 @@ describe("Action Plan contract schema", () => {
               title: "Shape a durable response process",
               result:
                 "Review 00000000-0000-4000-8000-000000000099 before closing.",
-              recommendedArtifacts: ["Response process record"],
+              recommendedArtifacts: ["Response process record", "Response runbook"],
               supportingOrganizationCitationIds: [],
             },
           ],
@@ -280,7 +280,7 @@ describe("Action Plan contract schema", () => {
             verificationResult:
               "Die Wiederherstellbarkeit ist dokumentiert bewertet.",
             conditionalRemediation: "Backup-Strategie dokumentieren",
-            recommendedArtifacts: ["Wiederherstellungstest"],
+            recommendedArtifacts: ["Wiederherstellungstest", "Testprotokoll"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -303,7 +303,7 @@ describe("Action Plan contract schema", () => {
             verificationTitle: "Map the present access landscape",
             verificationResult: "Privileged access is documented.",
             conditionalRemediation: "Restrict the remaining accounts",
-            recommendedArtifacts: ["Access landscape record"],
+            recommendedArtifacts: ["Access landscape record", "Access review log"],
             supportingOrganizationCitationIds: [],
           },
         ],

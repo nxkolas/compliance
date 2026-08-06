@@ -228,7 +228,11 @@ function buildChunk(chapter: number, body: string) {
   const practice = take(dedupe(guidance), GUIDANCE_BUDGET);
   if (practice) parts.push(`Practice: ${practice}`);
   const typical = take(dedupe(evidence), EVIDENCE_BUDGET);
-  if (typical) parts.push(`Typical evidence: ${typical}`);
+  // Deliberately not headed "evidence". That word already names the Action Plan
+  // output field, and a list under a matching heading reads as ready-made
+  // answers: the model copied from this half verbatim and from the practice half
+  // never.
+  if (typical) parts.push(`Auditors typically request: ${typical}`);
   return truncate(parts.join("\n"), MAX_CHUNK_CHARACTERS);
 }
 
