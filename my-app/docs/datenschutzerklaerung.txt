@@ -1,0 +1,200 @@
+Datenschutzerklärung
+
+Hier erfahren Sie, welche personenbezogenen Daten ComplyX verarbeitet, wofür sie verwendet werden und welche Rechte Sie haben.
+
+1. Verantwortliche
+
+Gemeinsam verantwortlich für die Datenverarbeitung sind:
+
+ComplyX – studentisches Projektteam
+
+Melanie Kurmaschev
+Quynh Anh Dang
+Marie Meinhardt
+Nikolas Keller
+Eya Sdouga
+
+[Anschrift, die das Projektteam verwenden darf]
+[Postleitzahl und Ort]
+Deutschland
+
+E-Mail: complyx.de@gmail.com
+
+Die genannten Personen haben eine Vereinbarung über die gemeinsame Verantwortlichkeit nach Art. 26 DSGVO geschlossen. Wesentlicher Inhalt dieser Vereinbarung:
+
+Die Zwecke und Mittel der Verarbeitung werden gemeinsam im Projektteam festgelegt.
+
+Die Erfüllung der Informationspflichten nach Art. 13 und 14 DSGVO erfolgt gemeinsam über diese Datenschutzerklärung.
+
+Anfragen betroffener Personen und die Erfüllung der Betroffenenrechte werden über die zentrale Anlaufstelle bearbeitet, unabhängig davon, an welches Teammitglied sich eine betroffene Person wendet.
+
+Betroffene Personen können ihre Rechte nach der DSGVO gegenüber jeder der genannten Personen geltend machen.
+
+Zentrale Anlaufstelle für alle Datenschutzanfragen und für die Ausübung Ihrer Rechte:
+
+complyx.de@gmail.com
+
+2. Verarbeitete Daten und Zwecke
+
+ComplyX verarbeitet nur Daten, die für die Bereitstellung und Nutzung der Anwendung erforderlich sind. Abhängig von den verwendeten Funktionen können insbesondere folgende Daten verarbeitet werden:
+
+E-Mail-Adresse, Benutzerkennung und Anmeldedaten
+Organisations- und Profilangaben
+E-Mail-Adressen von Personen, die zu einer Organisation eingeladen werden, sowie Angaben zum Status der Einladung
+Antworten aus dem Betroffenheitscheck und der Gap-Analyse
+Ergebnisse, erkannte Sicherheitslücken und Maßnahmenpläne
+hochgeladene Dokumente einschließlich Dateiinhalten und Metadaten
+technische Zugriffsdaten wie IP-Adresse, Browser, Zeitpunkt des Zugriffs und Fehlermeldungen
+
+Die Daten werden verwendet, um Benutzerkonten bereitzustellen, Prüfungen durchzuführen, Ergebnisse zu speichern, Dokumente zu analysieren, Maßnahmenpläne zu erstellen, die gemeinsame Arbeit an einer Organisation zu ermöglichen und die Anwendung technisch abzusichern.
+
+Unternehmensangaben können personenbezogen sein, wenn sie einer konkreten Person, Ansprechperson oder einem Einzelunternehmen zugeordnet werden können.
+
+Einladungen zu einer Organisation
+
+Nutzende Personen können weitere Personen über deren E-Mail-Adresse zu ihrer Organisation einladen. Wir verarbeiten diese E-Mail-Adresse, um die Einladung zuzustellen, ihren Status zu verwalten und den Zugang zur Organisation einzurichten. Die E-Mail-Adresse stammt nicht von der eingeladenen Person selbst, sondern von der einladenden Person aus der jeweiligen Organisation.
+
+Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Das berechtigte Interesse besteht darin, die gemeinsame Nutzung einer Organisation innerhalb der Anwendung zu ermöglichen. Eingeladene Personen erhalten diese Informationen mit der Einladung und können der Verarbeitung jederzeit unter complyx.de@gmail.com widersprechen; die Einladungsdaten werden dann gelöscht.
+
+3. Supabase
+
+Für Authentifizierung, Datenbank, Backend und Dokumentenspeicherung verwenden wir Supabase. Das Projekt wird in der Region Central EU – Frankfurt betrieben. Supabase führt Frankfurt als europäische Projektregion.
+
+Über Supabase werden insbesondere Benutzerkonten, Organisationsdaten, Antworten, Ergebnisse, Dokumente und Maßnahmenpläne gespeichert.
+
+Hochgeladene Dokumente sollten nur Informationen enthalten, zu deren Verarbeitung Sie berechtigt sind. Nicht erforderliche personenbezogene oder besonders sensible Angaben sollten vor dem Upload entfernt oder anonymisiert werden.
+
+Verarbeitung im Auftrag bei hochgeladenen Dokumenten
+
+Enthalten hochgeladene Dokumente personenbezogene Daten Dritter, etwa von Beschäftigten, Ansprechpersonen oder Dienstleistern der nutzenden Organisation, bleibt die nutzende Organisation für diese Daten datenschutzrechtlich verantwortlich. ComplyX verarbeitet diese Daten insoweit ausschließlich weisungsgebunden im Auftrag nach Art. 28 DSGVO und nicht für eigene Zwecke.
+
+Die nutzende Organisation entscheidet, welche Dokumente hochgeladen werden, und ist dafür verantwortlich, dass hierfür eine Rechtsgrundlage besteht und die betroffenen Personen nach Art. 13 und 14 DSGVO informiert werden.
+
+Ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO ist vor der Nutzung dieser Funktion abzuschließen und kann unter complyx.de@gmail.com angefordert werden.
+
+Betroffene Personen, deren Daten in hochgeladenen Dokumenten enthalten sind, wenden sich zur Ausübung ihrer Rechte vorrangig an die Organisation, die das Dokument hochgeladen hat. Anfragen, die uns erreichen, leiten wir an diese Organisation weiter.
+
+4. OpenAI API
+
+Für die Auswertung der Gap-Analyse, die Erstellung des Maßnahmenplans sowie für die Durchsuchbarkeit hochgeladener Dokumente verwenden wir die OpenAI API.
+
+Dazu können folgende Informationen an OpenAI übermittelt werden:
+
+Antworten aus der Gap-Analyse
+erkannte Sicherheitslücken
+vorhandene Sicherheitsmaßnahmen
+notwendige Unternehmensangaben
+Inhalte hochgeladener Dokumente
+
+Damit hochgeladene Dokumente durchsuchbar sind und passende Textstellen für die Analyse gefunden werden können, wird der Text eines hochgeladenen Dokuments in Abschnitte zerlegt und vollständig an ein Modell von OpenAI übermittelt, das daraus eine mathematische Repräsentation erzeugt. Dabei wird nicht nur ein Ausschnitt, sondern der gesamte Textinhalt des Dokuments verarbeitet. Für die anschließende Auswertung und die Erstellung des Maßnahmenplans werden nur die dafür erforderlichen Textstellen übermittelt.
+
+Nach den Angaben von OpenAI werden Daten aus der API standardmäßig nicht zum Training oder zur Verbesserung der Modelle verwendet. Inhalte aus Anfragen und Antworten können grundsätzlich bis zu 30 Tage in Protokollen zur Missbrauchserkennung gespeichert werden, sofern keine abweichenden Einstellungen vereinbart wurden.
+
+Für Daten aus dem Europäischen Wirtschaftsraum erfolgt die Verarbeitung nach dem OpenAI-Auftragsverarbeitungsvertrag über OpenAI Ireland Limited. Übermittlungen an Empfänger außerhalb des Europäischen Wirtschaftsraums werden nach Angaben von OpenAI insbesondere durch Standardvertragsklauseln oder einen Angemessenheitsbeschluss abgesichert.
+
+KI-generierte Ergebnisse können unvollständig oder fehlerhaft sein. Sie dienen nur der ersten Orientierung und ersetzen keine Rechts- oder IT-Sicherheitsberatung.
+
+5. Hosting und technische Protokolle
+
+Während der Entwicklung kann ComplyX lokal auf Geräten des Projektteams ausgeführt werden. Die öffentlich erreichbare Testversion wird voraussichtlich über Vercel bereitgestellt.
+
+Beim Aufruf können technische Daten wie IP-Adresse, Zeitpunkt, Browser, aufgerufene Seite sowie Fehler- und Sicherheitsmeldungen verarbeitet werden. Dies dient der Bereitstellung, Fehlerbehebung und Sicherheit der Anwendung.
+
+Die Speicherdauer der Vercel-Runtime-Protokolle hängt vom verwendeten Tarif ab. Derzeit gelten unter anderem:
+
+Hobby: eine Stunde
+Pro: ein Tag
+Enterprise: drei Tage
+mit Observability Plus: bis zu 30 Tage
+
+Vor Veröffentlichung muss der tatsächlich verwendete Tarif geprüft und hier nur die zutreffende Frist angegeben werden.
+
+6. Cookies und lokale Speicherung
+
+ComplyX verwendet ausschließlich technisch notwendige Cookies oder vergleichbare Speichertechniken. Diese werden beispielsweise benötigt, um:
+
+die Anmeldung aufrechtzuerhalten
+Sitzungsinformationen zu speichern
+geschützte Bereiche bereitzustellen
+den Bearbeitungsfortschritt oder Einstellungen zu sichern
+
+Analyse-, Marketing- oder Werbe-Cookies werden derzeit nicht eingesetzt.
+
+Rechtsgrundlage für die Speicherung von Informationen auf Ihrem Endgerät und den Zugriff darauf ist § 25 Abs. 2 Nr. 2 TDDDG. Der Zugriff ist unbedingt erforderlich, damit wir den von Ihnen ausdrücklich gewünschten Dienst, insbesondere die Anmeldung und die geschützten Bereiche, bereitstellen können. Eine Einwilligung ist hierfür nicht erforderlich. Die anschließende Verarbeitung der so erhobenen personenbezogenen Daten richtet sich nach Abschnitt 7.
+
+Für technisch nicht erforderliche Cookies wäre nach § 25 Abs. 1 TDDDG grundsätzlich eine vorherige Einwilligung notwendig. Ausgenommen sind Speicherzugriffe, die unbedingt erforderlich sind, um einen ausdrücklich gewünschten digitalen Dienst bereitzustellen.
+
+7. Rechtsgrundlagen
+
+Die Verarbeitung erfolgt insbesondere auf folgenden Grundlagen:
+
+Art. 6 Abs. 1 lit. b DSGVO, soweit die Daten zur Registrierung, Durchführung der Checks, Dokumentenanalyse, Speicherung der Ergebnisse oder Erstellung des Maßnahmenplans erforderlich sind.
+
+Art. 6 Abs. 1 lit. f DSGVO, soweit die Verarbeitung dem sicheren, stabilen und fehlerfreien Betrieb der Anwendung dient oder der Zusammenarbeit mehrerer Personen innerhalb einer Organisation, insbesondere dem Versand von Einladungen.
+
+Der Dokumentenupload ist freiwillig. Ohne die für Registrierung und Prüfung erforderlichen Angaben können die entsprechenden Funktionen nicht bereitgestellt werden.
+
+8. Speicherdauer
+
+Für die im Rahmen von ComplyX verarbeiteten Prüfungsdaten besteht keine allgemeine gesetzliche Mindestaufbewahrungsfrist. Die Daten dürfen nur so lange gespeichert werden, wie sie für den jeweiligen Zweck benötigt werden.
+
+Für ComplyX gelten folgende Löschregeln:
+
+Benutzerkonten, Organisationsdaten, Antworten, Ergebnisse, Dokumente und Maßnahmenpläne werden bis zur Löschung durch die nutzende Person, bis zur Löschung des Kontos oder bis zum Ende des Hochschulprojekts gespeichert.
+
+Nach Abschluss des Projekts werden diese Daten innerhalb von 30 Tagen gelöscht. Restkopien können bis zur planmäßigen Überschreibung technischer Sicherungskopien bestehen bleiben.
+
+Bei OpenAI können API-Inhalte grundsätzlich bis zu 30 Tage gespeichert werden. Für Vercel gelten die im vorherigen Abschnitt genannten tarifabhängigen Fristen.
+
+9. Empfänger und Drittlandübermittlungen
+
+Daten werden nur an Dienstleister übermittelt, die für den Betrieb der Anwendung erforderlich sind:
+
+Supabase Inc., Vereinigte Staaten, für Authentifizierung, Datenbank und Dokumentenspeicherung
+OpenAI Ireland Limited, Irland, für die KI-gestützte Auswertung
+Vercel Inc., Vereinigte Staaten, für das Hosting der Testversion
+
+Eine Weitergabe zu Werbezwecken erfolgt nicht.
+
+Supabase und Vercel sind Unternehmen mit Sitz in den Vereinigten Staaten. Auch wenn die Speicherung im Fall von Supabase in der Region Frankfurt erfolgt, kann ein Zugriff aus den Vereinigten Staaten, etwa im Rahmen von Support oder Administration, nicht ausgeschlossen werden.
+
+Soweit Dienstleister Daten außerhalb der Europäischen Union oder des Europäischen Wirtschaftsraums verarbeiten, erfolgt dies nach Maßgabe der gesetzlichen Voraussetzungen, beispielsweise auf Grundlage eines Angemessenheitsbeschlusses oder von Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO.
+
+Eine Kopie der jeweiligen Garantien, insbesondere der abgeschlossenen Standardvertragsklauseln, können Sie unter complyx.de@gmail.com anfordern.
+
+10. Automatisierte Entscheidungen
+
+Die OpenAI API unterstützt die Analyse und die Erstellung von Empfehlungen.
+
+Es findet keine ausschließlich automatisierte Entscheidung statt, die gegenüber einer natürlichen Person rechtliche oder vergleichbar erhebliche Auswirkungen entfaltet. Die Ergebnisse stellen keine verbindliche Feststellung der NIS2-Betroffenheit oder NIS2-Compliance dar.
+
+11. Ihre Rechte
+
+Sie haben nach den gesetzlichen Voraussetzungen insbesondere das Recht auf:
+
+Auskunft und Berichtigung
+Löschung und Einschränkung der Verarbeitung
+Datenübertragbarkeit
+Widerspruch gegen bestimmte Verarbeitungen
+Widerruf einer erteilten Einwilligung
+Beschwerde bei einer Datenschutzaufsichtsbehörde
+
+Zur Ausübung Ihrer Rechte wenden Sie sich an:
+
+complyx.de@gmail.com
+
+Widerspruchsrecht nach Art. 21 DSGVO
+
+Sie haben das Recht, aus Gründen, die sich aus Ihrer besonderen Situation ergeben, jederzeit gegen die Verarbeitung Sie betreffender personenbezogener Daten Widerspruch einzulegen, die auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO erfolgt. Das betrifft insbesondere die Verarbeitung zum sicheren und fehlerfreien Betrieb der Anwendung und den Versand von Einladungen.
+
+Legen Sie Widerspruch ein, verarbeiten wir die betroffenen Daten nicht mehr, es sei denn, wir können zwingende schutzwürdige Gründe für die Verarbeitung nachweisen, die Ihre Interessen, Rechte und Freiheiten überwiegen, oder die Verarbeitung dient der Geltendmachung, Ausübung oder Verteidigung von Rechtsansprüchen.
+
+Der Widerspruch ist formfrei möglich und kann an complyx.de@gmail.com gerichtet werden.
+
+12. Datensicherheit und Änderungen
+
+Wir setzen angemessene technische und organisatorische Maßnahmen ein, um Daten vor Verlust, Veränderung, unbefugtem Zugriff und unberechtigter Weitergabe zu schützen. Dazu gehören insbesondere verschlüsselte Übertragung, geschützte Benutzerkonten und Zugriffsbeschränkungen.
+
+Diese Datenschutzerklärung wird angepasst, wenn sich Funktionen, Dienstleister oder rechtliche Anforderungen ändern.
+
+Stand: August 2026
