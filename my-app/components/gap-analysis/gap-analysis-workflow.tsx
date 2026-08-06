@@ -38,6 +38,7 @@ import type { GapLabels, GapLocale, GapWorkflow } from "./types";
 import { GapInputsUsed } from "./gap-inputs-used";
 import { GapHistory } from "./gap-history";
 import type { JobDto } from "@/src/contracts/common/jobs";
+import { GapMissingPrerequisiteState } from "./gap-missing-prerequisite-state";
 
 export function GapAnalysisWorkflow({
   organizationId,
@@ -422,6 +423,19 @@ export function GapAnalysisWorkflow({
       labels,
       locale,
     );
+    if (workflow.prerequisite.status === "missing") {
+      return (
+        <GapMissingPrerequisiteState
+          destination={workflow.prerequisite.destination}
+          title={blocked.title}
+          description={blocked.description}
+          action={blocked.action}
+          whySequence={labels.prerequisiteWhySequence}
+          infoTitle={labels.prerequisiteInfoTitle}
+          infoDescription={labels.prerequisiteInfoDescription}
+        />
+      );
+    }
     return (
       <Card>
         <CardHeader>
@@ -549,22 +563,40 @@ export function GapAnalysisWorkflow({
           availableSteps={navigation.allowedSteps}
           labels={labels}
           onNavigate={navigate}
+          variant="questionnaire"
         />
       ) : null}
-      <Card>
-        <CardContent className="pt-0">
-          {renderedStep === "questions" ? (
-            <GapQuestionnaireStep
-              workflow={workflow}
-              labels={labels}
-              answers={answers}
-              savedAnswers={savedAnswers}
-              busy={busy === "questionnaire"}
-              saveState={answerSaveState}
-              onAnswer={saveQuestionnaireAnswer}
-              onContinue={() => void saveQuestionnaire()}
-            />
-          ) : renderedStep === "documents" ? (
+      {renderedStep === "questions" ? (
+        <GapQuestionnaireStep
+          workflow={workflow}
+          labels={labels}
+          answers={answers}
+          savedAnswers={savedAnswers}
+          busy={busy === "questionnaire"}
+          saveState={answerSaveState}
+          onAnswer={saveQuestionnaireAnswer}
+          onContinue={() => void saveQuestionnaire()}
+        />
+      ) : renderedStep === "review" ? (
+        <GapReviewStep
+          workflow={workflow}
+          labels={labels}
+          answers={answers}
+          selected={selectedDocuments}
+          busy={busy}
+          generating={Boolean(pollingJobId)}
+          generationJob={generationJob}
+          editable={workflow.lifecycle.inputsEditable}
+          locale={locale}
+          onNavigate={navigate}
+          onGenerate={() => void enqueueGeneration("generate")}
+          onRetry={() => void enqueueGeneration("retry")}
+          onCancel={() => void cancelGeneration()}
+        />
+      ) : (
+        <Card>
+          <CardContent className="pt-0">
+            {renderedStep === "documents" ? (
             <GapDocumentStep
               organizationId={organizationId}
               workflow={workflow}
@@ -580,22 +612,6 @@ export function GapAnalysisWorkflow({
               }
               onContinue={() => void saveDocuments()}
             />
-          ) : renderedStep === "review" ? (
-            <GapReviewStep
-              workflow={workflow}
-              labels={labels}
-              answers={answers}
-              selected={selectedDocuments}
-              busy={busy}
-              generating={Boolean(pollingJobId)}
-              generationJob={generationJob}
-              editable={workflow.lifecycle.inputsEditable}
-              locale={locale}
-              onNavigate={navigate}
-              onGenerate={() => void enqueueGeneration("generate")}
-              onRetry={() => void enqueueGeneration("retry")}
-              onCancel={() => void cancelGeneration()}
-            />
           ) : (
             <GapResultsStep
               organizationId={organizationId}
@@ -604,9 +620,10 @@ export function GapAnalysisWorkflow({
               locale={locale}
               onError={setError}
             />
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
