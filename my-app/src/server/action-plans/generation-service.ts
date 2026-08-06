@@ -523,6 +523,20 @@ export async function executeActionPlanGenerationJob(input: {
         };
       }
     },
+    // Mirrors the Gap handler. Without it the repair reason lives only in the
+    // worker's stdout: publication rewrites every non-selected run row to
+    // GENERATION_ATTEMPT_SUPERSEDED, which records that a repair happened but
+    // erases why.
+    async onDiagnostic(diagnostic) {
+      await db.insert(auditEvents).values({
+        organizationId: input.organizationId,
+        actorUserId: input.userId,
+        eventType: "ai_generation.category_diagnostic",
+        entityType: "background_job",
+        entityId: input.jobId,
+        metadata: diagnostic,
+      });
+    },
   });
   const runIds = categoryInputs.map(
     (category) => runIdsByCategory[category.requirement.code]!,
