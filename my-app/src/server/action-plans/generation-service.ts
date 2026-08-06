@@ -29,12 +29,12 @@ import type { GroundingContextItem } from "../ai/grounding/types";
 import {
   CURRENT_ACTION_PLAN_PROMPT_METADATA,
   actionPlanDefinitionHash,
-  actionPlanPrompt as actionPlanPromptV6,
-  actionPlanRepairPrompt as actionPlanRepairPromptV6,
-  buildActionPlanCategoryResponseSchema as buildActionPlanCategoryResponseSchemaV6,
-  normalizeActionPlanCategoryResponse as normalizeActionPlanCategoryResponseV6,
-  type ActionPlanCategoryPolicy as ActionPlanCategoryPolicyV6,
-  type ActionPlanCategoryResponse as ActionPlanCategoryResponseV6,
+  actionPlanPrompt,
+  actionPlanRepairPrompt,
+  buildActionPlanCategoryResponseSchema,
+  normalizeActionPlanCategoryResponse,
+  type ActionPlanCategoryPolicy,
+  type ActionPlanCategoryResponse,
 } from "./current-contract";
 import { buildActionPlanCategoryQuery } from "./prompt-contract";
 import {
@@ -286,7 +286,7 @@ export async function executeActionPlanGenerationJob(input: {
   const runIdsByCategory: Record<string, string> = {};
   const coordinated = await coordinateCategoryGeneration<
     (typeof categoryInputs)[number],
-    ActionPlanCategoryResponseV6,
+    ActionPlanCategoryResponse,
     {
       requirementCode: string;
       sourceFindingId: string;
@@ -384,8 +384,8 @@ export async function executeActionPlanGenerationJob(input: {
           curated_secondary: 0,
         },
       };
-      let responsePolicy: ActionPlanCategoryPolicyV6 | undefined;
-      const grounded = await runGroundedOperation<ActionPlanCategoryResponseV6>({
+      let responsePolicy: ActionPlanCategoryPolicy | undefined;
+      const grounded = await runGroundedOperation<ActionPlanCategoryResponse>({
         operation: "gap_analysis",
         runOperationKind: "action_plan_generation",
         actor: { userId: input.userId },
@@ -409,8 +409,8 @@ export async function executeActionPlanGenerationJob(input: {
         queryUnits: [queryUnit],
         systemInstruction:
           phase === "initial"
-            ? actionPlanPromptV6(input.locale)
-            : actionPlanRepairPromptV6({
+            ? actionPlanPrompt(input.locale)
+            : actionPlanRepairPrompt({
                 locale: input.locale,
                 categoryCode: category.requirement.code,
                 issues: issues ?? [],
@@ -418,7 +418,7 @@ export async function executeActionPlanGenerationJob(input: {
         outputContract: {
           schema(context) {
             responsePolicy = actionPlanPolicy(category, context, input.locale);
-            return buildActionPlanCategoryResponseSchemaV6(responsePolicy);
+            return buildActionPlanCategoryResponseSchema(responsePolicy);
           },
           languagePolicy: "localized",
           generatedProse(value) {
@@ -479,7 +479,7 @@ export async function executeActionPlanGenerationJob(input: {
     },
     validate(candidate, task) {
       try {
-        const normalized = normalizeActionPlanCategoryResponseV6({
+        const normalized = normalizeActionPlanCategoryResponse({
           value: candidate,
           policy: actionPlanPolicy(
             task.input,
@@ -702,7 +702,7 @@ function actionPlanPolicy(
   },
   context: GroundingContextItem[],
   outputLocale: "de" | "en",
-): ActionPlanCategoryPolicyV6 {
+): ActionPlanCategoryPolicy {
   const supplied = context.filter(
     (item) => item.queryUnitId === category.requirement.code,
   );

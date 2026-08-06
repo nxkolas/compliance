@@ -161,6 +161,12 @@ export const organizationsMessages = defineFeatureMessages({
         openai: "OpenAI",
         self_hosted: "Selbst gehostet",
       },
+      providerChangeNotice: "Anbieterwechsel läuft",
+      providerChangeDescription:
+        "Alle Dokumente dieser Organisation werden neu indexiert. Der Anbieter wechselt erst, wenn das abgeschlossen ist.",
+      providerChangeProgress: "{completed} von {total} Dokumenten neu indexiert",
+      providerChangeLocked:
+        "Die Einstellungen sind gesperrt, bis der Wechsel abgeschlossen ist.",
       save: "Änderungen speichern",
       saveSuccess: "Änderungen wurden gespeichert.",
       cancel: "Abbrechen",
@@ -409,6 +415,11 @@ export const organizationsMessages = defineFeatureMessages({
         openai: "OpenAI",
         self_hosted: "Self-hosted",
       },
+      providerChangeNotice: "Provider change in progress",
+      providerChangeDescription:
+        "Every document in this organization is being re-indexed. The provider changes only once that finishes.",
+      providerChangeProgress: "{completed} of {total} documents re-indexed",
+      providerChangeLocked: "Settings are locked until the change completes.",
       save: "Save changes",
       saveSuccess: "Changes saved.",
       cancel: "Cancel",

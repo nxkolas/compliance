@@ -23,7 +23,6 @@
     "storage:setup:legal-corpus": "tsx scripts/setup-legal-corpus-storage.ts",
     "storage:setup:reports": "tsx scripts/setup-report-storage.ts",
     "storage:bootstrap": "tsx scripts/bootstrap-storage.ts",
-    "acceptance:docker": "tsx scripts/docker-functional-acceptance.ts",
     "qualify:docling": "tsx scripts/docling-live-qualification.ts",
     "qualify:grounded-workflow": "tsx scripts/qualify-authenticated-grounded-workflow.ts",
     "storage:verify": "tsx scripts/verify-private-storage.ts",
@@ -46,7 +45,9 @@
     "test:ai:watch": "vitest evals",
     "test:worker": "vitest run tests/job-state-machine.test.ts tests/job-polling.test.ts tests/gap-generation-job-contract.test.ts",
     "test:routes": "vitest run tests/api-route-baseline.test.ts tests/job-route-contract.test.ts tests/gap-generation-job-contract.test.ts",
-    "test:report": "vitest run tests/report-renderer.test.tsx"
+    "test:report": "vitest run tests/report-renderer.test.tsx",
+    "acceptance": "tsx scripts/functional-acceptance.ts",
+    "test:db": "vitest run tests/job-execution-db.test.ts tests/document-upload-completion-db.test.ts tests/document-retrieval-embedding-model-db.test.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.65",

@@ -7,7 +7,7 @@ describe("generated Action Plan style", () => {
     expect(ACTION_PLAN_PROMPT_TEMPLATE).toContain("at most 12 words");
     expect(ACTION_PLAN_PROMPT_TEMPLATE).toContain("at most 40 words");
     expect(ACTION_PLAN_PROMPT_TEMPLATE).toContain(
-      "one to five concrete recommended evidence names",
+      "one to five concrete evidence names",
     );
   });
 

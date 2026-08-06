@@ -39,6 +39,53 @@ jobs:
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=critical
 
+  # Runs the database-gated tests that the deleted local acceptance suite was
+  # the only previous caller of: concurrent lease exclusivity, expired-lease
+  # reclamation with attempt increment, and atomic upload completion.
+  database:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_PASSWORD: disposable
+          POSTGRES_DB: compliance_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      APP_ENV: test
+      NODE_ENV: test
+      DISPOSABLE_DATABASE: "1"
+      DATABASE_URL: postgresql://postgres:disposable@127.0.0.1:5432/compliance_ci
+      DRIZZLE_DATABASE_URL: postgresql://postgres:disposable@127.0.0.1:5432/compliance_ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+          cache-dependency-path: my-app/package-lock.json
+      - run: npm ci
+      - name: Install required extensions
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -f infra/config/supabase/db-init/00-vector.sql
+          # supabase/postgres ships extensions on the default search_path; the
+          # plain pgvector image does not, and the schema declares vector(1536)
+          # unqualified.
+          psql "$DATABASE_URL" -c \
+            'alter database compliance_ci set search_path to public, extensions;'
+      - name: Build the schema
+        run: npx drizzle-kit push --force
+      - name: Run database-gated tests
+        run: npm run test:db
+
   deployment:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -47,8 +94,6 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.22.0
-      - name: Generate isolated non-secret configuration
-        run: node infra/scripts/generate-local-env.mjs .env.docker.local compliancetool-test
       - name: Validate GitHub Actions workflows
         working-directory: .
         shell: bash
@@ -57,34 +102,15 @@ jobs:
           source my-app/infra/versions.env
           docker run --rm -v "$GITHUB_WORKSPACE:/repo" -w /repo \
             "$ACTIONLINT_IMAGE"
-      - name: Validate shell and PowerShell scripts
+      - name: Validate shell scripts
         shell: bash
         run: |
           set -euo pipefail
           for script in infra/scripts/*.sh; do bash -n "$script"; done
-          # shellcheck disable=SC2016
-          pwsh -NoProfile -Command '
-            Get-ChildItem infra/scripts/*.ps1 | ForEach-Object {
-              [void][scriptblock]::Create((Get-Content -Raw $_.FullName))
-            }
-          '
       - name: Validate every Compose combination
         shell: bash
         run: |
           set -euo pipefail
-          base=(docker compose --project-name compliancetool-test
-            --env-file infra/versions.env --env-file .env.docker.local)
-          "${base[@]}" -f infra/compose/local/compose.yml config --quiet
-          for overlay in compose.infra.yml compose.studio.yml compose.docling.yml compose.observability.yml; do
-            "${base[@]}" -f infra/compose/local/compose.yml \
-              -f "infra/compose/local/$overlay" \
-              --profile admin --profile docling --profile observability config --quiet
-          done
-          "${base[@]}" -f infra/compose/local/compose.yml \
-            -f infra/compose/local/compose.studio.yml \
-            -f infra/compose/local/compose.docling.yml \
-            -f infra/compose/local/compose.observability.yml \
-            --profile admin --profile docling --profile observability config --quiet
           docker compose --env-file infra/versions.env \
             --env-file infra/env/examples/app-host.env.example \
             -f infra/compose/app-host/compose.platform.yml config --quiet
@@ -108,15 +134,6 @@ jobs:
             --env-file infra/env/examples/app-host.env.example \
             -f infra/compose/app-host/compose.release.yml \
             --profile blue --profile green config --quiet
-          docker compose --env-file infra/versions.env \
-            --env-file infra/env/examples/ai-host.env.example \
-            -f infra/compose/ai-host/compose.yml config --quiet
-          docker compose --env-file infra/versions.env \
-            --env-file infra/env/examples/ai-host.env.example \
-            -f infra/compose/ai-host/compose.yml \
-            -f infra/compose/ai-host/compose.observability.yml config --quiet
-      - name: Rehearse two independent empty database builds
-        run: pwsh -NoProfile -File infra/scripts/migration-rehearsal.ps1 -EnvironmentFile .env.docker.local
       - name: Validate Caddy and monitoring configuration
         shell: bash
         run: |
@@ -131,15 +148,10 @@ jobs:
             -v "$PWD/infra/config/caddy/Caddyfile.app-host:/etc/caddy/Caddyfile:ro" \
             -v "$RUNNER_TEMP/active-upstream.caddy:/etc/caddy/active-upstream.caddy:ro" \
             "$CADDY_IMAGE" caddy validate --config /etc/caddy/Caddyfile
-          docker run --rm \
-            -v "$PWD/infra/config/caddy/Caddyfile.local:/etc/caddy/Caddyfile:ro" \
-            "$CADDY_IMAGE" caddy validate --config /etc/caddy/Caddyfile
-          for config in app-host ai-host; do
-            docker run --rm --entrypoint promtool \
-              -v "$PWD/infra/config/prometheus:/etc/prometheus:ro" \
-              "$PROMETHEUS_IMAGE" \
-              check config "/etc/prometheus/$config.yml"
-          done
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/infra/config/prometheus:/etc/prometheus:ro" \
+            "$PROMETHEUS_IMAGE" \
+            check config /etc/prometheus/app-host.yml
           docker run --rm --entrypoint amtool \
             -v "$PWD/infra/config/alertmanager/production.yml:/etc/alertmanager.yml:ro" \
             -v "$RUNNER_TEMP/alert-webhook:/run/secrets/alertmanager_webhook_url:ro" \
@@ -151,12 +163,13 @@ jobs:
           docker run --rm \
             -v "$PWD/infra/config/alloy/local.alloy:/etc/alloy/config.alloy:ro" \
             "$ALLOY_IMAGE" validate /etc/alloy/config.alloy
-          docker run --rm --entrypoint python \
-            -v "$PWD/infra/config/litellm:/config:ro" \
-            "$LITELLM_IMAGE" -c \
-            "import pathlib,yaml; [yaml.safe_load(pathlib.Path(p).read_text()) for p in ('/config/local.yaml','/config/production.yaml')]; compile(pathlib.Path('/config/custom_auth.py').read_text(), '/config/custom_auth.py', 'exec')"
           docker run --rm --entrypoint /bin/sh \
-            --env-file .env.docker.local \
+            -e SUPABASE_ANON_KEY=verify-anon-key \
+            -e SUPABASE_SERVICE_KEY=verify-service-key \
+            -e SUPABASE_PUBLISHABLE_KEY=sb_publishable_verify \
+            -e SUPABASE_SECRET_KEY=sb_secret_verify \
+            -e ANON_KEY_ASYMMETRIC=verify-anon-asymmetric \
+            -e SERVICE_ROLE_KEY_ASYMMETRIC=verify-service-asymmetric \
             -e KONG_DATABASE=off \
             -e KONG_DECLARATIVE_CONFIG=/tmp/kong.yml \
             -v "$PWD/infra/config/kong/kong.yml.template:/home/kong/temp.yml:ro" \
@@ -298,10 +311,7 @@ jobs:
           - SUPABASE_REST_IMAGE
           - KONG_IMAGE
           - CADDY_IMAGE
-          - MAILPIT_IMAGE
-          - RUSTFS_IMAGE
-          - OLLAMA_IMAGE
-          - LITELLM_IMAGE
+          - DOCLING_IMAGE
           - CURL_IMAGE
           - PROMETHEUS_IMAGE
           - GRAFANA_IMAGE
@@ -310,7 +320,6 @@ jobs:
           - ALERTMANAGER_IMAGE
           - NODE_EXPORTER_IMAGE
           - POSTGRES_EXPORTER_IMAGE
-          - DCGM_EXPORTER_IMAGE
           - ACTIONLINT_IMAGE
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

@@ -70,21 +70,52 @@ function snapshot(status: "open" | "done"): ReportRenderSnapshot {
     actionPlanId: "plan",
     documentVersionIds: ["document-1"],
     content: {
+      organization: { name: "Example Energy", legalName: "Example Energy Ltd" },
       applicability: {
         outcome: "Covered",
+        outcomeCode: "important_entity",
         jurisdiction: "DE",
         answers: [{ question: "Question", answer: "Answer" }],
       },
-      findings: [{
-        title: "Governance",
-        status: "Not fulfilled",
-        summary: "Stored summary",
-        hasOrganizationDocument: false,
-        reviewNotice: null,
-        gaps: ["An owner is missing."],
-        sources: [],
+      gap: {
+        openGapItemCount: 1,
+        statusCounts: {
+          not_fulfilled: 1,
+          partially_fulfilled: 0,
+          insufficient_evidence: 0,
+          fulfilled: 0,
+        },
+        findings: [{
+          title: "Governance",
+          status: "not_fulfilled",
+          hasOrganizationDocument: false,
+          reviewNotice: null,
+          gaps: ["An owner is missing."],
+          legalReferences: [{ instrument: "German BSI Act", provision: "Section 38(1)" }],
+        }],
+      },
+      actions: {
+        statusCounts: {
+          open: status === "open" ? 1 : 0,
+          in_progress: 0,
+          done: status === "done" ? 1 : 0,
+          cancelled: 0,
+        },
+        groups: [{
+          findingTitle: "Governance",
+          items: [{
+            title: "Assign owner",
+            result: "Assign one.",
+            suggestedEvidence: [],
+            status,
+          }],
+        }],
+      },
+      sourceRegister: [{
+        title: "German BSI Act",
+        reference: "German BSI Act, Section 38(1)",
+        location: "p. 29",
       }],
-      actions: [{ title: "Assign owner", description: "Assign one.", status }],
     },
   };
 }

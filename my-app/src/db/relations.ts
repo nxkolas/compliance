@@ -13,6 +13,14 @@ export const relations = defineRelations(schema, (r) => ({
     actionPlans: r.many.actionPlans(),
     reports: r.many.reports(),
     jobs: r.many.backgroundJobs(),
+    embeddingMigrations: r.many.organizationEmbeddingMigrations(),
+  },
+  organizationEmbeddingMigrations: {
+    organization: r.one.organizations({
+      from: r.organizationEmbeddingMigrations.organizationId,
+      to: r.organizations.id,
+      optional: false,
+    }),
   },
   organizationMemberships: {
     organization: r.one.organizations({
@@ -315,15 +323,7 @@ export const relations = defineRelations(schema, (r) => ({
       to: r.legalSourceProcessingGenerations.id,
       optional: false,
     }),
-    embeddings: r.many.legalSourceChunkEmbeddings(),
     provisionBindings: r.many.legalProvisionChunkBindings(),
-  },
-  legalSourceChunkEmbeddings: {
-    chunk: r.one.legalSourceChunks({
-      from: r.legalSourceChunkEmbeddings.chunkId,
-      to: r.legalSourceChunks.id,
-      optional: false,
-    }),
   },
   legalProvisionChunkBindings: {
     chunk: r.one.legalSourceChunks({

@@ -5,7 +5,7 @@ export function buildGroundedPrompt(queryUnits: QueryUnit[], context: GroundingC
     const supplied = context.filter((item) => item.queryUnitId === unit.id);
     return [
       `QUERY UNIT ${unit.id}: ${unit.query}`,
-      ...supplied.map((item) => `[${item.citationId}] (${item.channel}) ${item.excerpt}`),
+      ...supplied.map((item) => `[${item.label}] (${item.channel}) ${item.excerpt}`),
     ].join("\n");
   });
   return {

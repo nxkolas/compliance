@@ -20,7 +20,11 @@
 6. Run production-safe Auth, Storage, readiness, queue, and AI smoke checks.
 
 Staging has its own Compose projects, domain, environment file, database,
-external S3 bucket, network names, `/srv` root, and LiteLLM application key.
+external S3 bucket, network names, `/srv` root, and AI provider key.
+
+Staging is the first environment in which the production topology runs at all;
+there is no local rehearsal. Budget time for Kong routing, JWT/key, read-only
+rootfs, and bootstrap issues to surface here.
 
 ## Production
 
@@ -38,9 +42,8 @@ procedure.
 - `/api/health/live` proves process liveness.
 - `/api/health/ready` proves bounded database access.
 - `scripts/health/worker.ts` proves worker/database readiness.
-- Caddy, Kong, PostgreSQL, Storage, LiteLLM, and vLLM must be healthy.
-- Only ports 80/443 are public on the application host; AI port 4000 accepts
-  only the application peer over `wg0`.
+- Caddy, Kong, PostgreSQL, and Storage must be healthy.
+- Only ports 80/443 are public on the application host.
 
 Keep the preceding image digests and configuration until the observation
 window closes. Record the revision, image digests, Drizzle explanation and

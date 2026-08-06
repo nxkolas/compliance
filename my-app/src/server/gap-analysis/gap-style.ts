@@ -1,4 +1,4 @@
-import type { AtomicGapKind } from "./generation-schema-v7";
+import type { AtomicGapKind } from "./generation-schema";
 
 export function validateAtomicGapStatement(input: {
   statement: string;

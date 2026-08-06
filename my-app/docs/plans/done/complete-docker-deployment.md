@@ -1,9 +1,15 @@
 # Complete Docker Deployment
 
-Status: implementation in progress; architecture decisions confirmed on
-2026-07-27. The isolated local stack is implemented, but its complete
-acceptance suite has not yet produced a successful evidence report. Production
-deployment and qualification are outside the current local validation scope.
+Status: **partially superseded on 2026-08-04** by
+[docker-scope-reduction](docker-scope-reduction.md). The isolated local stack,
+its acceptance suite, and the private AI inference host described below were
+removed. The acceptance suite never produced a successful evidence report
+before deletion. The production application-host topology in this document
+remains current.
+
+Read this document for the production topology only. Anything it says about
+local Compose, Ollama, LiteLLM, vLLM, WireGuard, or model provisioning is
+historical.
 
 ## Outcome
 

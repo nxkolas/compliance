@@ -10,6 +10,7 @@ import {
   validateEmbeddings,
 } from "./embeddings";
 import { assertSelectedDocumentVersionScope } from "./retrieval-policy";
+import { resolveOrganizationEmbeddingConfig } from "./service";
 
 export { assertSelectedDocumentVersionScope } from "./retrieval-policy";
 
@@ -39,7 +40,11 @@ export async function retrieveDocumentEvidence(
     : [];
   const selected = assertSelectedDocumentVersionScope(input.organizationId, requested, scoped);
   if (!selected.length) return [];
-  const provider = dependencies.embeddingProvider ?? createDocumentEmbeddingProvider();
+  const provider =
+    dependencies.embeddingProvider ??
+    createDocumentEmbeddingProvider(
+      (await resolveOrganizationEmbeddingConfig(input.organizationId)).provider,
+    );
   const queryEmbedding = dependencies.queryEmbedding ?? (await provider.embed([query], "query"))[0];
   if (!queryEmbedding) throw new Error("Query embedding is missing");
   validateEmbeddings([queryEmbedding], 1, EMBEDDING_DIMENSIONS);
@@ -65,6 +70,10 @@ export async function retrieveDocumentEvidence(
       eq(documentChunks.organizationId, input.organizationId),
       inArray(documentVersions.id, selected),
       eq(documentVersions.indexingStatus, "succeeded"),
+      // Vectors are only comparable within one embedding model. Without this,
+      // a partial or failed re-embedding silently mixes two vector spaces and
+      // returns meaningless similarity scores instead of failing.
+      eq(documentVersions.embeddingModel, provider.model),
       sql`${documentChunks.embedding} is not null`,
     ))
     .orderBy(desc(combinedScore), documentChunks.id)

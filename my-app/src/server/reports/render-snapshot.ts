@@ -1,24 +1,51 @@
 import { contentHash } from "@/src/server/compliance";
+import type { LegalCitation } from "@/src/server/compliance/legal-citation";
+import type { GapStatus } from "@/src/server/gap-analysis/workflow-state";
+
+export type ReportActionStatus = "open" | "in_progress" | "done" | "cancelled";
 
 export type ReportContentSnapshot = {
+  organization: {
+    name: string;
+    legalName: string | null;
+  };
   applicability: {
     outcome: string;
+    outcomeCode: string | null;
     jurisdiction: string | null;
     answers: Array<{ question: string; answer: string }>;
   };
-  findings: Array<{
+  gap: {
+    /** gap_items belonging to a finding that is not `fulfilled`. */
+    openGapItemCount: number;
+    /** Findings per status, counted exactly like the Gap-Analyse UI. */
+    statusCounts: Record<GapStatus, number>;
+    findings: Array<{
+      title: string;
+      status: GapStatus;
+      hasOrganizationDocument: boolean;
+      reviewNotice: string | null;
+      gaps: string[];
+      legalReferences: LegalCitation[];
+    }>;
+  };
+  actions: {
+    statusCounts: Record<ReportActionStatus, number>;
+    groups: Array<{
+      findingTitle: string;
+      items: Array<{
+        title: string;
+        result: string;
+        suggestedEvidence: string[];
+        status: ReportActionStatus;
+      }>;
+    }>;
+  };
+  /** Compact provenance for the appendix: no excerpts, no identifiers. */
+  sourceRegister: Array<{
     title: string;
-    status: string;
-    summary: string;
-    hasOrganizationDocument: boolean;
-    reviewNotice: string | null;
-    gaps: string[];
-    sources: string[];
-  }>;
-  actions: Array<{
-    title: string;
-    description: string;
-    status: string;
+    reference: string | null;
+    location: string | null;
   }>;
 };
 

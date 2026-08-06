@@ -18,7 +18,7 @@ const productionEnvironment: NodeJS.ProcessEnv = {
   AI_DEFAULT_PROVIDER: "self_hosted",
   AI_EMBEDDING_DIM: "1536",
   SELF_HOSTED_AI_BASE_URL: "http://10.40.0.2:4000/v1",
-  SELF_HOSTED_AI_API_KEY: "litellm-application-key",
+  SELF_HOSTED_AI_API_KEY: "self-hosted-application-key",
   SELF_HOSTED_AI_MODEL: "compliance-chat",
   SELF_HOSTED_AI_SMALL_MODEL: "compliance-chat",
   SELF_HOSTED_AI_EMBEDDING_MODEL: "compliance-embedding",
@@ -150,20 +150,19 @@ describe("deployment environment contracts", () => {
     }
   });
 
-  it("requires the exact isolated acceptance project", () => {
+  it("requires an explicitly disposable database", () => {
     expect(() =>
       getAcceptanceEnvironment({
         NODE_ENV: "test",
         APP_ENV: "test",
-        COMPOSE_PROJECT_NAME: "existing-developer-stack",
       }),
-    ).toThrow("Invalid environment variables: COMPOSE_PROJECT_NAME");
+    ).toThrow("Invalid environment variables: DISPOSABLE_DATABASE");
     expect(
       getAcceptanceEnvironment({
         NODE_ENV: "test",
         APP_ENV: "test",
-        COMPOSE_PROJECT_NAME: "compliancetool-test",
-      }).COMPOSE_PROJECT_NAME,
-    ).toBe("compliancetool-test");
+        DISPOSABLE_DATABASE: "1",
+      }).DISPOSABLE_DATABASE,
+    ).toBe("1");
   });
 });

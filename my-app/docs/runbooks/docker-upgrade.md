@@ -18,10 +18,11 @@ a critical security fix.
    observe metrics.
 7. Promote the same digests to production after protected approval.
 
-Model changes additionally require exact Hub revision hashes, artifact
-SHA-256 manifests, malware scanning, offline loading, full German/English AI
-qualification, and re-embedding if model revision, quantization, dimensions,
-or retrieval instruction changes.
+Changing the chat or embedding model requires German/English output
+qualification. Changing the embedding model, its revision, or its dimensions
+additionally requires re-embedding: retrieval does not filter on
+`embedding_model`, so vectors from two providers in one organization silently
+degrade results.
 
 Never deploy a mutable tag without a digest, production source build, automatic
 database downgrade, or an untested coordinated-service combination. When no

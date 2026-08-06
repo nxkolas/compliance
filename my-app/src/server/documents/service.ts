@@ -3,12 +3,15 @@ import type { DocumentDto, DocumentListQuery } from "@/src/contracts/documents";
 import { db } from "@/src/db";
 import {
   auditEvents,
+  backgroundJobs,
   documentChunks,
   documentVersions,
   documents,
+  organizationEmbeddingMigrations,
+  organizations,
   uploadSessions,
 } from "@/src/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { hasOrganizationCapability } from "../auth/capabilities";
 import {
@@ -29,8 +32,8 @@ import {
 import { chunkExtractedPages } from "./chunker";
 import {
   DOCUMENT_STORAGE_BUCKET,
-  EMBEDDING_MODEL,
   MAX_DOCUMENT_BYTES,
+  resolveEmbeddingConfig,
   SUPPORTED_DOCUMENT_TYPES,
 } from "./document-config";
 import {
@@ -112,6 +115,8 @@ export async function uploadOrganizationDocumentVersion(
     const prior = await executor.select({ versionNumber: documentVersions.versionNumber }).from(documentVersions)
       .where(and(eq(documentVersions.documentId, command.documentId), eq(documentVersions.organizationId, command.organizationId)))
       .orderBy(desc(documentVersions.versionNumber));
+    const { model: organizationEmbeddingModel } =
+      await resolveOrganizationEmbeddingConfig(command.organizationId, executor);
     return executor.insert(documentVersions).values({
     id: versionId,
     organizationId: command.organizationId,
@@ -125,7 +130,7 @@ export async function uploadOrganizationDocumentVersion(
     contentHash: sha256(command.bytes),
     indexingStatus: "processing",
     parser: parserName(command.mimeType),
-    embeddingModel: EMBEDDING_MODEL,
+    embeddingModel: organizationEmbeddingModel,
     indexingStartedAt: new Date(),
     createdBy: command.userId,
     }).returning();
@@ -373,6 +378,8 @@ export async function finalizeDocumentUpload(input: {
     }).returning({ id: documents.id });
     if (!document) throw new Error("Document was not created");
 
+    const { model: organizationEmbeddingModel } =
+      await resolveOrganizationEmbeddingConfig(session.organizationId, tx);
     const [version] = await tx.insert(documentVersions).values({
       id: ids.documentVersionId,
       organizationId: session.organizationId,
@@ -386,7 +393,7 @@ export async function finalizeDocumentUpload(input: {
       contentHash: input.upload.object.contentHash,
       indexingStatus: "pending",
       parser: parserName(session.mimeType),
-      embeddingModel: EMBEDDING_MODEL,
+      embeddingModel: organizationEmbeddingModel,
       createdBy: session.requestedBy,
     }).returning({ id: documentVersions.id });
     if (!version) throw new Error("Document version was not created");
@@ -486,14 +493,216 @@ export async function retryOrganizationDocumentIndexing(userId: string, organiza
   return getOrganizationDocumentDetail(userId, organizationId, documentId);
 }
 
+/**
+ * Reads the embedding provider an organization's vectors are stored in.
+ *
+ * This is `ai_provider_mode`: the organization's one provider choice governs
+ * generation and embeddings alike, and it only advances once a migration has
+ * rebuilt every vector, so it always describes the data on disk. Falls back to
+ * the server default when the organization is not found, which keeps operator
+ * commands with no organization in scope working.
+ */
+export async function resolveOrganizationEmbeddingConfig(
+  organizationId: string,
+  executor: OrganizationScopeExecutor = db,
+) {
+  const organization = await executor.query.organizations.findFirst({
+    columns: { aiProviderMode: true },
+    where: { RAW: (table, operators) => eq(table.id, organizationId) ?? operators.sql`true` },
+  });
+  return resolveEmbeddingConfig(organization?.aiProviderMode);
+}
+
+async function organizationEmbeddingProvider(
+  organizationId: string,
+  executor: OrganizationScopeExecutor = db,
+) {
+  const config = await resolveOrganizationEmbeddingConfig(organizationId, executor);
+  return createDocumentEmbeddingProvider(config.provider);
+}
+
 export async function executeDocumentIndexingJob(input: { documentVersionId: string; organizationId: string }) {
   const version = await db.query.documentVersions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, input.documentVersionId), eq(table.organizationId, input.organizationId)) ?? operators.sql`true` },
   });
   if (!version) throw new ApiError(404, "Document version not found");
   const bytes = await downloadObject(version.storageBucket, version.storageKey);
-  await indexDocumentVersion({ versionId: version.id, organizationId: input.organizationId, bytes });
+  await indexDocumentVersion({
+    versionId: version.id,
+    organizationId: input.organizationId,
+    bytes,
+    embeddingProvider: await organizationEmbeddingProvider(input.organizationId),
+  });
   return { type: "document_version", id: version.id };
+}
+
+/**
+ * Rebuilds every stored vector for one organization, then commits its provider
+ * change.
+ *
+ * `organizations.ai_provider_mode` still names the old provider for the whole
+ * run, so retrieval keeps serving the vectors that actually exist. Only when
+ * every document has been rebuilt do the provider and the migration row advance
+ * together, in one transaction. A failure marks the migration terminal and
+ * leaves the provider untouched; nothing can be left staged, because the
+ * concurrency guard counts only pending and processing rows.
+ *
+ * Known limitation: a run that fails partway leaves the documents it already
+ * rebuilt carrying the new model. Those rows stop matching the organization's
+ * unchanged provider and drop out of retrieval until a later migration
+ * succeeds. That is deliberately fail-safe rather than fail-correct -- it loses
+ * recall, not accuracy -- but a failed switch should be retried promptly, or the
+ * affected documents re-indexed individually.
+ */
+export async function executeOrganizationReembeddingJob(
+  input: {
+    organizationId: string;
+    migrationId: string;
+    jobId: string;
+  },
+  signal?: AbortSignal,
+) {
+  const migration = await db.query.organizationEmbeddingMigrations.findFirst({
+    where: {
+      RAW: (table, operators) =>
+        and(
+          eq(table.id, input.migrationId),
+          eq(table.organizationId, input.organizationId),
+        ) ?? operators.sql`true`,
+    },
+  });
+  if (!migration) throw new ApiError(404, "Embedding migration not found");
+  if (migration.status === "succeeded") {
+    return { type: "organization", id: input.organizationId };
+  }
+
+  // The requester is only recoverable from the job row, and the audit event
+  // below is the durable record of who changed the organization's provider.
+  const [job] = await db
+    .select({ requestedBy: backgroundJobs.requestedBy })
+    .from(backgroundJobs)
+    .where(eq(backgroundJobs.id, input.jobId));
+  const requestedBy = job?.requestedBy ?? undefined;
+
+  const provider = createDocumentEmbeddingProvider(migration.toProviderMode);
+  // Only versions not already carrying the target model. The after-response
+  // drain gives each attempt a bounded window, so a run that is cut short must
+  // resume where it stopped rather than start over -- and re-running a finished
+  // migration becomes a no-op.
+  const versions = await db
+    .select({
+      id: documentVersions.id,
+      storageBucket: documentVersions.storageBucket,
+      storageKey: documentVersions.storageKey,
+    })
+    .from(documentVersions)
+    .where(
+      and(
+        eq(documentVersions.organizationId, input.organizationId),
+        eq(documentVersions.indexingStatus, "succeeded"),
+        ne(documentVersions.embeddingModel, provider.model),
+      ),
+    )
+    .orderBy(documentVersions.id);
+
+  const alreadyCompleted = migration.documentVersionsCompleted;
+  const total = alreadyCompleted + versions.length;
+  await db
+    .update(organizationEmbeddingMigrations)
+    .set({
+      status: "processing",
+      jobId: input.jobId,
+      startedAt: migration.startedAt ?? new Date(),
+      documentVersionsTotal: total,
+      documentVersionsCompleted: alreadyCompleted,
+    })
+    .where(eq(organizationEmbeddingMigrations.id, migration.id));
+  await db
+    .update(backgroundJobs)
+    .set({
+      progressCurrent: alreadyCompleted,
+      progressTotal: Math.max(1, total),
+    })
+    .where(eq(backgroundJobs.id, input.jobId));
+
+  try {
+    for (const [index, version] of versions.entries()) {
+      signal?.throwIfAborted();
+      const bytes = await downloadObject(version.storageBucket, version.storageKey);
+      await indexDocumentVersion({
+        versionId: version.id,
+        organizationId: input.organizationId,
+        bytes,
+        embeddingProvider: provider,
+      });
+      const completed = alreadyCompleted + index + 1;
+      await db
+        .update(organizationEmbeddingMigrations)
+        .set({ documentVersionsCompleted: completed })
+        .where(eq(organizationEmbeddingMigrations.id, migration.id));
+      await db
+        .update(backgroundJobs)
+        .set({ progressCurrent: completed })
+        .where(eq(backgroundJobs.id, input.jobId));
+    }
+  } catch (error) {
+    // An abort means the drain window closed or the request was cancelled, not
+    // that anything is wrong. Returning the migration to `pending` keeps it
+    // active for the concurrency guard and lets the next drain resume it;
+    // `failed` is reserved for genuine errors.
+    if (signal?.aborted) {
+      await db
+        .update(organizationEmbeddingMigrations)
+        .set({ status: "pending" })
+        .where(eq(organizationEmbeddingMigrations.id, migration.id));
+      throw error;
+    }
+    await db
+      .update(organizationEmbeddingMigrations)
+      .set({
+        status: "failed",
+        completedAt: new Date(),
+        failureCode: "ORGANIZATION_REEMBEDDING_FAILED",
+        failureMessage:
+          error instanceof Error ? error.message : "Re-embedding failed",
+      })
+      .where(eq(organizationEmbeddingMigrations.id, migration.id));
+    throw error;
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(organizations)
+      .set({ aiProviderMode: migration.toProviderMode, updatedAt: now })
+      .where(eq(organizations.id, input.organizationId));
+    await tx
+      .update(organizationEmbeddingMigrations)
+      .set({
+        status: "succeeded",
+        completedAt: now,
+        documentVersionsCompleted: versions.length,
+        failureCode: null,
+        failureMessage: null,
+      })
+      .where(eq(organizationEmbeddingMigrations.id, migration.id));
+    await tx.insert(auditEvents).values({
+      organizationId: input.organizationId,
+      actorUserId: requestedBy,
+      eventType: "organization.embedding_provider_changed",
+      entityType: "organization",
+      entityId: input.organizationId,
+      metadata: {
+        migrationId: migration.id,
+        fromProviderMode: migration.fromProviderMode,
+        toProviderMode: migration.toProviderMode,
+        embeddingModel: provider.model,
+        reindexedDocumentVersions: versions.length,
+      },
+    });
+  });
+
+  return { type: "organization", id: input.organizationId };
 }
 
 async function createDocumentRecords(input: {
@@ -503,6 +712,8 @@ async function createDocumentRecords(input: {
 }, executor: OrganizationScopeExecutor = db) {
   const title = input.title.trim();
   if (!title) throw new ApiError(400, "A document title is required");
+  const { model: organizationEmbeddingModel } =
+    await resolveOrganizationEmbeddingConfig(input.organizationId, executor);
     await executor.insert(documents).values({ id: input.documentId, organizationId: input.organizationId, name: title, createdBy: input.userId });
     await executor.insert(documentVersions).values({
       id: input.versionId,
@@ -517,7 +728,7 @@ async function createDocumentRecords(input: {
       contentHash: input.contentHash,
       indexingStatus: input.indexingStatus,
       parser: parserName(input.mimeType),
-      embeddingModel: EMBEDDING_MODEL,
+      embeddingModel: organizationEmbeddingModel,
       indexingStartedAt: input.indexingStatus === "processing" ? new Date() : null,
       createdBy: input.userId,
     });
@@ -533,7 +744,16 @@ async function indexDocumentVersion(input: {
   const version = await db.query.documentVersions.findFirst({ where: { RAW: (table, operators) => eq(table.id, input.versionId) ?? operators.sql`true` } });
   if (!version) throw new Error("Document version not found");
   const startedAt = new Date();
-  await db.update(documentVersions).set({ indexingStatus: "processing", indexingStartedAt: startedAt }).where(eq(documentVersions.id, version.id));
+  // Re-indexing an already-succeeded version has to clear the terminal fields:
+  // document_versions_indexing_lifecycle_check requires indexingCompletedAt to
+  // be null while a version is pending or processing.
+  await db.update(documentVersions).set({
+    indexingStatus: "processing",
+    indexingStartedAt: startedAt,
+    indexingCompletedAt: null,
+    failureCode: null,
+    failureMessage: null,
+  }).where(eq(documentVersions.id, version.id));
   try {
     const parsed = await parseDocument(input.bytes, version.mimeType);
     const chunks = chunkExtractedPages(parsed.pages);

@@ -106,10 +106,14 @@ function assertPolicyConfiguration(input: {
   chunkingVersion: string;
 }) {
   const policy = GAP_ORGANIZATION_EVIDENCE_POLICY;
+  // Provider and model are per-organization: an organization may embed with a
+  // different family than the server default, and retrieval already guarantees
+  // the candidates came from that organization's own embedding model. Only the
+  // dimension and chunking contracts are global invariants worth asserting.
   if (
     input.operation !== policy.operation ||
-    input.provider !== policy.provider ||
-    input.model !== policy.model ||
+    !input.provider ||
+    !input.model ||
     input.dimensions !== policy.dimensions ||
     input.chunkingVersion !== policy.chunkingVersion
   ) {

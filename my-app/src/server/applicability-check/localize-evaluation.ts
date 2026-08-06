@@ -1,4 +1,5 @@
 import type { PublishedComplianceRelease } from "@/src/server/compliance/domain";
+import { legalCitationContentKey } from "@/src/server/compliance/legal-citation";
 import type { StoredRuleEvaluationResult } from "./rule-evaluation-schema";
 import { parseRuleSetDocument } from "./rule-set-schema";
 
@@ -56,16 +57,8 @@ export function localizeEvaluation(
   const reason = (code: string, locale: "de" | "en") =>
     text(artifact.reasonContentKeys[code], locale) || code;
   const legalCitation = (key: string, locale: "de" | "en") => {
-    const separator = key.indexOf(".");
-    if (separator < 1) return key;
-    const instrumentCode = key.slice(0, separator);
-    const provisionCode = key.slice(separator + 1);
-    return (
-      text(
-        `nis2.legal.${instrumentCode}.${provisionCode}.citation`,
-        locale,
-      ) || key
-    );
+    const contentKey = legalCitationContentKey(key);
+    return (contentKey ? text(contentKey, locale) : "") || key;
   };
   const displayEntities =
     evidence.evaluatorKind === "nis2_scope_v3" &&

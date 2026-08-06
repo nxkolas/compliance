@@ -17,10 +17,22 @@ import { throwIfJobExecutionAborted } from "@/src/server/job-execution/abort";
 import type { BackgroundJobRecord } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { assertLiveParentJobForAiRun } from "@/src/server/ai/generation/job-run-lifecycle";
+import { parseActionDescription } from "@/src/server/action-plans/action-description";
+import {
+  formatLegalCitations,
+  type LegalCitation,
+} from "@/src/server/compliance/legal-citation";
+import {
+  countGapStatuses,
+  gapStatusOrder,
+  type GapStatus,
+} from "@/src/server/gap-analysis/workflow-state";
+import { buildLegalReferenceResolver } from "./legal-references";
 import { renderComplianceReport } from "./renderer";
 import {
   assertPendingReportFinalization,
   hashReportRenderSnapshot,
+  type ReportActionStatus,
   type ReportContentSnapshot,
   type ReportRenderSnapshot,
 } from "./render-snapshot";
@@ -62,11 +74,8 @@ export async function handleReportRender(
   };
   const inputHash = hashReportRenderSnapshot(snapshot);
   const pdf = await renderComplianceReport({
-    reportId,
-    organizationId,
     locale: report.locale as "de" | "en",
     snapshot,
-    inputHash,
   });
   throwIfJobExecutionAborted(abortSignal);
   const pdfHash = createHash("sha256").update(pdf).digest("hex");
@@ -146,7 +155,14 @@ function isCompletedReport(report: {
 async function loadReportContent(
   report: typeof reports.$inferSelect,
 ): Promise<ReportContentSnapshot> {
-  const [applicability, findingRows, actionRows] = await Promise.all([
+  const locale = report.locale === "en" ? "en" : "de";
+  const [organization, applicability, findingRows, actionRows] = await Promise.all([
+    // The worker has no user session, so this reads `db` directly like every
+    // other load below instead of going through the auth-scoped org service.
+    db.query.organizations.findFirst({
+      columns: { name: true, legalName: true },
+      where: { RAW: (table, operators) => eq(table.id, report.organizationId) ?? operators.sql`true` },
+    }),
     db.query.analysisOutputRevisions.findFirst({
       where: {
         RAW: (table, operators) =>
@@ -171,6 +187,7 @@ async function loadReportContent(
           .orderBy(asc(actionPlanItems.position))
       : Promise.resolve([]),
   ]);
+  if (!organization) throw new Error("The report organization is unavailable");
   if (!applicability) throw new Error("Pinned applicability result is unavailable");
   const [answerRows, gapRows, contextRows] = await Promise.all([
     db.select().from(assessmentAnswers)
@@ -190,41 +207,164 @@ async function loadReportContent(
           .where(inArray(gapFindingContextLinks.findingId, findingRows.map((finding) => finding.id)))
       : Promise.resolve([]),
   ]);
+  const legalReferences = buildLegalReferenceResolver(locale);
+  // Findings are surfaced worst-first, matching the Gap-Analyse filter order.
+  const orderedFindings = [...findingRows].sort(
+    (left, right) =>
+      gapStatusOrder.indexOf(left.status) - gapStatusOrder.indexOf(right.status) ||
+      left.position - right.position,
+  );
+  const statusByFindingId = new Map(
+    findingRows.map((finding) => [finding.id, finding.status as GapStatus]),
+  );
+  // `countGapStatuses` also returns an `all` total over findings; the report
+  // uses the gap-item count for its headline figure instead.
+  const findingCounts = countGapStatuses(
+    findingRows.map((finding) => ({ finding: { status: finding.status as GapStatus } })),
+  );
+  const gapStatusCounts = {
+    not_fulfilled: findingCounts.not_fulfilled,
+    partially_fulfilled: findingCounts.partially_fulfilled,
+    insufficient_evidence: findingCounts.insufficient_evidence,
+    fulfilled: findingCounts.fulfilled,
+  };
+
   return {
+    organization: {
+      name: organization.name,
+      legalName: organization.legalName,
+    },
     applicability: {
       outcome: applicabilityLabel(applicability.result, applicability.outcomeCode),
+      outcomeCode: applicability.outcomeCode,
       jurisdiction: applicability.jurisdictionCode,
       answers: answerRows.map((answer) => ({
         question: answer.questionText,
         answer: answer.selectedOptionLabels.join(", ") || displayValue(answer.answerValue),
       })),
     },
-    findings: findingRows.map((finding) => ({
-      title: finding.requirementTitle,
-      status: finding.status,
-      summary: finding.summary,
-      hasOrganizationDocument: contextRows.some(
-        (item) =>
-          item.findingId === finding.id &&
-          item.context.channel === "organization_evidence",
-      ),
-      reviewNotice:
-        finding.materialContradiction && !finding.contradictionResolved
-          ? finding.summary
-          : null,
-      gaps: gapRows
-        .filter((gap) => gap.findingId === finding.id)
-        .map((gap) => gap.statement),
-      sources: contextRows
-        .filter((item) => item.findingId === finding.id)
-        .map((item) => reportSource(item.context)),
-    })),
-    actions: actionRows.map((action) => ({
-      title: action.title,
-      description: action.description,
-      status: action.status,
-    })),
+    gap: {
+      openGapItemCount: gapRows.filter(
+        (gap) => statusByFindingId.get(gap.findingId) !== "fulfilled",
+      ).length,
+      statusCounts: gapStatusCounts,
+      findings: orderedFindings.map((finding) => ({
+        title: finding.requirementTitle,
+        status: finding.status as GapStatus,
+        hasOrganizationDocument: contextRows.some(
+          (item) =>
+            item.findingId === finding.id &&
+            item.context.channel === "organization_evidence",
+        ),
+        reviewNotice:
+          finding.materialContradiction && !finding.contradictionResolved
+            ? finding.summary
+            : null,
+        gaps: gapRows
+          .filter((gap) => gap.findingId === finding.id)
+          .map((gap) => gap.statement),
+        legalReferences: legalReferences.forRequirement(finding.requirementKey),
+      })),
+    },
+    actions: {
+      statusCounts: countActionStatuses(actionRows),
+      groups: orderedFindings.flatMap((finding) => {
+        const items = actionRows
+          .filter((action) => action.findingId === finding.id)
+          .sort(
+            (left, right) =>
+              actionStatusOrder.indexOf(left.status) -
+                actionStatusOrder.indexOf(right.status) ||
+              left.position - right.position,
+          );
+        if (!items.length) return [];
+        return [{
+          findingTitle: finding.requirementTitle,
+          items: items.map((action) => ({
+            title: action.title,
+            ...parseActionDescription(action.description, locale),
+            status: action.status,
+          })),
+        }];
+      }),
+    },
+    sourceRegister: buildSourceRegister(
+      contextRows.map((row) => row.context),
+      legalReferences.forProvisionKey,
+      locale,
+    ),
   };
+}
+
+const actionStatusOrder: ReportActionStatus[] = [
+  "open",
+  "in_progress",
+  "done",
+  "cancelled",
+];
+
+function countActionStatuses(rows: Array<{ status: ReportActionStatus }>) {
+  const counts: Record<ReportActionStatus, number> = {
+    open: 0,
+    in_progress: 0,
+    done: 0,
+    cancelled: 0,
+  };
+  for (const row of rows) counts[row.status] += 1;
+  return counts;
+}
+
+/**
+ * Collapses the linked grounding contexts into one row per source document:
+ * title, the distinct provisions it was cited for, and the pages they came from.
+ * Deliberately carries no excerpts and no identifiers.
+ */
+function buildSourceRegister(
+  contexts: Array<typeof aiProcessingRunContext.$inferSelect>,
+  citation: (provisionKey: string) => LegalCitation,
+  locale: "de" | "en",
+) {
+  const pageLabel = locale === "de" ? "S." : "p.";
+  const grouped = new Map<
+    string,
+    { title: string; references: LegalCitation[]; pages: Set<number> }
+  >();
+
+  for (const context of contexts) {
+    const metadata = isRecord(context.metadata) ? context.metadata : {};
+    const title = typeof metadata.title === "string" && metadata.title.trim()
+      ? metadata.title.trim()
+      : fallbackSourceTitle(context.channel, locale);
+    const entry = grouped.get(title) ?? {
+      title,
+      references: [] as LegalCitation[],
+      pages: new Set<number>(),
+    };
+    if (typeof metadata.mappedLegalProvisionKey === "string") {
+      entry.references.push(citation(metadata.mappedLegalProvisionKey));
+    }
+    if (Number.isInteger(metadata.pageNumber) && (metadata.pageNumber as number) > 0) {
+      entry.pages.add(metadata.pageNumber as number);
+    }
+    grouped.set(title, entry);
+  }
+
+  return [...grouped.values()]
+    .sort((left, right) => left.title.localeCompare(right.title))
+    .map((entry) => ({
+      title: entry.title,
+      reference: formatLegalCitations(entry.references) || null,
+      location: entry.pages.size
+        ? `${pageLabel} ${[...entry.pages].sort((left, right) => left - right).join(", ")}`
+        : null,
+    }));
+}
+
+function fallbackSourceTitle(channel: string, locale: "de" | "en") {
+  if (channel === "legal_authority") {
+    return locale === "de" ? "Rechtsquelle" : "Legal authority";
+  }
+  return locale === "de" ? "Nachweisdokument" : "Organization evidence";
 }
 
 function applicabilityLabel(result: unknown, fallback: string | null) {
@@ -234,17 +374,6 @@ function applicabilityLabel(result: unknown, fallback: string | null) {
     if (typeof localized.labelEn === "string") return localized.labelEn;
   }
   return fallback ?? "Unknown";
-}
-
-function reportSource(context: typeof aiProcessingRunContext.$inferSelect) {
-  const metadata = isRecord(context.metadata) ? context.metadata : {};
-  const title = typeof metadata.title === "string"
-    ? metadata.title
-    : context.channel === "legal_authority"
-      ? "Legal authority"
-      : "Organization evidence";
-  const page = typeof metadata.pageNumber === "number" ? ` — page ${metadata.pageNumber}` : "";
-  return `${title}${page}: ${context.exactText}`;
 }
 
 function displayValue(value: unknown) {

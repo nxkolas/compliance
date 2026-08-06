@@ -62,21 +62,44 @@ describe("Gap organization-evidence admission", () => {
     ]);
   });
 
-  it("fails closed when the indexed embedding configuration changes", () => {
+  it("accepts an organization-specific embedding model", () => {
+    // The embedding model is per organization, and retrieval already restricts
+    // candidates to the model that produced them, so a model differing from the
+    // server default is expected rather than a policy violation.
     expect(() =>
       admitOrganizationEvidence({
         operation: "gap_analysis",
-        provider: EMBEDDING_PROVIDER,
-        model: "different-model",
+        provider: "self_hosted",
+        model: "qwen3-embedding:4b-q4_K_M",
         dimensions: EMBEDDING_DIMENSIONS,
         chunkingVersion: CHUNKING_VERSION,
         candidates: [],
       }),
-    ).toThrowError(
-      expect.objectContaining({
-        code: "GAP_ORG_EVIDENCE_POLICY_MISMATCH",
-      }),
-    );
+    ).not.toThrow();
+  });
+
+  it("fails closed when a global embedding invariant changes", () => {
+    const base = {
+      operation: "gap_analysis" as const,
+      provider: EMBEDDING_PROVIDER,
+      model: EMBEDDING_MODEL,
+      dimensions: EMBEDDING_DIMENSIONS,
+      chunkingVersion: CHUNKING_VERSION,
+      candidates: [],
+    };
+    const mismatch = expect.objectContaining({
+      code: "GAP_ORG_EVIDENCE_POLICY_MISMATCH",
+    });
+
+    expect(() =>
+      admitOrganizationEvidence({ ...base, dimensions: 768 }),
+    ).toThrowError(mismatch);
+    expect(() =>
+      admitOrganizationEvidence({ ...base, chunkingVersion: "paragraph-v0" }),
+    ).toThrowError(mismatch);
+    expect(() =>
+      admitOrganizationEvidence({ ...base, model: "" }),
+    ).toThrowError(mismatch);
   });
 
   it("uses deterministic score and chunk tie-breaking with a bounded result", () => {

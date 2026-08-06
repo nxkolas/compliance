@@ -2,11 +2,9 @@ import { embedMany } from "ai";
 import { getComplianceEmbeddingModel } from "@/lib/ai/models";
 import type { AiProviderMode } from "@/lib/ai/types";
 import {
+  DEFAULT_EMBEDDING_PROVIDER,
   EMBEDDING_DIMENSIONS,
-  EMBEDDING_MODEL,
-  EMBEDDING_MODEL_REVISION,
-  EMBEDDING_PROVIDER,
-  EMBEDDING_RETRIEVAL_INSTRUCTION_ID,
+  resolveEmbeddingConfig,
 } from "./document-config";
 
 export type EmbeddingPurpose = "document" | "query";
@@ -20,24 +18,30 @@ export type DocumentEmbeddingProvider = {
   embed(values: string[], purpose?: EmbeddingPurpose): Promise<number[][]>;
 };
 
-export function createDocumentEmbeddingProvider(): DocumentEmbeddingProvider {
+/**
+ * Builds an embedder for one provider family. Callers holding an organization
+ * must pass that organization's `ai_provider_mode`; omitting it falls back
+ * to the server default and is only correct where no organization is in scope.
+ */
+export function createDocumentEmbeddingProvider(
+  providerMode: AiProviderMode = DEFAULT_EMBEDDING_PROVIDER,
+): DocumentEmbeddingProvider {
+  const config = resolveEmbeddingConfig(providerMode);
   return {
-    provider: EMBEDDING_PROVIDER,
-    model: EMBEDDING_MODEL,
-    modelRevision: EMBEDDING_MODEL_REVISION,
-    dimensions: EMBEDDING_DIMENSIONS,
-    retrievalInstructionId: EMBEDDING_RETRIEVAL_INSTRUCTION_ID,
+    provider: config.provider,
+    model: config.model,
+    modelRevision: config.modelRevision,
+    dimensions: config.dimensions,
+    retrievalInstructionId: config.retrievalInstructionId,
     async embed(values, purpose = "document") {
       if (values.length === 0) return [];
       const result = await embedMany({
-        model: getComplianceEmbeddingModel(
-          EMBEDDING_PROVIDER as AiProviderMode,
-        ),
+        model: getComplianceEmbeddingModel(config.provider),
         values: values.map((value) =>
-          embeddingInput(value, purpose, EMBEDDING_PROVIDER),
+          embeddingInput(value, purpose, config.provider),
         ),
       });
-      return adaptEmbeddings(result.embeddings, EMBEDDING_DIMENSIONS);
+      return adaptEmbeddings(result.embeddings, config.dimensions);
     },
   };
 }

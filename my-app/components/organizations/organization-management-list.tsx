@@ -617,6 +617,10 @@ function OrganizationEditDialog({
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Present while a re-embedding run is rebuilding this organization's vectors.
+  // The provider select stays on the committed value until that finishes, so
+  // without this the control would silently snap back after saving.
+  const pendingMigration = settings?.pendingEmbeddingMigration ?? null;
   const fieldDescriptions =
     locale === "de"
       ? {
@@ -669,13 +673,25 @@ function OrganizationEditDialog({
           aiProviderMode: form.aiProviderMode,
         },
       });
+      const saved = result.data.settings;
+      setSettings(saved);
+      // A staged provider change leaves the committed value unchanged, so the
+      // form must follow the response rather than the requested value.
+      setForm({
+        name: saved.organization.name,
+        legalName: saved.organization.legalName ?? "",
+        countryCode: saved.organization.countryCode,
+        aiProviderMode: saved.organization.aiProviderMode,
+      });
       onSaved({
         ...item,
-        name: result.data.settings.organization.name,
-        legalName: result.data.settings.organization.legalName,
-        countryCode: result.data.settings.organization.countryCode,
-        aiProviderMode: result.data.settings.organization.aiProviderMode,
+        name: saved.organization.name,
+        legalName: saved.organization.legalName,
+        countryCode: saved.organization.countryCode,
+        aiProviderMode: saved.organization.aiProviderMode,
       });
+      // Keep the dialog open when a rebuild was staged so the notice is seen.
+      if (saved.pendingEmbeddingMigration) return;
     } catch (caught) {
       setError(localizeUiError(caught, { fallback: labels.mutationError }));
     } finally {
@@ -829,9 +845,32 @@ function OrganizationEditDialog({
                 <p className="mt-[5px] max-w-2xl text-xs leading-5 font-normal text-foreground-subtle">
                   {labels.aiPolicyDescription}
                 </p>
+                {pendingMigration && (
+                  <div className="mt-3 max-w-2xl rounded-md border border-border-strong bg-foreground/[0.04] px-4 py-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      {labels.providerChangeNotice}
+                      {": "}
+                      {labels.providerModes[pendingMigration.toProviderMode]}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 font-normal text-foreground-subtle">
+                      {labels.providerChangeDescription}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 font-normal text-foreground-subtle">
+                      {labels.providerChangeProgress
+                        .replace(
+                          "{completed}",
+                          String(pendingMigration.documentVersionsCompleted),
+                        )
+                        .replace(
+                          "{total}",
+                          String(pendingMigration.documentVersionsTotal),
+                        )}
+                    </p>
+                  </div>
+                )}
                 <Select
                   value={form.aiProviderMode}
-                  disabled={saving}
+                  disabled={saving || Boolean(pendingMigration)}
                   onValueChange={(aiProviderMode) => setForm({
                     ...form,
                     aiProviderMode: aiProviderMode as SerializedItem["aiProviderMode"],

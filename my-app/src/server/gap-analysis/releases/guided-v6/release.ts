@@ -5,11 +5,11 @@ import {
   ACTION_PLAN_RESPONSE_SCHEMA_VERSION,
 } from "@/src/server/action-plans/domain";
 import {
-  GAP_PROMPT_V7_NAME,
-  GAP_PROMPT_V7_TEMPLATE_HASH,
-  GAP_PROMPT_V7_VERSION,
-  GAP_RESPONSE_SCHEMA_V7_VERSION,
-} from "../../prompt-contract-v7";
+  GAP_PROMPT_NAME,
+  GAP_PROMPT_TEMPLATE_HASH,
+  GAP_PROMPT_VERSION,
+  GAP_RESPONSE_SCHEMA_VERSION,
+} from "../../prompt-contract";
 import type {
   GapAnalysisReleaseDefinition,
   GapQuestionDefinition,
@@ -502,10 +502,10 @@ export const guidedV6GapRelease: GapAnalysisReleaseDefinition = {
   requiredCorpusFamilies: ["nis2-eu-primary", "nis2-de-primary"],
   defaultLocale: "de",
   prompt: {
-    name: GAP_PROMPT_V7_NAME,
-    version: GAP_PROMPT_V7_VERSION,
-    templateHash: GAP_PROMPT_V7_TEMPLATE_HASH,
-    responseSchemaVersion: GAP_RESPONSE_SCHEMA_V7_VERSION,
+    name: GAP_PROMPT_NAME,
+    version: GAP_PROMPT_VERSION,
+    templateHash: GAP_PROMPT_TEMPLATE_HASH,
+    responseSchemaVersion: GAP_RESPONSE_SCHEMA_VERSION,
   },
   actionPlanPrompt: {
     name: ACTION_PLAN_PROMPT_NAME,

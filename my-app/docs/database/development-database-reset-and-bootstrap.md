@@ -43,7 +43,7 @@ $env:CORPUS_OPERATOR_IDENTITY='<deployment identity>'
 npm run db:activate:legal-snapshot -- <family-code> <generation-id,...>
 ```
 
-Do not activate fixture-only, empty, pending, failed, unembedded, or
-incompletely bound generations. After corpus provisioning, rerun the canonical
+Do not activate fixture-only, empty, pending, failed, or incompletely bound
+generations. After corpus provisioning, rerun the canonical
 plan/apply workflow if those operations intentionally changed Drizzle-owned
 state.

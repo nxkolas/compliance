@@ -5,12 +5,11 @@
    prompts, model responses, uploaded text, signed URLs, cookies, or personal
    data into the ticket.
 2. Check external availability, Caddy, web readiness, Supabase health,
-   PostgreSQL, Storage backend, queue age, LiteLLM, vLLM, GPU state, WireGuard,
-   disk pressure, and backup freshness in that order.
+   PostgreSQL, Storage backend, queue age, the configured AI endpoint, disk
+   pressure, and backup freshness in that order.
 3. Contain narrowly:
    - stop the affected release color for application faults;
-   - revoke one LiteLLM application key for AI credential exposure;
-   - block the WireGuard peer for suspected host compromise;
+   - revoke the configured AI provider key for AI credential exposure;
    - make the application read-only or unavailable before risking database
      corruption.
 4. Recover with the preceding compatible image digest, a forward schema fix,
@@ -20,7 +19,6 @@
 6. Confirm service, persistence, queue/idempotency, Auth, signed Storage,
    retrieval, and alert recovery before closing.
 
-For AI timeout/OOM, stop new generation claims, preserve the durable queue,
-inspect DCGM/vLLM metrics, and restart only the failing inference service.
-For WireGuard loss, application jobs must fail within the configured provider
-timeout without exposing a public AI fallback.
+For AI timeout or outage, stop new generation claims and preserve the durable
+queue. Application jobs must fail within the configured provider timeout rather
+than silently falling back to another endpoint.

@@ -11,14 +11,14 @@ generations.
 
 Complete the four database/storage stages in the
 [Drizzle workflow](drizzle-workflow.md). Verify server-only RLS, database
-integrity, and all private Storage buckets. Configure the grounded provider and
-embedding model used by the worker without exposing server-only values in logs.
+integrity, and all private Storage buckets. Configure the grounded provider
+used by the worker without exposing server-only values in logs.
 
 ## Provision and process
 
 Prepare a reviewed manifest containing the real source, version, rendition,
-retrieval time, content hashes, Storage object keys, parser, and embedding
-model. Upload those exact rendition objects to the private legal-corpus bucket,
+retrieval time, content hashes, Storage object keys, and parser. Upload those
+exact rendition objects to the private legal-corpus bucket,
 then run:
 
 ```powershell
@@ -27,9 +27,8 @@ npm run worker
 ```
 
 Wait until every manifest-created `legal_source_processing` job and processing
-generation succeeds. Each selected generation must contain non-empty chunks
-and a matching embedding for every chunk. Do not substitute the fixture for the
-retained pre-production corpus.
+generation succeeds. Each selected generation must contain non-empty chunks.
+Do not substitute the fixture for the retained pre-production corpus.
 
 ## Bind, validate, and activate
 
@@ -44,8 +43,9 @@ npm run db:activate:legal-snapshot -- <family-code> <generation-id,...>
 ```
 
 Validation rejects missing/failed generations, cross-family lineage, empty
-chunks, missing model-matched embeddings, and any current Gap provision that
-does not resolve to a selected chunk. Activation repeats validation, locks the
+chunks, and any current Gap provision that does not resolve to a selected
+chunk. The corpus stores no vectors, so reviewed provision bindings are the
+only guarantee that an activated snapshot can ground a requirement. Activation repeats validation, locks the
 family, creates the immutable snapshot and ordered membership, advances the
 family pointer, and appends the platform audit event in one transaction.
 

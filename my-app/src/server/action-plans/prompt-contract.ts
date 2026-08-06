@@ -1,27 +1,52 @@
 import { contentHash } from "@/src/server/compliance/domain";
-import { GAP_GROUNDING_INSTRUCTION } from "../gap-analysis/domain";
+import type { GenerationIssueCode } from "../ai/generation";
 
 export const ACTION_PLAN_PROMPT_NAME = "nis2_action_plan";
-export const ACTION_PLAN_PROMPT_VERSION = "1";
-export const ACTION_PLAN_RESPONSE_SCHEMA_VERSION = "1";
+export const ACTION_PLAN_PROMPT_VERSION = "6";
+export const ACTION_PLAN_RESPONSE_SCHEMA_VERSION = "6";
 
-export const ACTION_PLAN_PROMPT_TEMPLATE = `Create a practical Action Plan only for the finalized atomic gaps and full category context supplied by the server.
-Never create an action unrelated to a supplied gap and never move or combine work across category boundaries.
-Within one category, you may combine several gaps into one action or split one gap into several ordered actions.
-Cover every supplied gap with at least one action. Every action must reference at least one supplied gap. Return at most ten actions per category.
-Respect satisfied controls in the full category context and do not contradict or repeat them as work.
-Each action contains only a short imperative title of at most 12 words and 120 characters, a plain-language result of one or two sentences and at most 40 words and 320 characters, one to five concrete recommended evidence names of at most 12 words and 120 characters each, opaque gap keys, and supporting citations.
-Do not return priority, status, owner, due date, execution notes, recommendations, objectives, deliverables, acceptance criteria, category metadata, or database identifiers.
-For an uncertain gap, begin with verification. State remediation only as conditional on verification identifying a deficiency.
-When uncertain work is split, order verification first and make every later remediation action explicitly conditional.
-For uncertain work, begin the verification title with Verify, Determine, Confirm, Assess, Check, Document, or Review. The result must explicitly say that any remediation depends on an identified or confirmed deficiency.
-Write every generated prose field in the pinned output locale.
-${GAP_GROUNDING_INSTRUCTION}
-Return exactly the requested strict category keys and no fields outside the response schema.`;
+export function actionPlanPrompt(locale: "de" | "en") {
+  const language =
+    locale === "de"
+      ? "Schreibe alle Texte auf Deutsch."
+      : "Write all prose in English.";
+  return `Create operational actions for exactly one supplied category and only its supplied gaps.
+Category identity, priority, final position, Gap coverage, action mode eligibility, mandatory citations, locale, and persistence metadata are server-owned.
+Cover every supplied gap. Do not reference another category. Same-kind gaps may be grouped and a confirmed gap may be split into ordered actions.
+Use mode "remediation" only for confirmed missing or partial gaps. Use mode "verification" only for uncertain gaps. Never mix uncertain and confirmed gaps in one action.
+For verification mode, verificationResult contains only the completed verification work and its documented outcome. Do not put if, when, unless, conditional, or equivalent wording in verificationResult.
+For verification mode, conditionalRemediation contains only the remediation work, without a condition or conditional lead-in, or null. The server adds the localized condition exactly once.
+Use an imperative title of at most 12 words. Make each rendered result one or two sentences and at most 40 words. Use one to five concrete evidence names, each at most 12 words.
+For verification mode, use verificationResult at most 18 words and conditionalRemediation at most 16 words so the server-rendered result remains concise.
+Do not name or discuss laws, directives, statutes, articles, sections, obligations, regulators, or citations in customer-visible prose. Write only operational work and outcomes.
+These are writing constraints for offline qualification, not additional response fields or runtime lexical gates.
+Mandatory citations are server-owned; select only optional organization-document citation IDs exposed by the schema.
+Do not put URLs or opaque internal identifiers in customer-visible prose. This includes UUID values, database keys, and citation IDs.
+${language}
+Return only the strict category response object.`;
+}
 
-export const ACTION_PLAN_PROMPT_TEMPLATE_HASH = contentHash(
-  ACTION_PLAN_PROMPT_TEMPLATE,
-);
+export const ACTION_PLAN_PROMPT_TEMPLATE = actionPlanPrompt("en");
+export const ACTION_PLAN_PROMPT_TEMPLATE_HASH = contentHash({
+  en: actionPlanPrompt("en"),
+  de: actionPlanPrompt("de"),
+});
+
+export function actionPlanRepairPrompt(input: {
+  locale: "de" | "en";
+  categoryCode: string;
+  issues: Array<{
+    code: GenerationIssueCode;
+    path: Array<string | number>;
+  }>;
+}) {
+  return `${actionPlanPrompt(input.locale)}
+Repair only category ${input.categoryCode}. The prior complete category object was rejected.
+Return the complete corrected category object. Preserve valid structured facts and change only the fields identified by these objective issue codes and paths:
+${JSON.stringify(input.issues.map(({ code, path }) => ({ code, path })))}
+Issue code guidance: action_raw_identifier means remove every URL, UUID, or opaque internal identifier from the identified customer-visible prose field.
+Do not alter category identity, Gap coverage, action modes, priority, ordering, citations, locale, or other server-owned facts.`;
+}
 
 export function buildActionPlanCategoryQuery(input: {
   requirement: {

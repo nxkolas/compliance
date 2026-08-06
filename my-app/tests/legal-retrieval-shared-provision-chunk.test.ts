@@ -71,17 +71,6 @@ describe("legal retrieval with shared provision chunks", () => {
           },
         ],
       },
-      {
-        embeddingProvider: {
-          provider: "test",
-          model: "test-embedding",
-          modelRevision: "1",
-          dimensions: 2,
-          retrievalInstructionId: "test",
-          embed: vi.fn(),
-        },
-        queryEmbedding: [1, 0],
-      },
     );
 
     expect(context).toHaveLength(2);

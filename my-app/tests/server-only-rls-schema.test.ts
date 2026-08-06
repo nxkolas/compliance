@@ -12,9 +12,10 @@ const expectedTables = [
   "gap_analysis_cycle_documents", "gap_analysis_cycles", "gap_finding_context_links", "gap_findings",
   "gap_item_context_links", "gap_items", "guest_applicability_checks", "idempotency_records",
   "legal_corpus_families", "legal_corpus_snapshot_members", "legal_corpus_snapshots",
-  "legal_provision_chunk_bindings", "legal_source_chunk_embeddings", "legal_source_chunks",
+  "legal_provision_chunk_bindings", "legal_source_chunks",
   "legal_source_processing_generations", "legal_source_renditions", "legal_source_versions", "legal_sources",
-  "organization_invitations", "organization_memberships", "organizations", "platform_audit_events",
+  "organization_embedding_migrations", "organization_invitations",
+  "organization_memberships", "organizations", "platform_audit_events",
   "report_document_sources", "reports", "upload_sessions", "user_profiles",
 ].sort();
 
