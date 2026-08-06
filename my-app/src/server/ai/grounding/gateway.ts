@@ -5,10 +5,7 @@ import { db } from "@/src/db";
 import { aiProcessingRunContext, aiProcessingRuns } from "@/src/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { ApiError } from "../../api/errors";
-import {
-  GAP_GROUNDING_INSTRUCTION,
-  gapOutputLocaleInstruction,
-} from "@/src/server/gap-analysis/grounding-instruction";
+import { gapOutputLocaleInstruction } from "@/src/server/gap-analysis/grounding-instruction";
 import { buildGroundedPrompt } from "./context-builder";
 import {
   resolvePinnedLegalScope,
@@ -16,6 +13,7 @@ import {
   type PinnedLegalSnapshot,
 } from "./legal-retrieval";
 import { retrieveOrganizationContext } from "./organization-retrieval";
+import { retrieveGuidanceContext } from "./guidance-retrieval";
 import { resolveGroundingPolicy } from "./policy";
 import { selectGroundedProvider } from "./provider-policy";
 import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
@@ -78,6 +76,12 @@ type GroundedOperationInput<T> = {
     excerpt: string;
   }>;
   queryUnits: QueryUnit[];
+  /**
+   * Grounding rules for this operation. Required, and supplied per contract:
+   * an instruction that names an action the contract's schema cannot express
+   * has nowhere legitimate to land and leaks into prose instead.
+   */
+  groundingInstruction: string;
   systemInstruction?: string;
   outputContract: GroundedOutputContract<T>;
   idempotencyKey: string;
@@ -237,7 +241,7 @@ export async function runGroundedOperation<T>(
   const retrieved = (
     await Promise.all(
       input.queryUnits.map(async (unit) => {
-        const [legal, organization] = await Promise.all([
+        const [legal, organization, guidance] = await Promise.all([
           retrievePinnedLegalContext(
             {
               queryUnitId: unit.id,
@@ -264,8 +268,15 @@ export async function runGroundedOperation<T>(
                   input.precomputedQueryEmbeddings?.organizationDocument,
               })
             : Promise.resolve([] as GroundingContextItem[]),
+          // Bound to the same provision keys the legal channel already uses, so
+          // no caller has to supply anything new. Optional by design: a
+          // category with no reviewed binding simply gets none.
+          retrieveGuidanceContext({
+            queryUnitId: unit.id,
+            provisionKeys: unit.preferredMappedLegalProvisionKeys ?? [],
+          }),
         ]);
-        return [...legal, ...organization];
+        return [...legal, ...organization, ...guidance];
       }),
     )
   ).flat();
@@ -275,7 +286,7 @@ export async function runGroundedOperation<T>(
   ];
   const schema = input.outputContract.schema(context);
   const prompt = buildGroundedPrompt(input.queryUnits, context);
-  prompt.system += ` ${GAP_GROUNDING_INSTRUCTION} ${gapOutputLocaleInstruction(input.outputLocale)}`;
+  prompt.system += ` ${input.groundingInstruction} ${gapOutputLocaleInstruction(input.outputLocale)}`;
   if (input.systemInstruction) prompt.system += ` ${input.systemInstruction}`;
   const renderedInputHash = createHash("sha256")
     .update(`${prompt.system}\n${prompt.prompt}`)
@@ -377,8 +388,14 @@ export async function runGroundedOperation<T>(
       );
     }
     await db.transaction(async (tx) => {
+      // Guidance is excluded alongside questionnaire assertions: it is neither
+      // evidence nor citable, nothing references it downstream, and
+      // `ai_processing_run_context.channel` is an enum with a CHECK requiring a
+      // matching chunk FK. Its provenance travels in the run manifest instead.
       const persistable = context.filter(
-        (item) => item.channel !== "questionnaire_assertion",
+        (item) =>
+          item.channel !== "questionnaire_assertion" &&
+          item.channel !== "guidance",
       );
       if (persistable.length) {
         await tx.insert(aiProcessingRunContext).values(
@@ -585,7 +602,6 @@ function questionnaireContext(
     return {
       channel: "questionnaire_assertion",
       citationId: `Q:${assertion.queryUnitId}:${assertion.answerId}`,
-      label: `Q${index + 1}`,
       queryUnitId: assertion.queryUnitId,
       sourceId: assertion.answerId,
       excerpt: assertion.excerpt,

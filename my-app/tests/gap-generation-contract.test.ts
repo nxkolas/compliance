@@ -125,7 +125,7 @@ describe("Gap contract contradiction policy", () => {
     expect(prompt).toContain(
       "Missing, insufficient, irrelevant, or uncited organization-document evidence is not a contradiction",
     );
-    expect(GAP_PROMPT_VERSION).toBe("13");
+    expect(GAP_PROMPT_VERSION).toBe("14");
   });
 
   it("makes concision and absence of legal exposition explicit writing goals", () => {
@@ -175,9 +175,7 @@ describe("Gap contract citation labels", () => {
   const context: GroundingContextItem[] = [
     {
       channel: "legal",
-      citationId: `LEGAL:NIS2-PROTECT-10:${chunkUuid}`,
-      label: "L1",
-      queryUnitId: "NIS2-PROTECT-10",
+      citationId: `LEGAL:NIS2-PROTECT-10:${chunkUuid}`,      queryUnitId: "NIS2-PROTECT-10",
       sourceId: chunkUuid,
       excerpt: "The entity shall implement protection measures.",
       excerptHash: "a",
@@ -199,9 +197,7 @@ describe("Gap contract citation labels", () => {
     },
     {
       channel: "questionnaire_assertion",
-      citationId: `Q:NIS2-PROTECT-10:${answerUuid}`,
-      label: "Q1",
-      queryUnitId: "NIS2-PROTECT-10",
+      citationId: `Q:NIS2-PROTECT-10:${answerUuid}`,      queryUnitId: "NIS2-PROTECT-10",
       sourceId: answerUuid,
       excerpt: "Is the protection control implemented?: Not implemented",
       excerptHash: "c",
@@ -211,17 +207,47 @@ describe("Gap contract citation labels", () => {
     },
   ];
 
-  it("shows the model labels and never a raw identifier", () => {
+  it("labels only what the model may select, and never a raw identifier", () => {
     const { prompt } = buildGroundedPrompt(
       [{ id: "NIS2-PROTECT-10", query: "protection control" }],
       context,
     );
 
-    expect(prompt).toContain("[L1]");
+    // Organization documents are the only channel either contract can select.
     expect(prompt).toContain("[D1]");
-    expect(prompt).toContain("[Q1]");
+    // A handle for a source the schema cannot express has nowhere legitimate to
+    // go, so the model writes it into prose. Legal and questionnaire get none.
+    expect(prompt).not.toMatch(/\[[LQ]\d+\]/u);
     expect(prompt).not.toMatch(UUID_PATTERN);
     expect(prompt).not.toContain("DOC:NIS2-PROTECT-10");
+    // They must still be readable as context.
+    expect(prompt).toContain("The entity shall implement protection measures.");
+    expect(prompt).toContain("(questionnaire_assertion)");
+  });
+
+  it("renders guidance as unlabelled background", () => {
+    const { prompt } = buildGroundedPrompt(
+      [{ id: "NIS2-PROTECT-10", query: "protection control" }],
+      [
+        ...context,
+        {
+          channel: "guidance",
+          citationId: `GUIDE:NIS2-PROTECT-10:${chunkUuid}`,
+          queryUnitId: "NIS2-PROTECT-10",
+          sourceId: chunkUuid,
+          excerpt: "Cryptography — good practice (ENISA). Practice: document a policy.",
+          excerptHash: "g",
+          rank: 1,
+          score: 1,
+          metadata: {},
+        },
+      ],
+    );
+
+    expect(prompt).toContain("(guidance) Cryptography — good practice");
+    // Guidance is not citable, so it must carry no handle the model could use.
+    expect(prompt).not.toMatch(/\[[A-Z]\d+\] \(guidance\)/u);
+    expect(prompt).not.toMatch(UUID_PATTERN);
   });
 
   it("resolves a selected label back to its citation ID", () => {

@@ -13,7 +13,12 @@ export type ActionPlanCategoryPolicy = {
   priority: "low" | "medium" | "high" | "critical";
   outputLocale: "de" | "en";
   gaps: Array<{ key: string; kind: AtomicGapKind }>;
-  admittedOrganizationCitationIds: string[];
+  /**
+   * Admitted organization evidence, paired label to citation ID. The model
+   * selects by the same short label it sees in the prompt; the normalizer
+   * resolves back to citation IDs for claim validation and persistence.
+   */
+  admittedOrganizationCitations: Array<{ label: string; citationId: string }>;
   mandatoryCitationIdsByGapKey: Record<string, string[]>;
 };
 
@@ -24,7 +29,7 @@ export type ActionPlanCategoryResponse = {
         gapKeys: string[];
         title: string;
         result: string;
-        suggestedEvidence: string[];
+        recommendedArtifacts: string[];
         supportingOrganizationCitationIds: string[];
       }
     | {
@@ -33,7 +38,7 @@ export type ActionPlanCategoryResponse = {
         verificationTitle: string;
         verificationResult: string;
         conditionalRemediation: string | null;
-        suggestedEvidence: string[];
+        recommendedArtifacts: string[];
         supportingOrganizationCitationIds: string[];
       }
   >;
@@ -46,6 +51,9 @@ export type ValidatedActionPlanContent = {
     actions: Array<{
       title: string;
       result: string;
+      // Internal name stays: the report renderer and persistence use it, and
+      // it reads correctly to a human. Only the model-facing key was renamed,
+      // to stop "evidence" meaning both supplied excerpts and artifacts to produce.
       suggestedEvidence: string[];
       priority: "low" | "medium" | "high" | "critical";
       position: number;
@@ -67,15 +75,21 @@ export function buildActionPlanCategoryResponseSchema(
     .filter((gap) => gap.kind === "uncertain")
     .map((gap) => gap.key);
   const optionalCitations =
-    policy.admittedOrganizationCitationIds.length > 0
+    policy.admittedOrganizationCitations.length > 0
       ? z.array(
           z.enum(
-            policy.admittedOrganizationCitationIds as [string, ...string[]],
+            policy.admittedOrganizationCitations.map(
+              (citation) => citation.label,
+            ) as [string, ...string[]],
           ),
         )
       : z.array(z.string()).max(0);
   const common = {
-    suggestedEvidence: z.array(prose.max(240)).min(1).max(5),
+    // Minimum two, not one. A weaker model treats the floor as the target: with
+    // `.min(1)` every local action returned one or two artifacts while gpt-5.6
+    // volunteered three to five unprompted. The floor serializes to JSON Schema
+    // `minItems`, which a provider grammar enforces, so it cannot be ignored.
+    recommendedArtifacts: z.array(prose.max(240)).min(2).max(5),
     supportingOrganizationCitationIds: optionalCitations,
   };
   const variants: z.ZodType[] = [];
@@ -142,7 +156,7 @@ export function normalizeActionPlanCategoryResponse(input: {
         { finalPeriod: true },
       );
       const evidence = normalizeUniqueStrings(
-        action.suggestedEvidence,
+        action.recommendedArtifacts,
         input.policy.outputLocale,
       );
       const optional = normalizeUniqueStrings(
@@ -160,7 +174,7 @@ export function normalizeActionPlanCategoryResponse(input: {
             ...action,
             title: title.value,
             result: result.value,
-            suggestedEvidence: evidence.value,
+            recommendedArtifacts: evidence.value,
             supportingOrganizationCitationIds: optional.value,
           }
         : {
@@ -170,7 +184,7 @@ export function normalizeActionPlanCategoryResponse(input: {
             conditionalRemediation: action.conditionalRemediation
               ? normalizeOneLine(action.conditionalRemediation).value
               : null,
-            suggestedEvidence: evidence.value,
+            recommendedArtifacts: evidence.value,
             supportingOrganizationCitationIds: optional.value,
           };
     }),
@@ -199,18 +213,18 @@ export function normalizeActionPlanCategoryResponse(input: {
     const result = conditional ? `${baseResult} ${conditional}` : baseResult;
     assertSafeProse(title, ["actions", index, "title"]);
     assertSafeProse(result, ["actions", index, "result"]);
-    action.suggestedEvidence.forEach((value, evidenceIndex) =>
+    action.recommendedArtifacts.forEach((value, evidenceIndex) =>
       assertSafeProse(value, [
         "actions",
         index,
-        "suggestedEvidence",
+        "recommendedArtifacts",
         evidenceIndex,
       ]),
     );
     return {
       title,
       result,
-      suggestedEvidence: action.suggestedEvidence,
+      suggestedEvidence: action.recommendedArtifacts,
       priority: input.policy.priority,
       position: index + 1,
       gapKeys: [...new Set(action.gapKeys)],
@@ -219,7 +233,11 @@ export function normalizeActionPlanCategoryResponse(input: {
           ...action.gapKeys.flatMap(
             (key) => input.policy.mandatoryCitationIdsByGapKey[key] ?? [],
           ),
-          ...action.supportingOrganizationCitationIds,
+          // Labels stop here; downstream keys on real citation IDs.
+          ...resolveOrganizationCitations(
+            input.policy,
+            action.supportingOrganizationCitationIds,
+          ),
         ]),
       ],
     };
@@ -232,6 +250,27 @@ export function normalizeActionPlanCategoryResponse(input: {
     },
     normalizationCodes: [...codes],
   };
+}
+
+/**
+ * Resolves prompt-facing labels back to citation IDs, dropping anything the
+ * policy does not admit. The schema enum already bounds this, so an unknown
+ * value means a caller bypassed validation rather than a model error.
+ */
+function resolveOrganizationCitations(
+  policy: ActionPlanCategoryPolicy,
+  labels: string[],
+) {
+  const byLabel = new Map(
+    policy.admittedOrganizationCitations.map((citation) => [
+      citation.label,
+      citation.citationId,
+    ]),
+  );
+  return labels.flatMap((label) => {
+    const citationId = byLabel.get(label);
+    return citationId ? [citationId] : [];
+  });
 }
 
 export function renderConditionalRemediation(

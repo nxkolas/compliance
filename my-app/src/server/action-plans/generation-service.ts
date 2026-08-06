@@ -36,7 +36,10 @@ import {
   type ActionPlanCategoryPolicy,
   type ActionPlanCategoryResponse,
 } from "./current-contract";
-import { buildActionPlanCategoryQuery } from "./prompt-contract";
+import {
+  ACTION_PLAN_GROUNDING_INSTRUCTION,
+  buildActionPlanCategoryQuery,
+} from "./prompt-contract";
 import {
   coordinateCategoryGeneration,
   generationCallAttemptIdentity,
@@ -407,6 +410,7 @@ export async function executeActionPlanGenerationJob(input: {
           };
         }),
         queryUnits: [queryUnit],
+        groundingInstruction: ACTION_PLAN_GROUNDING_INSTRUCTION,
         systemInstruction:
           phase === "initial"
             ? actionPlanPrompt(input.locale)
@@ -424,20 +428,28 @@ export async function executeActionPlanGenerationJob(input: {
           generatedProse(value) {
             return value.actions.flatMap((action) =>
               action.mode === "remediation"
-                ? [action.title, action.result, ...action.suggestedEvidence]
+                ? [action.title, action.result, ...action.recommendedArtifacts]
                 : [
                     action.verificationTitle,
                     action.verificationResult,
                     ...(action.conditionalRemediation
                       ? [action.conditionalRemediation]
                       : []),
-                    ...action.suggestedEvidence,
+                    ...action.recommendedArtifacts,
                   ],
             );
           },
           claims(value) {
             const policy =
               responsePolicy ?? actionPlanPolicy(category, contextByCategory.get(task.categoryCode) ?? [], input.locale);
+            // Raw model output still carries labels; claim validation compares
+            // against context citation IDs, so resolve them here too.
+            const citationIdByLabel = new Map(
+              policy.admittedOrganizationCitations.map((citation) => [
+                citation.label,
+                citation.citationId,
+              ]),
+            );
             return value.actions.map((action, index) => ({
               key: `action-plan:${task.categoryCode}:${index + 1}`,
               queryUnitId: task.categoryCode,
@@ -448,7 +460,12 @@ export async function executeActionPlanGenerationJob(input: {
                   ...action.gapKeys.flatMap(
                     (key) => policy.mandatoryCitationIdsByGapKey[key] ?? [],
                   ),
-                  ...action.supportingOrganizationCitationIds,
+                  ...action.supportingOrganizationCitationIds.flatMap(
+                    (label) => {
+                      const citationId = citationIdByLabel.get(label);
+                      return citationId ? [citationId] : [];
+                    },
+                  ),
                 ]),
               ],
               text:
@@ -505,6 +522,20 @@ export async function executeActionPlanGenerationJob(input: {
               : [{ code: "content_invalid", path: [] }],
         };
       }
+    },
+    // Mirrors the Gap handler. Without it the repair reason lives only in the
+    // worker's stdout: publication rewrites every non-selected run row to
+    // GENERATION_ATTEMPT_SUPERSEDED, which records that a repair happened but
+    // erases why.
+    async onDiagnostic(diagnostic) {
+      await db.insert(auditEvents).values({
+        organizationId: input.organizationId,
+        actorUserId: input.userId,
+        eventType: "ai_generation.category_diagnostic",
+        entityType: "background_job",
+        entityId: input.jobId,
+        metadata: diagnostic,
+      });
     },
   });
   const runIds = categoryInputs.map(
@@ -720,9 +751,11 @@ function actionPlanPolicy(
       : "medium",
     outputLocale,
     gaps: category.gaps.map((gap) => ({ key: gap.key, kind: gap.row.kind })),
-    admittedOrganizationCitationIds: supplied
-      .filter((item) => item.channel === "organization_document")
-      .map((item) => item.citationId),
+    admittedOrganizationCitations: supplied.flatMap((item) =>
+      item.channel === "organization_document" && item.label
+        ? [{ label: item.label, citationId: item.citationId }]
+        : [],
+    ),
     mandatoryCitationIdsByGapKey: Object.fromEntries(
       category.gaps.map((gap) => {
         const questionnaire = supplied.find(

@@ -1,19 +1,31 @@
 import type * as z from "zod";
 
-export type GroundingChannel = "legal" | "organization_document" | "questionnaire_assertion";
+export type GroundingChannel =
+  | "legal"
+  | "organization_document"
+  | "questionnaire_assertion"
+  /**
+   * Authored best-practice guidance. Read-only background describing what good
+   * looks like — never evidence about the organization, so it cannot be a
+   * contradiction and never carries a label the model could cite.
+   */
+  | "guidance";
 
 export type GroundingContextItem = {
   channel: GroundingChannel;
   citationId: string;
   /**
-   * Short prompt-facing handle such as `D1`, `L1`, `Q1`.
+   * Short prompt-facing handle such as `D1`, present only on channels the model
+   * is allowed to select from — today that is organization documents alone.
    *
-   * `citationId` embeds a chunk or answer UUID, and the generation contract
-   * forbids raw identifiers in prose. Showing the model UUIDs it must reference
-   * but never echo is a trap small models fall into, so the prompt and the
-   * response schema use labels and the server maps them back.
+   * Two reasons it is narrow. `citationId` embeds a chunk or answer UUID, and
+   * the contracts forbid raw identifiers in prose, so handing the model a UUID
+   * it must reference but never echo is a trap. And a handle for a source the
+   * schema cannot express is worse still: the model has no legitimate place to
+   * put it and writes it into prose instead. Legal and questionnaire citations
+   * are assigned by the server, so they carry no handle.
    */
-  label: string;
+  label?: string;
   queryUnitId: string;
   sourceId: string;
   excerpt: string;

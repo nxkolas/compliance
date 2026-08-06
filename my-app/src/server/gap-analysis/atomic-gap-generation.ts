@@ -42,6 +42,7 @@ import {
 import { resolveOrganizationEmbeddingConfig } from "@/src/server/documents/service";
 import { emitGenerationMetric } from "../ai/generation/metrics";
 import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
+import { GAP_GROUNDING_INSTRUCTION } from "./grounding-instruction";
 
 export type AtomicGapRequirementInput = {
   requirement: LoadedGapRelease["requirements"][number];
@@ -192,6 +193,7 @@ async function generateAtomicGapCategoriesCurrent(
           (assertion) => assertion.queryUnitId === item.requirement.code,
         ),
         queryUnits: [queryUnit],
+        groundingInstruction: GAP_GROUNDING_INSTRUCTION,
         systemInstruction:
           phase === "initial"
             ? gapPrompt({
@@ -470,12 +472,13 @@ function baseGapResponsePolicy(
       candidate.metadata.selectionRole === "mapped_primary",
   );
   if (!legal) throw new Error("Preferred mapped primary citation is missing");
-  const admittedOrganizationCitations = supplied
-    .filter((candidate) => candidate.channel === "organization_document")
-    .map((candidate) => ({
-      label: candidate.label,
-      citationId: candidate.citationId,
-    }));
+  // Only organization documents carry a label, and they are the only channel the
+  // model may select, so anything unlabelled here is not selectable evidence.
+  const admittedOrganizationCitations = supplied.flatMap((candidate) =>
+    candidate.channel === "organization_document" && candidate.label
+      ? [{ label: candidate.label, citationId: candidate.citationId }]
+      : [],
+  );
   return {
     requirementCode: item.requirement.code,
     outputLocale,

@@ -68,7 +68,7 @@ describe("Grounding Gateway safety", () => {
 
   it("keeps legal and organization claims in their evidence channels", () => {
     const context: GroundingContextItem[] = [
-      { channel: "legal", citationId: "LEGAL:1", label: "L1", queryUnitId: "r1", sourceId: "1", excerpt: "law", excerptHash: "a", rank: 1, score: 1, authorityTier: "primary_authority", translationStatus: "official", metadata: {} },
+      { channel: "legal", citationId: "LEGAL:1", queryUnitId: "r1", sourceId: "1", excerpt: "law", excerptHash: "a", rank: 1, score: 1, authorityTier: "primary_authority", translationStatus: "official", metadata: {} },
       { channel: "organization_document", citationId: "DOC:1", label: "D1", queryUnitId: "r1", sourceId: "2", excerpt: "policy", excerptHash: "b", rank: 1, score: 1, metadata: {} },
     ];
     const claims = validateGroundedClaims({
@@ -83,10 +83,27 @@ describe("Grounding Gateway safety", () => {
     expect(claims.map((claim) => claim.validation)).toEqual(["supported", "supported", "unsupported"]);
   });
 
+  it("validates a binding legal claim even though legal carries no label", () => {
+    // Legal sources are deliberately unlabelled: the model may never select them,
+    // and a handle it cannot use ends up copied into prose. Claim validation must
+    // still work, because it keys on citation IDs from the context, not labels.
+    const context: GroundingContextItem[] = [
+      { channel: "legal", citationId: "LEGAL:9", queryUnitId: "r1", sourceId: "9", excerpt: "law", excerptHash: "a", rank: 1, score: 1, authorityTier: "primary_authority", translationStatus: "official", metadata: {} },
+    ];
+    expect(context[0]!.label).toBeUndefined();
+
+    const result = validateGroundedClaims({
+      queryUnits: [{ id: "r1", query: "requirement" }],
+      context,
+      claims: [{ key: "action", queryUnitId: "r1", kind: "legal", binding: true, citationIds: ["LEGAL:9"], text: "do the work" }],
+    });
+    expect(result[0]!.validation).toBe("supported");
+  });
+
   it("rejects secondary-only or unofficial-only binding claims", () => {
     const result = validateGroundedClaims({
       queryUnits: [{ id: "r1", query: "law" }],
-      context: [{ channel: "legal", citationId: "LEGAL:2", label: "L2", queryUnitId: "r1", sourceId: "2", excerpt: "commentary", excerptHash: "x", rank: 1, score: 1, authorityTier: "curated_secondary", translationStatus: "reviewed_internal", metadata: {} }],
+      context: [{ channel: "legal", citationId: "LEGAL:2", queryUnitId: "r1", sourceId: "2", excerpt: "commentary", excerptHash: "x", rank: 1, score: 1, authorityTier: "curated_secondary", translationStatus: "reviewed_internal", metadata: {} }],
       claims: [{ key: "binding", queryUnitId: "r1", kind: "legal", binding: true, citationIds: ["LEGAL:2"], text: "must" }],
     });
     expect(result[0].validation).toBe("unsupported");
@@ -138,8 +155,8 @@ describe("Grounding Gateway safety", () => {
   it("surfaces conflicting authorities instead of silently choosing one", () => {
     const base = { channel: "legal" as const, queryUnitId: "r1", excerptHash: "h", rank: 1, score: 1, authorityTier: "primary_authority" as const, translationStatus: "official" as const };
     const context: GroundingContextItem[] = [
-      { ...base, citationId: "LEGAL:r1:a", label: "Lr1:a", sourceId: "a", excerpt: "required", metadata: { conflictGroup: "scope", conflictSide: "required" } },
-      { ...base, citationId: "LEGAL:r1:b", label: "Lr1:b", sourceId: "b", excerpt: "excluded", metadata: { conflictGroup: "scope", conflictSide: "excluded" } },
+      { ...base, citationId: "LEGAL:r1:a", sourceId: "a", excerpt: "required", metadata: { conflictGroup: "scope", conflictSide: "required" } },
+      { ...base, citationId: "LEGAL:r1:b", sourceId: "b", excerpt: "excluded", metadata: { conflictGroup: "scope", conflictSide: "excluded" } },
     ];
     const [claim] = validateGroundedClaims({ queryUnits: [{ id: "r1", query: "scope" }], context, claims: [{ key: "scope", queryUnitId: "r1", kind: "legal", citationIds: ["LEGAL:r1:a"], text: "required" }] });
     expect(claim.validation).toBe("conflicting");

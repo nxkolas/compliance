@@ -159,6 +159,7 @@ describe("grounding gateway provenance", () => {
           excerpt: "Is policy governance implemented? Not implemented",
         },
       ],
+      groundingInstruction: "Use only supplied context.",
       queryUnits: [{ id: "REQ", query: "Policy governance" }],
       outputContract: {
         schema: () => outputSchema,
@@ -371,6 +372,7 @@ function runDurableGroundedAttempt(input: {
     definitionHash: "definition-hash",
     asOfDate: "2026-08-03",
     organizationEvidenceVersionIds: [],
+    groundingInstruction: "Use only supplied context.",
     queryUnits: [{ id: "REQ", query: "Policy governance" }],
     outputContract: {
       schema: () => outputSchema,
