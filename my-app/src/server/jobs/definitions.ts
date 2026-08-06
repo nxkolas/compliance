@@ -267,9 +267,10 @@ export const jobDefinitions = {
     payloadSchema: payloadSchemas.organization_reembedding,
     organizationScoped: true,
     requesterRequired: true,
-    // A partially re-embedded organization must surface rather than be retried
-    // against a half-replaced vector set.
-    maxAttempts: 1,
+    // Retryable because the run is resumable: each attempt skips versions that
+    // already carry the target model, so a drain window closing early makes
+    // forward progress instead of restarting.
+    maxAttempts: 3,
     readCapability: "documents:read",
     cancellationCapability: "documents:write",
     cancellable: true,

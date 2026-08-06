@@ -11,7 +11,7 @@ import {
   organizations,
   uploadSessions,
 } from "@/src/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { hasOrganizationCapability } from "../auth/capabilities";
 import {
@@ -585,6 +585,10 @@ export async function executeOrganizationReembeddingJob(
   const requestedBy = job?.requestedBy ?? undefined;
 
   const provider = createDocumentEmbeddingProvider(migration.toProviderMode);
+  // Only versions not already carrying the target model. The after-response
+  // drain gives each attempt a bounded window, so a run that is cut short must
+  // resume where it stopped rather than start over -- and re-running a finished
+  // migration becomes a no-op.
   const versions = await db
     .select({
       id: documentVersions.id,
@@ -596,23 +600,29 @@ export async function executeOrganizationReembeddingJob(
       and(
         eq(documentVersions.organizationId, input.organizationId),
         eq(documentVersions.indexingStatus, "succeeded"),
+        ne(documentVersions.embeddingModel, provider.model),
       ),
     )
     .orderBy(documentVersions.id);
 
+  const alreadyCompleted = migration.documentVersionsCompleted;
+  const total = alreadyCompleted + versions.length;
   await db
     .update(organizationEmbeddingMigrations)
     .set({
       status: "processing",
       jobId: input.jobId,
-      startedAt: new Date(),
-      documentVersionsTotal: versions.length,
-      documentVersionsCompleted: 0,
+      startedAt: migration.startedAt ?? new Date(),
+      documentVersionsTotal: total,
+      documentVersionsCompleted: alreadyCompleted,
     })
     .where(eq(organizationEmbeddingMigrations.id, migration.id));
   await db
     .update(backgroundJobs)
-    .set({ progressCurrent: 0, progressTotal: Math.max(1, versions.length) })
+    .set({
+      progressCurrent: alreadyCompleted,
+      progressTotal: Math.max(1, total),
+    })
     .where(eq(backgroundJobs.id, input.jobId));
 
   try {
@@ -625,16 +635,28 @@ export async function executeOrganizationReembeddingJob(
         bytes,
         embeddingProvider: provider,
       });
+      const completed = alreadyCompleted + index + 1;
       await db
         .update(organizationEmbeddingMigrations)
-        .set({ documentVersionsCompleted: index + 1 })
+        .set({ documentVersionsCompleted: completed })
         .where(eq(organizationEmbeddingMigrations.id, migration.id));
       await db
         .update(backgroundJobs)
-        .set({ progressCurrent: index + 1 })
+        .set({ progressCurrent: completed })
         .where(eq(backgroundJobs.id, input.jobId));
     }
   } catch (error) {
+    // An abort means the drain window closed or the request was cancelled, not
+    // that anything is wrong. Returning the migration to `pending` keeps it
+    // active for the concurrency guard and lets the next drain resume it;
+    // `failed` is reserved for genuine errors.
+    if (signal?.aborted) {
+      await db
+        .update(organizationEmbeddingMigrations)
+        .set({ status: "pending" })
+        .where(eq(organizationEmbeddingMigrations.id, migration.id));
+      throw error;
+    }
     await db
       .update(organizationEmbeddingMigrations)
       .set({
@@ -722,7 +744,16 @@ async function indexDocumentVersion(input: {
   const version = await db.query.documentVersions.findFirst({ where: { RAW: (table, operators) => eq(table.id, input.versionId) ?? operators.sql`true` } });
   if (!version) throw new Error("Document version not found");
   const startedAt = new Date();
-  await db.update(documentVersions).set({ indexingStatus: "processing", indexingStartedAt: startedAt }).where(eq(documentVersions.id, version.id));
+  // Re-indexing an already-succeeded version has to clear the terminal fields:
+  // document_versions_indexing_lifecycle_check requires indexingCompletedAt to
+  // be null while a version is pending or processing.
+  await db.update(documentVersions).set({
+    indexingStatus: "processing",
+    indexingStartedAt: startedAt,
+    indexingCompletedAt: null,
+    failureCode: null,
+    failureMessage: null,
+  }).where(eq(documentVersions.id, version.id));
   try {
     const parsed = await parseDocument(input.bytes, version.mimeType);
     const chunks = chunkExtractedPages(parsed.pages);

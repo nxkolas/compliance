@@ -7,6 +7,7 @@ import {
   getOrganizationSettings,
   updateOrganizationSettings,
 } from "@/src/server/organizations/settings-service";
+import { scheduleAfterResponseDrain } from "@/src/server/job-execution/after-response";
 
 type Context = { params: Promise<{ organizationId: string }> };
 
@@ -26,6 +27,10 @@ export const PATCH = apiRoute(async ({ request, routeContext, requestId }: { req
     values: await readJsonBody(request, organizationSettingsUpdateSchema),
     requestId,
   });
+  // Changing the AI provider enqueues a re-embedding job. This route answers
+  // 200, so it does not get the automatic 202 drain and must start one itself,
+  // exactly as the document-upload-complete route does.
+  scheduleAfterResponseDrain({ requestId });
   revalidatePath("/tool/organizations");
   revalidatePath(`/tool/organizations/${organizationId}`);
   revalidatePath(`/tool/organizations/${organizationId}/settings`);

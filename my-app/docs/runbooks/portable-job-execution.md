@@ -15,8 +15,27 @@ Stable job kinds are:
 - `action_plan_generation`
 - `report_render`
 - `document_indexing`
+- `organization_reembedding`
 - `legal_source_processing`
 - `maintenance_cleanup`
+
+## Enqueueing is not triggering
+
+Leasing is kind-agnostic — `leaseNextJob` selects across every kind — but a
+drain only *starts* when a request asks for one. `apiRoute` schedules an
+after-response drain automatically for any route returning **202**. A route that
+enqueues work and returns anything else must call `scheduleAfterResponseDrain`
+itself, or its job sits `queued` until some unrelated request happens to drain
+it.
+
+Two routes rely on the explicit call today, both answering 200 or 201:
+
+- `document-upload-sessions/[sessionId]/complete` (201) — `document_indexing`
+- `organizations/[organizationId]/settings` and `organizations/[organizationId]`
+  (200) — `organization_reembedding`
+
+When adding a job kind, check its entry point returns 202 or schedules a drain.
+`tests/api-job-wakeup.test.ts` pins both halves of this rule.
 
 The server-side job module exposes one enqueue command. Each command pairs a
 kind with its typed payload and required organization/requester scope. Callers
