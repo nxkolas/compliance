@@ -4,11 +4,14 @@ import {
   normalizeActionPlanCategoryResponse,
   type ActionPlanCategoryPolicy,
 } from "@/src/server/action-plans/generation-schema";
+import * as z from "zod";
 import {
+  ACTION_PLAN_GROUNDING_INSTRUCTION,
   ACTION_PLAN_PROMPT_VERSION,
   actionPlanPrompt,
   actionPlanRepairPrompt,
 } from "@/src/server/action-plans/prompt-contract";
+import { GAP_GROUNDING_INSTRUCTION } from "@/src/server/gap-analysis/grounding-instruction";
 
 const actionPolicy: ActionPlanCategoryPolicy = {
   requirementCode: "NIS2-GOV-01",
@@ -19,7 +22,7 @@ const actionPolicy: ActionPlanCategoryPolicy = {
     { key: "G1", kind: "uncertain" },
     { key: "G2", kind: "missing" },
   ],
-  admittedOrganizationCitationIds: [],
+  admittedOrganizationCitations: [],
   mandatoryCitationIdsByGapKey: {
     G1: ["Q:1", "LEGAL:1"],
     G2: ["Q:2", "LEGAL:1"],
@@ -68,7 +71,7 @@ describe("Action Plan contract prompt", () => {
 
     expect(prompt).toContain("verificationResult at most 18 words");
     expect(prompt).toContain("conditionalRemediation at most 16 words");
-    expect(ACTION_PLAN_PROMPT_VERSION).toBe("6");
+    expect(ACTION_PLAN_PROMPT_VERSION).toBe("7");
   });
 
   it("explains the objective raw-identifier issue without style gates", () => {
@@ -86,7 +89,47 @@ describe("Action Plan contract prompt", () => {
   });
 });
 
+describe("grounding instructions match what each schema can express", () => {
+  // The Action Plan schema exposes one citable field, an enum over organization
+  // documents. An instruction to cite legal authority is unsatisfiable there, and
+  // a model that takes it literally writes the citation into prose instead.
+  it("never asks the Action Plan to cite legal authority", () => {
+    expect(ACTION_PLAN_GROUNDING_INSTRUCTION).not.toMatch(/cite/iu);
+    expect(ACTION_PLAN_GROUNDING_INSTRUCTION).toContain(
+      "never name, quote, or reference it",
+    );
+  });
+
+  it("never asks Gap to cite legal authority either", () => {
+    expect(GAP_GROUNDING_INSTRUCTION).not.toMatch(/cite supplied legal/iu);
+    expect(GAP_GROUNDING_INSTRUCTION).toContain(
+      "assigned by the server",
+    );
+  });
+
+  // These described the pre-v7 batch root `{findings: {CODE: …}}`. Both contracts
+  // are category-scoped now and every call passes a single query unit.
+  it.each([
+    ["gap", GAP_GROUNDING_INSTRUCTION],
+    ["action plan", ACTION_PLAN_GROUNDING_INSTRUCTION],
+  ])("drops the stale batch-shape wording from %s", (_name, instruction) => {
+    expect(instruction).not.toContain("result property name");
+    expect(instruction).not.toContain("every query-unit ID");
+  });
+});
+
 describe("Action Plan contract schema", () => {
+  it("exposes recommendedArtifacts, not an evidence-named field", () => {
+    const schema = z.toJSONSchema(
+      buildActionPlanCategoryResponseSchema(actionPolicy),
+      { io: "input" },
+    );
+    const serialized = JSON.stringify(schema);
+
+    expect(serialized).toContain("recommendedArtifacts");
+    expect(serialized).not.toContain("suggestedEvidence");
+  });
+
   it("accepts natural verification and remediation prose without lexical style gates", () => {
     const result = normalizeActionPlanCategoryResponse({
       policy: actionPolicy,
@@ -99,7 +142,7 @@ describe("Action Plan contract schema", () => {
             verificationResult:
               "A defensible picture of privileged access now exists.",
             conditionalRemediation: null,
-            suggestedEvidence: ["Access landscape record"],
+            recommendedArtifacts: ["Access landscape record"],
             supportingOrganizationCitationIds: [],
           },
           {
@@ -108,7 +151,7 @@ describe("Action Plan contract schema", () => {
             title: "Shape a durable response process",
             result:
               "Teams share one operational path for handling security events.",
-            suggestedEvidence: ["Response process record"],
+            recommendedArtifacts: ["Response process record"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -131,7 +174,7 @@ describe("Action Plan contract schema", () => {
             gapKeys: ["G1"],
             title: "Map access",
             result: "The access landscape exists.",
-            suggestedEvidence: ["Access record"],
+            recommendedArtifacts: ["Access record"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -149,7 +192,7 @@ describe("Action Plan contract schema", () => {
               verificationTitle: "Map access",
               verificationResult: "The access landscape now exists.",
               conditionalRemediation: null,
-              suggestedEvidence: ["Access record"],
+              recommendedArtifacts: ["Access record"],
               supportingOrganizationCitationIds: [],
             },
           ],
@@ -172,7 +215,7 @@ describe("Action Plan contract schema", () => {
             gapKeys: ["G2"],
             title: "Shape a durable response process",
             result: "Teams share one operational path.",
-            suggestedEvidence: ["Response process record"],
+            recommendedArtifacts: ["Response process record"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -194,7 +237,7 @@ describe("Action Plan contract schema", () => {
               title: "Shape a durable response process",
               result:
                 "Review 00000000-0000-4000-8000-000000000099 before closing.",
-              suggestedEvidence: ["Response process record"],
+              recommendedArtifacts: ["Response process record"],
               supportingOrganizationCitationIds: [],
             },
           ],
@@ -224,7 +267,7 @@ describe("Action Plan contract schema", () => {
             verificationResult:
               "Die Wiederherstellbarkeit ist dokumentiert bewertet.",
             conditionalRemediation: "Backup-Strategie dokumentieren",
-            suggestedEvidence: ["Wiederherstellungstest"],
+            recommendedArtifacts: ["Wiederherstellungstest"],
             supportingOrganizationCitationIds: [],
           },
         ],
@@ -247,7 +290,7 @@ describe("Action Plan contract schema", () => {
             verificationTitle: "Map the present access landscape",
             verificationResult: "Privileged access is documented.",
             conditionalRemediation: "Restrict the remaining accounts",
-            suggestedEvidence: ["Access landscape record"],
+            recommendedArtifacts: ["Access landscape record"],
             supportingOrganizationCitationIds: [],
           },
         ],

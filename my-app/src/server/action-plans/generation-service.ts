@@ -36,7 +36,10 @@ import {
   type ActionPlanCategoryPolicy,
   type ActionPlanCategoryResponse,
 } from "./current-contract";
-import { buildActionPlanCategoryQuery } from "./prompt-contract";
+import {
+  ACTION_PLAN_GROUNDING_INSTRUCTION,
+  buildActionPlanCategoryQuery,
+} from "./prompt-contract";
 import {
   coordinateCategoryGeneration,
   generationCallAttemptIdentity,
@@ -407,14 +410,22 @@ export async function executeActionPlanGenerationJob(input: {
           };
         }),
         queryUnits: [queryUnit],
-        systemInstruction:
-          phase === "initial"
-            ? actionPlanPrompt(input.locale)
+        groundingInstruction: ACTION_PLAN_GROUNDING_INSTRUCTION,
+        systemInstruction: (context) => {
+          const hasOrganizationEvidence = context.some(
+            (candidate) =>
+              candidate.queryUnitId === category.requirement.code &&
+              candidate.channel === "organization_document",
+          );
+          return phase === "initial"
+            ? actionPlanPrompt(input.locale, { hasOrganizationEvidence })
             : actionPlanRepairPrompt({
                 locale: input.locale,
                 categoryCode: category.requirement.code,
                 issues: issues ?? [],
-              }),
+                hasOrganizationEvidence,
+              });
+        },
         outputContract: {
           schema(context) {
             responsePolicy = actionPlanPolicy(category, context, input.locale);
@@ -424,20 +435,28 @@ export async function executeActionPlanGenerationJob(input: {
           generatedProse(value) {
             return value.actions.flatMap((action) =>
               action.mode === "remediation"
-                ? [action.title, action.result, ...action.suggestedEvidence]
+                ? [action.title, action.result, ...action.recommendedArtifacts]
                 : [
                     action.verificationTitle,
                     action.verificationResult,
                     ...(action.conditionalRemediation
                       ? [action.conditionalRemediation]
                       : []),
-                    ...action.suggestedEvidence,
+                    ...action.recommendedArtifacts,
                   ],
             );
           },
           claims(value) {
             const policy =
               responsePolicy ?? actionPlanPolicy(category, contextByCategory.get(task.categoryCode) ?? [], input.locale);
+            // Raw model output still carries labels; claim validation compares
+            // against context citation IDs, so resolve them here too.
+            const citationIdByLabel = new Map(
+              policy.admittedOrganizationCitations.map((citation) => [
+                citation.label,
+                citation.citationId,
+              ]),
+            );
             return value.actions.map((action, index) => ({
               key: `action-plan:${task.categoryCode}:${index + 1}`,
               queryUnitId: task.categoryCode,
@@ -448,7 +467,12 @@ export async function executeActionPlanGenerationJob(input: {
                   ...action.gapKeys.flatMap(
                     (key) => policy.mandatoryCitationIdsByGapKey[key] ?? [],
                   ),
-                  ...action.supportingOrganizationCitationIds,
+                  ...action.supportingOrganizationCitationIds.flatMap(
+                    (label) => {
+                      const citationId = citationIdByLabel.get(label);
+                      return citationId ? [citationId] : [];
+                    },
+                  ),
                 ]),
               ],
               text:
@@ -720,9 +744,11 @@ function actionPlanPolicy(
       : "medium",
     outputLocale,
     gaps: category.gaps.map((gap) => ({ key: gap.key, kind: gap.row.kind })),
-    admittedOrganizationCitationIds: supplied
-      .filter((item) => item.channel === "organization_document")
-      .map((item) => item.citationId),
+    admittedOrganizationCitations: supplied.flatMap((item) =>
+      item.channel === "organization_document" && item.label
+        ? [{ label: item.label, citationId: item.citationId }]
+        : [],
+    ),
     mandatoryCitationIdsByGapKey: Object.fromEntries(
       category.gaps.map((gap) => {
         const questionnaire = supplied.find(

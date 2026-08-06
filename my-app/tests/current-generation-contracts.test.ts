@@ -15,9 +15,9 @@ import {
 } from "@/src/server/action-plans/current-contract";
 
 describe("current code-owned generation contracts", () => {
-  it("preserves the characterized Gap v13 definition and prompt behavior", () => {
+  it("preserves the characterized Gap v14 definition and prompt behavior", () => {
     expect(CURRENT_GAP_PROMPT_METADATA.templateHash).toBe(
-      "329e2fbeb9b9e9b5b17d11013488204f33829cacd5a4c1ef346ea14f145da2f9",
+      "dcb0031e55a4c927b6d27d58856b762650fa6e26335ac2064f9aa8b66b7fc2f3",
     );
     expect(currentGapContractDefinition.versionLabel).toBe("reliability-v8");
     expect(gapPrompt({ locale: "en", semanticContexts: [] })).toContain(
@@ -93,9 +93,9 @@ describe("current code-owned generation contracts", () => {
     ).toThrow();
   });
 
-  it("preserves the characterized Action Plan v6 prompt and owns a domain hash", () => {
+  it("preserves the characterized Action Plan v7 prompt and owns a domain hash", () => {
     expect(CURRENT_ACTION_PLAN_PROMPT_METADATA.templateHash).toBe(
-      "b977318ddbe274dc29555ee24c971d1802f9f8c29159a73621135a016b6d8627",
+      "b08c8ae86f3eb48560d874ccb17bdf3778b13c4174fee7d199a6e6bed8e7c7d4",
     );
     expect(actionPlanPrompt("en")).toContain(
       "verificationResult contains only the completed verification work and its documented outcome",

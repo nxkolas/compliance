@@ -5,10 +5,7 @@ import { db } from "@/src/db";
 import { aiProcessingRunContext, aiProcessingRuns } from "@/src/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { ApiError } from "../../api/errors";
-import {
-  GAP_GROUNDING_INSTRUCTION,
-  gapOutputLocaleInstruction,
-} from "@/src/server/gap-analysis/grounding-instruction";
+import { gapOutputLocaleInstruction } from "@/src/server/gap-analysis/grounding-instruction";
 import { buildGroundedPrompt } from "./context-builder";
 import {
   resolvePinnedLegalScope,
@@ -78,7 +75,18 @@ type GroundedOperationInput<T> = {
     excerpt: string;
   }>;
   queryUnits: QueryUnit[];
-  systemInstruction?: string;
+  /**
+   * Grounding rules for this operation. Required, and supplied per contract:
+   * an instruction that names an action the contract's schema cannot express
+   * has nowhere legitimate to land and leaks into prose instead.
+   */
+  groundingInstruction: string;
+  /**
+   * Resolved against the retrieved context so the prompt can describe only what
+   * this call actually contains. A prompt that explains a mechanism with no
+   * instances — labelled sources, say — invites decorative imitation.
+   */
+  systemInstruction?: string | ((context: GroundingContextItem[]) => string);
   outputContract: GroundedOutputContract<T>;
   idempotencyKey: string;
   generationReservationKey?: string;
@@ -275,8 +283,12 @@ export async function runGroundedOperation<T>(
   ];
   const schema = input.outputContract.schema(context);
   const prompt = buildGroundedPrompt(input.queryUnits, context);
-  prompt.system += ` ${GAP_GROUNDING_INSTRUCTION} ${gapOutputLocaleInstruction(input.outputLocale)}`;
-  if (input.systemInstruction) prompt.system += ` ${input.systemInstruction}`;
+  prompt.system += ` ${input.groundingInstruction} ${gapOutputLocaleInstruction(input.outputLocale)}`;
+  const systemInstruction =
+    typeof input.systemInstruction === "function"
+      ? input.systemInstruction(context)
+      : input.systemInstruction;
+  if (systemInstruction) prompt.system += ` ${systemInstruction}`;
   const renderedInputHash = createHash("sha256")
     .update(`${prompt.system}\n${prompt.prompt}`)
     .digest("hex");
@@ -585,7 +597,6 @@ function questionnaireContext(
     return {
       channel: "questionnaire_assertion",
       citationId: `Q:${assertion.queryUnitId}:${assertion.answerId}`,
-      label: `Q${index + 1}`,
       queryUnitId: assertion.queryUnitId,
       sourceId: assertion.answerId,
       excerpt: assertion.excerpt,
