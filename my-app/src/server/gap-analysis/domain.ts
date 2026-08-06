@@ -2,7 +2,7 @@ export type {
   AtomicGapKind,
   GapStatementBasis,
   ValidatedCategoryGapResult,
-} from "./generation-schema-v7";
+} from "./generation-schema";
 export {
   GAP_GROUNDING_INSTRUCTION,
   gapOutputLocaleInstruction,

@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { validateAtomicGapStatement } from "@/src/server/gap-analysis/gap-style";
-import { GAP_PROMPT_V7_TEMPLATE } from "@/src/server/gap-analysis/prompt-contract-v7";
 
 describe("atomic Gap statement style", () => {
-  it("states bilingual uncertainty wording in the model prompt", () => {
-    expect(GAP_PROMPT_V7_TEMPLATE).toContain("It is unclear whether");
-    expect(GAP_PROMPT_V7_TEMPLATE).toContain("Es ist unklar, ob");
-    expect(GAP_PROMPT_V7_TEMPLATE).toContain("nicht nachgewiesen");
+  it("accepts idiomatic German uncertainty wording", () => {
+    expect(
+      validateAtomicGapStatement({
+        statement:
+          "Es besteht Unsicherheit, ob Zugänge bei einem Austritt zeitnah gesperrt werden.",
+        kind: "uncertain",
+        locale: "de",
+      }),
+    ).toContain("Unsicherheit");
   });
 
   it("accepts a short standalone missing fact", () => {

@@ -1,5 +1,5 @@
 import type { GroundedClaim } from "../ai/grounding/types";
-import type { ValidatedCategoryGapResult } from "./generation-schema-v7";
+import type { ValidatedCategoryGapResult } from "./generation-schema";
 
 export function atomicGapGroundedClaims(
   findings: ValidatedCategoryGapResult[],

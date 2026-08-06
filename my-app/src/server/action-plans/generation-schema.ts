@@ -1,6 +1,11 @@
 import * as z from "zod";
+import {
+  GenerationContentValidationError,
+  normalizeOneLine,
+  normalizeUniqueStrings,
+  type NormalizationCode,
+} from "../ai/generation";
 import type { AtomicGapKind } from "../gap-analysis/domain";
-import { validateGeneratedAction } from "./action-style";
 
 export type ActionPlanCategoryPolicy = {
   requirementCode: string;
@@ -8,21 +13,29 @@ export type ActionPlanCategoryPolicy = {
   priority: "low" | "medium" | "high" | "critical";
   outputLocale: "de" | "en";
   gaps: Array<{ key: string; kind: AtomicGapKind }>;
-  permittedCitationIds: string[];
+  admittedOrganizationCitationIds: string[];
+  mandatoryCitationIdsByGapKey: Record<string, string[]>;
 };
 
-export type ActionPlanModelResponse = {
-  categories: Record<
-    string,
-    {
-      actions: Array<{
+export type ActionPlanCategoryResponse = {
+  actions: Array<
+    | {
+        mode: "remediation";
+        gapKeys: string[];
         title: string;
         result: string;
         suggestedEvidence: string[];
+        supportingOrganizationCitationIds: string[];
+      }
+    | {
+        mode: "verification";
         gapKeys: string[];
-        citations: string[];
-      }>;
-    }
+        verificationTitle: string;
+        verificationResult: string;
+        conditionalRemediation: string | null;
+        suggestedEvidence: string[];
+        supportingOrganizationCitationIds: string[];
+      }
   >;
 };
 
@@ -42,133 +55,208 @@ export type ValidatedActionPlanContent = {
   }>;
 };
 
-const nonblank = z.string().trim().min(1);
+const prose = z.string().trim().min(1);
 
-export function buildActionPlanResponseSchema(
-  policies: ActionPlanCategoryPolicy[],
-): z.ZodType<ActionPlanModelResponse> {
-  if (policies.length === 0) {
-    throw new Error("At least one Action Plan category policy is required");
-  }
-  const categories = Object.fromEntries(
-    policies.map((policy) => {
-      const gapKeys = policy.gaps.map((gap) => gap.key);
-      const citationIds = [...new Set(policy.permittedCitationIds)];
-      if (citationIds.length === 0) {
-        throw new Error(
-          `Category ${policy.requirementCode} has no admitted citations`,
-        );
-      }
-      const hasUncertainGap = policy.gaps.some(
-        (gap) => gap.kind === "uncertain",
-      );
-      const citation = z.enum(citationIds as [string, ...string[]]);
-      const operationalProse =
-        "Use clear, correctly spelled operational prose in the pinned locale. Do not mention NIS2, BSI law, statutes, legal obligations, regulatory requirements, articles, or other legal analysis.";
-      const actionSchema = z
+export function buildActionPlanCategoryResponseSchema(
+  policy: ActionPlanCategoryPolicy,
+): z.ZodType<ActionPlanCategoryResponse> {
+  const confirmed = policy.gaps
+    .filter((gap) => gap.kind !== "uncertain")
+    .map((gap) => gap.key);
+  const uncertain = policy.gaps
+    .filter((gap) => gap.kind === "uncertain")
+    .map((gap) => gap.key);
+  const optionalCitations =
+    policy.admittedOrganizationCitationIds.length > 0
+      ? z.array(
+          z.enum(
+            policy.admittedOrganizationCitationIds as [string, ...string[]],
+          ),
+        )
+      : z.array(z.string()).max(0);
+  const common = {
+    suggestedEvidence: z.array(prose.max(240)).min(1).max(5),
+    supportingOrganizationCitationIds: optionalCitations,
+  };
+  const variants: z.ZodType[] = [];
+  if (confirmed.length > 0) {
+    variants.push(
+      z
         .object({
-          title: hasUncertainGap
-            ? nonblank.describe(
-                `For uncertain gaps, use a verification-first imperative title. In German, a title ending in prüfen, klären, feststellen, ermitteln, or überprüfen is valid. ${operationalProse}`,
-              )
-            : nonblank.describe(
-                `Use a short imperative title. ${operationalProse}`,
-              ),
-          result: hasUncertainGap
-            ? nonblank.describe(
-                `For uncertain gaps, describe the completed verification state first. Verification-only is valid. If remediation is included, condition it explicitly on an identified deficiency, for example "Nur bei festgestellten Mängeln ..." or "Falls eine Lücke festgestellt wird, ...". Vague conditions such as "falls nötig", "bei Bedarf", or "ggf." are invalid. ${operationalProse}`,
-              )
-            : nonblank.describe(
-                `Describe the completed operational state in one or two sentences. ${operationalProse}`,
-              ),
-          suggestedEvidence: z
-            .array(
-              nonblank.describe(
-                `Use a concrete, correctly spelled artifact name. ${operationalProse}`,
-              ),
-            )
-            .min(1)
-            .max(5),
-          gapKeys: z.array(z.enum(gapKeys as [string, ...string[]])).min(1),
-          citations: z.array(citation).min(1),
+          mode: z.literal("remediation"),
+          gapKeys: z.array(z.enum(confirmed as [string, ...string[]])).min(1),
+          title: prose.max(240),
+          result: prose.max(1_000),
+          ...common,
         })
-        .strict()
-        .superRefine((action, context) => {
-          const gapKinds = action.gapKeys.map((key) => {
-            const gap = policy.gaps.find((candidate) => candidate.key === key);
-            if (!gap) throw new Error(`Unknown gap key ${key}`);
-            return gap.kind;
-          });
-          try {
-            validateGeneratedAction({
-              title: action.title,
-              result: action.result,
-              suggestedEvidence: action.suggestedEvidence,
-              locale: policy.outputLocale,
-              gapKinds,
-            });
-          } catch (error) {
-            context.addIssue({
-              code: "custom",
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "Generated action content is invalid",
-            });
-          }
-        });
-      const actions =
-        gapKeys.length === 0
-          ? z.array(z.never()).length(0)
-          : z.array(actionSchema).min(1).max(10);
-      return [
-        policy.requirementCode,
-        z
-          .object({ actions })
-          .strict()
-          .superRefine((category, context) => {
-            const covered = new Set(
-              category.actions.flatMap((action) => action.gapKeys),
-            );
-            const missing = gapKeys.filter((key) => !covered.has(key));
-            if (missing.length > 0) {
-              context.addIssue({
-                code: "custom",
-                path: ["actions"],
-                message: `Action coverage is missing gaps: ${missing.join(", ")}`,
-              });
-            }
-          }),
-      ];
-    }),
-  );
+        .strict(),
+    );
+  }
+  if (uncertain.length > 0) {
+    variants.push(
+      z
+        .object({
+          mode: z.literal("verification"),
+          gapKeys: z.array(z.enum(uncertain as [string, ...string[]])).min(1),
+          verificationTitle: prose.max(240),
+          verificationResult: prose.max(1_000),
+          conditionalRemediation: prose.max(500).nullable(),
+          ...common,
+        })
+        .strict(),
+    );
+  }
+  const action: z.ZodType<ActionPlanCategoryResponse["actions"][number]> =
+    variants.length === 1
+      ? (variants[0]! as z.ZodType<
+          ActionPlanCategoryResponse["actions"][number]
+        >)
+      : z.union(
+          variants as [
+            z.ZodType<ActionPlanCategoryResponse["actions"][number]>,
+            z.ZodType<ActionPlanCategoryResponse["actions"][number]>,
+          ],
+        );
   return z
-    .object({ categories: z.object(categories).strict() })
-    .strict() as z.ZodType<ActionPlanModelResponse>;
+    .object({ actions: z.array(action).min(1).max(10) })
+    .strict() as z.ZodType<ActionPlanCategoryResponse>;
 }
 
-export function normalizeActionPlanResponse(input: {
-  value: ActionPlanModelResponse;
-  policies: ActionPlanCategoryPolicy[];
-}): ValidatedActionPlanContent {
-  const value = buildActionPlanResponseSchema(input.policies).parse(
-    input.value,
+export function normalizeActionPlanCategoryResponse(input: {
+  value: ActionPlanCategoryResponse;
+  policy: ActionPlanCategoryPolicy;
+}): {
+  value: ValidatedActionPlanContent["categories"][number];
+  normalizationCodes: NormalizationCode[];
+} {
+  const codes = new Set<NormalizationCode>();
+  const normalized = {
+    actions: input.value.actions.map((action) => {
+      const title = normalizeOneLine(
+        action.mode === "remediation" ? action.title : action.verificationTitle,
+      );
+      const result = normalizeOneLine(
+        action.mode === "remediation"
+          ? action.result
+          : action.verificationResult,
+        { finalPeriod: true },
+      );
+      const evidence = normalizeUniqueStrings(
+        action.suggestedEvidence,
+        input.policy.outputLocale,
+      );
+      const optional = normalizeUniqueStrings(
+        action.supportingOrganizationCitationIds,
+        input.policy.outputLocale,
+      );
+      [
+        ...title.codes,
+        ...result.codes,
+        ...evidence.codes,
+        ...optional.codes,
+      ].forEach((code) => codes.add(code));
+      return action.mode === "remediation"
+        ? {
+            ...action,
+            title: title.value,
+            result: result.value,
+            suggestedEvidence: evidence.value,
+            supportingOrganizationCitationIds: optional.value,
+          }
+        : {
+            ...action,
+            verificationTitle: title.value,
+            verificationResult: result.value,
+            conditionalRemediation: action.conditionalRemediation
+              ? normalizeOneLine(action.conditionalRemediation).value
+              : null,
+            suggestedEvidence: evidence.value,
+            supportingOrganizationCitationIds: optional.value,
+          };
+    }),
+  } as ActionPlanCategoryResponse;
+  const parsed = buildActionPlanCategoryResponseSchema(input.policy).parse(
+    normalized,
   );
+  const covered = new Set(parsed.actions.flatMap((action) => action.gapKeys));
+  if (input.policy.gaps.some((gap) => !covered.has(gap.key))) {
+    throw new GenerationContentValidationError([
+      { code: "coverage_incomplete", path: ["actions"] },
+    ]);
+  }
+  const actions = parsed.actions.map((action, index) => {
+    const title =
+      action.mode === "remediation" ? action.title : action.verificationTitle;
+    const baseResult =
+      action.mode === "remediation" ? action.result : action.verificationResult;
+    const conditional =
+      action.mode === "verification" && action.conditionalRemediation
+        ? renderConditionalRemediation(
+            action.conditionalRemediation,
+            input.policy.outputLocale,
+          )
+        : null;
+    const result = conditional ? `${baseResult} ${conditional}` : baseResult;
+    assertSafeProse(title, ["actions", index, "title"]);
+    assertSafeProse(result, ["actions", index, "result"]);
+    action.suggestedEvidence.forEach((value, evidenceIndex) =>
+      assertSafeProse(value, [
+        "actions",
+        index,
+        "suggestedEvidence",
+        evidenceIndex,
+      ]),
+    );
+    return {
+      title,
+      result,
+      suggestedEvidence: action.suggestedEvidence,
+      priority: input.policy.priority,
+      position: index + 1,
+      gapKeys: [...new Set(action.gapKeys)],
+      citationIds: [
+        ...new Set([
+          ...action.gapKeys.flatMap(
+            (key) => input.policy.mandatoryCitationIdsByGapKey[key] ?? [],
+          ),
+          ...action.supportingOrganizationCitationIds,
+        ]),
+      ],
+    };
+  });
   return {
-    categories: input.policies.map((policy) => ({
-      requirementCode: policy.requirementCode,
-      sourceFindingId: policy.sourceFindingId,
-      actions: value.categories[policy.requirementCode]!.actions.map(
-        (action, index) => ({
-          title: action.title,
-          result: action.result,
-          suggestedEvidence: action.suggestedEvidence,
-          priority: policy.priority,
-          position: index + 1,
-          gapKeys: [...new Set(action.gapKeys)],
-          citationIds: [...new Set(action.citations)],
-        }),
-      ),
-    })),
+    value: {
+      requirementCode: input.policy.requirementCode,
+      sourceFindingId: input.policy.sourceFindingId,
+      actions,
+    },
+    normalizationCodes: [...codes],
   };
+}
+
+export function renderConditionalRemediation(
+  content: string,
+  locale: "de" | "en",
+) {
+  const normalized = normalizeOneLine(content, { finalPeriod: true }).value;
+  return locale === "de"
+    ? `Falls die Prüfung einen Mangel ergibt, ${normalized}`
+    : `If verification identifies a deficiency, ${lowercaseFirst(normalized)}`;
+}
+
+function lowercaseFirst(value: string) {
+  return value ? value[0]!.toLocaleLowerCase() + value.slice(1) : value;
+}
+
+function assertSafeProse(value: string, path: Array<string | number>) {
+  if (
+    /\b(?:https?:\/\/|www\.)\S+/iu.test(value) ||
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu.test(
+      value,
+    )
+  ) {
+    throw new GenerationContentValidationError([
+      { code: "action_raw_identifier", path },
+    ]);
+  }
 }

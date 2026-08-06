@@ -1,12 +1,16 @@
 import { contentHash } from "@/src/server/compliance/domain";
 import type { GenerationIssueCode } from "../ai/generation";
-import type { GapStatementSemanticContext } from "./generation-schema-v12";
+import type {
+  GapCategoryStatus,
+  GapStatementBasis,
+  GapStatementSemanticContext,
+} from "./generation-schema";
 
-export const GAP_PROMPT_V12_NAME = "nis2_atomic_gap_analysis";
-export const GAP_PROMPT_V12_VERSION = "12";
-export const GAP_RESPONSE_SCHEMA_V12_VERSION = "12";
+export const GAP_PROMPT_NAME = "nis2_atomic_gap_analysis";
+export const GAP_PROMPT_VERSION = "12";
+export const GAP_RESPONSE_SCHEMA_VERSION = "12";
 
-export function gapPromptV12(input: {
+export function gapPrompt(input: {
   locale: "de" | "en";
   semanticContexts: GapStatementSemanticContext[];
 }) {
@@ -34,16 +38,16 @@ ${JSON.stringify(input.semanticContexts)}
 Return only the strict response object.`;
 }
 
-export const GAP_PROMPT_V12_TEMPLATE = gapPromptV12({
+export const GAP_PROMPT_TEMPLATE = gapPrompt({
   locale: "en",
   semanticContexts: [],
 });
-export const GAP_PROMPT_V12_TEMPLATE_HASH = contentHash({
-  en: gapPromptV12({ locale: "en", semanticContexts: [] }),
-  de: gapPromptV12({ locale: "de", semanticContexts: [] }),
+export const GAP_PROMPT_TEMPLATE_HASH = contentHash({
+  en: gapPrompt({ locale: "en", semanticContexts: [] }),
+  de: gapPrompt({ locale: "de", semanticContexts: [] }),
 });
 
-export function gapRepairPromptV12(input: {
+export function gapRepairPrompt(input: {
   locale: "de" | "en";
   categoryCode: string;
   semanticContexts: GapStatementSemanticContext[];
@@ -52,7 +56,7 @@ export function gapRepairPromptV12(input: {
     path: Array<string | number>;
   }>;
 }) {
-  return `${gapPromptV12({
+  return `${gapPrompt({
     locale: input.locale,
     semanticContexts: input.semanticContexts,
   })}
@@ -61,4 +65,72 @@ Return the complete corrected category object. Preserve valid structured facts a
 ${JSON.stringify(input.issues.map(({ code, path }) => ({ code, path })))}
 url_forbidden means remove every URL from the named prose field. raw_identifier means remove every UUID, database key, citation ID, or raw internal identifier from the named prose field.
 Do not alter category identity, trigger keys, cardinality, citations, locale, or other server-owned facts.`;
+}
+
+export function buildAtomicGapQuery(input: {
+  requirement: {
+    code: string;
+    title: string;
+    requirementText: string;
+  };
+  policy: {
+    status: GapCategoryStatus;
+    statementBasis: GapStatementBasis;
+  };
+  questions: Array<{ stableKey: string; text: string }>;
+  reviewCorrection?: {
+    reason: string;
+    resolutionReason?: string;
+  };
+}) {
+  const questionText = new Map(
+    input.questions.map((question) => [question.stableKey, question.text]),
+  );
+  return JSON.stringify({
+    requirement: input.requirement,
+    serverOwnedPolicy: {
+      status: input.policy.status,
+      triggeringQuestions: input.policy.statementBasis.triggeringQuestions.map(
+        (trigger) => ({
+          stableKey: trigger.stableKey,
+          text: questionText.get(trigger.stableKey),
+          kind: trigger.kind,
+        }),
+      ),
+      satisfiedQuestionStableKeys:
+        input.policy.statementBasis.satisfiedQuestionStableKeys,
+      ...(input.reviewCorrection
+        ? {
+            humanReviewAdjudication: {
+              correctionReason: input.reviewCorrection.reason,
+              resolutionReason: input.reviewCorrection.resolutionReason ?? null,
+            },
+          }
+        : {}),
+    },
+  });
+}
+
+export function buildAtomicGapRetrievalQuery(input: {
+  requirement: { title: string; requirementText: string };
+  triggerQuestionTexts: string[];
+  preferredMappedLegalProvisionKeys: string[];
+}) {
+  return [
+    ...input.triggerQuestionTexts,
+    input.requirement.title,
+    input.requirement.requirementText,
+    ...input.preferredMappedLegalProvisionKeys,
+  ].join("\n");
+}
+
+export function buildAtomicGapOrganizationRetrievalQuery(input: {
+  requirement: { title: string; requirementText: string };
+  categoryQuestionTexts: string[];
+}) {
+  return [
+    ...input.categoryQuestionTexts,
+    input.requirement.title,
+    input.requirement.requirementText,
+  ].join("\n");
 }

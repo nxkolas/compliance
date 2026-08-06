@@ -4,13 +4,27 @@ import {
   GenerationContentValidationError,
   normalizeOneLine,
   normalizeUniqueStrings,
+  type GenerationIssueCode,
   type NormalizationCode,
 } from "../ai/generation";
-import type {
-  AtomicGapKind,
-  GapStatementBasis,
-  ValidatedCategoryGapResult,
-} from "./generation-schema-v7";
+
+export type AtomicGapKind = "missing" | "partial" | "uncertain";
+
+export type GapStatementBasis = {
+  version: "1";
+  triggeringQuestions: Array<{
+    stableKey: string;
+    sourceAssessmentAnswerId: string;
+    kind: AtomicGapKind;
+  }>;
+  satisfiedQuestionStableKeys: string[];
+};
+
+export type GapCategoryStatus =
+  | "fulfilled"
+  | "partially_fulfilled"
+  | "not_fulfilled"
+  | "insufficient_evidence";
 
 export type GapStatementSemanticContext = {
   locale: "de" | "en";
@@ -21,7 +35,7 @@ export type GapStatementSemanticContext = {
   expectedKind: "missing" | "partial" | "uncertain";
 };
 
-export type GapResponsePolicyV9 = {
+export type GapResponsePolicy = {
   requirementCode: string;
   outputLocale: "de" | "en";
   statementBasis: GapStatementBasis;
@@ -34,7 +48,7 @@ export type GapResponsePolicyV9 = {
   forcedRequiresReview?: boolean;
 };
 
-export type GapCategoryResponseV9 = {
+export type GapCategoryResponse = {
   gaps: Record<
     string,
     Array<{
@@ -47,13 +61,186 @@ export type GapCategoryResponseV9 = {
   assumptions: string[];
   contradictions: string[];
   requiresReview: boolean;
+  conflictingOrganizationCitationIds: string[];
 };
+
+export type ValidatedCategoryGapResult = {
+  requirementCode: string;
+  statementBasis: GapStatementBasis;
+  statementBasisHash: string;
+  evidenceSufficiency: "sufficient" | "partial" | "none";
+  gaps: Array<{
+    questionStableKey: string;
+    sourceAssessmentAnswerId: string;
+    kind: AtomicGapKind;
+    statement: string;
+    citationIds: string[];
+  }>;
+  reviewNotice: string | null;
+  assumptions: string[];
+  citationIds: string[];
+  contradictions: string[];
+  conflictingOrganizationCitationIds?: string[];
+  requiresReview: boolean;
+  legalCitationId: string;
+};
+
+/** The response shape before the conflicting-citation field is layered on. */
+type GapCategoryResponseBase = Omit<
+  GapCategoryResponse,
+  "conflictingOrganizationCitationIds"
+>;
 
 const nonblank = z.string().trim().min(1);
 
-export function buildGapCategoryResponseSchemaV9(
-  policy: GapResponsePolicyV9,
-): z.ZodType<GapCategoryResponseV9> {
+export function deriveAtomicGapKind(
+  stableValue:
+    | "fully_implemented"
+    | "partially_implemented"
+    | "not_implemented"
+    | "unsure"
+    | "not_applicable",
+  allNotApplicable: boolean,
+): AtomicGapKind {
+  if (stableValue === "not_implemented") return "missing";
+  if (stableValue === "partially_implemented") return "partial";
+  if (stableValue === "unsure") return "uncertain";
+  if (stableValue === "not_applicable" && allNotApplicable) {
+    return "uncertain";
+  }
+  throw new Error(`${stableValue} is not a triggering Gap answer`);
+}
+
+export function defaultGapStatementMaximum(
+  trigger: { splittable?: boolean; maximumStatements?: number },
+) {
+  if (!trigger.splittable) return 1;
+  const maximum = trigger.maximumStatements ?? 1;
+  if (!Number.isInteger(maximum) || maximum < 2 || maximum > 5) {
+    throw new Error("Splittable Gap statement maximum must be between 2 and 5");
+  }
+  return maximum;
+}
+
+export function buildGapCategoryResponseSchema(
+  policy: GapResponsePolicy,
+): z.ZodType<GapCategoryResponse> {
+  const organizationCitation = policy.admittedOrganizationCitationIds.length
+    ? z.enum(policy.admittedOrganizationCitationIds as [string, ...string[]])
+    : z.string().max(0);
+  const schema = buildGapCategoryBaseSchema(policy)
+    .extend({
+      conflictingOrganizationCitationIds: z.array(organizationCitation),
+    })
+    .superRefine((untypedValue, context) => {
+      const value = untypedValue as GapCategoryResponse;
+      const conflicts = value.conflictingOrganizationCitationIds;
+      if (new Set(conflicts).size !== conflicts.length) {
+        context.addIssue({
+          code: "custom",
+          path: ["conflictingOrganizationCitationIds"],
+          message: "Conflicting organization citation IDs must be unique",
+        });
+      }
+      if (value.requiresReview && conflicts.length === 0) {
+        context.addIssue({
+          code: "custom",
+          path: ["conflictingOrganizationCitationIds"],
+          message: "Review-required findings must identify an exact conflict",
+        });
+      }
+      if (!value.requiresReview && conflicts.length > 0) {
+        context.addIssue({
+          code: "custom",
+          path: ["conflictingOrganizationCitationIds"],
+          message: "Non-review findings cannot identify conflicting citations",
+        });
+      }
+    });
+  return schema as unknown as z.ZodType<GapCategoryResponse>;
+}
+
+export function normalizeGapCategoryResponse(input: {
+  value: GapCategoryResponse;
+  policy: GapResponsePolicy;
+}) {
+  const { conflictingOrganizationCitationIds, ...baseValue } = input.value;
+
+  // Objective prose safety runs against the raw model text, before whitespace
+  // normalization, so a URL or UUID surfaces as its own targeted issue code
+  // rather than the generic content_invalid backstop further down.
+  for (const [stableKey, gaps] of Object.entries(baseValue.gaps)) {
+    gaps.forEach((gap, index) =>
+      assertObjectiveSafeProse(gap.statement, [
+        "gaps",
+        stableKey,
+        index,
+        "statement",
+      ]),
+    );
+  }
+  if (baseValue.reviewNotice) {
+    assertObjectiveSafeProse(baseValue.reviewNotice, ["reviewNotice"]);
+  }
+  baseValue.assumptions.forEach((value, index) =>
+    assertObjectiveSafeProse(value, ["assumptions", index]),
+  );
+  baseValue.contradictions.forEach((value, index) =>
+    assertObjectiveSafeProse(value, ["contradictions", index]),
+  );
+
+  const normalized = normalizeBaseCategoryResponse({
+    value: baseValue,
+    policy: input.policy,
+  });
+
+  if (
+    normalized.value.contradictions.length === 0 &&
+    normalized.value.requiresReview
+  ) {
+    if (conflictingOrganizationCitationIds.length > 0) {
+      throw new GenerationContentValidationError([
+        {
+          code: "content_invalid",
+          path: ["conflictingOrganizationCitationIds"],
+        },
+      ]);
+    }
+    return {
+      ...normalized,
+      value: {
+        ...normalized.value,
+        reviewNotice: null,
+        requiresReview: false,
+        conflictingOrganizationCitationIds: [],
+      },
+      normalizationCodes: [
+        ...normalized.normalizationCodes,
+        "normalized_review_without_contradiction" as const,
+      ],
+    };
+  }
+
+  const parsed = buildGapCategoryResponseSchema(input.policy).parse(
+    input.value,
+  ) as GapCategoryResponse;
+  return {
+    ...normalized,
+    value: {
+      ...normalized.value,
+      citationIds: [
+        ...new Set([
+          ...normalized.value.citationIds,
+          ...parsed.conflictingOrganizationCitationIds,
+        ]),
+      ],
+      conflictingOrganizationCitationIds:
+        parsed.conflictingOrganizationCitationIds,
+    },
+  };
+}
+
+function buildGapCategoryBaseSchema(policy: GapResponsePolicy) {
   assertSemanticContext(policy);
   const organizationCitations =
     policy.admittedOrganizationCitationIds.length > 0
@@ -107,18 +294,18 @@ export function buildGapCategoryResponseSchemaV9(
           ? z.boolean()
           : z.literal(policy.forcedRequiresReview),
     })
-    .strict() as z.ZodType<GapCategoryResponseV9>;
+    .strict();
 }
 
-export function normalizeGapCategoryResponseV9(input: {
-  value: GapCategoryResponseV9;
-  policy: GapResponsePolicyV9;
+function normalizeBaseCategoryResponse(input: {
+  value: GapCategoryResponseBase;
+  policy: GapResponsePolicy;
 }): {
   value: ValidatedCategoryGapResult;
   normalizationCodes: NormalizationCode[];
 } {
   const codes = new Set<NormalizationCode>();
-  const normalized: GapCategoryResponseV9 = {
+  const normalized: GapCategoryResponseBase = {
     ...input.value,
     gaps: Object.fromEntries(
       Object.entries(input.value.gaps).map(([key, gaps]) => [
@@ -152,9 +339,7 @@ export function normalizeGapCategoryResponseV9(input: {
       input.policy.outputLocale,
     ).value,
   };
-  const parsed = buildGapCategoryResponseSchemaV9(input.policy).parse(
-    normalized,
-  );
+  const parsed = buildGapCategoryBaseSchema(input.policy).parse(normalized);
   if (parsed.requiresReview !== Boolean(parsed.reviewNotice)) {
     throw new GenerationContentValidationError([
       { code: "review_notice_state", path: ["requiresReview"] },
@@ -235,7 +420,7 @@ export function normalizeGapCategoryResponseV9(input: {
   };
 }
 
-function assertSemanticContext(policy: GapResponsePolicyV9) {
+function assertSemanticContext(policy: GapResponsePolicy) {
   for (const trigger of policy.statementBasis.triggeringQuestions) {
     const context = policy.semanticContextByQuestion[trigger.stableKey];
     if (
@@ -252,6 +437,26 @@ function assertSemanticContext(policy: GapResponsePolicyV9) {
   }
 }
 
+/** Targeted URL/identifier rejection, reported as its own repairable code. */
+function assertObjectiveSafeProse(
+  value: string,
+  path: Array<string | number>,
+) {
+  const code: GenerationIssueCode | null = /\b(?:https?:\/\/|www\.)\S+/iu.test(
+    value,
+  )
+    ? "url_forbidden"
+    : /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu.test(
+          value,
+        )
+      ? "raw_identifier"
+      : null;
+  if (code) {
+    throw new GenerationContentValidationError([{ code, path }]);
+  }
+}
+
+/** Backstop for prose that only becomes unsafe after normalization. */
 function assertSafeProse(value: string, path: Array<string | number>) {
   if (
     /\b(?:https?:\/\/|www\.)\S+/iu.test(value) ||
@@ -264,5 +469,3 @@ function assertSafeProse(value: string, path: Array<string | number>) {
     ]);
   }
 }
-
-export type { AtomicGapKind };

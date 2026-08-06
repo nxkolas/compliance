@@ -163,12 +163,31 @@ To check the real context window, use `/api/ps` (the loaded slot) rather than
 `AI_GROUNDED_MAX_OUTPUT_TOKENS` has to fit inside it alongside the prompt. Raise
 Ollama's side with `OLLAMA_CONTEXT_LENGTH` and restart the service.
 
-Expect slow generations. Qwen3.5 is a thinking model, and
-`getGenerationOptions` disables thinking through `extra_body.chat_template_kwargs`,
-which is a vLLM parameter that Ollama ignores — so reasoning tokens are still
-generated and counted against the output budget. A small structured generation
-takes roughly 20 seconds. Keep `AI_PROVIDER_MAX_CONCURRENCY=1` locally, since
-Ollama serialises requests by default and the queue wait is charged to the job.
+Qwen3.5 is a thinking model. `getGenerationOptions` turns thinking off with
+`reasoning_effort: "none"`, which is the only form Ollama honours — it also sends
+vLLM's `extra_body.chat_template_kwargs`, which Ollama ignores. If reasoning is
+ever re-enabled by accident the symptom is distinctive: the response carries a
+populated `reasoning` field, an empty `content`, and `finish_reason: "length"`,
+because the model spends the whole `AI_GROUNDED_MAX_OUTPUT_TOKENS` budget
+thinking. Generation then fails as `GENERATION_TERMINAL` rather than as a schema
+error, since there is no JSON to reject — so it gets no retry and no repair pass.
+
+To check the flag is still working:
+
+```powershell
+$body = @{ model = "qwen3.5:9b-q4_K_M"; reasoning_effort = "none"; max_tokens = 300
+  messages = @(@{ role = "user"; content = "Reply with JSON: {\"ok\":true}" }) } | ConvertTo-Json -Depth 6
+$r = Invoke-RestMethod -Method Post http://127.0.0.1:11434/v1/chat/completions -ContentType application/json -Body $body
+"finish={0} tokens={1} contentLen={2}" -f $r.choices[0].finish_reason, $r.usage.completion_tokens, $r.choices[0].message.content.Length
+```
+
+`finish=stop` with a non-zero `contentLen` is healthy. `finish=length` with
+`contentLen=0` means thinking is back on.
+
+Expect slow generations regardless. Keep `AI_PROVIDER_MAX_CONCURRENCY=1` locally,
+since Ollama serialises requests by default and the queue wait is charged to the
+job. `AI_PROVIDER_TIMEOUT_MS` defaults to 120s, which a local model can exceed on
+a normal category; 300000 is the ceiling `providerTimeoutMs` will accept.
 
 ## Reverting
 

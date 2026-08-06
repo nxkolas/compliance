@@ -1,25 +1,25 @@
 import { contentHash } from "@/src/server/compliance";
 import {
-  ACTION_PLAN_PROMPT_V6_NAME,
-  ACTION_PLAN_PROMPT_V6_TEMPLATE,
-  ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
-  ACTION_PLAN_PROMPT_V6_VERSION,
-  ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION,
-  actionPlanPromptV6,
-  actionPlanRepairPromptV6,
-} from "../ai/generation/action-plan-v6-contract";
+  ACTION_PLAN_PROMPT_NAME,
+  ACTION_PLAN_PROMPT_TEMPLATE,
+  ACTION_PLAN_PROMPT_TEMPLATE_HASH,
+  ACTION_PLAN_PROMPT_VERSION,
+  ACTION_PLAN_RESPONSE_SCHEMA_VERSION,
+  actionPlanPrompt,
+  actionPlanRepairPrompt,
+} from "./prompt-contract";
 import {
-  buildActionPlanCategoryResponseSchemaV5,
-  normalizeActionPlanCategoryResponseV5,
-  type ActionPlanCategoryPolicyV5,
-  type ActionPlanCategoryResponseV5,
-} from "./generation-schema-v5";
+  buildActionPlanCategoryResponseSchema,
+  normalizeActionPlanCategoryResponse,
+  type ActionPlanCategoryPolicy,
+  type ActionPlanCategoryResponse,
+} from "./generation-schema";
 
 export const CURRENT_ACTION_PLAN_PROMPT_METADATA = {
-  name: ACTION_PLAN_PROMPT_V6_NAME,
-  version: ACTION_PLAN_PROMPT_V6_VERSION,
-  templateHash: ACTION_PLAN_PROMPT_V6_TEMPLATE_HASH,
-  responseSchemaVersion: ACTION_PLAN_RESPONSE_SCHEMA_V6_VERSION,
+  name: ACTION_PLAN_PROMPT_NAME,
+  version: ACTION_PLAN_PROMPT_VERSION,
+  templateHash: ACTION_PLAN_PROMPT_TEMPLATE_HASH,
+  responseSchemaVersion: ACTION_PLAN_RESPONSE_SCHEMA_VERSION,
 } as const;
 
 export const actionPlanDefinitionHash = contentHash({
@@ -32,13 +32,12 @@ export const actionPlanDefinitionHash = contentHash({
   },
 });
 
-export const actionPlanPrompt = actionPlanPromptV6;
-export const actionPlanRepairPrompt = actionPlanRepairPromptV6;
-export const ACTION_PLAN_PROMPT_TEMPLATE = ACTION_PLAN_PROMPT_V6_TEMPLATE;
-export const buildActionPlanCategoryResponseSchema =
-  buildActionPlanCategoryResponseSchemaV5;
-export const normalizeActionPlanCategoryResponse =
-  normalizeActionPlanCategoryResponseV5;
+export {
+  ACTION_PLAN_PROMPT_TEMPLATE,
+  actionPlanPrompt,
+  actionPlanRepairPrompt,
+  buildActionPlanCategoryResponseSchema,
+  normalizeActionPlanCategoryResponse,
+};
 
-export type ActionPlanCategoryPolicy = ActionPlanCategoryPolicyV5;
-export type ActionPlanCategoryResponse = ActionPlanCategoryResponseV5;
+export type { ActionPlanCategoryPolicy, ActionPlanCategoryResponse };
