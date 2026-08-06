@@ -1,6 +1,15 @@
 import type * as z from "zod";
 
-export type GroundingChannel = "legal" | "organization_document" | "questionnaire_assertion";
+export type GroundingChannel =
+  | "legal"
+  | "organization_document"
+  | "questionnaire_assertion"
+  /**
+   * Authored best-practice guidance. Read-only background describing what good
+   * looks like — never evidence about the organization, so it cannot be a
+   * contradiction and never carries a label the model could cite.
+   */
+  | "guidance";
 
 export type GroundingContextItem = {
   channel: GroundingChannel;

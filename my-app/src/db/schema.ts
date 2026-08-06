@@ -1114,6 +1114,92 @@ export const legalProvisionChunkBindings = pgTable.withRLS(
   ],
 );
 
+/**
+ * Authored best-practice guidance, global rather than per organization.
+ *
+ * Deliberately much lighter than the legal corpus: no versions, renditions,
+ * processing generations, snapshots, authority tiers or translation status.
+ * Those exist to prove which law, in which official translation, was in force
+ * on a given date. Guidance makes no such claim — it explains what good looks
+ * like, so a content hash plus a reviewed binding is the whole provenance
+ * requirement.
+ *
+ * `licence` and `attribution` are not decorative. ENISA material is CC BY 4.0,
+ * which permits commercial reuse only with credit, so the terms travel with the
+ * content rather than living in a README.
+ */
+export const guidanceSources = pgTable.withRLS(
+  "guidance_sources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    publisher: text("publisher").notNull(),
+    version: text("version").notNull(),
+    url: text("url").notNull(),
+    licence: text("licence").notNull(),
+    attribution: text("attribution").notNull(),
+    language: varchar("language", { length: 5 }).notNull(),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull(),
+    contentHash: text("content_hash").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [uniqueIndex("guidance_sources_slug_unique").on(table.slug)],
+);
+
+export const guidanceChunks = pgTable.withRLS(
+  "guidance_chunks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => guidanceSources.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    sectionPath: text("section_path"),
+    text: text("text").notNull(),
+    contentHash: text("content_hash").notNull(),
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`to_tsvector('simple', coalesce("text", ''))`,
+    ),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex("guidance_chunks_source_position_unique").on(
+      table.sourceId,
+      table.position,
+    ),
+    // Retrieval is binding-driven; this index only backs a later fallback
+    // search. `simple` does no stemming, so it will never be the primary path
+    // for German queries.
+    index("guidance_chunks_search_idx").using("gin", table.searchVector),
+  ],
+);
+
+/**
+ * Reviewed mapping from a legal provision key to a guidance chunk, mirroring
+ * `legalProvisionChunkBindings`. Requirements already carry provision keys such
+ * as `eu_nis2.article_21_2_e`, so this is what lets guidance reach the right
+ * category without inventing a second mapping concept.
+ */
+export const guidanceProvisionBindings = pgTable.withRLS(
+  "guidance_provision_bindings",
+  {
+    stableProvisionKey: text("stable_provision_key").notNull(),
+    chunkId: uuid("chunk_id")
+      .notNull()
+      .references(() => guidanceChunks.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    reviewedBy: text("reviewed_by").notNull(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.stableProvisionKey, table.chunkId] }),
+    index("guidance_provision_bindings_chunk_idx").on(table.chunkId),
+  ],
+);
+
 export const legalCorpusSnapshots = pgTable.withRLS(
   "legal_corpus_snapshots",
   {

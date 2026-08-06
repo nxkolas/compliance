@@ -107,6 +107,19 @@ describe("grounding instructions match what each schema can express", () => {
     );
   });
 
+  // Guidance must never become evidence about the customer: the organization
+  // channel already means untrusted evidence whose contradictions force review.
+  it.each([
+    ["gap", GAP_GROUNDING_INSTRUCTION],
+    ["action plan", ACTION_PLAN_GROUNDING_INSTRUCTION],
+  ])("frames guidance as good practice, not evidence, for %s", (_name, instruction) => {
+    expect(instruction).toContain("Guidance describes general good practice");
+    expect(instruction).toContain("never evidence about this organization");
+    expect(instruction).toMatch(/never be quoted or referenced/u);
+    // Same rule as citations: no handle, so never invite one.
+    expect(instruction).not.toMatch(/guidance label|cite guidance/iu);
+  });
+
   // These described the pre-v7 batch root `{findings: {CODE: …}}`. Both contracts
   // are category-scoped now and every call passes a single query unit.
   it.each([

@@ -225,6 +225,31 @@ describe("Gap contract citation labels", () => {
     expect(prompt).toContain("(questionnaire_assertion)");
   });
 
+  it("renders guidance as unlabelled background", () => {
+    const { prompt } = buildGroundedPrompt(
+      [{ id: "NIS2-PROTECT-10", query: "protection control" }],
+      [
+        ...context,
+        {
+          channel: "guidance",
+          citationId: `GUIDE:NIS2-PROTECT-10:${chunkUuid}`,
+          queryUnitId: "NIS2-PROTECT-10",
+          sourceId: chunkUuid,
+          excerpt: "Cryptography — good practice (ENISA). Practice: document a policy.",
+          excerptHash: "g",
+          rank: 1,
+          score: 1,
+          metadata: {},
+        },
+      ],
+    );
+
+    expect(prompt).toContain("(guidance) Cryptography — good practice");
+    // Guidance is not citable, so it must carry no handle the model could use.
+    expect(prompt).not.toMatch(/\[[A-Z]\d+\] \(guidance\)/u);
+    expect(prompt).not.toMatch(UUID_PATTERN);
+  });
+
   it("resolves a selected label back to its citation ID", () => {
     const citationId = `DOC:NIS2-PROTECT-10:${chunkUuid}`;
     const result = normalizeGapCategoryResponse({

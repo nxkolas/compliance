@@ -13,6 +13,7 @@ import {
   type PinnedLegalSnapshot,
 } from "./legal-retrieval";
 import { retrieveOrganizationContext } from "./organization-retrieval";
+import { retrieveGuidanceContext } from "./guidance-retrieval";
 import { resolveGroundingPolicy } from "./policy";
 import { selectGroundedProvider } from "./provider-policy";
 import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
@@ -240,7 +241,7 @@ export async function runGroundedOperation<T>(
   const retrieved = (
     await Promise.all(
       input.queryUnits.map(async (unit) => {
-        const [legal, organization] = await Promise.all([
+        const [legal, organization, guidance] = await Promise.all([
           retrievePinnedLegalContext(
             {
               queryUnitId: unit.id,
@@ -267,8 +268,15 @@ export async function runGroundedOperation<T>(
                   input.precomputedQueryEmbeddings?.organizationDocument,
               })
             : Promise.resolve([] as GroundingContextItem[]),
+          // Bound to the same provision keys the legal channel already uses, so
+          // no caller has to supply anything new. Optional by design: a
+          // category with no reviewed binding simply gets none.
+          retrieveGuidanceContext({
+            queryUnitId: unit.id,
+            provisionKeys: unit.preferredMappedLegalProvisionKeys ?? [],
+          }),
         ]);
-        return [...legal, ...organization];
+        return [...legal, ...organization, ...guidance];
       }),
     )
   ).flat();
@@ -380,8 +388,14 @@ export async function runGroundedOperation<T>(
       );
     }
     await db.transaction(async (tx) => {
+      // Guidance is excluded alongside questionnaire assertions: it is neither
+      // evidence nor citable, nothing references it downstream, and
+      // `ai_processing_run_context.channel` is an enum with a CHECK requiring a
+      // matching chunk FK. Its provenance travels in the run manifest instead.
       const persistable = context.filter(
-        (item) => item.channel !== "questionnaire_assertion",
+        (item) =>
+          item.channel !== "questionnaire_assertion" &&
+          item.channel !== "guidance",
       );
       if (persistable.length) {
         await tx.insert(aiProcessingRunContext).values(
