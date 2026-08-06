@@ -319,9 +319,13 @@ export const modulesMessages = defineFeatureMessages({
             ],
             workflow: {
               unavailable: "Es ist keine aktive Gap-Analyse-Version verfügbar.",
-              prerequisiteTitle: "Zuerst Betroffenheit prüfen",
+              prerequisiteTitle: "Ihre Gap-Analyse kann noch nicht gestartet werden",
               prerequisite: "Bevor Sie die Gap-Analyse beginnen, muss die Betroffenheit Ihrer Organisation bestätigt sein.",
-              checkApplicability: "Betroffenheit prüfen",
+              checkApplicability: "Betroffenheitscheck durchführen",
+              prerequisiteWhySequence: "Warum diese Reihenfolge?",
+              prerequisiteInfoTitle: "Gut zu wissen",
+              prerequisiteInfoDescription:
+                "Für den Betroffenheitscheck brauchen Sie nur wenige Basisangaben zu Ihrer Organisation. Danach können Sie direkt mit der Gap-Analyse weitermachen.",
               prerequisiteUnsupportedTitle:
                 "Gap-Analyse für dieses Land nicht verfügbar",
               prerequisiteUnsupported:
@@ -362,7 +366,8 @@ export const modulesMessages = defineFeatureMessages({
               stepDescriptions: {
                 questions: "Beschreiben Sie den aktuellen Umsetzungsstand.",
                 documents: "Wählen Sie optional Dokumente Ihrer Organisation aus.",
-                review: "Prüfen Sie genau, was analysiert wird.",
+                review:
+                  "Hier sehen Sie alle Antworten aus der Gap-Analyse. Überprüfen Sie diese, bevor Ihre Sicherheitslücken ausgewertet werden. Bei Bedarf können Sie die Gap-Analyse erneut durchführen.",
                 gaps: "Verstehen, filtern und bearbeiten Sie Ihr Ergebnis.",
               },
               required: "Pflichtfeld",
@@ -379,7 +384,7 @@ export const modulesMessages = defineFeatureMessages({
                 "Die Antwort konnte nicht gespeichert werden. Versuchen Sie es erneut.",
               draftConflict:
                 "Eine neuere Team-Änderung wurde gefunden. Der aktuelle Stand wird geladen.",
-              continueDocuments: "Weiter zu Dokumenten",
+              continueDocuments: "Weiter zu Dokumente",
               missingAnswer: "Bitte beantworten Sie diese Frage.",
               documentsTitle: "Dokumente Ihrer Organisation",
               documentsDescription: "Dokumente sind optional. Verwendet wird automatisch die neueste aktive und erfolgreich indexierte Version.",
@@ -389,7 +394,7 @@ export const modulesMessages = defineFeatureMessages({
               continueReview: "Weiter zur Prüfung",
               openLibrary: "Dokumentenbibliothek öffnen",
               notReady: "Dieses Dokument ist noch nicht für die Analyse bereit.",
-              reviewTitle: "Ihre Angaben",
+              reviewTitle: "Ihre Angaben im Überblick",
               reviewQuestions: "Antworten",
               reviewDocuments: "Ausgewählte Dokumente",
               edit: "Ändern",
@@ -966,9 +971,13 @@ export const modulesMessages = defineFeatureMessages({
             ],
             workflow: {
               unavailable: "No active gap-analysis release is available.",
-              prerequisiteTitle: "Check applicability first",
+              prerequisiteTitle: "Your gap analysis cannot be started yet",
               prerequisite: "Before starting the gap analysis, your organization's applicability must be confirmed.",
-              checkApplicability: "Check applicability",
+              checkApplicability: "Run applicability check",
+              prerequisiteWhySequence: "Why this sequence?",
+              prerequisiteInfoTitle: "Good to know",
+              prerequisiteInfoDescription:
+                "The applicability check only requires a few basic details about your organization. You can then continue directly with the gap analysis.",
               prerequisiteUnsupportedTitle:
                 "Gap Analysis is unavailable for this country",
               prerequisiteUnsupported:
@@ -1009,7 +1018,8 @@ export const modulesMessages = defineFeatureMessages({
               stepDescriptions: {
                 questions: "Describe the current implementation state.",
                 documents: "Optionally select your organization's documents.",
-                review: "Review exactly what will be analyzed.",
+                review:
+                  "Here you can see all answers from the Gap Analysis. Review them before your security gaps are evaluated. If necessary, you can run the Gap Analysis again.",
                 gaps: "Understand, filter, and update your result.",
               },
               required: "Required",
@@ -1035,7 +1045,7 @@ export const modulesMessages = defineFeatureMessages({
               continueReview: "Continue to review",
               openLibrary: "Open document library",
               notReady: "This document is not ready for analysis yet.",
-              reviewTitle: "Your information",
+              reviewTitle: "Your information at a glance",
               reviewQuestions: "Answers",
               reviewDocuments: "Selected documents",
               edit: "Edit",

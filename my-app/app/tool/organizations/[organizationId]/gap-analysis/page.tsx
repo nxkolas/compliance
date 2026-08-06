@@ -47,6 +47,7 @@ export default async function GapAnalysisPage({
   return (
     <section className="flex w-full flex-col gap-8">
       <PageHeader
+        className="w-full max-w-[1130px] [&>p]:min-h-10 [&>p]:w-full [&>p]:font-sans [&>p]:text-lg [&>p]:leading-7 [&>p]:font-normal [&>p]:tracking-normal [&>p]:text-blue-200"
         title={dictionary.modules.gapAnalysis.title}
         subtitle={dictionary.modules.gapAnalysis.description}
       />
