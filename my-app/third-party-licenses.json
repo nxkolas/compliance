@@ -1,0 +1,2917 @@
+{
+    "@ai-sdk/gateway@3.0.120": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/ai",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\gateway",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\gateway\\LICENSE"
+    },
+    "@ai-sdk/openai-compatible@2.0.48": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/ai",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\openai-compatible",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\openai-compatible\\LICENSE"
+    },
+    "@ai-sdk/openai@3.0.65": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/ai",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\openai",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\openai\\LICENSE"
+    },
+    "@ai-sdk/provider-utils@4.0.27": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/ai",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\provider-utils",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\provider-utils\\README.md"
+    },
+    "@ai-sdk/provider@3.0.10": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/ai",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\provider",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\provider\\LICENSE"
+    },
+    "@ai-sdk/react@3.0.193": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/ai",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\react",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@ai-sdk\\react\\LICENSE"
+    },
+    "@alloc/quick-lru@5.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/quick-lru",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@alloc\\quick-lru",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@alloc\\quick-lru\\license"
+    },
+    "@aws-sdk/checksums@3.1000.20": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\checksums",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\checksums\\LICENSE"
+    },
+    "@aws-sdk/client-s3@3.1095.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\client-s3",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\client-s3\\LICENSE"
+    },
+    "@aws-sdk/core@3.977.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\core",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\core\\LICENSE"
+    },
+    "@aws-sdk/credential-provider-env@3.972.61": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-env",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-env\\LICENSE"
+    },
+    "@aws-sdk/credential-provider-http@3.972.63": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-http",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-http\\README.md"
+    },
+    "@aws-sdk/credential-provider-ini@3.973.6": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-ini",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-ini\\LICENSE"
+    },
+    "@aws-sdk/credential-provider-login@3.972.68": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-login",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-login\\README.md"
+    },
+    "@aws-sdk/credential-provider-node@3.972.72": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-node",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-node\\LICENSE"
+    },
+    "@aws-sdk/credential-provider-process@3.972.61": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-process",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-process\\LICENSE"
+    },
+    "@aws-sdk/credential-provider-sso@3.973.5": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-sso",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-sso\\LICENSE"
+    },
+    "@aws-sdk/credential-provider-web-identity@3.972.67": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-web-identity",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\credential-provider-web-identity\\LICENSE"
+    },
+    "@aws-sdk/middleware-sdk-s3@3.972.66": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\middleware-sdk-s3",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\middleware-sdk-s3\\LICENSE"
+    },
+    "@aws-sdk/nested-clients@3.997.35": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\nested-clients",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\nested-clients\\README.md"
+    },
+    "@aws-sdk/signature-v4-multi-region@3.996.42": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\signature-v4-multi-region",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\signature-v4-multi-region\\LICENSE"
+    },
+    "@aws-sdk/token-providers@3.1095.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\token-providers",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\token-providers\\LICENSE"
+    },
+    "@aws-sdk/types@3.974.2": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\types",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\types\\LICENSE"
+    },
+    "@aws-sdk/xml-builder@3.972.37": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/aws/aws-sdk-js-v3",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\xml-builder",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws-sdk\\xml-builder\\LICENSE"
+    },
+    "@aws/lambda-invoke-store@0.3.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/awslabs/aws-lambda-invoke-store",
+        "publisher": "Amazon Web Services",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws\\lambda-invoke-store",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@aws\\lambda-invoke-store\\LICENSE"
+    },
+    "@babel/runtime@7.29.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/babel/babel",
+        "publisher": "The Babel Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@babel\\runtime",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@babel\\runtime\\LICENSE"
+    },
+    "@base-ui/react@1.6.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mui/base-ui",
+        "publisher": "MUI Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@base-ui\\react",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@base-ui\\react\\LICENSE"
+    },
+    "@base-ui/utils@0.3.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mui/base-ui",
+        "publisher": "MUI Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@base-ui\\utils",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@base-ui\\utils\\LICENSE"
+    },
+    "@drizzle-team/brocli@0.12.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/drizzle-team/brocli",
+        "publisher": "Drizzle Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@drizzle-team\\brocli",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@drizzle-team\\brocli\\README.md"
+    },
+    "@esbuild/win32-x64@0.25.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/evanw/esbuild",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@esbuild\\win32-x64",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@esbuild\\win32-x64\\README.md"
+    },
+    "@esbuild/win32-x64@0.28.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/evanw/esbuild",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tsx\\node_modules\\@esbuild\\win32-x64",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tsx\\node_modules\\@esbuild\\win32-x64\\README.md"
+    },
+    "@floating-ui/core@1.7.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/floating-ui/floating-ui",
+        "publisher": "atomiks",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\core",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\core\\LICENSE"
+    },
+    "@floating-ui/dom@1.7.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/floating-ui/floating-ui",
+        "publisher": "atomiks",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\dom",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\dom\\LICENSE"
+    },
+    "@floating-ui/react-dom@2.1.8": {
+        "licenses": "MIT",
+        "repository": "https://github.com/floating-ui/floating-ui",
+        "publisher": "atomiks",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\react-dom",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\react-dom\\LICENSE"
+    },
+    "@floating-ui/utils@0.2.11": {
+        "licenses": "MIT",
+        "repository": "https://github.com/floating-ui/floating-ui",
+        "publisher": "atomiks",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\utils",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@floating-ui\\utils\\LICENSE"
+    },
+    "@gar/promise-retry@1.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/wraithgar/node-promise-retry",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@gar\\promise-retry",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@gar\\promise-retry\\LICENSE"
+    },
+    "@img/colour@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lovell/colour",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@img\\colour",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@img\\colour\\LICENSE.md"
+    },
+    "@img/sharp-win32-x64@0.35.3": {
+        "licenses": "Apache-2.0 AND LGPL-3.0-or-later",
+        "repository": "https://github.com/lovell/sharp",
+        "publisher": "Lovell Fuller",
+        "email": "npm@lovell.info",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@img\\sharp-win32-x64",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@img\\sharp-win32-x64\\LICENSE"
+    },
+    "@isaacs/fs-minipass@4.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/fs-minipass",
+        "publisher": "Isaac Z. Schlueter",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@isaacs\\fs-minipass",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@isaacs\\fs-minipass\\LICENSE"
+    },
+    "@isaacs/string-locale-compare@1.1.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/string-locale-compare",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@isaacs\\string-locale-compare",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@isaacs\\string-locale-compare\\LICENSE"
+    },
+    "@jridgewell/gen-mapping@0.3.13": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\gen-mapping",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\gen-mapping\\LICENSE"
+    },
+    "@jridgewell/remapping@2.3.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\remapping",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\remapping\\LICENSE"
+    },
+    "@jridgewell/resolve-uri@3.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/resolve-uri",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\resolve-uri",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\resolve-uri\\LICENSE"
+    },
+    "@jridgewell/sourcemap-codec@1.5.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\sourcemap-codec",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\sourcemap-codec\\LICENSE"
+    },
+    "@jridgewell/trace-mapping@0.3.31": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jridgewell/sourcemaps",
+        "publisher": "Justin Ridgewell",
+        "email": "justin@ridgewell.name",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\trace-mapping",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@jridgewell\\trace-mapping\\LICENSE"
+    },
+    "@js-temporal/polyfill@0.5.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/js-temporal/temporal-polyfill",
+        "publisher": "Philipp Dunkel",
+        "email": "pip@pipobscure.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@js-temporal\\polyfill",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@js-temporal\\polyfill\\LICENSE"
+    },
+    "@lizenz/checker@0.0.1": {
+        "licenses": "BSD-3-Clause",
+        "repository": "https://github.com/lizenz-tooling/checker",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@lizenz\\checker",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@lizenz\\checker\\LICENSE"
+    },
+    "@napi-rs/canvas-win32-x64-msvc@0.1.80": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Brooooooklyn/canvas",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@napi-rs\\canvas-win32-x64-msvc",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@napi-rs\\canvas-win32-x64-msvc\\README.md"
+    },
+    "@napi-rs/canvas@0.1.80": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Brooooooklyn/canvas",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@napi-rs\\canvas",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@napi-rs\\canvas\\LICENSE"
+    },
+    "@next/env@16.2.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/next.js",
+        "publisher": "Next.js Team",
+        "email": "support@vercel.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@next\\env",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@next\\env\\README.md"
+    },
+    "@next/swc-win32-x64-msvc@16.2.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/next.js",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@next\\swc-win32-x64-msvc",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@next\\swc-win32-x64-msvc\\README.md"
+    },
+    "@noble/ciphers@1.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/paulmillr/noble-ciphers",
+        "publisher": "Paul Miller",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@noble\\ciphers",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@noble\\ciphers\\LICENSE"
+    },
+    "@noble/hashes@1.8.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/paulmillr/noble-hashes",
+        "publisher": "Paul Miller",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@noble\\hashes",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@noble\\hashes\\LICENSE"
+    },
+    "@npmcli/agent@4.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/agent",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\agent",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\agent\\README.md"
+    },
+    "@npmcli/arborist@9.8.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/cli",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\LICENSE.md"
+    },
+    "@npmcli/fs@5.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/fs",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\fs",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\fs\\LICENSE.md"
+    },
+    "@npmcli/git@7.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/git",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\@npmcli\\git",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\@npmcli\\git\\LICENSE"
+    },
+    "@npmcli/git@8.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/git",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\LICENSE"
+    },
+    "@npmcli/installed-package-contents@4.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/installed-package-contents",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\installed-package-contents",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\installed-package-contents\\LICENSE"
+    },
+    "@npmcli/map-workspaces@5.0.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/map-workspaces",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\map-workspaces",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\map-workspaces\\LICENSE.md"
+    },
+    "@npmcli/metavuln-calculator@9.0.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/metavuln-calculator",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\metavuln-calculator",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\metavuln-calculator\\LICENSE"
+    },
+    "@npmcli/name-from-folder@4.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/name-from-folder",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\name-from-folder",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\name-from-folder\\LICENSE"
+    },
+    "@npmcli/node-gyp@5.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/node-gyp",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\node-gyp",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\node-gyp\\LICENSE"
+    },
+    "@npmcli/package-json@7.0.5": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/package-json",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\@npmcli\\package-json",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\@npmcli\\package-json\\LICENSE"
+    },
+    "@npmcli/package-json@8.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/package-json",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json\\LICENSE"
+    },
+    "@npmcli/promise-spawn@10.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/promise-spawn",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\promise-spawn",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\promise-spawn\\LICENSE"
+    },
+    "@npmcli/promise-spawn@9.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/promise-spawn",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\@npmcli\\promise-spawn",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\@npmcli\\promise-spawn\\LICENSE"
+    },
+    "@npmcli/query@5.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/query",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\query",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\query\\LICENSE"
+    },
+    "@npmcli/redact@4.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/redact",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\redact",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\redact\\LICENSE"
+    },
+    "@npmcli/run-script@10.0.4": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/run-script",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\run-script",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\run-script\\LICENSE"
+    },
+    "@opentelemetry/api@1.9.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/open-telemetry/opentelemetry-js",
+        "publisher": "OpenTelemetry Authors",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@opentelemetry\\api",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@opentelemetry\\api\\LICENSE"
+    },
+    "@playwright/test@1.61.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/playwright",
+        "publisher": "Microsoft Corporation",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@playwright\\test",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@playwright\\test\\LICENSE",
+        "noticeFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@playwright\\test\\NOTICE"
+    },
+    "@radix-ui/number@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\number",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\number\\LICENSE"
+    },
+    "@radix-ui/primitive@1.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\primitive",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\primitive\\LICENSE"
+    },
+    "@radix-ui/react-accessible-icon@1.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-accessible-icon",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-accessible-icon\\LICENSE"
+    },
+    "@radix-ui/react-accordion@1.2.13": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-accordion",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-accordion\\LICENSE"
+    },
+    "@radix-ui/react-alert-dialog@1.1.16": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-alert-dialog",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-alert-dialog\\LICENSE"
+    },
+    "@radix-ui/react-arrow@1.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-arrow",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-arrow\\LICENSE"
+    },
+    "@radix-ui/react-aspect-ratio@1.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-aspect-ratio",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-aspect-ratio\\LICENSE"
+    },
+    "@radix-ui/react-avatar@1.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-avatar",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-avatar\\LICENSE"
+    },
+    "@radix-ui/react-checkbox@1.3.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-checkbox",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-checkbox\\LICENSE"
+    },
+    "@radix-ui/react-collapsible@1.1.13": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-collapsible",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-collapsible\\LICENSE"
+    },
+    "@radix-ui/react-collection@1.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-collection",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-collection\\LICENSE"
+    },
+    "@radix-ui/react-compose-refs@1.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-compose-refs",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-compose-refs\\LICENSE"
+    },
+    "@radix-ui/react-context-menu@2.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-context-menu",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-context-menu\\LICENSE"
+    },
+    "@radix-ui/react-context@1.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-context",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-context\\LICENSE"
+    },
+    "@radix-ui/react-dialog@1.1.16": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-dialog",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-dialog\\LICENSE"
+    },
+    "@radix-ui/react-direction@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-direction",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-direction\\LICENSE"
+    },
+    "@radix-ui/react-dismissable-layer@1.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-dismissable-layer",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-dismissable-layer\\LICENSE"
+    },
+    "@radix-ui/react-dropdown-menu@2.1.17": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-dropdown-menu",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-dropdown-menu\\LICENSE"
+    },
+    "@radix-ui/react-focus-guards@1.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-focus-guards",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-focus-guards\\LICENSE"
+    },
+    "@radix-ui/react-focus-scope@1.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-focus-scope",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-focus-scope\\LICENSE"
+    },
+    "@radix-ui/react-form@0.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-form",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-form\\LICENSE"
+    },
+    "@radix-ui/react-hover-card@1.1.16": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-hover-card",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-hover-card\\LICENSE"
+    },
+    "@radix-ui/react-id@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-id",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-id\\LICENSE"
+    },
+    "@radix-ui/react-label@2.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-label",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-label\\LICENSE"
+    },
+    "@radix-ui/react-menu@2.1.17": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-menu",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-menu\\LICENSE"
+    },
+    "@radix-ui/react-menubar@1.1.17": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-menubar",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-menubar\\LICENSE"
+    },
+    "@radix-ui/react-navigation-menu@1.2.15": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-navigation-menu",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-navigation-menu\\LICENSE"
+    },
+    "@radix-ui/react-one-time-password-field@0.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-one-time-password-field",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-one-time-password-field\\LICENSE"
+    },
+    "@radix-ui/react-password-toggle-field@0.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-password-toggle-field",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-password-toggle-field\\LICENSE"
+    },
+    "@radix-ui/react-popover@1.1.16": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-popover",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-popover\\LICENSE"
+    },
+    "@radix-ui/react-popper@1.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-popper",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-popper\\LICENSE"
+    },
+    "@radix-ui/react-portal@1.1.11": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-portal",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-portal\\LICENSE"
+    },
+    "@radix-ui/react-presence@1.1.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-presence",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-presence\\LICENSE"
+    },
+    "@radix-ui/react-primitive@2.1.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-primitive",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-primitive\\LICENSE"
+    },
+    "@radix-ui/react-progress@1.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-progress",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-progress\\LICENSE"
+    },
+    "@radix-ui/react-radio-group@1.4.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-radio-group",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-radio-group\\LICENSE"
+    },
+    "@radix-ui/react-roving-focus@1.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-roving-focus",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-roving-focus\\LICENSE"
+    },
+    "@radix-ui/react-scroll-area@1.2.11": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-scroll-area",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-scroll-area\\LICENSE"
+    },
+    "@radix-ui/react-select@2.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-select",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-select\\LICENSE"
+    },
+    "@radix-ui/react-separator@1.1.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-separator",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-separator\\LICENSE"
+    },
+    "@radix-ui/react-slider@1.4.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-slider",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-slider\\LICENSE"
+    },
+    "@radix-ui/react-slot@1.2.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-slot",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-slot\\LICENSE"
+    },
+    "@radix-ui/react-switch@1.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-switch",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-switch\\LICENSE"
+    },
+    "@radix-ui/react-tabs@1.1.14": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-tabs",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-tabs\\LICENSE"
+    },
+    "@radix-ui/react-toast@1.2.16": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toast",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toast\\LICENSE"
+    },
+    "@radix-ui/react-toggle-group@1.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toggle-group",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toggle-group\\LICENSE"
+    },
+    "@radix-ui/react-toggle@1.1.11": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toggle",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toggle\\LICENSE"
+    },
+    "@radix-ui/react-toolbar@1.1.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toolbar",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-toolbar\\LICENSE"
+    },
+    "@radix-ui/react-tooltip@1.2.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-tooltip",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-tooltip\\LICENSE"
+    },
+    "@radix-ui/react-use-callback-ref@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-callback-ref",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-callback-ref\\LICENSE"
+    },
+    "@radix-ui/react-use-controllable-state@1.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-controllable-state",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-controllable-state\\LICENSE"
+    },
+    "@radix-ui/react-use-effect-event@0.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-effect-event",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-effect-event\\LICENSE"
+    },
+    "@radix-ui/react-use-escape-keydown@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-escape-keydown",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-escape-keydown\\LICENSE"
+    },
+    "@radix-ui/react-use-is-hydrated@0.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-is-hydrated",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-is-hydrated\\LICENSE"
+    },
+    "@radix-ui/react-use-layout-effect@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-layout-effect",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-layout-effect\\LICENSE"
+    },
+    "@radix-ui/react-use-previous@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-previous",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-previous\\LICENSE"
+    },
+    "@radix-ui/react-use-rect@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-rect",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-rect\\LICENSE"
+    },
+    "@radix-ui/react-use-size@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-size",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-use-size\\LICENSE"
+    },
+    "@radix-ui/react-visually-hidden@1.2.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-visually-hidden",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\react-visually-hidden\\LICENSE"
+    },
+    "@radix-ui/rect@1.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\rect",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@radix-ui\\rect\\LICENSE"
+    },
+    "@react-pdf/fns@3.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\fns",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\fns\\README.md"
+    },
+    "@react-pdf/font@4.0.8": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\font",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\font\\README.md"
+    },
+    "@react-pdf/image@3.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\image",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\image\\README.md"
+    },
+    "@react-pdf/layout@4.6.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\layout",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\layout\\README.md"
+    },
+    "@react-pdf/pdfkit@5.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\pdfkit",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\pdfkit\\LICENSE"
+    },
+    "@react-pdf/primitives@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\primitives",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\primitives\\README.md"
+    },
+    "@react-pdf/reconciler@2.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\reconciler",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\reconciler\\README.md"
+    },
+    "@react-pdf/render@4.5.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\render",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\render\\README.md"
+    },
+    "@react-pdf/renderer@4.5.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\renderer",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\renderer\\README.md"
+    },
+    "@react-pdf/stylesheet@6.2.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\stylesheet",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\stylesheet\\README.md"
+    },
+    "@react-pdf/svg@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\svg",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\svg\\README.md"
+    },
+    "@react-pdf/textkit@6.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\textkit",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\textkit\\README.md"
+    },
+    "@react-pdf/types@2.11.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/diegomura/react-pdf",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\types",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\types\\README.md"
+    },
+    "@sigstore/bundle@4.0.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/sigstore/sigstore-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\bundle",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\bundle\\LICENSE"
+    },
+    "@sigstore/core@3.2.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/sigstore/sigstore-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\core",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\core\\LICENSE"
+    },
+    "@sigstore/protobuf-specs@0.5.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/sigstore/protobuf-specs",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\protobuf-specs",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\protobuf-specs\\LICENSE"
+    },
+    "@sigstore/sign@4.1.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/sigstore/sigstore-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\sign",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\sign\\LICENSE"
+    },
+    "@sigstore/tuf@4.0.2": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/sigstore/sigstore-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\tuf",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\tuf\\LICENSE"
+    },
+    "@sigstore/verify@3.1.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/sigstore/sigstore-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\verify",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@sigstore\\verify\\README.md"
+    },
+    "@smithy/core@3.30.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/smithy-lang/smithy-typescript",
+        "publisher": "AWS Smithy Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\core",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\core\\LICENSE"
+    },
+    "@smithy/credential-provider-imds@4.4.14": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/smithy-lang/smithy-typescript",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\credential-provider-imds",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\credential-provider-imds\\LICENSE"
+    },
+    "@smithy/fetch-http-handler@5.6.11": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/smithy-lang/smithy-typescript",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\fetch-http-handler",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\fetch-http-handler\\LICENSE"
+    },
+    "@smithy/node-http-handler@4.9.11": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/smithy-lang/smithy-typescript",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\node-http-handler",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\node-http-handler\\LICENSE"
+    },
+    "@smithy/signature-v4@5.6.10": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/smithy-lang/smithy-typescript",
+        "publisher": "AWS SDK for JavaScript Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\signature-v4",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\signature-v4\\LICENSE"
+    },
+    "@smithy/types@4.16.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/smithy-lang/smithy-typescript",
+        "publisher": "AWS Smithy Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\types",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@smithy\\types\\LICENSE"
+    },
+    "@standard-schema/spec@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/standard-schema/standard-schema",
+        "publisher": "Colin McDonnell",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@standard-schema\\spec",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@standard-schema\\spec\\LICENSE"
+    },
+    "@supabase/auth-js@2.110.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/supabase-js",
+        "publisher": "Supabase",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\auth-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\auth-js\\LICENSE"
+    },
+    "@supabase/functions-js@2.110.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/supabase-js",
+        "publisher": "Supabase",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\functions-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\functions-js\\LICENSE"
+    },
+    "@supabase/phoenix@0.4.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/phoenix",
+        "publisher": "Chris McCord",
+        "email": "chris@chrismccord.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\phoenix",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\phoenix\\LICENSE.md"
+    },
+    "@supabase/postgrest-js@2.110.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/supabase-js",
+        "publisher": "Supabase",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\postgrest-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\postgrest-js\\LICENSE"
+    },
+    "@supabase/realtime-js@2.110.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/supabase-js",
+        "publisher": "Supabase",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\realtime-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\realtime-js\\LICENSE"
+    },
+    "@supabase/ssr@0.12.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/ssr",
+        "publisher": "Supabase, Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\ssr",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\ssr\\LICENSE"
+    },
+    "@supabase/storage-js@2.110.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/supabase-js",
+        "publisher": "Supabase",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\storage-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\storage-js\\LICENSE"
+    },
+    "@supabase/supabase-js@2.110.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/supabase-js",
+        "publisher": "Supabase",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\supabase-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@supabase\\supabase-js\\LICENSE"
+    },
+    "@swc/helpers@0.5.15": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/swc-project/swc",
+        "publisher": "강동윤",
+        "email": "kdy1997.dev@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@swc\\helpers",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@swc\\helpers\\LICENSE"
+    },
+    "@tailwindcss/node@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\node",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\node\\LICENSE"
+    },
+    "@tailwindcss/oxide-win32-x64-msvc@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\oxide-win32-x64-msvc",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\oxide-win32-x64-msvc\\LICENSE"
+    },
+    "@tailwindcss/oxide@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\oxide",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\oxide\\LICENSE"
+    },
+    "@tailwindcss/postcss@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\postcss",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tailwindcss\\postcss\\LICENSE"
+    },
+    "@tufjs/canonical-json@2.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theupdateframework/tuf-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tufjs\\canonical-json",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tufjs\\canonical-json\\LICENSE"
+    },
+    "@tufjs/models@4.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theupdateframework/tuf-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tufjs\\models",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@tufjs\\models\\LICENSE"
+    },
+    "@types/react-dom@19.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@types\\react-dom",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@types\\react-dom\\LICENSE"
+    },
+    "@types/react@19.2.14": {
+        "licenses": "MIT",
+        "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@types\\react",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@types\\react\\LICENSE"
+    },
+    "@vercel/oidc@3.2.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/vercel",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@vercel\\oidc",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@vercel\\oidc\\LICENSE"
+    },
+    "@xmldom/xmldom@0.8.13": {
+        "licenses": "MIT",
+        "repository": "https://github.com/xmldom/xmldom",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@xmldom\\xmldom",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@xmldom\\xmldom\\LICENSE"
+    },
+    "abbrev@4.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/abbrev-js",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\abbrev",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\abbrev\\LICENSE"
+    },
+    "abbrev@5.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/abbrev-js",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\abbrev",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\abbrev\\LICENSE"
+    },
+    "abs-svg-path@0.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jkroso/abs-svg-path",
+        "publisher": "Jake Rosoman",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\abs-svg-path",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\abs-svg-path\\Readme.md"
+    },
+    "agent-base@7.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/TooTallNate/proxy-agents",
+        "publisher": "Nathan Rajlich",
+        "email": "nathan@tootallnate.net",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\agent-base",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\agent-base\\LICENSE"
+    },
+    "ai@6.0.191": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/vercel/ai",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ai",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ai\\LICENSE"
+    },
+    "argparse@1.0.10": {
+        "licenses": "MIT",
+        "repository": "https://github.com/nodeca/argparse",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\mammoth\\node_modules\\argparse",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\mammoth\\node_modules\\argparse\\LICENSE"
+    },
+    "aria-hidden@1.2.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theKashey/aria-hidden",
+        "publisher": "Anton Korzunov",
+        "email": "thekashey@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\aria-hidden",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\aria-hidden\\LICENSE"
+    },
+    "array-find-index@1.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/array-find-index",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\array-find-index",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\array-find-index\\license"
+    },
+    "balanced-match@4.0.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/juliangruber/balanced-match",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob\\node_modules\\balanced-match",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob\\node_modules\\balanced-match\\LICENSE.md"
+    },
+    "base64-js@0.0.8": {
+        "licenses": "MIT",
+        "repository": "https://github.com/beatgammit/base64-js",
+        "publisher": "T. Jameson Little",
+        "email": "t.jameson.little@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\linebreak\\node_modules\\base64-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\linebreak\\node_modules\\base64-js\\LICENSE.MIT"
+    },
+    "base64-js@1.5.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/beatgammit/base64-js",
+        "publisher": "T. Jameson Little",
+        "email": "t.jameson.little@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\base64-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\base64-js\\LICENSE"
+    },
+    "baseline-browser-mapping@2.10.14": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/web-platform-dx/baseline-browser-mapping",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\baseline-browser-mapping",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\baseline-browser-mapping\\LICENSE.txt"
+    },
+    "bidi-js@1.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lojjic/bidi-js",
+        "publisher": "Jason Johnston",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bidi-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bidi-js\\LICENSE.txt"
+    },
+    "bin-links@6.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/bin-links",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bin-links",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bin-links\\LICENSE"
+    },
+    "bluebird@3.4.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/petkaantonov/bluebird",
+        "publisher": "Petka Antonov",
+        "email": "petka_antonov@hotmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bluebird",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bluebird\\LICENSE"
+    },
+    "bowser@2.14.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/bowser-js/bowser",
+        "publisher": "Dustin Diaz",
+        "email": "dustin@dustindiaz.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bowser",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\bowser\\LICENSE"
+    },
+    "brace-expansion@5.0.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/juliangruber/brace-expansion",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob\\node_modules\\brace-expansion",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob\\node_modules\\brace-expansion\\LICENSE"
+    },
+    "brotli@1.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/brotli.js",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\brotli",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\brotli\\readme.md"
+    },
+    "browserify-zlib@0.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/browserify-zlib",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\browserify-zlib",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\browserify-zlib\\LICENSE"
+    },
+    "cacache@20.0.4": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/cacache",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cacache",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cacache\\LICENSE.md"
+    },
+    "caniuse-lite@1.0.30001785": {
+        "licenses": "CC-BY-4.0",
+        "repository": "https://github.com/browserslist/caniuse-lite",
+        "publisher": "Ben Briggs",
+        "email": "beneb.info@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\caniuse-lite",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\caniuse-lite\\LICENSE"
+    },
+    "chalk@5.6.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/chalk/chalk",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@lizenz\\checker\\node_modules\\chalk",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@lizenz\\checker\\node_modules\\chalk\\license"
+    },
+    "chownr@3.0.0": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/chownr",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\chownr",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\chownr\\LICENSE.md"
+    },
+    "class-variance-authority@0.7.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/joe-bell/cva",
+        "publisher": "Joe Bell",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\class-variance-authority",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\class-variance-authority\\LICENSE"
+    },
+    "client-only@0.0.1": {
+        "licenses": "MIT",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\client-only"
+    },
+    "clone@2.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pvorb/node-clone",
+        "publisher": "Paul Vorbach",
+        "email": "paul@vorba.ch",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\clone",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\clone\\LICENSE"
+    },
+    "clsx@2.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lukeed/clsx",
+        "publisher": "Luke Edwards",
+        "email": "luke.edwards05@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\clsx",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\clsx\\license"
+    },
+    "cmd-shim@8.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/cmd-shim",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cmd-shim",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cmd-shim\\LICENSE"
+    },
+    "color-name@2.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/colorjs/color-name",
+        "publisher": "Dmitry Iv",
+        "email": "dfcreative@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\color-string\\node_modules\\color-name",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\color-string\\node_modules\\color-name\\LICENSE"
+    },
+    "color-string@2.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Qix-/color-string",
+        "publisher": "Josh Junon",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\color-string",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\color-string\\LICENSE"
+    },
+    "common-ancestor-path@2.0.0": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/common-ancestor-path",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\common-ancestor-path",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\common-ancestor-path\\LICENSE.md"
+    },
+    "cookie@1.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jshttp/cookie",
+        "publisher": "Roman Shtylman",
+        "email": "shtylman@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cookie",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cookie\\LICENSE"
+    },
+    "core-util-is@1.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/isaacs/core-util-is",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\core-util-is",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\core-util-is\\LICENSE"
+    },
+    "cssesc@3.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/mathiasbynens/cssesc",
+        "publisher": "Mathias Bynens",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cssesc",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\cssesc\\LICENSE-MIT.txt"
+    },
+    "csstype@3.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/frenic/csstype",
+        "publisher": "Fredrik Nicol",
+        "email": "fredrik.nicol@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\csstype",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\csstype\\LICENSE"
+    },
+    "debug@4.4.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/debug-js/debug",
+        "publisher": "Josh Junon",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\debug",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\debug\\LICENSE"
+    },
+    "dequal@2.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lukeed/dequal",
+        "publisher": "Luke Edwards",
+        "email": "luke.edwards05@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dequal",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dequal\\license"
+    },
+    "detect-libc@2.1.2": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/lovell/detect-libc",
+        "publisher": "Lovell Fuller",
+        "email": "npm@lovell.info",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\detect-libc",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\detect-libc\\LICENSE"
+    },
+    "detect-node-es@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/thekashey/detect-node",
+        "publisher": "Ilya Kantor",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\detect-node-es",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\detect-node-es\\LICENSE"
+    },
+    "dfa@1.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/dfa",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dfa",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dfa\\README.md"
+    },
+    "dingbat-to-unicode@1.0.1": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/mwilliamson/dingbat-to-unicode",
+        "publisher": "Michael Williamson",
+        "email": "mike@zwobble.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dingbat-to-unicode",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dingbat-to-unicode\\README.md"
+    },
+    "dotenv@17.4.0": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/motdotla/dotenv",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dotenv",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\dotenv\\LICENSE"
+    },
+    "drizzle-kit@1.0.0-rc.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/drizzle-team/drizzle-orm",
+        "publisher": "Drizzle Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\drizzle-kit",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\drizzle-kit\\README.md"
+    },
+    "drizzle-orm@1.0.0-rc.4": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/drizzle-team/drizzle-orm",
+        "publisher": "Drizzle Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\drizzle-orm",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\drizzle-orm\\README.md"
+    },
+    "drizzle-seed@1.0.0-rc.4": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/drizzle-team/drizzle-orm",
+        "publisher": "Drizzle Team",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\drizzle-seed",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\drizzle-seed\\README.md"
+    },
+    "duck@0.1.12": {
+        "licenses": "BSD*",
+        "repository": "https://github.com/mwilliamson/duck.js",
+        "publisher": "Michael Williamson",
+        "email": "mike@zwobble.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\duck",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\duck\\LICENSE"
+    },
+    "emoji-regex-xs@1.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/slevithan/emoji-regex-xs",
+        "publisher": "Steven Levithan",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\emoji-regex-xs",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\emoji-regex-xs\\LICENSE"
+    },
+    "enhanced-resolve@5.22.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/webpack/enhanced-resolve",
+        "publisher": "Tobias Koppers @sokra",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\enhanced-resolve",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\enhanced-resolve\\LICENSE"
+    },
+    "env-paths@2.2.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/env-paths",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\env-paths",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\env-paths\\license"
+    },
+    "esbuild@0.25.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/evanw/esbuild",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\esbuild",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\esbuild\\LICENSE.md"
+    },
+    "esbuild@0.28.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/evanw/esbuild",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tsx\\node_modules\\esbuild",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tsx\\node_modules\\esbuild\\LICENSE.md"
+    },
+    "events@3.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Gozala/events",
+        "publisher": "Irakli Gozalishvili",
+        "email": "rfobic@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\events",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\events\\LICENSE"
+    },
+    "eventsource-parser@3.0.8": {
+        "licenses": "MIT",
+        "repository": "https://github.com/rexxars/eventsource-parser",
+        "publisher": "Espen Hovlandsdal",
+        "email": "espen@hovlandsdal.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\eventsource-parser",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\eventsource-parser\\LICENSE"
+    },
+    "exponential-backoff@3.1.3": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/coveooss/exponential-backoff",
+        "publisher": "Sami Sayegh",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\exponential-backoff",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\exponential-backoff\\LICENSE"
+    },
+    "fast-deep-equal@3.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/epoberezkin/fast-deep-equal",
+        "publisher": "Evgeny Poberezkin",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fast-deep-equal",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fast-deep-equal\\LICENSE"
+    },
+    "fdir@6.5.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/thecodrr/fdir",
+        "publisher": "thecodrr",
+        "email": "thecodrr@protonmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tinyglobby\\node_modules\\fdir",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tinyglobby\\node_modules\\fdir\\LICENSE"
+    },
+    "fflate@0.8.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/101arrowz/fflate",
+        "publisher": "Arjun Barrett",
+        "email": "arjunbarrett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fflate",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fflate\\LICENSE"
+    },
+    "fontkit@2.0.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/foliojs/fontkit",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fontkit",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fontkit\\README.md"
+    },
+    "fs-minipass@3.0.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/fs-minipass",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fs-minipass",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\fs-minipass\\LICENSE"
+    },
+    "get-nonce@1.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theKashey/get-nonce",
+        "publisher": "Anton Korzunov",
+        "email": "thekashey@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\get-nonce",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\get-nonce\\LICENSE"
+    },
+    "get-tsconfig@4.13.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/privatenumber/get-tsconfig",
+        "publisher": "Hiroki Osame",
+        "email": "hiroki.osame@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\get-tsconfig",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\get-tsconfig\\LICENSE"
+    },
+    "glob@13.0.6": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/node-glob",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob\\LICENSE.md"
+    },
+    "graceful-fs@4.2.11": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/node-graceful-fs",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\graceful-fs",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\graceful-fs\\LICENSE"
+    },
+    "hosted-git-info@10.1.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/hosted-git-info",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json\\node_modules\\hosted-git-info",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json\\node_modules\\hosted-git-info\\LICENSE"
+    },
+    "hosted-git-info@9.0.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/hosted-git-info",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hosted-git-info",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hosted-git-info\\LICENSE"
+    },
+    "hsl-to-hex@1.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/davidmarkclements/hsl-to-hex",
+        "publisher": "David Mark Clements",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hsl-to-hex",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hsl-to-hex\\readme.md"
+    },
+    "hsl-to-rgb-for-reals@1.1.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/davidmarkclements/hsl_rgb_converter",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hsl-to-rgb-for-reals",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hsl-to-rgb-for-reals\\README.md"
+    },
+    "http-cache-semantics@4.2.0": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/kornelski/http-cache-semantics",
+        "publisher": "Kornel Lesiński",
+        "email": "npms2@geekhood.net",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\http-cache-semantics",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\http-cache-semantics\\LICENSE"
+    },
+    "http-proxy-agent@7.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/TooTallNate/proxy-agents",
+        "publisher": "Nathan Rajlich",
+        "email": "nathan@tootallnate.net",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\http-proxy-agent",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\http-proxy-agent\\LICENSE"
+    },
+    "https-proxy-agent@7.0.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/TooTallNate/proxy-agents",
+        "publisher": "Nathan Rajlich",
+        "email": "nathan@tootallnate.net",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\https-proxy-agent",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\https-proxy-agent\\LICENSE"
+    },
+    "hyphen@1.14.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/ytiurin/hyphen",
+        "publisher": "Eugene Tiurin",
+        "email": "yevhentiurin@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hyphen",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\hyphen\\LICENSE"
+    },
+    "iceberg-js@0.8.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/supabase/iceberg-js",
+        "publisher": "mandarini",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\iceberg-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\iceberg-js\\LICENSE"
+    },
+    "iconv-lite@0.7.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pillarjs/iconv-lite",
+        "publisher": "Alexander Shtuchkin",
+        "email": "ashtuchkin@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\iconv-lite",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\iconv-lite\\LICENSE"
+    },
+    "ignore-walk@8.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/ignore-walk",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ignore-walk",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ignore-walk\\LICENSE"
+    },
+    "immediate@3.0.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/calvinmetcalf/immediate",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\immediate",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\immediate\\LICENSE.txt"
+    },
+    "inherits@2.0.4": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/inherits",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\inherits",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\inherits\\LICENSE"
+    },
+    "ini@6.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/ini",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\ini",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\ini\\LICENSE"
+    },
+    "ini@7.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/ini",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ini",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ini\\LICENSE"
+    },
+    "ip-address@10.4.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/beaugunderson/ip-address",
+        "publisher": "Beau Gunderson",
+        "email": "beau@beaugunderson.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ip-address",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ip-address\\LICENSE"
+    },
+    "is-url@1.2.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/segmentio/is-url",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\is-url",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\is-url\\LICENSE-MIT"
+    },
+    "isarray@1.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/juliangruber/isarray",
+        "publisher": "Julian Gruber",
+        "email": "mail@juliangruber.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\readable-stream\\node_modules\\isarray",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\readable-stream\\node_modules\\isarray\\README.md"
+    },
+    "isexe@4.0.0": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/isexe",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\isexe",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\isexe\\LICENSE.md"
+    },
+    "jay-peg@1.1.1": {
+        "licenses": "MIT",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jay-peg",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jay-peg\\LICENSE"
+    },
+    "jiti@2.7.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/unjs/jiti",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jiti",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jiti\\LICENSE"
+    },
+    "js-md5@0.8.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/emn178/js-md5",
+        "publisher": "Chen, Yi-Cyuan",
+        "email": "emn178@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\js-md5",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\js-md5\\LICENSE.txt"
+    },
+    "js-tokens@4.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lydell/js-tokens",
+        "publisher": "Simon Lydell",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\js-tokens",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\js-tokens\\LICENSE"
+    },
+    "jsbi@4.3.2": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/GoogleChromeLabs/jsbi",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jsbi",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jsbi\\LICENSE"
+    },
+    "json-parse-even-better-errors@5.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/npm/json-parse-even-better-errors",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\json-parse-even-better-errors",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\json-parse-even-better-errors\\LICENSE.md"
+    },
+    "json-parse-even-better-errors@6.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/npm/json-parse-even-better-errors",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json\\node_modules\\json-parse-even-better-errors",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json\\node_modules\\json-parse-even-better-errors\\LICENSE.md"
+    },
+    "json-schema@0.4.0": {
+        "licenses": "(AFL-2.1 OR BSD-3-Clause)",
+        "repository": "https://github.com/kriszyp/json-schema",
+        "publisher": "Kris Zyp",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\json-schema",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\json-schema\\LICENSE"
+    },
+    "json-stringify-nice@1.1.4": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/json-stringify-nice",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\json-stringify-nice",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\json-stringify-nice\\LICENSE"
+    },
+    "jsonparse@1.3.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/creationix/jsonparse",
+        "publisher": "Tim Caswell",
+        "email": "tim@creationix.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jsonparse",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jsonparse\\LICENSE"
+    },
+    "jszip@3.10.1": {
+        "licenses": "(MIT OR GPL-3.0-or-later)",
+        "repository": "https://github.com/Stuk/jszip",
+        "publisher": "Stuart Knightley",
+        "email": "stuart@stuartk.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jszip",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\jszip\\LICENSE.markdown"
+    },
+    "just-diff-apply@5.5.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/angus-c/just",
+        "publisher": "Angus Croll",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\just-diff-apply",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\just-diff-apply\\LICENSE"
+    },
+    "just-diff@6.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/angus-c/just",
+        "publisher": "Angus Croll",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\just-diff",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\just-diff\\LICENSE"
+    },
+    "lie@3.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/calvinmetcalf/lie",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lie",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lie\\license.md"
+    },
+    "lightningcss-win32-x64-msvc@1.32.0": {
+        "licenses": "MPL-2.0",
+        "repository": "https://github.com/parcel-bundler/lightningcss",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lightningcss-win32-x64-msvc",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lightningcss-win32-x64-msvc\\LICENSE"
+    },
+    "lightningcss@1.32.0": {
+        "licenses": "MPL-2.0",
+        "repository": "https://github.com/parcel-bundler/lightningcss",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lightningcss",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lightningcss\\LICENSE"
+    },
+    "linebreak@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/linebreaker",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\linebreak",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\linebreak\\LICENSE"
+    },
+    "lodash.clonedeep@4.5.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/lodash/lodash",
+        "publisher": "John-David Dalton",
+        "email": "john.david.dalton@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lodash.clonedeep",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lodash.clonedeep\\LICENSE"
+    },
+    "loose-envify@1.4.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/zertosh/loose-envify",
+        "publisher": "Andres Suarez",
+        "email": "zertosh@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\loose-envify",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\loose-envify\\LICENSE"
+    },
+    "lop@0.4.2": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/mwilliamson/lop",
+        "publisher": "Michael Williamson",
+        "email": "mike@zwobble.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lop",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lop\\LICENSE"
+    },
+    "lru-cache@11.5.2": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/node-lru-cache",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lru-cache",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lru-cache\\LICENSE.md"
+    },
+    "lucide-react@1.17.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/lucide-icons/lucide",
+        "publisher": "Eric Fennis",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lucide-react",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\lucide-react\\LICENSE"
+    },
+    "magic-string@0.30.21": {
+        "licenses": "MIT",
+        "repository": "https://github.com/Rich-Harris/magic-string",
+        "publisher": "Rich Harris",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\magic-string",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\magic-string\\LICENSE"
+    },
+    "make-fetch-happen@15.0.6": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/make-fetch-happen",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\make-fetch-happen",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\make-fetch-happen\\LICENSE"
+    },
+    "mammoth@1.12.0": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/mwilliamson/mammoth.js",
+        "publisher": "Michael Williamson",
+        "email": "mike@zwobble.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\mammoth",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\mammoth\\LICENSE"
+    },
+    "media-engine@1.0.3": {
+        "licenses": "MIT",
+        "publisher": "Diego Muracciole",
+        "email": "diegomuracciole@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\media-engine",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\media-engine\\README.md"
+    },
+    "minimatch@10.2.6": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minimatch",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob\\node_modules\\minimatch",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\glob\\node_modules\\minimatch\\LICENSE.md"
+    },
+    "minipass-collect@2.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/minipass-collect",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-collect",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-collect\\LICENSE"
+    },
+    "minipass-fetch@5.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/npm/minipass-fetch",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-fetch",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-fetch\\LICENSE"
+    },
+    "minipass-flush@1.0.7": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass-flush",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-flush",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-flush\\LICENSE.md"
+    },
+    "minipass-pipeline@1.2.4": {
+        "licenses": "ISC",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-pipeline",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-pipeline\\LICENSE"
+    },
+    "minipass-sized@2.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/minipass-sized",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-sized",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-sized\\LICENSE"
+    },
+    "minipass@3.3.6": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/minipass",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-flush\\node_modules\\minipass",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-flush\\node_modules\\minipass\\LICENSE"
+    },
+    "minipass@7.1.3": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass\\LICENSE.md"
+    },
+    "minizlib@3.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/isaacs/minizlib",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minizlib",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minizlib\\LICENSE"
+    },
+    "ms@2.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/ms",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ms",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ms\\license.md"
+    },
+    "nanoid@3.3.16": {
+        "licenses": "MIT",
+        "repository": "https://github.com/ai/nanoid",
+        "publisher": "Andrey Sitnik",
+        "email": "andrey@sitnik.ru",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\nanoid",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\nanoid\\LICENSE"
+    },
+    "negotiator@1.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jshttp/negotiator",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\negotiator",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\negotiator\\LICENSE"
+    },
+    "next-themes@0.4.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/pacocoursey/next-themes",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\next-themes",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\next-themes\\license.md"
+    },
+    "next@16.2.12": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/next.js",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\next",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\next\\license.md"
+    },
+    "node-gyp@12.4.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/nodejs/node-gyp",
+        "publisher": "Nathan Rajlich",
+        "email": "nathan@tootallnate.net",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\node-gyp",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\node-gyp\\LICENSE"
+    },
+    "nopt@10.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/nopt",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\nopt",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\nopt\\LICENSE"
+    },
+    "nopt@9.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/nopt",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\nopt",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\nopt\\LICENSE"
+    },
+    "normalize-svg-path@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jkroso/normalize-svg-path",
+        "publisher": "Jake Rosoman",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\normalize-svg-path",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\normalize-svg-path\\license.md"
+    },
+    "npm-bundled@5.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-bundled",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-bundled",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-bundled\\LICENSE"
+    },
+    "npm-install-checks@8.0.0": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/npm/npm-install-checks",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-install-checks",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-install-checks\\LICENSE"
+    },
+    "npm-install-checks@9.0.0": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/npm/npm-install-checks",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-install-checks",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-install-checks\\LICENSE"
+    },
+    "npm-normalize-package-bin@5.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-normalize-package-bin",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-normalize-package-bin",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-normalize-package-bin\\LICENSE"
+    },
+    "npm-normalize-package-bin@6.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-normalize-package-bin",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-normalize-package-bin",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-normalize-package-bin\\LICENSE"
+    },
+    "npm-package-arg@13.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-package-arg",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-package-arg",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-package-arg\\LICENSE"
+    },
+    "npm-package-arg@14.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-package-arg",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-package-arg",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-package-arg\\LICENSE"
+    },
+    "npm-packlist@10.0.4": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-packlist",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-packlist",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-packlist\\LICENSE"
+    },
+    "npm-pick-manifest@11.0.3": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-pick-manifest",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-pick-manifest",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-pick-manifest\\LICENSE.md"
+    },
+    "npm-pick-manifest@12.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-pick-manifest",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-pick-manifest",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\npm-pick-manifest\\LICENSE.md"
+    },
+    "npm-registry-fetch@19.1.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/npm-registry-fetch",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-registry-fetch",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\npm-registry-fetch\\LICENSE.md"
+    },
+    "object-assign@4.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/object-assign",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\object-assign",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\object-assign\\license"
+    },
+    "option@0.2.4": {
+        "licenses": "BSD-2-Clause",
+        "repository": "https://github.com/mwilliamson/node-options",
+        "publisher": "Michael Williamson",
+        "email": "mike@zwobble.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\option",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\option\\LICENSE"
+    },
+    "p-map@7.0.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/p-map",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\p-map",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\p-map\\license"
+    },
+    "pacote@21.5.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/pacote",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pacote",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pacote\\LICENSE"
+    },
+    "pako@0.2.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/nodeca/pako",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\unicode-trie\\node_modules\\pako",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\unicode-trie\\node_modules\\pako\\LICENSE"
+    },
+    "pako@1.0.11": {
+        "licenses": "(MIT AND Zlib)",
+        "repository": "https://github.com/nodeca/pako",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pako",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pako\\LICENSE"
+    },
+    "parse-conflict-json@5.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/parse-conflict-json",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\parse-conflict-json",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\parse-conflict-json\\LICENSE.md"
+    },
+    "parse-svg-path@0.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jkroso/parse-svg-path",
+        "publisher": "Jake Rosoman",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\parse-svg-path",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\parse-svg-path\\License"
+    },
+    "path-is-absolute@1.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/path-is-absolute",
+        "publisher": "Sindre Sorhus",
+        "email": "sindresorhus@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\path-is-absolute",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\path-is-absolute\\license"
+    },
+    "path-scurry@2.0.2": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/path-scurry",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\path-scurry",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\path-scurry\\LICENSE.md"
+    },
+    "pdf-parse@2.4.5": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/mehmet-kozan/pdf-parse",
+        "publisher": "Mehmet Kozan",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pdf-parse",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pdf-parse\\LICENSE"
+    },
+    "pdfjs-dist@5.4.296": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/mozilla/pdf.js",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pdfjs-dist",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pdfjs-dist\\LICENSE"
+    },
+    "picocolors@1.1.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/alexeyraspopov/picocolors",
+        "publisher": "Alexey Raspopov",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\picocolors",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\picocolors\\LICENSE"
+    },
+    "picomatch@4.0.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/micromatch/picomatch",
+        "publisher": "Jon Schlinkert",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tinyglobby\\node_modules\\picomatch",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tinyglobby\\node_modules\\picomatch\\LICENSE"
+    },
+    "playwright-core@1.61.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/playwright",
+        "publisher": "Microsoft Corporation",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\playwright-core",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\playwright-core\\LICENSE",
+        "noticeFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\playwright-core\\NOTICE"
+    },
+    "playwright@1.61.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/microsoft/playwright",
+        "publisher": "Microsoft Corporation",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\playwright",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\playwright\\LICENSE",
+        "noticeFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\playwright\\NOTICE"
+    },
+    "png-js@2.0.0": {
+        "licenses": "MIT*",
+        "repository": "https://github.com/devongovett/png.js",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\png-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\png-js\\LICENSE"
+    },
+    "postcss-selector-parser@7.1.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/postcss/postcss-selector-parser",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postcss-selector-parser",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postcss-selector-parser\\LICENSE-MIT"
+    },
+    "postcss-value-parser@4.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/TrySound/postcss-value-parser",
+        "publisher": "Bogdan Chadkin",
+        "email": "trysound@yandex.ru",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postcss-value-parser",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postcss-value-parser\\LICENSE"
+    },
+    "postcss@8.5.23": {
+        "licenses": "MIT",
+        "repository": "https://github.com/postcss/postcss",
+        "publisher": "Andrey Sitnik",
+        "email": "andrey@sitnik.es",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postcss",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postcss\\LICENSE"
+    },
+    "postgres@3.4.8": {
+        "licenses": "Unlicense",
+        "repository": "https://github.com/porsager/postgres",
+        "publisher": "Rasmus Porsager",
+        "email": "rasmus@porsager.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postgres",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\postgres\\README.md"
+    },
+    "proc-log@6.1.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/proc-log",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\proc-log",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\proc-log\\LICENSE"
+    },
+    "proc-log@7.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/proc-log",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json\\node_modules\\proc-log",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\package-json\\node_modules\\proc-log\\LICENSE"
+    },
+    "process-nextick-args@2.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/calvinmetcalf/process-nextick-args",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\process-nextick-args",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\process-nextick-args\\license.md"
+    },
+    "proggy@4.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/proggy",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\proggy",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\proggy\\LICENSE"
+    },
+    "promise-all-reject-late@1.0.1": {
+        "licenses": "ISC",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\promise-all-reject-late",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\promise-all-reject-late\\LICENSE"
+    },
+    "promise-call-limit@3.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/promise-call-limit",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\promise-call-limit",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\promise-call-limit\\LICENSE"
+    },
+    "prop-types@15.8.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/prop-types",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\prop-types",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\prop-types\\LICENSE"
+    },
+    "pure-rand@6.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/dubzzz/pure-rand",
+        "publisher": "Nicolas DUBIEN",
+        "email": "github@dubien.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pure-rand",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\pure-rand\\LICENSE"
+    },
+    "queue@6.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jessetane/queue",
+        "publisher": "Jesse Tane",
+        "email": "jesse.tane@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\queue",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\queue\\LICENSE"
+    },
+    "radix-ui@1.5.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/radix-ui/primitives",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\radix-ui",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\radix-ui\\LICENSE"
+    },
+    "react-dom@19.2.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/react",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-dom",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-dom\\LICENSE"
+    },
+    "react-is@16.13.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/react",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-is",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-is\\LICENSE"
+    },
+    "react-remove-scroll-bar@2.3.8": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theKashey/react-remove-scroll-bar",
+        "publisher": "Anton Korzunov",
+        "email": "thekashey@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-remove-scroll-bar",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-remove-scroll-bar\\README.md"
+    },
+    "react-remove-scroll@2.7.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theKashey/react-remove-scroll",
+        "publisher": "Anton Korzunov",
+        "email": "thekashey@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-remove-scroll",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-remove-scroll\\LICENSE"
+    },
+    "react-style-singleton@2.2.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theKashey/react-style-singleton",
+        "publisher": "Anton Korzunov",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-style-singleton",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react-style-singleton\\LICENSE"
+    },
+    "react@19.2.4": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/react",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\react\\LICENSE"
+    },
+    "read-cmd-shim@6.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/read-cmd-shim",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\read-cmd-shim",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\read-cmd-shim\\LICENSE"
+    },
+    "readable-stream@2.3.8": {
+        "licenses": "MIT",
+        "repository": "https://github.com/nodejs/readable-stream",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\readable-stream",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\readable-stream\\LICENSE"
+    },
+    "require-from-string@2.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/floatdrop/require-from-string",
+        "publisher": "Vsevolod Strukchinsky",
+        "email": "floatdrop@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\require-from-string",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\require-from-string\\license"
+    },
+    "reselect@5.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/reduxjs/reselect",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\reselect",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\reselect\\LICENSE"
+    },
+    "resolve-pkg-maps@1.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/privatenumber/resolve-pkg-maps",
+        "publisher": "Hiroki Osame",
+        "email": "hiroki.osame@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\resolve-pkg-maps",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\resolve-pkg-maps\\LICENSE"
+    },
+    "restructure@3.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/restructure",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\restructure",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\restructure\\LICENSE"
+    },
+    "safe-buffer@5.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/feross/safe-buffer",
+        "publisher": "Feross Aboukhadijeh",
+        "email": "feross@feross.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\safe-buffer",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\safe-buffer\\LICENSE"
+    },
+    "safer-buffer@2.1.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/ChALkeR/safer-buffer",
+        "publisher": "Nikita Skovoroda",
+        "email": "chalkerx@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\safer-buffer",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\safer-buffer\\LICENSE"
+    },
+    "scheduler@0.25.0-rc-603e6108-20241029": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/react",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\reconciler\\node_modules\\scheduler",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@react-pdf\\reconciler\\node_modules\\scheduler\\LICENSE"
+    },
+    "scheduler@0.27.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/react",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\scheduler",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\scheduler\\LICENSE"
+    },
+    "semver@7.8.5": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/node-semver",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\semver",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\semver\\LICENSE"
+    },
+    "setimmediate@1.0.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/YuzuJS/setImmediate",
+        "publisher": "YuzuJS",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\setimmediate",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\setimmediate\\LICENSE.txt"
+    },
+    "sharp@0.35.3": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/lovell/sharp",
+        "publisher": "Lovell Fuller",
+        "email": "npm@lovell.info",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sharp",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sharp\\LICENSE"
+    },
+    "signal-exit@4.1.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/tapjs/signal-exit",
+        "publisher": "Ben Coe",
+        "email": "ben@npmjs.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\signal-exit",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\signal-exit\\LICENSE.txt"
+    },
+    "sigstore@4.1.1": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/sigstore/sigstore-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sigstore",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sigstore\\LICENSE"
+    },
+    "smart-buffer@4.2.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/JoshGlazebrook/smart-buffer",
+        "publisher": "Josh Glazebrook",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\smart-buffer",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\smart-buffer\\LICENSE"
+    },
+    "socks-proxy-agent@8.0.5": {
+        "licenses": "MIT",
+        "repository": "https://github.com/TooTallNate/proxy-agents",
+        "publisher": "Nathan Rajlich",
+        "email": "nathan@tootallnate.net",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\socks-proxy-agent",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\socks-proxy-agent\\LICENSE"
+    },
+    "socks@2.8.9": {
+        "licenses": "MIT",
+        "repository": "https://github.com/JoshGlazebrook/socks",
+        "publisher": "Josh Glazebrook",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\socks",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\socks\\LICENSE"
+    },
+    "sonner@2.0.7": {
+        "licenses": "MIT",
+        "repository": "https://github.com/emilkowalski/sonner",
+        "publisher": "Emil Kowalski",
+        "email": "e@emilkowal.ski",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sonner",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sonner\\LICENSE.md"
+    },
+    "source-map-js@1.2.1": {
+        "licenses": "BSD-3-Clause",
+        "repository": "https://github.com/7rulnik/source-map-js",
+        "publisher": "Valentin 7rulnik Semirulnik",
+        "email": "v7rulnik@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\source-map-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\source-map-js\\LICENSE"
+    },
+    "spdx-compare@1.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/kemitchell/spdx-compare.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-compare",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-compare\\LICENSE.md"
+    },
+    "spdx-correct@3.2.0": {
+        "licenses": "Apache-2.0",
+        "repository": "https://github.com/jslicense/spdx-correct.js",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-correct",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-correct\\LICENSE"
+    },
+    "spdx-exceptions@2.5.0": {
+        "licenses": "CC-BY-3.0",
+        "repository": "https://github.com/kemitchell/spdx-exceptions.json",
+        "publisher": "The Linux Foundation",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-exceptions",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-exceptions\\README.md"
+    },
+    "spdx-expression-parse@3.0.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jslicense/spdx-expression-parse.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-correct\\node_modules\\spdx-expression-parse",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-correct\\node_modules\\spdx-expression-parse\\LICENSE"
+    },
+    "spdx-expression-parse@4.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jslicense/spdx-expression-parse.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-expression-parse",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-expression-parse\\LICENSE"
+    },
+    "spdx-license-ids@3.0.23": {
+        "licenses": "CC0-1.0",
+        "repository": "https://github.com/jslicense/spdx-license-ids",
+        "publisher": "Shinnosuke Watanabe",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-license-ids",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-license-ids\\README.md"
+    },
+    "spdx-ranges@2.1.1": {
+        "licenses": "(MIT AND CC-BY-3.0)",
+        "repository": "https://github.com/kemitchell/spdx-ranges.js",
+        "publisher": "The Linux Foundation",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-ranges",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-ranges\\LICENSE.md"
+    },
+    "spdx-satisfies@6.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/kemitchell/spdx-satisfies.js",
+        "publisher": "Kyle E. Mitchell",
+        "email": "kyle@kemitchell.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-satisfies",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\spdx-satisfies\\LICENSE"
+    },
+    "sprintf-js@1.0.3": {
+        "licenses": "BSD-3-Clause",
+        "repository": "https://github.com/alexei/sprintf.js",
+        "publisher": "Alexandru Marasteanu",
+        "email": "hello@alexei.ro",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sprintf-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\sprintf-js\\LICENSE"
+    },
+    "ssri@13.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/ssri",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ssri",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\ssri\\LICENSE.md"
+    },
+    "string_decoder@1.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/nodejs/string_decoder",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\string_decoder",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\string_decoder\\LICENSE"
+    },
+    "styled-jsx@5.1.6": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/styled-jsx",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\styled-jsx",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\styled-jsx\\license.md"
+    },
+    "svg-arc-to-cubic-bezier@3.2.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/colinmeinke/svg-arc-to-cubic-bezier",
+        "publisher": "Colin Meinke",
+        "email": "hello@colinmeinke.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\svg-arc-to-cubic-bezier",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\svg-arc-to-cubic-bezier\\LICENSE.md"
+    },
+    "swr@2.4.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/vercel/swr",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\swr",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\swr\\LICENSE"
+    },
+    "tailwind-merge@3.5.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/dcastil/tailwind-merge",
+        "publisher": "Dany Castillo",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tailwind-merge",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tailwind-merge\\LICENSE.md"
+    },
+    "tailwindcss@4.3.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/tailwindlabs/tailwindcss",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tailwindcss",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tailwindcss\\LICENSE"
+    },
+    "tapable@2.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/webpack/tapable",
+        "publisher": "Tobias Koppers @sokra",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tapable",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tapable\\LICENSE"
+    },
+    "tar@7.5.22": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/node-tar",
+        "publisher": "Isaac Z. Schlueter",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tar",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tar\\LICENSE.md"
+    },
+    "throttleit@2.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/sindresorhus/throttleit",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\throttleit",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\throttleit\\license"
+    },
+    "tiny-inflate@1.0.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/tiny-inflate",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tiny-inflate",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tiny-inflate\\LICENSE"
+    },
+    "tinyglobby@0.2.17": {
+        "licenses": "MIT",
+        "repository": "https://github.com/SuperchupuDev/tinyglobby",
+        "publisher": "Superchupu",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tinyglobby",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tinyglobby\\LICENSE"
+    },
+    "treeify@1.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/notatestuser/treeify",
+        "publisher": "Luke Plaster",
+        "email": "notatestuser@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\treeify",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\treeify\\LICENSE"
+    },
+    "treeverse@3.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/treeverse",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\treeverse",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\treeverse\\LICENSE"
+    },
+    "tslib@2.8.1": {
+        "licenses": "0BSD",
+        "repository": "https://github.com/Microsoft/tslib",
+        "publisher": "Microsoft Corp.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tslib",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tslib\\LICENSE.txt"
+    },
+    "tsx@4.23.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/privatenumber/tsx",
+        "publisher": "Hiroki Osame",
+        "email": "hiroki.osame@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tsx",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tsx\\LICENSE"
+    },
+    "tuf-js@4.1.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theupdateframework/tuf-js",
+        "publisher": "bdehamer@github.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tuf-js",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\tuf-js\\LICENSE"
+    },
+    "underscore@1.13.8": {
+        "licenses": "MIT",
+        "repository": "https://github.com/jashkenas/underscore",
+        "publisher": "Jeremy Ashkenas",
+        "email": "jeremy@documentcloud.org",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\underscore",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\underscore\\LICENSE"
+    },
+    "undici@6.28.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/nodejs/undici",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\undici",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\undici\\LICENSE"
+    },
+    "unicode-properties@1.4.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/unicode-properties",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\unicode-properties",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\unicode-properties\\LICENSE"
+    },
+    "unicode-trie@2.0.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/devongovett/unicode-trie",
+        "publisher": "Devon Govett",
+        "email": "devongovett@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\unicode-trie",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\unicode-trie\\LICENSE"
+    },
+    "use-callback-ref@1.3.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theKashey/use-callback-ref",
+        "publisher": "theKashey",
+        "email": "thekashey@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\use-callback-ref",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\use-callback-ref\\LICENSE"
+    },
+    "use-sidecar@1.1.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/theKashey/use-sidecar",
+        "publisher": "theKashey",
+        "email": "thekashey@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\use-sidecar",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\use-sidecar\\LICENSE"
+    },
+    "use-sync-external-store@1.6.0": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/react",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\use-sync-external-store",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\use-sync-external-store\\LICENSE"
+    },
+    "util-deprecate@1.0.2": {
+        "licenses": "MIT",
+        "repository": "https://github.com/TooTallNate/util-deprecate",
+        "publisher": "Nathan Rajlich",
+        "email": "nathan@tootallnate.net",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\util-deprecate",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\util-deprecate\\LICENSE"
+    },
+    "validate-npm-package-name@7.0.2": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/validate-npm-package-name",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\validate-npm-package-name",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\validate-npm-package-name\\LICENSE"
+    },
+    "validate-npm-package-name@8.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/validate-npm-package-name",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\validate-npm-package-name",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\validate-npm-package-name\\LICENSE"
+    },
+    "vite-compatible-readable-stream@3.6.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/TechInSite/readable-stream",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\vite-compatible-readable-stream",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\vite-compatible-readable-stream\\LICENSE"
+    },
+    "walk-up-path@4.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/walk-up-path",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\walk-up-path",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\walk-up-path\\LICENSE"
+    },
+    "which@6.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/node-which",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\which",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\arborist\\node_modules\\which\\LICENSE"
+    },
+    "which@7.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/node-which",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\which",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\@npmcli\\git\\node_modules\\which\\LICENSE"
+    },
+    "write-file-atomic@7.0.1": {
+        "licenses": "ISC",
+        "repository": "https://github.com/npm/write-file-atomic",
+        "publisher": "GitHub Inc.",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\write-file-atomic",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\write-file-atomic\\LICENSE.md"
+    },
+    "xmlbuilder@10.1.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/oozcitak/xmlbuilder-js",
+        "publisher": "Ozgur Ozcitak",
+        "email": "oozcitak@gmail.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\xmlbuilder",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\xmlbuilder\\LICENSE"
+    },
+    "yallist@4.0.0": {
+        "licenses": "ISC",
+        "repository": "https://github.com/isaacs/yallist",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-flush\\node_modules\\yallist",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\minipass-flush\\node_modules\\yallist\\LICENSE"
+    },
+    "yallist@5.0.0": {
+        "licenses": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/yallist",
+        "publisher": "Isaac Z. Schlueter",
+        "email": "i@izs.me",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\yallist",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\yallist\\LICENSE.md"
+    },
+    "yoga-layout@3.2.1": {
+        "licenses": "MIT",
+        "repository": "https://github.com/facebook/yoga",
+        "publisher": "Meta Open Source",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\yoga-layout",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\yoga-layout\\README.md"
+    },
+    "zod@4.4.3": {
+        "licenses": "MIT",
+        "repository": "https://github.com/colinhacks/zod",
+        "publisher": "Colin McDonnell",
+        "email": "zod@colinhacks.com",
+        "path": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\zod",
+        "licenseFile": "C:\\Users\\nikok\\Documents\\projects\\compliancetool\\compliance\\my-app\\node_modules\\zod\\LICENSE"
+    }
+}
