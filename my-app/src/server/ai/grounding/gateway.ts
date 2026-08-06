@@ -81,12 +81,7 @@ type GroundedOperationInput<T> = {
    * has nowhere legitimate to land and leaks into prose instead.
    */
   groundingInstruction: string;
-  /**
-   * Resolved against the retrieved context so the prompt can describe only what
-   * this call actually contains. A prompt that explains a mechanism with no
-   * instances — labelled sources, say — invites decorative imitation.
-   */
-  systemInstruction?: string | ((context: GroundingContextItem[]) => string);
+  systemInstruction?: string;
   outputContract: GroundedOutputContract<T>;
   idempotencyKey: string;
   generationReservationKey?: string;
@@ -284,11 +279,7 @@ export async function runGroundedOperation<T>(
   const schema = input.outputContract.schema(context);
   const prompt = buildGroundedPrompt(input.queryUnits, context);
   prompt.system += ` ${input.groundingInstruction} ${gapOutputLocaleInstruction(input.outputLocale)}`;
-  const systemInstruction =
-    typeof input.systemInstruction === "function"
-      ? input.systemInstruction(context)
-      : input.systemInstruction;
-  if (systemInstruction) prompt.system += ` ${systemInstruction}`;
+  if (input.systemInstruction) prompt.system += ` ${input.systemInstruction}`;
   const renderedInputHash = createHash("sha256")
     .update(`${prompt.system}\n${prompt.prompt}`)
     .digest("hex");

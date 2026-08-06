@@ -194,26 +194,18 @@ async function generateAtomicGapCategoriesCurrent(
         ),
         queryUnits: [queryUnit],
         groundingInstruction: GAP_GROUNDING_INSTRUCTION,
-        systemInstruction: (context) => {
-          const hasOrganizationEvidence = context.some(
-            (candidate) =>
-              candidate.queryUnitId === item.requirement.code &&
-              candidate.channel === "organization_document",
-          );
-          return phase === "initial"
+        systemInstruction:
+          phase === "initial"
             ? gapPrompt({
                 locale: input.outputLocale,
                 semanticContexts: currentGapSemanticContexts(item, input.outputLocale),
-                hasOrganizationEvidence,
               })
             : gapRepairPrompt({
                 locale: input.outputLocale,
                 categoryCode: item.requirement.code,
                 semanticContexts: currentGapSemanticContexts(item, input.outputLocale),
                 issues: issues ?? [],
-                hasOrganizationEvidence,
-              });
-        },
+              }),
         outputContract: {
           schema(context) {
             const policy = currentGapResponsePolicy(

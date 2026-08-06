@@ -411,21 +411,14 @@ export async function executeActionPlanGenerationJob(input: {
         }),
         queryUnits: [queryUnit],
         groundingInstruction: ACTION_PLAN_GROUNDING_INSTRUCTION,
-        systemInstruction: (context) => {
-          const hasOrganizationEvidence = context.some(
-            (candidate) =>
-              candidate.queryUnitId === category.requirement.code &&
-              candidate.channel === "organization_document",
-          );
-          return phase === "initial"
-            ? actionPlanPrompt(input.locale, { hasOrganizationEvidence })
+        systemInstruction:
+          phase === "initial"
+            ? actionPlanPrompt(input.locale)
             : actionPlanRepairPrompt({
                 locale: input.locale,
                 categoryCode: category.requirement.code,
                 issues: issues ?? [],
-                hasOrganizationEvidence,
-              });
-        },
+              }),
         outputContract: {
           schema(context) {
             responsePolicy = actionPlanPolicy(category, context, input.locale);
