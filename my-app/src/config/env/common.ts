@@ -48,12 +48,12 @@ export const commonApplicationEnvironmentSchema = z
     DATABASE_POOL_IDLE_TIMEOUT_SECONDS: integerFromEnvironment(1, 3600).default(
       20,
     ),
-    AI_DEFAULT_PROVIDER: z
-      .enum(["company_hosted", "openai", "self_hosted"])
-      .default("openai"),
+    AI_DEFAULT_PROVIDER: z.enum(["openai", "self_hosted"]).default("openai"),
     AI_CATEGORY_CONCURRENCY: integerFromEnvironment(1, 5).default(3),
     AI_PROVIDER_MAX_CONCURRENCY: integerFromEnvironment(1, 100).default(3),
-    AI_EMBEDDING_DIM: integerFromEnvironment(1536, 1536).default(1536),
+    // Follows the embedding model, not the schema: the storage column carries
+    // no dimension. The ceiling is pgvector's own storage limit.
+    AI_EMBEDDING_DIM: integerFromEnvironment(1, 16000).default(1536),
     AI_PROVIDER_TIMEOUT_MS: integerFromEnvironment(5000, 300000).default(
       120000,
     ),
@@ -90,11 +90,6 @@ export const commonApplicationEnvironmentSchema = z
     OPENAI_MODEL: optionalString,
     OPENAI_SMALL_MODEL: optionalString,
     OPENAI_EMBEDDING_MODEL: optionalString,
-    COMPANY_AI_BASE_URL: optionalUrl,
-    COMPANY_AI_API_KEY: optionalString,
-    COMPANY_AI_MODEL: optionalString,
-    COMPANY_AI_SMALL_MODEL: optionalString,
-    COMPANY_AI_EMBEDDING_MODEL: optionalString,
   })
   .superRefine((environment, context) => {
     const requiredByProvider: Record<
@@ -108,12 +103,6 @@ export const commonApplicationEnvironmentSchema = z
         "SELF_HOSTED_AI_EMBEDDING_MODEL",
       ],
       openai: ["OPENAI_API_KEY", "OPENAI_MODEL", "OPENAI_EMBEDDING_MODEL"],
-      company_hosted: [
-        "COMPANY_AI_BASE_URL",
-        "COMPANY_AI_API_KEY",
-        "COMPANY_AI_MODEL",
-        "COMPANY_AI_EMBEDDING_MODEL",
-      ],
     };
 
     for (const name of requiredByProvider[environment.AI_DEFAULT_PROVIDER]) {
@@ -176,7 +165,6 @@ export const commonApplicationEnvironmentSchema = z
       }
       for (const [name, value] of [
         ["SELF_HOSTED_AI_BASE_URL", environment.SELF_HOSTED_AI_BASE_URL],
-        ["COMPANY_AI_BASE_URL", environment.COMPANY_AI_BASE_URL],
       ] as const) {
         if (value && !isPublicHttpsUrl(value)) {
           context.addIssue({

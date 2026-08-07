@@ -17,6 +17,13 @@ import { retrieveGuidanceContext } from "./guidance-retrieval";
 import { resolveGroundingPolicy } from "./policy";
 import { selectGroundedProvider } from "./provider-policy";
 import { createAiSdkGroundedProvider } from "./providers/ai-sdk";
+import { createClientRelayGroundedProvider } from "./providers/client-relay";
+import { isClientInferenceSuspended } from "../client-inference/types";
+import {
+  generationSettingsFrom,
+  readOrganizationModelSettings,
+} from "@/src/server/organizations/model-settings-service";
+import { getGenerationOptions } from "@/lib/ai/generation-options";
 import {
   resolveGroundingRetrievalQuery,
   type GroundedOutputContract,
@@ -127,6 +134,7 @@ export async function prepareGroundingOperation(
     operation: "gap_analysis";
     organizationId: string;
     workflowReleaseId: string;
+    jobId?: string | null;
   },
   dependencies: Pick<GroundingExecutionDependencies, "providers"> = {},
 ): Promise<PreparedGroundingOperation> {
@@ -136,7 +144,12 @@ export async function prepareGroundingOperation(
   });
   const provider = selectGroundedProvider({
     selectedMode: policy.providerPolicy.selectedProviderMode,
-    providers: dependencies.providers ?? configuredProviders(),
+    providers:
+      dependencies.providers ??
+      (await configuredProviders({
+        organizationId: input.organizationId,
+        jobId: input.jobId,
+      })),
   });
   const pinnedSnapshots = await resolvePinnedLegalScope({
     familyCodes: policy.familyCodes,
@@ -174,6 +187,7 @@ export async function runGroundedOperation<T>(
         operation: input.operation,
         organizationId: input.organizationId,
         workflowReleaseId: input.workflowReleaseId,
+        jobId: input.jobId,
       },
       dependencies,
     ));
@@ -225,13 +239,46 @@ export async function runGroundedOperation<T>(
       "GROUNDING_RUN_ALREADY_PUBLISHED",
     );
   }
+  let resumedRun: typeof aiProcessingRuns.$inferSelect | null = null;
   if (existing) {
-    throw new ApiError(
-      409,
-      "Grounded operation already exists",
-      { runId: existing.id },
-      "GROUNDING_RUN_EXISTS",
-    );
+    // A previous execution parked this exact call waiting for an
+    // organization browser. The client's answer is found by input hash when
+    // the relay provider re-enters, so this run continues rather than
+    // colliding with its own attempt identity. Any other existing run is a
+    // genuine duplicate.
+    if (existing.status === "awaiting_client" && existing.validatedOutput === null) {
+      const [reset] = await db
+        .update(aiProcessingRuns)
+        .set({
+          status: "processing",
+          failureCode: null,
+          failureMessage: null,
+          completedAt: null,
+        })
+        .where(
+          and(
+            eq(aiProcessingRuns.id, existing.id),
+            eq(aiProcessingRuns.status, "awaiting_client"),
+          ),
+        )
+        .returning();
+      if (!reset) {
+        throw new ApiError(
+          409,
+          "Grounded operation already exists",
+          { runId: existing.id },
+          "GROUNDING_RUN_EXISTS",
+        );
+      }
+      resumedRun = reset;
+    } else {
+      throw new ApiError(
+        409,
+        "Grounded operation already exists",
+        { runId: existing.id },
+        "GROUNDING_RUN_EXISTS",
+      );
+    }
   }
   const provider = withProviderPermit(prepared.provider, {
     jobId: input.jobId,
@@ -316,7 +363,7 @@ export async function runGroundedOperation<T>(
       ? { recoveryCompatibility }
       : {}),
   };
-  const run = await createAiProcessingRunWithLiveJobGate({
+  const run = resumedRun ?? (await createAiProcessingRunWithLiveJobGate({
       organizationId: input.organizationId,
       jobId: input.jobId,
       idempotencyKey: input.idempotencyKey,
@@ -337,7 +384,7 @@ export async function runGroundedOperation<T>(
       claimValidation: { version: 1, status: "pending" },
       outputLocale: input.outputLocale,
       startedAt: new Date(),
-    }, new Date(), input.expectedLeaseOwner);
+    }, new Date(), input.expectedLeaseOwner));
 
   try {
     const result =
@@ -459,6 +506,22 @@ export async function runGroundedOperation<T>(
       pinnedSnapshots: prepared.pinnedSnapshots,
     };
   } catch (error) {
+    if (isClientInferenceSuspended(error)) {
+      // Not a failure: the server has handed the call to an organization
+      // browser and is waiting. Keep the run recognisable as in-flight so a
+      // later execution of the same parked job resumes it instead of
+      // treating it as a duplicate.
+      await db
+        .update(aiProcessingRuns)
+        .set({
+          status: "awaiting_client",
+          failureCode: null,
+          failureMessage: null,
+          completedAt: null,
+        })
+        .where(eq(aiProcessingRuns.id, run.id));
+      throw error;
+    }
     await db
       .update(aiProcessingRuns)
       .set({
@@ -700,14 +763,75 @@ async function runLanguageNeutralProvider<T>(input: {
   };
 }
 
-function configuredProviders() {
+/**
+ * Builds the provider for each mode this organization could use.
+ *
+ * `openai` always calls the model directly from the server. `self_hosted` has
+ * two shapes and the organization's own configuration decides which:
+ *
+ * - An organization that has recorded its chosen models runs them on a user's
+ *   machine, which a deployed function cannot reach, so its calls go through
+ *   the browser relay.
+ * - An organization without that record falls back to the deployment's
+ *   `SELF_HOSTED_AI_*` endpoint, called directly. That is the single-model
+ *   local development setup in the runbook, and the on-premises topology where
+ *   the server and the model share a network.
+ *
+ * This is the only place the choice is made, so all three generation call sites
+ * inherit it without knowing the relay exists.
+ */
+/**
+ * The provider one organization should use, resolved the same way the gateway
+ * resolves its own. Exported for the call sites that construct a provider
+ * outside `runGroundedOperation`, so they cannot silently miss the relay.
+ */
+export async function resolveGroundedProviderForOrganization(input: {
+  organizationId: string;
+  providerMode: AiProviderMode;
+  jobId?: string | null;
+}) {
+  return selectGroundedProvider({
+    selectedMode: input.providerMode,
+    providers: await configuredProviders({
+      organizationId: input.organizationId,
+      jobId: input.jobId,
+    }),
+  });
+}
+
+async function configuredProviders(input: {
+  organizationId?: string;
+  jobId?: string | null;
+}) {
   const providers: Partial<Record<AiProviderMode, GroundedProvider>> = {};
-  for (const mode of ["company_hosted", "self_hosted", "openai"] as const) {
-    try {
-      providers[mode] = createAiSdkGroundedProvider(mode);
-    } catch {
-      // Provider configuration is validated by the selection policy.
-    }
+  try {
+    providers.openai = createAiSdkGroundedProvider("openai");
+  } catch {
+    // Provider configuration is validated by the selection policy.
+  }
+
+  const settings = input.organizationId
+    ? await readOrganizationModelSettings(input.organizationId)
+    : null;
+
+  if (settings) {
+    const generation = generationSettingsFrom(settings);
+    providers.self_hosted = createClientRelayGroundedProvider({
+      organizationId: input.organizationId!,
+      jobId: input.jobId ?? null,
+      model: generation.model,
+      providerOptions: getGenerationOptions("self_hosted", {
+        thinking: false,
+        thinkingStyle: generation.thinkingStyle,
+      }).providerOptions,
+    });
+    return providers;
+  }
+
+  try {
+    providers.self_hosted = createAiSdkGroundedProvider("self_hosted");
+  } catch {
+    // Provider configuration is validated by the selection policy.
   }
   return providers;
 }

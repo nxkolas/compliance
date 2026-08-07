@@ -14,7 +14,7 @@ import {
   gapItems,
 } from "@/src/db/schema";
 import { currentGapDefinitionHash, getCurrentGapDefinition } from "@/src/server/definitions";
-import { createAiSdkGroundedProvider } from "@/src/server/ai/grounding/providers/ai-sdk";
+import { resolveGroundedProviderForOrganization } from "@/src/server/ai/grounding/gateway";
 import type { GroundedProvider } from "@/src/server/ai/grounding/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -314,6 +314,7 @@ export async function executeGapContradictionResolutionJob(input: {
 }
 
 async function regenerateFromDocument(input: {
+  jobId: string;
   organizationId: string;
   sourceRevisionId: string;
   findingId: string;
@@ -328,7 +329,17 @@ async function regenerateFromDocument(input: {
     where: { RAW: (table, operators) => eq(table.id, input.organizationId) ?? operators.sql`true` },
   });
   if (!organization) throw new ApiError(404, "Organization not found");
-  const provider = input.provider ?? createAiSdkGroundedProvider(organization.aiProviderMode);
+  // Resolved through the gateway rather than constructed here, so an
+  // organization running its own model reaches it through the browser relay.
+  // Building the provider directly used to be this call site's one difference
+  // from the other two, and it would have quietly bypassed the relay.
+  const provider =
+    input.provider ??
+    (await resolveGroundedProviderForOrganization({
+      organizationId: input.organizationId,
+      providerMode: organization.aiProviderMode,
+      jobId: input.jobId,
+    }));
   const definition = getCurrentGapDefinition(input.source.revision.locale as "de" | "en");
   const manifest = {
     sourceRevisionId: input.sourceRevisionId,

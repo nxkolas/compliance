@@ -57,9 +57,13 @@ vi.mock("@/src/server/jobs", () => ({
   }),
 }));
 
-import { requestProviderChange } from "@/src/server/organizations/embedding-migration-service";
+import { requestEmbeddingConfigChange } from "@/src/server/organizations/embedding-migration-service";
+import {
+  resolveEmbeddingConfig,
+  withEmbeddingKey,
+} from "@/src/server/documents/document-config";
 
-describe("organization provider change", () => {
+describe("organization embedding configuration change", () => {
   beforeEach(() => {
     mocks.organization = { aiProviderMode: "openai" };
     mocks.activeMigration = null;
@@ -69,23 +73,25 @@ describe("organization provider change", () => {
     mocks.enqueued = [];
   });
 
-  it("stages the change and leaves the committed provider alone when documents exist", async () => {
+  it("stages the change and leaves the committed configuration alone when documents exist", async () => {
     mocks.indexedDocumentVersions = [{ id: "v1" }, { id: "v2" }];
 
-    const result = await requestProviderChange({
+    const result = await requestEmbeddingConfigChange({
       userId: "user",
       organizationId: "org",
-      targetProviderMode: "self_hosted",
+      targetConfig: resolveEmbeddingConfig("self_hosted"),
       executor: executor as never,
     });
 
-    // The provider names the vectors on disk. Advancing it before they are
-    // rebuilt is exactly the divergence this design removes.
+    // The stored configuration names the vectors on disk. Advancing it before
+    // they are rebuilt is exactly the divergence this design removes.
     expect(result.applied).toBe(false);
     expect(mocks.organizationUpdates).toHaveLength(0);
     expect(mocks.insertedMigrations[0]).toMatchObject({
       fromProviderMode: "openai",
       toProviderMode: "self_hosted",
+      fromEmbeddingKey: resolveEmbeddingConfig("openai").key,
+      toEmbeddingKey: resolveEmbeddingConfig("self_hosted").key,
       status: "pending",
       documentVersionsTotal: 2,
     });
@@ -96,13 +102,56 @@ describe("organization provider change", () => {
     });
   });
 
+  /**
+   * The regression this phase exists to prevent. Before the key, invalidation
+   * compared provider modes, so a model change within one provider returned
+   * early -- leaving every stored vector labelled with a space it was no longer
+   * in, with no re-index and no error.
+   */
+  it("stages a migration when only the model changed within one provider", async () => {
+    mocks.indexedDocumentVersions = [{ id: "v1" }];
+    const current = resolveEmbeddingConfig("openai");
+
+    const result = await requestEmbeddingConfigChange({
+      userId: "user",
+      organizationId: "org",
+      targetConfig: withEmbeddingKey({ ...current, model: "text-embedding-3-large" }),
+      executor: executor as never,
+    });
+
+    expect(result.applied).toBe(false);
+    expect(mocks.insertedMigrations[0]).toMatchObject({
+      fromEmbeddingKey: current.key,
+      status: "pending",
+    });
+    expect(mocks.enqueued[0]).toMatchObject({ kind: "organization_reembedding" });
+  });
+
+  it("stages a migration when only the query instruction profile changed", async () => {
+    mocks.indexedDocumentVersions = [{ id: "v1" }];
+    const current = resolveEmbeddingConfig("openai");
+
+    const result = await requestEmbeddingConfigChange({
+      userId: "user",
+      organizationId: "org",
+      targetConfig: withEmbeddingKey({
+        ...current,
+        retrievalInstructionId: "e5-query-v1",
+      }),
+      executor: executor as never,
+    });
+
+    expect(result.applied).toBe(false);
+    expect(mocks.enqueued).toHaveLength(1);
+  });
+
   it("commits immediately when the organization has no indexed documents", async () => {
     mocks.indexedDocumentVersions = [];
 
-    const result = await requestProviderChange({
+    const result = await requestEmbeddingConfigChange({
       userId: "user",
       organizationId: "org",
-      targetProviderMode: "self_hosted",
+      targetConfig: resolveEmbeddingConfig("self_hosted"),
       executor: executor as never,
     });
 
@@ -118,13 +167,13 @@ describe("organization provider change", () => {
     expect(mocks.enqueued).toHaveLength(0);
   });
 
-  it("is a no-op when the requested provider is already committed", async () => {
+  it("is a no-op when the requested configuration is already committed", async () => {
     mocks.indexedDocumentVersions = [{ id: "v1" }];
 
-    const result = await requestProviderChange({
+    const result = await requestEmbeddingConfigChange({
       userId: "user",
       organizationId: "org",
-      targetProviderMode: "openai",
+      targetConfig: resolveEmbeddingConfig("openai"),
       executor: executor as never,
     });
 
@@ -139,16 +188,17 @@ describe("organization provider change", () => {
     mocks.activeMigration = {
       id: "migration-0",
       toProviderMode: "self_hosted",
+      toEmbeddingKey: resolveEmbeddingConfig("self_hosted").key,
       status: "processing",
       documentVersionsTotal: 1,
       documentVersionsCompleted: 0,
     };
 
     await expect(
-      requestProviderChange({
+      requestEmbeddingConfigChange({
         userId: "user",
         organizationId: "org",
-        targetProviderMode: "company_hosted",
+        targetConfig: resolveEmbeddingConfig("self_hosted"),
         executor: executor as never,
       }),
     ).rejects.toMatchObject({ code: "EMBEDDING_PROVIDER_CHANGE_IN_PROGRESS" });

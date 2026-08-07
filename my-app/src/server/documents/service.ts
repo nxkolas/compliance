@@ -32,16 +32,25 @@ import {
 import { chunkExtractedPages } from "./chunker";
 import {
   DOCUMENT_STORAGE_BUCKET,
+  embeddingIdentityColumns,
   MAX_DOCUMENT_BYTES,
   resolveEmbeddingConfig,
   SUPPORTED_DOCUMENT_TYPES,
+  type EmbeddingConfig,
 } from "./document-config";
 import {
   createDocumentEmbeddingProvider,
+  createDocumentEmbeddingProviderFromConfig,
   type DocumentEmbeddingProvider,
   validateEmbeddings,
 } from "./embeddings";
 import { parseDocument, validateDocumentUpload } from "./parser";
+import {
+  commitOrganizationEmbeddingSettings,
+  embeddingConfigFromSettings,
+  readOrganizationModelSettings,
+} from "../organizations/model-settings-service";
+import { createClientRelayEmbeddingProvider } from "../ai/client-inference/embedding-relay";
 
 export type DocumentStorage = {
   upload(input: { bucket: string; path: string; bytes: Uint8Array; contentType: string }): Promise<void>;
@@ -115,7 +124,7 @@ export async function uploadOrganizationDocumentVersion(
     const prior = await executor.select({ versionNumber: documentVersions.versionNumber }).from(documentVersions)
       .where(and(eq(documentVersions.documentId, command.documentId), eq(documentVersions.organizationId, command.organizationId)))
       .orderBy(desc(documentVersions.versionNumber));
-    const { model: organizationEmbeddingModel } =
+    const organizationEmbedding =
       await resolveOrganizationEmbeddingConfig(command.organizationId, executor);
     return executor.insert(documentVersions).values({
     id: versionId,
@@ -130,7 +139,7 @@ export async function uploadOrganizationDocumentVersion(
     contentHash: sha256(command.bytes),
     indexingStatus: "processing",
     parser: parserName(command.mimeType),
-    embeddingModel: organizationEmbeddingModel,
+    ...embeddingIdentityColumns(organizationEmbedding),
     indexingStartedAt: new Date(),
     createdBy: command.userId,
     }).returning();
@@ -378,7 +387,7 @@ export async function finalizeDocumentUpload(input: {
     }).returning({ id: documents.id });
     if (!document) throw new Error("Document was not created");
 
-    const { model: organizationEmbeddingModel } =
+    const organizationEmbedding =
       await resolveOrganizationEmbeddingConfig(session.organizationId, tx);
     const [version] = await tx.insert(documentVersions).values({
       id: ids.documentVersionId,
@@ -393,7 +402,7 @@ export async function finalizeDocumentUpload(input: {
       contentHash: input.upload.object.contentHash,
       indexingStatus: "pending",
       parser: parserName(session.mimeType),
-      embeddingModel: organizationEmbeddingModel,
+      ...embeddingIdentityColumns(organizationEmbedding),
       createdBy: session.requestedBy,
     }).returning({ id: documentVersions.id });
     if (!version) throw new Error("Document version was not created");
@@ -494,34 +503,83 @@ export async function retryOrganizationDocumentIndexing(userId: string, organiza
 }
 
 /**
- * Reads the embedding provider an organization's vectors are stored in.
+ * Reads the embedding coordinates an organization's vectors are stored in.
  *
- * This is `ai_provider_mode`: the organization's one provider choice governs
- * generation and embeddings alike, and it only advances once a migration has
- * rebuilt every vector, so it always describes the data on disk. Falls back to
- * the server default when the organization is not found, which keeps operator
- * commands with no organization in scope working.
+ * An organization running its own model carries a settings row naming it; that
+ * row is authoritative, and it advances only once a migration has rebuilt every
+ * vector, so it always describes the data on disk. An organization on OpenAI
+ * has nothing to choose and resolves from the deployment configuration.
+ *
+ * A `self_hosted` organization with no row yet falls back to the deployment's
+ * `SELF_HOSTED_AI_*` values. That is the single-model local development setup
+ * described in the local model runbook, and it stays supported.
+ *
+ * Falls back to the server default when the organization is not found, which
+ * keeps operator commands with no organization in scope working.
  */
 export async function resolveOrganizationEmbeddingConfig(
   organizationId: string,
   executor: OrganizationScopeExecutor = db,
 ) {
+  return (await resolveOrganizationEmbedding(organizationId, executor)).config;
+}
+
+/**
+ * The organization's embedding coordinates, plus whether reaching that model
+ * requires a browser.
+ *
+ * `relayed` is what separates an organization running a model on someone's
+ * laptop from one whose model the server can call directly. Both are
+ * `self_hosted`; only the first has recorded its own model, and only the first
+ * needs a client attached to embed anything.
+ */
+export async function resolveOrganizationEmbedding(
+  organizationId: string,
+  executor: OrganizationScopeExecutor = db,
+): Promise<{ config: EmbeddingConfig; relayed: boolean }> {
   const organization = await executor.query.organizations.findFirst({
     columns: { aiProviderMode: true },
     where: { RAW: (table, operators) => eq(table.id, organizationId) ?? operators.sql`true` },
   });
-  return resolveEmbeddingConfig(organization?.aiProviderMode);
+  if (organization?.aiProviderMode === "self_hosted") {
+    const settings = await readOrganizationModelSettings(organizationId, executor);
+    if (settings) {
+      return { config: embeddingConfigFromSettings(settings), relayed: true };
+    }
+  }
+  return {
+    config: resolveEmbeddingConfig(organization?.aiProviderMode),
+    relayed: false,
+  };
 }
 
-async function organizationEmbeddingProvider(
+/**
+ * Builds the embedder for one organization, relayed through a browser or not.
+ *
+ * Every embedding path routes through here so none of them can accidentally
+ * embed with the deployment default. Note that the configuration is passed to
+ * the constructor rather than just the provider mode: rebuilding from the mode
+ * alone would discard the organization's chosen model and silently write
+ * vectors labelled with a space they are not in.
+ */
+export async function organizationEmbeddingProvider(
   organizationId: string,
+  options: { jobId?: string | null } = {},
   executor: OrganizationScopeExecutor = db,
 ) {
-  const config = await resolveOrganizationEmbeddingConfig(organizationId, executor);
-  return createDocumentEmbeddingProvider(config.provider);
+  const { config, relayed } = await resolveOrganizationEmbedding(
+    organizationId,
+    executor,
+  );
+  if (!relayed) return createDocumentEmbeddingProviderFromConfig(config);
+  return createClientRelayEmbeddingProvider({
+    organizationId,
+    jobId: options.jobId ?? null,
+    config,
+  });
 }
 
-export async function executeDocumentIndexingJob(input: { documentVersionId: string; organizationId: string }) {
+export async function executeDocumentIndexingJob(input: { documentVersionId: string; organizationId: string; jobId?: string }) {
   const version = await db.query.documentVersions.findFirst({
     where: { RAW: (table, operators) => and(eq(table.id, input.documentVersionId), eq(table.organizationId, input.organizationId)) ?? operators.sql`true` },
   });
@@ -531,7 +589,9 @@ export async function executeDocumentIndexingJob(input: { documentVersionId: str
     versionId: version.id,
     organizationId: input.organizationId,
     bytes,
-    embeddingProvider: await organizationEmbeddingProvider(input.organizationId),
+    embeddingProvider: await organizationEmbeddingProvider(input.organizationId, {
+      jobId: input.jobId ?? null,
+    }),
   });
   return { type: "document_version", id: version.id };
 }
@@ -584,8 +644,22 @@ export async function executeOrganizationReembeddingJob(
     .where(eq(backgroundJobs.id, input.jobId));
   const requestedBy = job?.requestedBy ?? undefined;
 
-  const provider = createDocumentEmbeddingProvider(migration.toProviderMode);
-  // Only versions not already carrying the target model. The after-response
+  // The coordinates pinned when the change was requested, not whatever the
+  // organization resolves to now. A settings edit while this runs must not
+  // retarget an in-flight rebuild.
+  const targetConfig = migration.toEmbeddingConfig as EmbeddingConfig;
+  const { relayed } = await resolveOrganizationEmbedding(input.organizationId);
+  // For an organization whose model runs on a user's machine, this is the
+  // operation that needs a browser open for its whole duration: every batch
+  // parks the job until a client answers it.
+  const provider = relayed
+    ? createClientRelayEmbeddingProvider({
+        organizationId: input.organizationId,
+        jobId: input.jobId,
+        config: targetConfig,
+      })
+    : createDocumentEmbeddingProviderFromConfig(targetConfig);
+  // Only versions not already carrying the target identity. The after-response
   // drain gives each attempt a bounded window, so a run that is cut short must
   // resume where it stopped rather than start over -- and re-running a finished
   // migration becomes a no-op.
@@ -600,7 +674,7 @@ export async function executeOrganizationReembeddingJob(
       and(
         eq(documentVersions.organizationId, input.organizationId),
         eq(documentVersions.indexingStatus, "succeeded"),
-        ne(documentVersions.embeddingModel, provider.model),
+        ne(documentVersions.embeddingKey, provider.key),
       ),
     )
     .orderBy(documentVersions.id);
@@ -672,10 +746,14 @@ export async function executeOrganizationReembeddingJob(
 
   const now = new Date();
   await db.transaction(async (tx) => {
-    await tx
-      .update(organizations)
-      .set({ aiProviderMode: migration.toProviderMode, updatedAt: now })
-      .where(eq(organizations.id, input.organizationId));
+    // Only when the provider itself moved. A model change within one provider
+    // is the ordinary case now and leaves `ai_provider_mode` alone.
+    if (migration.toProviderMode) {
+      await tx
+        .update(organizations)
+        .set({ aiProviderMode: migration.toProviderMode, updatedAt: now })
+        .where(eq(organizations.id, input.organizationId));
+    }
     await tx
       .update(organizationEmbeddingMigrations)
       .set({
@@ -686,6 +764,15 @@ export async function executeOrganizationReembeddingJob(
         failureMessage: null,
       })
       .where(eq(organizationEmbeddingMigrations.id, migration.id));
+    // The organization's active coordinates advance in the same transaction
+    // that finishes the rebuild, which is what makes them unable to disagree
+    // with the vectors they describe. A no-op for an organization with no
+    // settings row, whose coordinates come from the deployment configuration.
+    await commitOrganizationEmbeddingSettings(
+      input.organizationId,
+      targetConfig,
+      tx as never,
+    );
     await tx.insert(auditEvents).values({
       organizationId: input.organizationId,
       actorUserId: requestedBy,
@@ -696,7 +783,12 @@ export async function executeOrganizationReembeddingJob(
         migrationId: migration.id,
         fromProviderMode: migration.fromProviderMode,
         toProviderMode: migration.toProviderMode,
+        fromEmbeddingKey: migration.fromEmbeddingKey,
+        toEmbeddingKey: migration.toEmbeddingKey,
         embeddingModel: provider.model,
+        embeddingRevision: provider.modelRevision,
+        embeddingDimensions: provider.dimensions,
+        embeddingInstructionProfile: provider.retrievalInstructionId,
         reindexedDocumentVersions: versions.length,
       },
     });
@@ -712,7 +804,7 @@ async function createDocumentRecords(input: {
 }, executor: OrganizationScopeExecutor = db) {
   const title = input.title.trim();
   if (!title) throw new ApiError(400, "A document title is required");
-  const { model: organizationEmbeddingModel } =
+  const organizationEmbedding =
     await resolveOrganizationEmbeddingConfig(input.organizationId, executor);
     await executor.insert(documents).values({ id: input.documentId, organizationId: input.organizationId, name: title, createdBy: input.userId });
     await executor.insert(documentVersions).values({
@@ -728,7 +820,7 @@ async function createDocumentRecords(input: {
       contentHash: input.contentHash,
       indexingStatus: input.indexingStatus,
       parser: parserName(input.mimeType),
-      embeddingModel: organizationEmbeddingModel,
+      ...embeddingIdentityColumns(organizationEmbedding),
       indexingStartedAt: input.indexingStatus === "processing" ? new Date() : null,
       createdBy: input.userId,
     });
@@ -772,7 +864,10 @@ async function indexDocumentVersion(input: {
         contentHash: createHash("sha256").update(chunk.content).digest("hex"),
         embedding: embeddings[position],
       })));
-      await tx.update(documentVersions).set({ indexingStatus: "succeeded", parser: parsed.parserKind, embeddingModel: provider.model, indexingCompletedAt: new Date(), failureCode: null, failureMessage: null }).where(eq(documentVersions.id, version.id));
+      // The identity is written from the embedder that actually produced these
+      // vectors, not from the organization's current setting. A re-index that
+      // races a settings change must label its rows with the space they are in.
+      await tx.update(documentVersions).set({ indexingStatus: "succeeded", parser: parsed.parserKind, ...embeddingIdentityColumns(provider), indexingCompletedAt: new Date(), failureCode: null, failureMessage: null }).where(eq(documentVersions.id, version.id));
     });
   } catch (error) {
     await db.update(documentVersions).set({ indexingStatus: "failed", indexingCompletedAt: new Date(), failureCode: "DOCUMENT_INDEXING_FAILED", failureMessage: error instanceof Error ? error.message : "Indexing failed" }).where(eq(documentVersions.id, version.id));

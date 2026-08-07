@@ -31,8 +31,10 @@ export async function retrieveOrganizationContext(input: {
     operation: "gap_analysis",
     provider: embedding.provider,
     model: embedding.model,
-    dimensions: EMBEDDING_DIMENSIONS,
-    chunkingVersion: CHUNKING_VERSION,
+    // The organization's own width and chunking, not the deployment default.
+    // Both are part of the embedding identity now and vary per organization.
+    dimensions: embedding.dimensions,
+    chunkingVersion: embedding.chunkingVersion,
     candidates: evidence.map((row) => ({
       chunkId: row.chunkId,
       documentId: row.documentId,

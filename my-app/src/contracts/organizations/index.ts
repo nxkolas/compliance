@@ -1,10 +1,6 @@
 import * as z from "zod";
 
-export const aiProviderModeSchema = z.enum([
-  "company_hosted",
-  "openai",
-  "self_hosted",
-]);
+export const aiProviderModeSchema = z.enum(["openai", "self_hosted"]);
 
 export const organizationInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -15,7 +11,7 @@ export const organizationInputSchema = z.object({
     .length(2)
     .transform((value) => value.toUpperCase())
     .default("DE"),
-  aiProviderMode: aiProviderModeSchema.default("company_hosted"),
+  aiProviderMode: aiProviderModeSchema.default("openai"),
 });
 
 export const organizationListQuerySchema = z.object({

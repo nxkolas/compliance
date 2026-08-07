@@ -19,7 +19,8 @@ import {
   sql,
 } from "drizzle-orm";
 import { ApiError } from "../api/errors";
-import { requestProviderChange } from "./embedding-migration-service";
+import { requestEmbeddingConfigChange } from "./embedding-migration-service";
+import { resolveEmbeddingConfig } from "../documents/document-config";
 import { getCursorCodec } from "../api/pagination";
 import { hasOrganizationCapability } from "../auth/capabilities";
 import { authorizeOrganizationRead, withAuthorizedOrganizationCommand, type OrganizationScopeExecutor, type OrganizationTransaction } from "../auth/organization-scope";
@@ -194,13 +195,14 @@ export async function updateOrganizationForUser(
       .returning();
     if (!updated) throw organizationNotFound();
 
-    // The provider governs the embedding model, so it is applied through the
-    // migration path rather than written here. Otherwise this route would be a
-    // hole around the rebuild that keeps the choice and the vectors aligned.
-    const change = await requestProviderChange({
+    // The provider determines the embedding coordinates, so it is applied
+    // through the migration path rather than written here. Otherwise this route
+    // would be a hole around the rebuild that keeps the choice and the vectors
+    // aligned.
+    const change = await requestEmbeddingConfigChange({
       userId,
       organizationId,
-      targetProviderMode: input.aiProviderMode,
+      targetConfig: resolveEmbeddingConfig(input.aiProviderMode),
       executor,
     });
 

@@ -14,6 +14,9 @@ export type ContentEmbedder = {
   modelRevision: string;
   dimensions: number;
   retrievalInstructionId: string;
+  chunkingVersion: string;
+  /** Identity of the vector space; see `embeddingIdentityKey`. */
+  key: string;
   embed(
     values: string[],
     purpose?: "document" | "query",

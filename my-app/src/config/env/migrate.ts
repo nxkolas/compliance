@@ -17,7 +17,7 @@ export const migrationEnvironmentSchema = z
       .int()
       .safe()
       .default(7240121536),
-    AI_EMBEDDING_DIM: z.coerce.number().int().min(1536).max(1536).default(1536),
+    AI_EMBEDDING_DIM: z.coerce.number().int().min(1).max(16000).default(1536),
   })
   .superRefine((environment, context) => {
     let databaseUrl: URL | undefined;

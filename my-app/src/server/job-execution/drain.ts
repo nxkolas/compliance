@@ -33,6 +33,7 @@ export function createJobDrain(dependencies: DrainDependencies) {
       failed: 0,
       retried: 0,
       cancelled: 0,
+      parked: 0,
     };
     const abortStopReason = input.abortStopReason ?? "caller_abort";
     const deadlineController = new AbortController();

@@ -21,7 +21,11 @@ import {
   getCurrentActionPlan,
 } from "@/src/server/action-plans";
 import { resolvePinnedLegalScope } from "@/src/server/ai/grounding/legal-retrieval";
-import { EMBEDDING_DIMENSIONS } from "@/src/server/documents/document-config";
+import {
+  CHUNKING_VERSION,
+  EMBEDDING_DIMENSIONS,
+  embeddingIdentityKey,
+} from "@/src/server/documents/document-config";
 import { getCurrentGapDefinition } from "@/src/server/definitions";
 import {
   createOrOpenGapAssessment,
@@ -299,20 +303,20 @@ function assertNoPlaceholder(values: string[]) {
   }
 }
 
-function provider(): "company_hosted" | "openai" | "self_hosted" {
+function provider(): "openai" | "self_hosted" {
   const value = process.env.WORKFLOW_QUALIFICATION_PROVIDER ??
     (deterministic ? "self_hosted" : "openai");
-  if (!["company_hosted", "openai", "self_hosted"].includes(value)) {
+  if (!["openai", "self_hosted"].includes(value)) {
     throw new Error("WORKFLOW_QUALIFICATION_PROVIDER is invalid");
   }
-  return value as "company_hosted" | "openai" | "self_hosted";
+  return value as "openai" | "self_hosted";
 }
 
 async function deterministicGroundingDependencies(
-  mode: "company_hosted" | "openai" | "self_hosted",
+  mode: "openai" | "self_hosted",
 ): Promise<GroundingExecutionDependencies> {
-  // Only organization documents carry vectors now, and their dimension is a
-  // fixed contract rather than something to discover from stored rows.
+  // The fixture embedder declares its own width; the deployment default is
+  // only a convenient starting value.
   const dimensions = EMBEDDING_DIMENSIONS;
   const provider: GroundedProvider = {
     mode,
@@ -336,6 +340,15 @@ async function deterministicGroundingDependencies(
       modelRevision: "deterministic-v1",
       dimensions,
       retrievalInstructionId: "deterministic-query-v1",
+      chunkingVersion: CHUNKING_VERSION,
+      key: embeddingIdentityKey({
+        provider: "openai",
+        model: "text-embedding-3-small",
+        modelRevision: "deterministic-v1",
+        dimensions,
+        retrievalInstructionId: "deterministic-query-v1",
+        chunkingVersion: CHUNKING_VERSION,
+      }),
       async embed(values) {
         return values.map((value) => {
           const vector = Array.from({ length: dimensions }, () => 0);

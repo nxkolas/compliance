@@ -74,7 +74,7 @@ describe("existing organization route baseline", () => {
     expect(mocks.createOrganizationForUser).toHaveBeenCalledWith("user-1", {
       name: "Example GmbH",
       countryCode: "DE",
-      aiProviderMode: "company_hosted",
+      aiProviderMode: "openai",
     });
   });
 

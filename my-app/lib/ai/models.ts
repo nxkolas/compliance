@@ -1,9 +1,5 @@
 import { ApiError } from "@/src/server/api/errors";
-import {
-  getCompanyHostedChatProvider,
-  getOpenAIProvider,
-  getSelfHostedChatProvider,
-} from "./providers";
+import { getOpenAIProvider, getSelfHostedChatProvider } from "./providers";
 import type { AiProviderMode } from "./types";
 
 /**
@@ -27,11 +23,7 @@ export function getComplianceChatModelById(
     return getOpenAIProvider()(modelId);
   }
 
-  if (providerMode === "self_hosted") {
-    return getSelfHostedChatProvider()(modelId);
-  }
-
-  return getCompanyHostedChatProvider()(modelId);
+  return getSelfHostedChatProvider()(modelId);
 }
 
 /**
@@ -44,11 +36,7 @@ export function getComplianceEmbeddingModel(providerMode: AiProviderMode) {
     return getOpenAIProvider().embeddingModel(modelId);
   }
 
-  if (providerMode === "self_hosted") {
-    return getSelfHostedChatProvider().embeddingModel(modelId);
-  }
-
-  return getCompanyHostedChatProvider().embeddingModel(modelId);
+  return getSelfHostedChatProvider().embeddingModel(modelId);
 }
 
 export function getEmbeddingModelId(providerMode: AiProviderMode) {
@@ -56,11 +44,7 @@ export function getEmbeddingModelId(providerMode: AiProviderMode) {
     return requireModelEnv("OPENAI_EMBEDDING_MODEL");
   }
 
-  if (providerMode === "self_hosted") {
-    return requireModelEnv("SELF_HOSTED_AI_EMBEDDING_MODEL");
-  }
-
-  return requireModelEnv("COMPANY_AI_EMBEDDING_MODEL");
+  return requireModelEnv("SELF_HOSTED_AI_EMBEDDING_MODEL");
 }
 
 /**
@@ -68,10 +52,6 @@ export function getEmbeddingModelId(providerMode: AiProviderMode) {
  * configuration errors because provider selection must never silently fall back.
  */
 export function getChatModelId(providerMode: AiProviderMode) {
-  if (providerMode === "company_hosted") {
-    return requireModelEnv("COMPANY_AI_MODEL");
-  }
-
   if (providerMode === "openai") {
     return requireModelEnv("OPENAI_MODEL");
   }
@@ -108,10 +88,6 @@ function requireModelEnv(name: string) {
  * summarization model.
  */
 function smallModelEnvName(providerMode: AiProviderMode) {
-  if (providerMode === "company_hosted") {
-    return "COMPANY_AI_SMALL_MODEL";
-  }
-
   if (providerMode === "openai") {
     return "OPENAI_SMALL_MODEL";
   }

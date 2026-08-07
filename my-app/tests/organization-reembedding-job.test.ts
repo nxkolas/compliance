@@ -40,6 +40,12 @@ vi.mock("@/src/db", () => {
         organizationEmbeddingMigrations: {
           findFirst: async () => state.migration,
         },
+        // The executor asks whether this organization's model is reachable from
+        // the server or only through a browser. `openai` keeps this fixture on
+        // the direct path; the relayed path is covered separately.
+        organizations: {
+          findFirst: async () => ({ aiProviderMode: "openai" }),
+        },
       },
       // Only two selects run: the job row for the requester, then the
       // versions still needing a rebuild.
@@ -73,6 +79,7 @@ vi.mock("@/src/server/supabase-admin", () => ({
 }));
 
 import { executeOrganizationReembeddingJob } from "@/src/server/documents/service";
+import { resolveEmbeddingConfig } from "@/src/server/documents/document-config";
 
 describe("organization re-embedding job", () => {
   beforeEach(() => {
@@ -81,6 +88,11 @@ describe("organization re-embedding job", () => {
       organizationId: "org-1",
       toProviderMode: "self_hosted",
       fromProviderMode: "openai",
+      fromEmbeddingKey: resolveEmbeddingConfig("openai").key,
+      toEmbeddingKey: resolveEmbeddingConfig("self_hosted").key,
+      // The job embeds with the configuration pinned at request time rather
+      // than resolving the organization's current one, so the row must carry it.
+      toEmbeddingConfig: resolveEmbeddingConfig("self_hosted"),
       status: "pending",
       documentVersionsCompleted: 0,
       startedAt: null,

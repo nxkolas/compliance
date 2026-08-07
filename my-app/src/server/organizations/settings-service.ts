@@ -6,8 +6,9 @@ import type { organizationSettingsUpdateSchema } from "@/src/contracts/organizat
 import { ApiError } from "../api/errors";
 import {
   readActiveEmbeddingMigration,
-  requestProviderChange,
+  requestEmbeddingConfigChange,
 } from "./embedding-migration-service";
+import { resolveEmbeddingConfig } from "../documents/document-config";
 
 export async function getOrganizationSettings(
   userId: string,
@@ -69,12 +70,15 @@ export async function updateOrganizationSettings(input: {
       .returning();
     if (!organization) throw organizationNotFound();
 
-    // The provider is never written here. It governs the embedding model, so
-    // it may only advance together with the vectors it describes.
-    const change = await requestProviderChange({
+    // The provider is never written here. It determines the embedding
+    // coordinates, so it may only advance together with the vectors they
+    // describe.
+    const change = await requestEmbeddingConfigChange({
       userId: input.userId,
       organizationId: input.organizationId,
-      targetProviderMode: input.values.organization.aiProviderMode,
+      targetConfig: resolveEmbeddingConfig(
+        input.values.organization.aiProviderMode,
+      ),
       executor,
     });
 

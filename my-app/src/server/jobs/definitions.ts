@@ -258,6 +258,9 @@ export const jobDefinitions = {
       return executeDocumentIndexingJob({
         documentVersionId: payload.documentVersionId as string,
         organizationId: job.organizationId!,
+        // Relayed embedding requests are keyed per job, so a parked indexing
+        // run finds the batch its previous attempt already had answered.
+        jobId: job.id,
       });
     },
     classifyFailure: ordinaryFailure,

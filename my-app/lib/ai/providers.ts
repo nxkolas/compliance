@@ -1,3 +1,6 @@
+// Reads provider credentials from the environment. Importing this from a Client
+// Component would put the OpenAI key's lookup on the wrong side of the
+// boundary; `tests/client-server-boundary.test.ts` fails the build if one does.
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenAI } from "@ai-sdk/openai";
 import { ApiError } from "@/src/server/api/errors";
@@ -80,21 +83,6 @@ export function getSelfHostedChatProvider() {
     apiKey: requireEnv("SELF_HOSTED_AI_API_KEY"),
     supportsStructuredOutputs: readBooleanEnvironment(
       "SELF_HOSTED_AI_SUPPORTS_STRUCTURED_OUTPUTS",
-      false,
-    ),
-  });
-}
-
-/**
- * Creates an OpenAI-compatible provider for the centrally hosted app service.
- */
-export function getCompanyHostedChatProvider() {
-  return createOpenAICompatible({
-    name: "company-hosted",
-    baseURL: requireAbsoluteUrl("COMPANY_AI_BASE_URL"),
-    apiKey: requireEnv("COMPANY_AI_API_KEY"),
-    supportsStructuredOutputs: readBooleanEnvironment(
-      "COMPANY_AI_SUPPORTS_STRUCTURED_OUTPUTS",
       false,
     ),
   });

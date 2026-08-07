@@ -33,7 +33,6 @@ export const aiMessages = defineFeatureMessages({
             implementation_checklist: "Umsetzungscheckliste",
           },
           providers: {
-            companyHosted: "Complyx gehostet",
             openai: "OpenAI",
             selfHosted: "Self-hosted",
           },
@@ -79,7 +78,6 @@ export const aiMessages = defineFeatureMessages({
             implementation_checklist: "Implementation checklist",
           },
           providers: {
-            companyHosted: "Complyx hosted",
             openai: "OpenAI",
             selfHosted: "Self-hosted",
           },

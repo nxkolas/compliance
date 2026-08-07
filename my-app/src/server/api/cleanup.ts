@@ -13,6 +13,7 @@ import {
 } from "@/src/db/schema";
 import { expireUploadSessions, listUnreferencedFailedUploads } from "@/src/server/uploads";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { expireStaleClientInference } from "@/src/server/ai/client-inference/service";
 import { enqueueJob } from "@/src/server/jobs";
 
 export async function cleanupExpiredApiPrimitives(now = new Date()) {
@@ -72,7 +73,17 @@ export async function runMaintenanceCleanup(now = new Date()) {
       removedSessions += 1;
     }
   }
-  return { ...api, expiredUploadSessions: expiredUploads.length, removedObjects, removedSessions };
+  // Requests nobody's browser ever answered. Without this a job parked behind a
+  // client that never came back waits for its own outer timeout instead of
+  // failing with a reason the user can act on.
+  const expiredClientInference = await expireStaleClientInference(now);
+  return {
+    ...api,
+    expiredUploadSessions: expiredUploads.length,
+    removedObjects,
+    removedSessions,
+    expiredClientInference,
+  };
 }
 
 export async function ensureScheduledCleanupJob(runAfter = new Date(Date.now() + 24 * 60 * 60 * 1_000)) {
