@@ -35,6 +35,7 @@
     "db:export:active-corpus": "tsx scripts/export-active-legal-corpus-manifests.ts",
     "db:provision:legal-corpus": "tsx scripts/provision-legal-corpus.ts",
     "db:seed:legal-corpus-fixture": "tsx scripts/seed-legal-corpus-fixture.ts",
+    "db:seed:demo-orgs": "tsx scripts/seed-demo-orgs.ts",
     "db:bind:gap-corpus-provisions": "tsx scripts/bind-gap-corpus-provisions.ts",
     "worker": "tsx src/worker/main.ts",
     "worker:once": "tsx src/worker/main.ts --once",

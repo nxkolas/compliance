@@ -13,7 +13,6 @@ import {
 import {
   getApplicabilityQuestionnaireForUser,
   submitApplicabilityCheckForUser,
-  type ApplicabilityAnswerValue,
 } from "@/src/server/applicability-check";
 import {
   enqueueActionPlanGeneration,
@@ -21,11 +20,6 @@ import {
   getCurrentActionPlan,
 } from "@/src/server/action-plans";
 import { resolvePinnedLegalScope } from "@/src/server/ai/grounding/legal-retrieval";
-import {
-  CHUNKING_VERSION,
-  EMBEDDING_DIMENSIONS,
-  embeddingIdentityKey,
-} from "@/src/server/documents/document-config";
 import { getCurrentGapDefinition } from "@/src/server/definitions";
 import {
   createOrOpenGapAssessment,
@@ -37,28 +31,15 @@ import {
 } from "@/src/server/gap-analysis";
 import { succeedJob } from "@/src/server/jobs";
 import { createOrganizationForUser } from "@/src/server/organizations/service";
-import type { GroundingExecutionDependencies } from "@/src/server/ai/grounding/gateway";
-import type { GroundedProvider } from "@/src/server/ai/grounding/types";
+import {
+  DETERMINISTIC_APPLICABILITY_ANSWERS,
+  deterministicGroundingDependencies,
+} from "@/src/server/operator-commands/grounded-workflow-fixture";
 
 const deterministic = process.env.WORKFLOW_QUALIFICATION_DETERMINISTIC === "true";
 const userId = process.env.WORKFLOW_QUALIFICATION_USER_ID?.trim() || randomUUID();
 const workerId = `grounded-qualification-${randomUUID()}`;
 const providerMode = provider();
-
-const applicabilityAnswers: Record<string, ApplicabilityAnswerValue> = {
-  "bc.eu_activity": "yes",
-  "bc.jurisdiction_country": "DE",
-  "bc.jurisdiction_basis": "de_main_eu_establishment",
-  "bc.entity_types": ["de_bsig_dns_service_provider"],
-  "bc.member_state_designation": "none",
-  "bc.employee_count": "under_50",
-  "bc.annual_revenue": "revenue_at_most_10m",
-  "bc.balance_sheet_total": "balance_at_most_10m",
-  "bc.sme_figures_verified": "verified_de_without_it_exception",
-  "bc.sector_specific_regime": "none",
-  "bc.critical_customers": "no",
-  "bc.security_evidence_requested": "no",
-};
 
 async function main() {
   const groundingDependencies = deterministic
@@ -85,7 +66,7 @@ async function main() {
     {
       locale: "de",
       answers: questionnaire.questions.flatMap((question) => {
-        const value = applicabilityAnswers[question.stableKey];
+        const value = DETERMINISTIC_APPLICABILITY_ANSWERS[question.stableKey];
         return value === undefined
           ? []
           : [{ questionId: question.id, value }];
@@ -310,126 +291,6 @@ function provider(): "openai" | "self_hosted" {
     throw new Error("WORKFLOW_QUALIFICATION_PROVIDER is invalid");
   }
   return value as "openai" | "self_hosted";
-}
-
-async function deterministicGroundingDependencies(
-  mode: "openai" | "self_hosted",
-): Promise<GroundingExecutionDependencies> {
-  // The fixture embedder declares its own width; the deployment default is
-  // only a convenient starting value.
-  const dimensions = EMBEDDING_DIMENSIONS;
-  const provider: GroundedProvider = {
-    mode,
-    provider: "deterministic-fixture",
-    model: "deterministic-grounded-v1",
-    async run(input) {
-      const payload = parseQueryUnitPayload(input.prompt);
-      return {
-        output: input.system.includes("Create operational actions")
-          ? deterministicActionPlanOutput(payload)
-          : deterministicGapOutput(payload),
-        usage: { inputTokens: 1, outputTokens: 1, cachedInputTokens: 0 },
-      };
-    },
-  };
-  return {
-    providers: { [mode]: provider },
-    embeddingProvider: {
-      provider: "deterministic-fixture",
-      model: "text-embedding-3-small",
-      modelRevision: "deterministic-v1",
-      dimensions,
-      retrievalInstructionId: "deterministic-query-v1",
-      chunkingVersion: CHUNKING_VERSION,
-      key: embeddingIdentityKey({
-        provider: "openai",
-        model: "text-embedding-3-small",
-        modelRevision: "deterministic-v1",
-        dimensions,
-        retrievalInstructionId: "deterministic-query-v1",
-        chunkingVersion: CHUNKING_VERSION,
-      }),
-      async embed(values) {
-        return values.map((value) => {
-          const vector = Array.from({ length: dimensions }, () => 0);
-          vector[Math.abs(hashCode(value)) % dimensions] = 1;
-          return vector;
-        });
-      },
-    },
-    languageDetector: {
-      implementation: "deterministic-fixture",
-      version: "1",
-      async classify(_document, expectedLocale) {
-        return { kind: "match" as const, detected: expectedLocale, confidence: 1 };
-      },
-    },
-  };
-}
-
-function parseQueryUnitPayload(prompt: string) {
-  const firstLine = prompt.split("\n", 1)[0] ?? "";
-  const separator = firstLine.indexOf(": ");
-  if (separator < 0) throw new Error("Deterministic qualification prompt has no query-unit payload");
-  return JSON.parse(firstLine.slice(separator + 2)) as Record<string, unknown>;
-}
-
-function deterministicGapOutput(payload: Record<string, unknown>) {
-  const policy = payload.serverOwnedPolicy as {
-    triggeringQuestions: Array<{ stableKey: string; kind: "missing" | "partial" | "uncertain" }>;
-  };
-  return {
-    gaps: Object.fromEntries(policy.triggeringQuestions.map((trigger) => [
-      trigger.stableKey,
-      [{
-        statement: trigger.kind === "missing"
-          ? "Die erforderliche Kontrolle fehlt."
-          : trigger.kind === "partial"
-            ? "Die erforderliche Kontrolle ist nur teilweise umgesetzt."
-            : "Der Umsetzungsstand der erforderlichen Kontrolle ist unklar.",
-        supportingOrganizationCitationIds: [],
-      }],
-    ])),
-    evidenceSufficiency: "none",
-    reviewNotice: null,
-    assumptions: [],
-    contradictions: [],
-    requiresReview: false,
-    conflictingOrganizationCitationIds: [],
-  };
-}
-
-function deterministicActionPlanOutput(payload: Record<string, unknown>) {
-  const gaps = payload.gaps as Array<{ key: string; kind: "missing" | "partial" | "uncertain" }>;
-  const confirmed = gaps.filter((gap) => gap.kind !== "uncertain");
-  const uncertain = gaps.filter((gap) => gap.kind === "uncertain");
-  return {
-    actions: [
-      ...(confirmed.length ? [{
-        mode: "remediation" as const,
-        gapKeys: confirmed.map((gap) => gap.key),
-        title: "Erforderliche Kontrolle umsetzen",
-        result: "Setzen Sie die erforderliche Kontrolle vollständig um und dokumentieren Sie das Ergebnis.",
-        suggestedEvidence: ["Freigegebene Kontrolldokumentation"],
-        supportingOrganizationCitationIds: [],
-      }] : []),
-      ...(uncertain.length ? [{
-        mode: "verification" as const,
-        gapKeys: uncertain.map((gap) => gap.key),
-        verificationTitle: "Kontrollstatus verifizieren",
-        verificationResult: "Prüfen und dokumentieren Sie den aktuellen Kontrollstatus.",
-        conditionalRemediation: "Fehlende Kontrolle vollständig umsetzen",
-        suggestedEvidence: ["Dokumentiertes Prüfergebnis"],
-        supportingOrganizationCitationIds: [],
-      }] : []),
-    ],
-  };
-}
-
-function hashCode(value: string) {
-  let hash = 0;
-  for (const character of value) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
-  return hash;
 }
 
 main()
