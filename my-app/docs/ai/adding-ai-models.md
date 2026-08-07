@@ -13,7 +13,8 @@ organization that has recorded its own models in `organization_model_settings`
 is reached through its browser, because a deployed function cannot connect to
 someone's `127.0.0.1`. One without that row uses the deployment's
 `SELF_HOSTED_AI_*` endpoint directly, which is the development and
-on-premises path. `resolveOrganizationEmbedding` and `configuredProviders` are
+on-premises path. `resolveOrganizationEmbeddingConfig` (embeddings) and
+`configuredProviders` (generation) are
 where that fork is decided.
 
 Adding a *third* provider mode is a larger change than it looks and is not
@@ -140,4 +141,6 @@ Then manually check:
 - No RAG sources: documents were never indexed, the re-index has not finished,
   or the organization's embedding key changed and the rebuild is still running.
 - Gap analysis parked forever: a `self_hosted` organization with no browser
-  connected. Check `client_inference_requests` for rows stuck at `pending`.
+  connected. The gap screen shows "Waiting for a connected browser"; connect
+  once from the local model panel and keep the app open in a tab. Check
+  `client_inference_requests` for rows stuck at `pending`.

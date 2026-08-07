@@ -6,7 +6,10 @@ There are two different things called "local" here, and they work differently.
 `self_hosted` and records its own models; a member's browser then runs them
 against a model server on that person's machine. The deployed application never
 reaches the model — it cannot, because a serverless function cannot connect to
-someone's `127.0.0.1`. Work only progresses while a browser is connected.
+someone's `127.0.0.1`. Work only progresses while a browser is connected to the
+organization; the relay worker lives in the application shell, so it keeps
+serving while that tab is open - across navigation and page refreshes - and
+stops only when the tab closes.
 
 **Server-reachable** is the development and on-premises path. The application
 process itself calls a model server it can reach over the network, configured
@@ -16,7 +19,7 @@ development, and it is what the rest of this runbook sets up.
 Which one an organization gets is decided by data, not configuration: an
 organization with a row in `organization_model_settings` is browser-relayed, and
 one without falls back to the deployment's `SELF_HOSTED_AI_*` values
-([service.ts](../../src/server/documents/service.ts), `resolveOrganizationEmbedding`).
+([service.ts](../../src/server/documents/service.ts), `resolveOrganizationEmbeddingConfig`).
 
 ## What switching providers affects
 
@@ -172,6 +175,11 @@ model.
    from an already-open terminal keeps the old value and looks like the setting
    was ignored.
 
+   Never use `*` for `OLLAMA_ORIGINS`: it would let any website the user
+   visits call their local model server from the browser and run their models.
+   Scope it to the exact deployment origin (plus any dev origins you use), and
+   keep Ollama bound to loopback (`127.0.0.1`) rather than all interfaces.
+
    An HTTPS page calling `http://localhost` is permitted — browsers treat
    loopback as a potentially trustworthy origin — but verify per target browser.
 2. Set the organization's provider to `self_hosted` in settings.
@@ -180,9 +188,11 @@ model.
    JSON schema, what width the embedding model returns, and the loaded context
    window via `/api/ps` rather than `/api/show` (which reports a much larger
    theoretical maximum).
-4. Save and connect. **Keep the tab open**: generation, document indexing and
-   re-indexing for that organization only progress while a browser is running
-   the worker loop.
+4. Save and connect. The relay worker keeps running as long as the app is
+   open in this tab - you can navigate to other pages or refresh, and it
+   reconnects on its own. Closing the tab pauses the organization's
+   generation, document indexing and re-indexing until a browser is open
+   again.
 
 ### What to expect
 
@@ -196,6 +206,13 @@ Closing the tab does not lose work. The claim lease expires, the request becomes
 claimable again, and another member's browser can pick it up. Requests nobody
 answers within 30 minutes are expired by the cleanup job so the parked job fails
 with a reason instead of waiting indefinitely.
+
+Safety bounds on the relay: claim and heartbeat calls are rate limited per
+member and organization (60/min), as are results and failure reports (30/min);
+one member can hold at most three requests at once, and a claim can be
+heartbeated for at most 15 minutes before it lapses and another browser may
+take it. Request bodies are capped (32 MB for a relayed result, 16 KB for a
+failure report, 8 MB default elsewhere).
 
 ## Troubleshooting
 
@@ -219,7 +236,9 @@ from client_inference_requests
 order by created_at desc limit 20;
 ```
 
-Rows stuck at `pending` mean no browser is connected. Rows cycling through
+Rows stuck at `pending` mean no browser is connected - the gap screen shows
+"Waiting for a connected browser". Open the application in a tab and connect
+once; the relay worker keeps serving while that tab stays open. Rows cycling through
 `claimed` with a rising `attempt_count` mean a client keeps claiming and failing
 — read `failure_code`.
 

@@ -75,6 +75,11 @@ silently keep the old (empty) value — the setting looks applied but nothing
 changed. Quit Ollama from the system tray and start it again from a *new*
 terminal, or log out and back in.
 
+**Never use `*` as the origin.** That would let any website you visit call
+your local model server from your browser and run your models. Allow only the
+exact application domain, and keep the server bound to `127.0.0.1` so it is
+not reachable from your local network.
+
 ### Ollama in Docker
 
 Easier than the native install, because the setting is just a flag:
@@ -149,7 +154,10 @@ The test reports four things:
 - **Context window.** Read from the loaded model rather than its advertised
   maximum, which is usually much larger and misleading.
 
-Then click **Save and connect** and leave the tab open.
+Then click **Save and connect**. The relay keeps running as long as the app is
+open in this tab - navigating to other pages or refreshing the page does not
+disconnect it. Closing the tab pauses the analysis until someone opens the
+application again.
 
 ## Changing models later
 
@@ -171,8 +179,9 @@ note about restarting above, which is the usual cause when the setting looks
 correct. The panel shows the exact command. This should never appear when
 running the application locally.
 
-**Analysis sits at "waiting".** No browser is connected. Open the application
-and connect; it will pick up where it stopped.
+**Analysis sits at "waiting".** No browser is connected - the screen says
+"Waiting for a connected browser". Open the application, connect once, and it
+will pick up where it stopped while this tab stays open.
 
 **Analysis is slow.** Expected. A local model is slower than a hosted one, and
 most servers answer one request at a time. A full analysis is many requests.
