@@ -10,6 +10,10 @@ const policies = {
   "invitations:write": { limit: 20, windowSeconds: 3600 },
   "corpus:operate": { limit: 20, windowSeconds: 300 },
   "jobs:poll": { limit: 120, windowSeconds: 60 },
+  "client-inference:claim": { limit: 60, windowSeconds: 60 },
+  "client-inference:heartbeat": { limit: 60, windowSeconds: 60 },
+  "client-inference:result": { limit: 30, windowSeconds: 60 },
+  "client-inference:failure": { limit: 30, windowSeconds: 60 },
 } as const;
 
 export type RateLimitedOperation = keyof typeof policies;

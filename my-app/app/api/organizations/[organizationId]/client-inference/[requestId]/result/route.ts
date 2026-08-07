@@ -1,5 +1,6 @@
 import { requireApiUser } from "@/src/server/api/auth";
 import { apiRoute } from "@/src/server/api/handler";
+import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
 import { readJsonBody } from "@/src/server/api/request";
 import { assertCanAccessOrganization } from "@/src/server/organizations/service";
 import { clientInferenceResultSchema } from "@/src/contracts/client-inference";
@@ -9,6 +10,13 @@ import { wakeParkedJob } from "@/src/server/jobs";
 type Context = {
   params: Promise<{ organizationId: string; requestId: string }>;
 };
+
+/**
+ * A relayed embedding batch at the maximum configured dimensions can serialize
+ * to tens of megabytes, so the result cap is larger than the default body cap.
+ * It still bounds what a client can store on a request row.
+ */
+const MAX_RESULT_BODY_BYTES = 32 * 1024 * 1024;
 
 /**
  * Records what a client's local model returned and wakes the parked job.
@@ -27,9 +35,16 @@ export const POST = apiRoute(
   async ({ request, routeContext }: { request: Request; routeContext: Context }) => {
     const user = await requireApiUser();
     const { organizationId, requestId } = await routeContext.params;
+    await enforceOperationRateLimit({
+      userId: user.id,
+      operation: "client-inference:result",
+      scopeId: organizationId,
+    });
     await assertCanAccessOrganization(user.id, organizationId);
 
-    const body = await readJsonBody(request, clientInferenceResultSchema);
+    const body = await readJsonBody(request, clientInferenceResultSchema, {
+      maxBytes: MAX_RESULT_BODY_BYTES,
+    });
     const row = await submitClientInference({
       organizationId,
       requestId,

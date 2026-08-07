@@ -1,5 +1,6 @@
 import { requireApiUser } from "@/src/server/api/auth";
 import { apiRoute } from "@/src/server/api/handler";
+import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
 import { assertCanAccessOrganization } from "@/src/server/organizations/service";
 import { claimClientInference } from "@/src/server/ai/client-inference/service";
 
@@ -17,6 +18,11 @@ export const POST = apiRoute(
   async ({ routeContext }: { request: Request; routeContext: Context }) => {
     const user = await requireApiUser();
     const { organizationId } = await routeContext.params;
+    await enforceOperationRateLimit({
+      userId: user.id,
+      operation: "client-inference:claim",
+      scopeId: organizationId,
+    });
     await assertCanAccessOrganization(user.id, organizationId);
 
     const claimed = await claimClientInference({

@@ -20,6 +20,22 @@ export const CLIENT_LEASE_SECONDS = 90;
 export const CLIENT_REQUEST_TTL_SECONDS = 30 * 60;
 
 /**
+ * How long one client may hold a claim while its local model works. Bounds the
+ * harm a hostile member can do by claiming every request and heartbeating
+ * forever: past this, heartbeats are refused, the lease lapses, and the
+ * request becomes claimable by someone who will actually answer it.
+ */
+export const MAX_CLIENT_CLAIM_DURATION_MS = 15 * 60 * 1_000;
+
+/**
+ * How many open claims one user may hold per organization. The relay worker is
+ * serial by design, so a legitimate browser holds one claim at a time (a few
+ * tabs, a few claims). A hostile member can therefore park at most this many
+ * requests, not the organization's whole queue.
+ */
+export const MAX_CLAIMS_PER_USER = 3;
+
+/**
  * Identifies one inference call by exactly what was asked.
  *
  * A parked job re-executes from the beginning when it wakes, so every call it
@@ -134,6 +150,18 @@ export async function claimClientInference(input: {
   const leaseExpiresAt = new Date(now.getTime() + CLIENT_LEASE_SECONDS * 1_000);
 
   return db.transaction(async (tx) => {
+    const [held] = await tx
+      .select({ count: sql<number>`count(*)` })
+      .from(clientInferenceRequests)
+      .where(
+        and(
+          eq(clientInferenceRequests.organizationId, input.organizationId),
+          eq(clientInferenceRequests.claimedBy, input.userId),
+          eq(clientInferenceRequests.status, "claimed"),
+        ),
+      );
+    if (Number(held?.count ?? 0) >= MAX_CLAIMS_PER_USER) return null;
+
     const [candidate] = await tx
       .select({ id: clientInferenceRequests.id })
       .from(clientInferenceRequests)
@@ -191,6 +219,10 @@ export async function heartbeatClientInference(input: {
         eq(clientInferenceRequests.organizationId, input.organizationId),
         eq(clientInferenceRequests.claimedBy, input.userId),
         eq(clientInferenceRequests.status, "claimed"),
+        gt(
+          clientInferenceRequests.claimedAt,
+          new Date(now.getTime() - MAX_CLIENT_CLAIM_DURATION_MS),
+        ),
       ),
     )
     .returning();
