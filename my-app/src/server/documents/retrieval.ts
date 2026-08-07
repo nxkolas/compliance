@@ -3,14 +3,12 @@ import { documentChunks, documentVersions, documents } from "@/src/db/schema";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { assertCanAccessOrganization } from "../organizations/service";
-import { EMBEDDING_DIMENSIONS } from "./document-config";
 import {
-  createDocumentEmbeddingProvider,
   type DocumentEmbeddingProvider,
   validateEmbeddings,
 } from "./embeddings";
 import { assertSelectedDocumentVersionScope } from "./retrieval-policy";
-import { resolveOrganizationEmbeddingConfig } from "./service";
+import { organizationEmbeddingProvider } from "./service";
 
 export { assertSelectedDocumentVersionScope } from "./retrieval-policy";
 
@@ -42,12 +40,12 @@ export async function retrieveDocumentEvidence(
   if (!selected.length) return [];
   const provider =
     dependencies.embeddingProvider ??
-    createDocumentEmbeddingProvider(
-      (await resolveOrganizationEmbeddingConfig(input.organizationId)).provider,
-    );
+    (await organizationEmbeddingProvider(input.organizationId));
   const queryEmbedding = dependencies.queryEmbedding ?? (await provider.embed([query], "query"))[0];
   if (!queryEmbedding) throw new Error("Query embedding is missing");
-  validateEmbeddings([queryEmbedding], 1, EMBEDDING_DIMENSIONS);
+  // Against this organization's own embedder, not a deployment-wide constant:
+  // the width follows the model each organization chose.
+  validateEmbeddings([queryEmbedding], 1, provider.dimensions);
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
   const fullTextRank = sql<number>`coalesce(ts_rank_cd(${documentChunks.searchVector}, websearch_to_tsquery('simple', ${query})), 0)`;
   const cosineSimilarity = sql<number>`(1 - (${documentChunks.embedding} OPERATOR(extensions.<=>) ${vectorLiteral}::extensions.vector))`;
@@ -70,10 +68,13 @@ export async function retrieveDocumentEvidence(
       eq(documentChunks.organizationId, input.organizationId),
       inArray(documentVersions.id, selected),
       eq(documentVersions.indexingStatus, "succeeded"),
-      // Vectors are only comparable within one embedding model. Without this,
-      // a partial or failed re-embedding silently mixes two vector spaces and
-      // returns meaningless similarity scores instead of failing.
-      eq(documentVersions.embeddingModel, provider.model),
+      // Vectors are only comparable within one embedding configuration. Without
+      // this, a partial or failed re-embedding silently mixes two vector spaces
+      // and returns meaningless similarity scores instead of failing. The key
+      // covers the model, its revision, its dimensions, the query instruction
+      // and the chunking version, so any of those changing excludes the row
+      // rather than scoring it against a space it does not belong to.
+      eq(documentVersions.embeddingKey, provider.key),
       sql`${documentChunks.embedding} is not null`,
     ))
     .orderBy(desc(combinedScore), documentChunks.id)

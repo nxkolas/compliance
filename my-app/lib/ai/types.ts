@@ -1,10 +1,6 @@
 import type { UIMessage } from "ai";
 
-export const aiProviderModes = [
-  "company_hosted",
-  "openai",
-  "self_hosted",
-] as const;
+export const aiProviderModes = ["openai", "self_hosted"] as const;
 
 export type AiProviderMode = (typeof aiProviderModes)[number];
 

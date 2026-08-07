@@ -52,6 +52,7 @@ describe("job status route contract", () => {
       job: {
         ...job,
         phase: null,
+        waitingOnClient: false,
         completedUnits: null,
         totalUnits: null,
       },

@@ -157,7 +157,6 @@ export const organizationsMessages = defineFeatureMessages({
       aiPolicy: "KI-Anbieter",
       aiPolicyDescription: "Legt fest, welcher KI-Anbietermodus für die Gap-Analyse und die Erstellung des Maßnahmenplans verwendet wird.",
       providerModes: {
-        company_hosted: "Complyx gehostet",
         openai: "OpenAI",
         self_hosted: "Selbst gehostet",
       },
@@ -411,7 +410,6 @@ export const organizationsMessages = defineFeatureMessages({
       aiPolicy: "AI provider",
       aiPolicyDescription: "Selects the AI provider mode used for gap analysis and action-plan generation.",
       providerModes: {
-        company_hosted: "Company hosted",
         openai: "OpenAI",
         self_hosted: "Self-hosted",
       },

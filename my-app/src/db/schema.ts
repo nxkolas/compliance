@@ -19,8 +19,23 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+/**
+ * An undimensioned pgvector column: each row stores its embedding at whatever
+ * width the model that produced it emits.
+ *
+ * The width is an organization's choice now, so it cannot be fixed in the
+ * column. There is no ANN index on this column -- similarity search is a
+ * sequential scan -- so declaring no dimension costs nothing today; pgvector
+ * only requires a fixed width to build an HNSW or IVFFlat index. Adding one
+ * later across heterogeneous widths is the deferred cost of that choice.
+ *
+ * Comparing two vectors of different widths raises a Postgres error rather than
+ * returning a meaningless distance. Retrieval filters on `embedding_key` before
+ * any comparison happens, so only rows from one space are ever scored together
+ * and that error is unreachable through the application.
+ */
 const vector = customType<{ data: number[]; driverData: string }>({
-  dataType: () => "vector(1536)",
+  dataType: () => "vector",
   toDriver: (value) => `[${value.join(",")}]`,
   fromDriver: (value) =>
     value.slice(1, -1).split(",").filter(Boolean).map(Number),
@@ -57,8 +72,14 @@ export const organizationRoleEnum = pgEnum("organization_role", [
   "viewer",
 ]);
 
+/**
+ * The two ways an organization can have AI work done.
+ *
+ * `openai` runs on the server. `self_hosted` runs on a model the organization
+ * operates itself, reached through a browser the organization controls, because
+ * a deployed function cannot reach a user's loopback address.
+ */
 export const aiProviderModeEnum = pgEnum("ai_provider_mode", [
-  "company_hosted",
   "openai",
   "self_hosted",
 ]);
@@ -83,8 +104,26 @@ export const gapAnalysisCycleStageEnum = pgEnum("gap_analysis_cycle_stage", [
 export const processingStatusEnum = pgEnum("processing_status", [
   "pending",
   "processing",
+  // The server has prepared an inference request and is waiting for an
+  // organization's browser to execute it against their own model. Distinct from
+  // `processing`, which means the server itself is working: nothing advances
+  // here until a client claims the request. Only `ai_processing_runs` uses it.
+  "awaiting_client",
   "succeeded",
   "failed",
+]);
+
+export const clientInferenceKindEnum = pgEnum("client_inference_kind", [
+  "generation",
+  "embedding",
+]);
+
+export const clientInferenceStatusEnum = pgEnum("client_inference_status", [
+  "pending",
+  "claimed",
+  "succeeded",
+  "failed",
+  "expired",
 ]);
 
 export const aiOperationKindEnum = pgEnum("ai_operation_kind", [
@@ -208,14 +247,21 @@ export const organizations = pgTable.withRLS(
 );
 
 /**
- * One row per requested change of an organization's AI provider.
+ * One row per requested change of an organization's embedding coordinates.
  *
- * Changing the provider changes the embedding model, which invalidates every
- * stored vector. `organizations.ai_provider_mode` therefore stays on the old
- * value until a migration here reaches `succeeded`, at which point both advance
- * in the same transaction. Keeping the in-flight state out of `organizations`
- * is what makes a disagreement between the choice and the vectors unable to
- * exist rather than merely discouraged.
+ * Changing the embedding model, its revision, its output dimensions, the
+ * retrieval instruction applied to queries, or the chunking version all change
+ * the vector space, and vectors from two spaces are not comparable. Those five
+ * facts are hashed into one `embedding_key`, and a change to any of them stages
+ * a migration here rather than taking effect immediately. The organization's
+ * active coordinates advance only when a migration reaches `succeeded`, in the
+ * same transaction that finishes it. Keeping the in-flight state out of
+ * `organizations` is what makes a disagreement between the choice and the
+ * vectors unable to exist rather than merely discouraged.
+ *
+ * The provider columns are audit only. They were the invalidation key before
+ * the model became a per-organization choice, and they are nullable because a
+ * migration is now routinely triggered by a model change within one provider.
  */
 export const organizationEmbeddingMigrations = pgTable.withRLS(
   "organization_embedding_migrations",
@@ -227,8 +273,14 @@ export const organizationEmbeddingMigrations = pgTable.withRLS(
     jobId: uuid("job_id").references(() => backgroundJobs.id, {
       onDelete: "set null",
     }),
-    fromProviderMode: aiProviderModeEnum("from_provider_mode").notNull(),
-    toProviderMode: aiProviderModeEnum("to_provider_mode").notNull(),
+    fromProviderMode: aiProviderModeEnum("from_provider_mode"),
+    toProviderMode: aiProviderModeEnum("to_provider_mode"),
+    fromEmbeddingKey: text("from_embedding_key").notNull(),
+    toEmbeddingKey: text("to_embedding_key").notNull(),
+    // The full resolved target configuration, pinned at request time. The
+    // re-index job must embed with exactly these coordinates even if the
+    // organization's settings are edited again while it runs.
+    toEmbeddingConfig: jsonb("to_embedding_config").notNull(),
     status: processingStatusEnum("status").default("pending").notNull(),
     documentVersionsTotal: integer("document_versions_total")
       .default(0)
@@ -263,10 +315,180 @@ export const organizationEmbeddingMigrations = pgTable.withRLS(
       "organization_embedding_migrations_progress_check",
       sql`${table.documentVersionsCompleted} >= 0 and ${table.documentVersionsCompleted} <= ${table.documentVersionsTotal}`,
     ),
-    // A migration that changes nothing has no reason to exist.
+    // A migration that changes nothing has no reason to exist. This is now
+    // keyed on the embedding identity rather than the provider: a model change
+    // within one provider is the ordinary case.
     check(
       "organization_embedding_migrations_direction_check",
-      sql`${table.fromProviderMode} <> ${table.toProviderMode}`,
+      sql`${table.fromEmbeddingKey} <> ${table.toEmbeddingKey}`,
+    ),
+  ],
+);
+
+/**
+ * One organization's chosen models, for organizations running their own.
+ *
+ * The row exists only for `self_hosted` organizations: an `openai` organization
+ * uses the deployment's configured models, because there is nothing for it to
+ * choose. Absence of a row is therefore meaningful, not a missing default.
+ *
+ * The two halves behave differently on purpose. The generation columns are
+ * freely updatable -- swapping the generation model costs nothing, because no
+ * stored data depends on it. The embedding columns are the organization's
+ * *active* coordinates and may only advance through a succeeded
+ * `organization_embedding_migrations` row, because every stored vector was
+ * produced by them.
+ *
+ * The capability columns are probe results, not preferences. They record what
+ * the model was observed to do when the organization connected it, which is the
+ * only way to know: a model that ignores a JSON schema returns HTTP 200 with
+ * invented keys rather than failing.
+ */
+export const organizationModelSettings = pgTable.withRLS(
+  "organization_model_settings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    generationModelId: text("generation_model_id").notNull(),
+    generationMaxContextTokens: integer("generation_max_context_tokens").notNull(),
+    generationSupportsStructuredOutputs: boolean(
+      "generation_supports_structured_outputs",
+    ).notNull(),
+    // Which no-thinking switch this server understands. Ollama honours
+    // `reasoning_effort`; vLLM reads `chat_template_kwargs`. Sending the wrong
+    // one leaves a thinking model spending its whole output budget reasoning
+    // and returning empty content.
+    generationThinkingStyle: text("generation_thinking_style")
+      .default("none")
+      .notNull(),
+    embeddingModelId: text("embedding_model_id").notNull(),
+    embeddingRevision: text("embedding_revision").notNull(),
+    embeddingDimensions: integer("embedding_dimensions").notNull(),
+    embeddingInstructionProfile: text("embedding_instruction_profile")
+      .default("none")
+      .notNull(),
+    probedAt: timestamp("probed_at", { withTimezone: true }),
+    updatedBy: uuid("updated_by"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("organization_model_settings_organization_unique").on(
+      table.organizationId,
+    ),
+    uniqueIndex("organization_model_settings_identity_unique").on(
+      table.organizationId,
+      table.id,
+    ),
+    check(
+      "organization_model_settings_context_check",
+      sql`${table.generationMaxContextTokens} > 0`,
+    ),
+    // pgvector's storage ceiling. The column holding these vectors is
+    // undimensioned, so this is the only place the bound is enforced.
+    check(
+      "organization_model_settings_dimensions_check",
+      sql`${table.embeddingDimensions} between 1 and 16000`,
+    ),
+  ],
+);
+
+/**
+ * One inference call the server has prepared for an organization's browser to
+ * execute against a model on the user's own machine.
+ *
+ * A deployed function cannot reach a user's loopback address, so the browser is
+ * the transport: the server assembles the prompt or the embedding input, parks
+ * the job, and a client belonging to the same organization claims the row,
+ * calls its local model, and posts the result back.
+ *
+ * `input_hash` is what makes a parked job resumable. One gap analysis is
+ * categories x phases x attempts separate calls, and the job re-executes from
+ * the start each time it wakes. Calls already answered are found by hash and
+ * returned without asking the client again, so each wake-up advances the job
+ * rather than repeating it.
+ *
+ * Everything a client returns is untrusted. The row records what came back; the
+ * grounding gateway decides whether it is admissible.
+ */
+export const clientInferenceRequests = pgTable.withRLS(
+  "client_inference_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    kind: clientInferenceKindEnum("kind").notNull(),
+    jobId: uuid("job_id").references(() => backgroundJobs.id, {
+      onDelete: "cascade",
+    }),
+    runId: uuid("run_id").references(() => aiProcessingRuns.id, {
+      onDelete: "cascade",
+    }),
+    // The exact request: prompt and JSON schema for generation, input values
+    // and purpose for embedding.
+    requestPayload: jsonb("request_payload").notNull(),
+    inputHash: text("input_hash").notNull(),
+    // What the server asked for. The client reports what actually answered, and
+    // the two are compared rather than assumed equal.
+    modelId: text("model_id").notNull(),
+    status: clientInferenceStatusEnum("status").default("pending").notNull(),
+    claimedBy: uuid("claimed_by"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
+    attemptCount: integer("attempt_count").default(0).notNull(),
+    response: jsonb("response"),
+    // Everything below is *attested*, not measured. A local model reports it
+    // through a client the server does not control, so it is kept here rather
+    // than in `ai_processing_runs.input_tokens` and friends, which carry
+    // metered provider usage that cost reporting reads back. Mixing the two
+    // would make a customer's self-reported numbers indistinguishable from
+    // billed ones.
+    reportedModelId: text("reported_model_id"),
+    attestedInputTokens: integer("attested_input_tokens"),
+    attestedOutputTokens: integer("attested_output_tokens"),
+    failureCode: text("failure_code"),
+    failureMessage: text("failure_message"),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("client_inference_requests_identity_unique").on(
+      table.organizationId,
+      table.id,
+    ),
+    // The resume key. One answered call per exact input per job, so a
+    // re-executing job finds its previous answer instead of re-asking.
+    uniqueIndex("client_inference_requests_input_unique").on(
+      table.organizationId,
+      table.jobId,
+      table.inputHash,
+    ),
+    // Claim lookups: oldest pending request for one organization.
+    index("client_inference_requests_claimable_idx").on(
+      table.organizationId,
+      table.status,
+      table.createdAt,
+    ),
+    check(
+      "client_inference_requests_lifecycle_check",
+      sql`(${table.status} = 'pending' and ${table.claimedBy} is null and ${table.response} is null)
+        or (${table.status} = 'claimed' and ${table.claimedBy} is not null and ${table.leaseExpiresAt} is not null)
+        or (${table.status} = 'succeeded' and ${table.response} is not null and ${table.respondedAt} is not null)
+        or (${table.status} in ('failed', 'expired'))`,
+    ),
+    // An embedding request never belongs to an AI processing run: embeddings
+    // are not an auditable generation. A generation request usually does, but
+    // the run row is created after the provider is built, so the link is
+    // recorded when it is known rather than required up front. Identity comes
+    // from the job and the input hash, not from the run.
+    check(
+      "client_inference_requests_run_check",
+      sql`${table.kind} = 'generation' or ${table.runId} is null`,
     ),
   ],
 );
@@ -713,7 +935,14 @@ export const documentVersions = pgTable.withRLS(
     contentHash: text("content_hash").notNull(),
     indexingStatus: processingStatusEnum("indexing_status").default("pending").notNull(),
     parser: text("parser").notNull(),
+    // The vector space these chunks live in, recorded in full. `embedding_key`
+    // is the hash the retrieval filter compares; the component columns exist so
+    // a human or an operator query can tell what a key actually means.
     embeddingModel: text("embedding_model").notNull(),
+    embeddingRevision: text("embedding_revision").notNull(),
+    embeddingDimensions: integer("embedding_dimensions").notNull(),
+    embeddingInstructionProfile: text("embedding_instruction_profile").notNull(),
+    embeddingKey: text("embedding_key").notNull(),
     indexingStartedAt: timestamp("indexing_started_at", { withTimezone: true }),
     indexingCompletedAt: timestamp("indexing_completed_at", { withTimezone: true }),
     failureCode: text("failure_code"),
@@ -919,7 +1148,7 @@ export const aiProcessingRuns = pgTable.withRLS(
     ),
     check(
       "ai_processing_runs_lifecycle_check",
-      sql`(${table.status} = 'succeeded' and ${table.completedAt} is not null and ${table.validatedOutput} is not null and ${table.failureCode} is null) or (${table.status} = 'failed' and ${table.completedAt} is not null and ${table.failureCode} is not null) or (${table.status} in ('pending', 'processing') and ${table.completedAt} is null)`,
+      sql`(${table.status} = 'succeeded' and ${table.completedAt} is not null and ${table.validatedOutput} is not null and ${table.failureCode} is null) or (${table.status} = 'failed' and ${table.completedAt} is not null and ${table.failureCode} is not null) or (${table.status} in ('pending', 'processing', 'awaiting_client') and ${table.completedAt} is null)`,
     ),
   ],
 );

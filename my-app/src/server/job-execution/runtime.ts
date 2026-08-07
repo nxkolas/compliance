@@ -5,8 +5,10 @@ import {
   heartbeatJob,
   leaseNextJob,
   monitorJobCancellation,
+  parkJob,
   succeedJob,
 } from "@/src/server/jobs";
+import { isClientInferenceSuspended } from "@/src/server/ai/client-inference/types";
 import {
   classifyJobFailure,
   executePersistedJob,
@@ -70,6 +72,18 @@ async function executeOneJob(input: {
     if (monitor.signal.aborted) {
       await finalizeJobCancellation(job.id, input.invocationId);
       return { claimed: true, outcome: "cancelled" };
+    }
+    // Handed off to a client's local model, not failed. The job returns to the
+    // queue with its attempt refunded and resumes when the client posts its
+    // result -- that request's own after-response drain is what wakes it.
+    if (isClientInferenceSuspended(error)) {
+      await parkJob({
+        jobId: job.id,
+        workerId: input.invocationId,
+        reason: "awaiting_client_inference",
+        retryAfterSeconds: error.detail.retryAfterSeconds,
+      });
+      return { claimed: true, outcome: "parked" };
     }
     const executionInterruption = input.deadlineSignal.aborted
       ? { code: "JOB_EXECUTION_DEADLINE", retryable: true }

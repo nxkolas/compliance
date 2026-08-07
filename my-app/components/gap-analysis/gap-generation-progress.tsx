@@ -28,8 +28,9 @@ export function GapGenerationProgress({
       : job?.phase === "validating"
         ? labels.validatingAnalysis
         : job?.phase === "saving_result"
-          ? labels.savingResult
-          : labels.generating;
+        ? labels.savingResult
+        : labels.generating;
+  const waitingForClient = job?.waitingOnClient === true;
   return (
     <div
       className="rounded-lg border border-primary/35 bg-primary/10 p-5 text-foreground"
@@ -38,8 +39,14 @@ export function GapGenerationProgress({
       <div className="flex items-center gap-3">
         <Loader2 className="animate-spin text-primary" />
         <div>
-          <p className="font-semibold">{phaseLabel}</p>
-          <p className="mt-1 text-sm">{labels.generationProgress}</p>
+          <p className="font-semibold">
+            {waitingForClient ? labels.waitingForClient : phaseLabel}
+          </p>
+          <p className="mt-1 text-sm">
+            {waitingForClient
+              ? labels.waitingForClientHint
+              : labels.generationProgress}
+          </p>
         </div>
       </div>
       {job ? (

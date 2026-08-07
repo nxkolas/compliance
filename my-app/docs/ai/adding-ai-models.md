@@ -1,153 +1,101 @@
-# Adding AI Models or Providers
+# AI models and providers
 
-This app treats provider selection as a small closed set. A provider is not only a chat model: it also owns embeddings for RAG, model capability defaults, UI labels, and environment configuration.
+The application has exactly two provider modes, and they differ in more than
+which endpoint gets called.
 
-Use this checklist when adding a new provider or exposing a new model behind an existing provider.
+| Mode | Who runs the model | Who chooses the model |
+| --- | --- | --- |
+| `openai` | the server | the deployment |
+| `self_hosted` | the customer | the organization |
 
-## Choose The Integration Type
+`self_hosted` splits again by whether the server can reach the model. An
+organization that has recorded its own models in `organization_model_settings`
+is reached through its browser, because a deployed function cannot connect to
+someone's `127.0.0.1`. One without that row uses the deployment's
+`SELF_HOSTED_AI_*` endpoint directly, which is the development and
+on-premises path. `resolveOrganizationEmbeddingConfig` (embeddings) and
+`configuredProviders` (generation) are
+where that fork is decided.
 
-### Add a model to an existing provider
+Adding a *third* provider mode is a larger change than it looks and is not
+currently intended. What follows covers the two things that do come up.
 
-If the new model is available from an already supported provider, you usually do not need code changes.
+## Changing the model for an OpenAI deployment
 
-Set the model environment variable:
+No code changes. Set the environment variables:
 
 ```env
 OPENAI_MODEL=gpt-5-mini
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 OPENAI_SMALL_MODEL=gpt-5-mini
+AI_EMBEDDING_DIM=1536
 ```
 
-For OpenAI-compatible services:
+The optional `*_SMALL_MODEL` is used for chat summaries. If it is missing, chat
+still works and summary generation is skipped.
 
-```env
-COMPANY_AI_MODEL=qwen3-vl-32b
-COMPANY_AI_EMBEDDING_MODEL=bge-m3
-COMPANY_AI_SMALL_MODEL=qwen3-vl-8b
-```
+Changing `OPENAI_EMBEDDING_MODEL` changes the vector space. See "Embedding
+identity" below — it is not a free swap.
 
-The optional `*_SMALL_MODEL` is used for chat summaries. If it is missing, chat still works and summary generation is skipped.
+## Changing the model an organization runs itself
 
-### Add a new provider
+Through the local model panel in organization settings, not through
+configuration. The connect probe records what the models actually do, because
+declaring a capability is not the same as having it: a model that ignores a JSON
+schema returns HTTP 200 with invented keys, and nothing downstream can tell that
+apart from a model that simply answered badly. A model failing the schema probe
+cannot be saved.
 
-Add a new provider only when it needs a distinct API key, base URL, SDK factory, UI option, or capability profile.
+The generation model and the embedding model are independent:
 
-## Files To Update
+- **Generation** changes take effect immediately. Nothing stored depends on
+  which model wrote it.
+- **Embedding** changes stage a migration. Every stored vector was produced by
+  the previous model, so the organization's active coordinates advance only once
+  a re-index has rebuilt them, in the same transaction that finishes it.
 
-### 1. Provider enum
+## Embedding identity
 
-Add the provider id to `aiProviderModes`:
+A vector's identity is the tuple hashed into `embedding_key`
+([document-config.ts](../../src/server/documents/document-config.ts)):
 
-```ts
-// lib/ai/types.ts
-export const aiProviderModes = [
-  "company_hosted",
-  "openai",
-  "self_hosted",
-  "new_provider",
-] as const;
-```
+- model
+- model revision
+- dimensions
+- retrieval instruction profile
+- chunking version
 
-This controls API validation for `/api/chat` and document upload requests.
+Retrieval filters on that key, so vectors from any other configuration are
+excluded rather than scored. This is what turns a half-finished re-index into
+missing results instead of confident nonsense.
 
-### 2. Provider factory
+Two rules follow:
 
-Add a factory in `lib/ai/providers.ts`.
+- **Every write of those columns goes through `embeddingIdentityColumns`.**
+  Writing the key without its components, or the reverse, produces a row whose
+  stored identity and stored hash disagree.
+- **Adding a field to `EmbeddingCoordinates` invalidates every stored vector.**
+  The hash lists its fields explicitly rather than spreading the type, so that
+  has to be a deliberate decision rather than a side effect of widening a type.
 
-For an OpenAI-compatible endpoint, prefer `createOpenAICompatible`:
+Dimensions are no longer fixed. `document_chunks.embedding` is an undimensioned
+pgvector column and each row stores its native width. The cost is that no single
+ANN index can cover heterogeneous widths; there is no ANN index today, so
+nothing regressed, but that is the constraint to weigh before adding one.
 
-```ts
-export function getNewProvider() {
-  return createOpenAICompatible({
-    name: "new-provider",
-    baseURL: requireAbsoluteUrl("NEW_PROVIDER_BASE_URL"),
-    apiKey: requireEnv("NEW_PROVIDER_API_KEY"),
-  });
-}
-```
+## Retrieval instruction profiles
 
-For an official SDK, add the package to `package.json`, import its factory, and wrap missing configuration in `ApiError` the same way the existing providers do.
+Some embedding families expect an instruction prefix on query text and none on
+document text. The profile is part of the embedding identity, because a document
+embedded without the prefix and a query embedded with it are not comparable.
 
-### 3. Model resolution
+Supported profiles are in
+[embeddings.ts](../../src/server/documents/embeddings.ts):
+`none`, `qwen3-query-v1`, `e5-query-v1`. Adding one means adding a branch there
+and an option to the settings contract — and it is a vector-invalidating change
+for any organization that switches to it.
 
-Wire chat, embedding, and small-model env vars in `lib/ai/models.ts`:
-
-```ts
-if (providerMode === "new_provider") {
-  return getNewProvider()(modelId);
-}
-```
-
-Add matching env variables:
-
-```env
-NEW_PROVIDER_MODEL=provider-chat-model
-NEW_PROVIDER_EMBEDDING_MODEL=provider-embedding-model
-NEW_PROVIDER_SMALL_MODEL=provider-small-chat-model
-```
-
-Only expose providers that can support the app's RAG flow. The selected provider is used for both chat and embeddings.
-
-### 4. Capability profile
-
-Add defaults in `lib/ai/model-capabilities.ts`:
-
-```ts
-new_provider: {
-  supportsStreaming: true,
-  supportsStructuredOutputs: false,
-  supportsToolCalls: false,
-  maxContextTokens: 32000,
-  recommendedTemperature: 0.15,
-  citationReliability: "medium",
-},
-```
-
-If `providerEnvPrefix()` cannot derive the env prefix cleanly, add a branch for it. These overrides are supported:
-
-```env
-NEW_PROVIDER_MAX_CONTEXT_TOKENS=32000
-NEW_PROVIDER_RECOMMENDED_TEMPERATURE=0.15
-NEW_PROVIDER_CITATION_RELIABILITY=medium
-NEW_PROVIDER_SUPPORTS_STREAMING=true
-NEW_PROVIDER_SUPPORTS_STRUCTURED_OUTPUTS=false
-NEW_PROVIDER_SUPPORTS_TOOL_CALLS=false
-```
-
-### 5. UI and labels
-
-Add labels in both dictionaries in `lib/i18n.ts`:
-
-```ts
-providers: {
-  companyHosted: "Complyx hosted",
-  openai: "OpenAI",
-  selfHosted: "Self-hosted",
-  newProvider: "New provider",
-},
-```
-
-Add the dropdown option in `components/ai/assistant-chat.tsx`:
-
-```tsx
-<SelectItem value="new_provider">
-  {labels.providers.newProvider}
-</SelectItem>
-```
-
-### 6. Default provider
-
-Set the default in the environment:
-
-```env
-AI_DEFAULT_PROVIDER=new_provider
-```
-
-`getDefaultAiProviderMode()` falls back to `openai` if the value is missing or not listed in `aiProviderModes`.
-
-## Generation Concurrency And Batching
-
-These optional environment values tune Gap and Action Plan generation:
+## Generation concurrency and batching
 
 ```env
 AI_CATEGORY_CONCURRENCY=3
@@ -160,43 +108,13 @@ AI_EMBEDDING_BATCH_SIZE=64
 - `AI_PROVIDER_MAX_CONCURRENCY` accepts 1-100 and limits simultaneous chat
   provider calls across Gap, Action Plan, repair, correction, and guidance work
   in one Node.js process. It does not limit embeddings and does not coordinate
-  permits between application instances.
+  permits between application instances. The permit is released when a
+  browser-relayed call suspends, so a client wait never holds a slot.
 - `AI_EMBEDDING_BATCH_SIZE` accepts 1-512 and controls how many initial Gap
-  retrieval queries are sent in one embedding request. The default 64 fits all
-  legal and organization queries for a normal ten-category Gap run. Repair
-  queries are embedded separately, and Action Plan retrieval is not part of
-  this Gap batch.
-
-The defaults intentionally remain 3/3. Category generation already allowed
-three concurrent calls before the shared limiter was added. Setting category
-workers to 5 while leaving the provider limit at 3 can overlap preparation,
-but still allows only three chat calls at once and does not itself prove a
-provider-bound speedup.
-
-## Embedding Dimension Rule
-
-All rows in `ai_document_chunks.embedding` share one pgvector dimension:
-
-```env
-AI_EMBEDDING_DIM=1536
-```
-
-Every embedding model used in the same deployment must return that dimension. If a new provider uses a different embedding dimension, do not mix it into the same table without a schema change. Options include:
-
-- Use one embedding dimension across all providers.
-- Re-index all documents after changing `AI_EMBEDDING_DIM`.
-- Add separate embedding storage per provider/model.
-
-## Reference Ingestion
-
-Reference ingestion is disabled in the org-only v1 schema because the AI
-document tables are not active. When document storage returns, curated reference
-ingestion should use the selected embedding provider and re-index stored
-references after embedding model or dimension changes.
+  retrieval queries are sent in one embedding request. For a browser-relayed
+  organization this is also the size of one round trip to the client.
 
 ## Verification
-
-Run:
 
 ```bash
 npm run test:ai
@@ -205,16 +123,24 @@ npm run build
 
 Then manually check:
 
-- The provider appears in the assistant dropdown.
-- `/api/chat` accepts the provider id.
-- Document upload succeeds with the provider selected.
-- RAG answers include sources after documents or references are indexed.
-- The debug page shows reasonable model capabilities for the selected default provider.
+- Both provider options appear in organization settings.
+- Gap analysis completes for an `openai` organization with no
+  `client_inference_requests` row created.
+- The local model panel's probe rejects a model that ignores JSON schemas.
+- Changing an organization's embedding model stages a migration; changing its
+  generation model does not.
 
-## Common Failure Modes
+## Common failure modes
 
-- `NEW_PROVIDER_MODEL is not configured`: the chat model env var is missing.
-- Embedding request fails: the provider does not expose an embedding model through the configured SDK.
-- pgvector dimension error: the embedding model output dimension does not match `AI_EMBEDDING_DIM`.
-- No RAG sources: references were not ingested, the uploaded document failed processing, or the selected provider uses incompatible embeddings.
-- Provider does not appear in UI: the enum was updated but the dropdown labels/options were not.
+- `OPENAI_MODEL is not configured`: the chat model env var is missing.
+- Embedding request fails: the provider does not expose an embedding model
+  through the configured SDK.
+- `Embedding model returned N dimensions, but the configuration declares M`: the
+  declared width does not match the model. Truncation was removed deliberately;
+  fix the declaration rather than reintroducing it.
+- No RAG sources: documents were never indexed, the re-index has not finished,
+  or the organization's embedding key changed and the rebuild is still running.
+- Gap analysis parked forever: a `self_hosted` organization with no browser
+  connected. The gap screen shows "Waiting for a connected browser"; connect
+  once from the local model panel and keep the app open in a tab. Check
+  `client_inference_requests` for rows stuck at `pending`.

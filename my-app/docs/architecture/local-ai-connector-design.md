@@ -1,6 +1,11 @@
 # Local AI Connector design
 
-Status: agreed direction; implementation deferred
+Status: superseded. The installed Local Connector described here was never
+built. The shipped mechanism is the browser relay, designed in
+[browser-relayed-local-ai.md](../../plans/pending/browser-relayed-local-ai.md)
+and documented for users in
+[connecting-your-own-model.md](../../product/connecting-your-own-model.md) and
+for operators in [local-model-testing.md](../../runbooks/local-model-testing.md).
 
 This note records only the agreed design for using an AI model running on a
 customer's computer from the deployed Complyx application. It does not finalize

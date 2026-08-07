@@ -15,15 +15,25 @@ async function main() {
       `--release must equal the deployed code-owned definition ${release.releaseCode}/${release.versionLabel}`,
     );
   }
-  if (
-    release.id !== currentGapDefinitionHash ||
-    release.prompt.responseSchemaVersion !== "12" ||
-    release.actionPlanPrompt.responseSchemaVersion !== "6" ||
-    release.requirements.length !== 10 ||
-    release.questions.length !== 31 ||
-    release.questions.some((question) => question.legalProvisions.length === 0)
-  ) {
-    throw new Error("The deployed code-owned Gap definition is incomplete");
+  // Reported individually. These were one combined condition, which meant a
+  // routine prompt-schema bump failed with "the definition is incomplete" and
+  // gave no clue which of six things had moved.
+  const definitionChecks: Array<[string, boolean]> = [
+    ["definition hash matches the compiled release", release.id === currentGapDefinitionHash],
+    ["gap prompt response schema is 14", release.prompt.responseSchemaVersion === "14"],
+    ["action plan prompt response schema is 9", release.actionPlanPrompt.responseSchemaVersion === "9"],
+    ["10 requirements", release.requirements.length === 10],
+    ["31 questions", release.questions.length === 31],
+    [
+      "every question binds at least one legal provision",
+      release.questions.every((question) => question.legalProvisions.length > 0),
+    ],
+  ];
+  const failed = definitionChecks.filter(([, ok]) => !ok).map(([label]) => label);
+  if (failed.length) {
+    throw new Error(
+      `The deployed code-owned Gap definition does not match: ${failed.join("; ")}`,
+    );
   }
 
   const sql = postgres(databaseUrl, { prepare: false });

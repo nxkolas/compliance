@@ -7,7 +7,7 @@ const organization = {
   name: "Example GmbH",
   legalName: "Example GmbH",
       countryCode: "DE",
-      aiProviderMode: "company_hosted",
+      aiProviderMode: "openai",
   archivedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),

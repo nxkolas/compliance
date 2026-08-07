@@ -18,14 +18,6 @@ const defaults: Record<AiProviderMode, ModelCapabilityProfile> = {
     recommendedTemperature: 0.2,
     citationReliability: "high",
   },
-  company_hosted: {
-    supportsStreaming: true,
-    supportsStructuredOutputs: false,
-    supportsToolCalls: false,
-    maxContextTokens: 32000,
-    recommendedTemperature: 0.15,
-    citationReliability: "medium",
-  },
   self_hosted: {
     supportsStreaming: true,
     supportsStructuredOutputs: false,
@@ -75,10 +67,6 @@ export function getModelCapabilityProfile(
  * Converts provider modes to the shared env-var prefix for capability overrides.
  */
 function providerEnvPrefix(providerMode: AiProviderMode) {
-  if (providerMode === "company_hosted") {
-    return "COMPANY_AI";
-  }
-
   if (providerMode === "self_hosted") {
     return "SELF_HOSTED_AI";
   }

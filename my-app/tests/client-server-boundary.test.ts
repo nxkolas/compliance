@@ -16,6 +16,27 @@ describe("client/server dependency boundary", () => {
     const offenders = sourceFiles("src/client").filter((file) => /@\/src\/(?:db|server)(?:\/|["'])/.test(readFileSync(file, "utf8")));
     expect(offenders).toEqual([]);
   });
+
+  /**
+   * `lib/ai/providers` reads `OPENAI_API_KEY`, and `lib/ai/models` builds on it.
+   * Neither would leak the key if bundled -- a variable without the
+   * `NEXT_PUBLIC_` prefix resolves to undefined in the browser -- but the
+   * failure would be a confusing runtime error in a credential path, and a
+   * later rename could turn it into a real leak. `lib/ai/types` carries no
+   * secrets and is deliberately still importable by client code.
+   */
+  it("keeps AI credential modules out of client-side code", () => {
+    const offenders = sourceFiles("app", "components", "src/client")
+      .filter((file) => {
+        const source = readFileSync(file, "utf8");
+        return (
+          (file.includes("src\\client") || file.includes("src/client") ||
+            source.startsWith('"use client"')) &&
+          /@\/lib\/ai\/(?:models|providers)(?:\/|["'])/.test(source)
+        );
+      });
+    expect(offenders).toEqual([]);
+  });
 });
 
 function sourceFiles(...directories: string[]) {

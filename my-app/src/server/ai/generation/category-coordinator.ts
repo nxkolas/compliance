@@ -6,6 +6,7 @@ import {
 import { classifyGenerationFailure, GenerationFailure } from "./failures";
 import { combineAbortSignals, throwIfGenerationCancelled } from "./abort";
 import { emitGenerationMetric } from "./metrics";
+import { isClientInferenceSuspended } from "@/src/server/ai/client-inference/types";
 
 export type CategoryValidation<T> =
   | { valid: true; value: T; normalizedIssueCodes?: GenerationIssueCode[] }
@@ -291,6 +292,10 @@ export async function coordinateCategoryGeneration<
         if (!result.valid) issues = result.issues;
         return { candidate, result };
       } catch (error) {
+        // Handed off to a client's local model, not a failure. The job runner
+        // parks on this exact error, so it must survive classification
+        // unchanged -- wrapping it here would make the job fail instead.
+        if (isClientInferenceSuspended(error)) throw error;
         const failure = classifyGenerationFailure(error);
         await record(
           createGenerationDiagnostic({
@@ -339,7 +344,10 @@ export async function coordinateCategoryGeneration<
     () => worker(),
   );
   await Promise.allSettled(workerPromises);
-  if (primaryFailureAt !== undefined) {
+  if (
+    primaryFailureAt !== undefined &&
+    !isClientInferenceSuspended(primaryFailure)
+  ) {
     emitGenerationMetric({
       name: "primary_failure_settlement_ms",
       value: Date.now() - primaryFailureAt,

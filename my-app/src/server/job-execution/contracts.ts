@@ -39,6 +39,8 @@ export type DrainJobsResult = {
   failed: number;
   retried: number;
   cancelled: number;
+  /** Handed off to a client's local model and waiting; not an error. */
+  parked: number;
   stopReason: JobDrainStopReason;
   durationMs: number;
 };
@@ -47,7 +49,8 @@ export type JobExecutionOutcome =
   | "succeeded"
   | "failed"
   | "retried"
-  | "cancelled";
+  | "cancelled"
+  | "parked";
 
 export type JobExecutionCycleResult =
   | { claimed: false }

@@ -282,6 +282,7 @@ export async function executeActionPlanGenerationJob(input: {
       operation: "gap_analysis",
       organizationId: input.organizationId,
       workflowReleaseId: currentGapDefinitionHash,
+      jobId: input.jobId,
     },
     input.groundingDependencies,
   );

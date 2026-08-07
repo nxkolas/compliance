@@ -12,6 +12,7 @@ import {
 import { Loader2, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LocalModelPanel } from "./local-model-panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -613,7 +614,7 @@ function OrganizationEditDialog({
     name: "",
     legalName: "",
     countryCode: "DE",
-    aiProviderMode: "company_hosted" as SerializedItem["aiProviderMode"],
+    aiProviderMode: "openai" as SerializedItem["aiProviderMode"],
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -883,11 +884,21 @@ function OrganizationEditDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(["company_hosted", "openai", "self_hosted"] as const).map((mode) => (
+                    {(["openai", "self_hosted"] as const).map((mode) => (
                       <SelectItem key={mode} value={mode}>{labels.providerModes[mode]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {/*
+                  Only meaningful for an organization running its own model:
+                  choosing which models to use, and connecting this browser so
+                  they can actually be reached, are the same operation.
+                */}
+                {form.aiProviderMode === "self_hosted" && item ? (
+                  <div className="mt-4">
+                    <LocalModelPanel organizationId={item.id} />
+                  </div>
+                ) : null}
               </div>
             </div>
 

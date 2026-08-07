@@ -26,6 +26,9 @@ export const jobDtoSchema = z.object({
   state: jobStateSchema,
   progress: z.number().int().min(0).max(100),
   phase: jobProgressPhaseSchema.nullable().default(null),
+  /** True while the job is parked waiting for an organization browser to serve
+   * a local model call. Progress is zero by design until a client answers. */
+  waitingOnClient: z.boolean().default(false),
   completedUnits: z.number().int().nonnegative().nullable().default(null),
   totalUnits: z.number().int().nonnegative().nullable().default(null),
   attemptCount: z.number().int().nonnegative(),

@@ -39,7 +39,7 @@ import {
   createDocumentEmbeddingProvider,
   validateEmbeddings,
 } from "@/src/server/documents";
-import { resolveOrganizationEmbeddingConfig } from "@/src/server/documents/service";
+import { organizationEmbeddingProvider } from "@/src/server/documents/service";
 import { emitGenerationMetric } from "../ai/generation/metrics";
 import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
 import { GAP_GROUNDING_INSTRUCTION } from "./grounding-instruction";
@@ -113,6 +113,7 @@ async function generateAtomicGapCategoriesCurrent(
       operation: "gap_analysis",
       organizationId: input.organizationId,
       workflowReleaseId: input.release.id,
+      jobId: input.jobId,
     },
     input.groundingDependencies,
   );
@@ -130,9 +131,9 @@ async function generateAtomicGapCategoriesCurrent(
     input.jobId,
     input.selectedDocumentVersionIds.length > 0,
     input.groundingDependencies?.embeddingProvider ??
-      createDocumentEmbeddingProvider(
-        (await resolveOrganizationEmbeddingConfig(input.organizationId)).provider,
-      ),
+      (await organizationEmbeddingProvider(input.organizationId, {
+        jobId: input.jobId,
+      })),
   );
   const coordinated = await coordinateCategoryGeneration<
     AtomicGapRequirementInput,

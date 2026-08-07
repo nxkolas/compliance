@@ -112,7 +112,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function groundedMaxOutputTokens() {
+export function groundedMaxOutputTokens() {
   const raw = process.env.AI_GROUNDED_MAX_OUTPUT_TOKENS?.trim() || "9000";
   const configured = Number(raw);
   return Number.isFinite(configured)

@@ -153,6 +153,72 @@ export async function succeedJob(input: { jobId: string; workerId: string; resul
   return job;
 }
 
+/**
+ * Returns a job to the queue because it is waiting on something outside the
+ * server, without counting the wait as a failed attempt.
+ *
+ * A self-hosted organization's generation is many separate model calls, each
+ * one parked until its browser answers. Routing that through `failJob` would
+ * work mechanically -- it also re-queues -- but every park would consume a
+ * retry, and a ten-category analysis would exhaust `maxAttempts` long before
+ * finishing. The attempt taken at lease time is refunded here instead, so the
+ * retry budget keeps meaning "attempts that went wrong".
+ */
+export async function parkJob(input: {
+  jobId: string;
+  workerId: string;
+  reason: string;
+  retryAfterSeconds: number;
+  now?: Date;
+}) {
+  const now = input.now ?? new Date();
+  const [job] = await db.update(backgroundJobs).set({
+    state: "queued",
+    availableAt: new Date(now.getTime() + input.retryAfterSeconds * 1_000),
+    attemptCount: sql`greatest(${backgroundJobs.attemptCount} - 1, 0)`,
+    progressMessage: input.reason,
+    leaseOwner: null,
+    leaseExpiresAt: null,
+    finishedAt: null,
+    updatedAt: now,
+  }).where(and(
+    eq(backgroundJobs.id, input.jobId),
+    eq(backgroundJobs.leaseOwner, input.workerId),
+    eq(backgroundJobs.state, "running"),
+  )).returning();
+  if (!job) throw leaseLost();
+  return job;
+}
+
+/**
+ * Makes a job waiting on a client answer immediately leaseable again.
+ *
+ * A parked job's `availableAt` sits at the client lease horizon so it is not
+ * spun on while a local model works. Once the client has answered -- or given
+ * up and reported a failure -- the after-response drain should pick it up
+ * right away. This moves the job to now so that drain actually leases it.
+ */
+export async function wakeParkedJob(input: {
+  jobId: string;
+  now?: Date;
+}) {
+  const now = input.now ?? new Date();
+  const [job] = await db
+    .update(backgroundJobs)
+    .set({
+      availableAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(backgroundJobs.id, input.jobId),
+        eq(backgroundJobs.state, "queued"),
+      ),
+    )
+    .returning();
+  return job ?? null;
+}
+
 export async function failJob(input: {
   jobId: string;
   workerId: string;
@@ -286,6 +352,7 @@ export function toJobDto(job: BackgroundJobRecord): JobDto {
       : job.state === "leased" ? "running" : job.state,
     progress,
     phase: isProgressPhase(job.progressMessage) ? job.progressMessage : null,
+    waitingOnClient: job.progressMessage === "awaiting_client_inference",
     completedUnits: job.progressCurrent,
     totalUnits: job.progressTotal,
     attemptCount: job.attemptCount,

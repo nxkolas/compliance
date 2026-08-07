@@ -5,6 +5,7 @@ import {
   DEFAULT_EMBEDDING_PROVIDER,
   EMBEDDING_DIMENSIONS,
   resolveEmbeddingConfig,
+  type EmbeddingConfig,
 } from "./document-config";
 
 export type EmbeddingPurpose = "document" | "query";
@@ -15,6 +16,13 @@ export type DocumentEmbeddingProvider = {
   modelRevision: string;
   dimensions: number;
   retrievalInstructionId: string;
+  chunkingVersion: string;
+  /**
+   * Identity of the vector space this embedder writes into. Every persisted
+   * vector records it, and retrieval compares it, so a document embedded by a
+   * different configuration is excluded rather than scored.
+   */
+  key: string;
   embed(values: string[], purpose?: EmbeddingPurpose): Promise<number[][]>;
 };
 
@@ -26,19 +34,35 @@ export type DocumentEmbeddingProvider = {
 export function createDocumentEmbeddingProvider(
   providerMode: AiProviderMode = DEFAULT_EMBEDDING_PROVIDER,
 ): DocumentEmbeddingProvider {
-  const config = resolveEmbeddingConfig(providerMode);
+  return createDocumentEmbeddingProviderFromConfig(
+    resolveEmbeddingConfig(providerMode),
+  );
+}
+
+/**
+ * Builds an embedder from an explicit configuration rather than resolving one.
+ *
+ * A re-index must embed with the coordinates pinned when it was requested, even
+ * if the organization's settings have moved on since. Resolving the current
+ * configuration mid-run would write rows labelled with a space they are not in.
+ */
+export function createDocumentEmbeddingProviderFromConfig(
+  config: EmbeddingConfig,
+): DocumentEmbeddingProvider {
   return {
     provider: config.provider,
     model: config.model,
     modelRevision: config.modelRevision,
     dimensions: config.dimensions,
     retrievalInstructionId: config.retrievalInstructionId,
+    chunkingVersion: config.chunkingVersion,
+    key: config.key,
     async embed(values, purpose = "document") {
       if (values.length === 0) return [];
       const result = await embedMany({
         model: getComplianceEmbeddingModel(config.provider),
         values: values.map((value) =>
-          embeddingInput(value, purpose, config.provider),
+          embeddingInput(value, purpose, config.retrievalInstructionId),
         ),
       });
       return adaptEmbeddings(result.embeddings, config.dimensions);
@@ -46,16 +70,30 @@ export function createDocumentEmbeddingProvider(
   };
 }
 
+/**
+ * Normalizes model output to unit length and checks it is the declared width.
+ *
+ * This used to truncate anything wider than the configured dimension, which was
+ * safe only because the one supported model was Matryoshka-trained and could be
+ * cut without losing its geometry. The model is an organization's own choice
+ * now, so that assumption no longer holds: silently truncating a model that was
+ * not trained for it degrades retrieval quality with nothing to notice.
+ *
+ * A width that disagrees with the declared one is therefore an error. The
+ * declared width comes from probing the model, so a disagreement means the
+ * configuration is describing a different model than the one answering.
+ */
 export function adaptEmbeddings(
   embeddings: number[][],
   dimensions = EMBEDDING_DIMENSIONS,
 ) {
   return embeddings.map((embedding) => {
-    const native = normalizeEmbedding(embedding);
-    if (native.length < dimensions) {
-      throw new Error("Embedding dimensions do not match the configured space");
+    if (embedding.length !== dimensions) {
+      throw new Error(
+        `Embedding model returned ${embedding.length} dimensions, but the configuration declares ${dimensions}`,
+      );
     }
-    return normalizeEmbedding(native.slice(0, dimensions));
+    return normalizeEmbedding(embedding);
   });
 }
 
@@ -96,17 +134,35 @@ export function validateEmbeddings(
   }
 }
 
+/**
+ * Applies the retrieval instruction a model family expects on query text.
+ *
+ * Keyed on the instruction profile rather than the provider, because the model
+ * is an organization's choice: two organizations on the same provider can run
+ * embedding models with different conventions. The profile is part of the
+ * embedding identity, so a document embedded under one profile is never
+ * compared against a query embedded under another.
+ *
+ * Document text is never prefixed. Qwen3-Embedding and the E5 family instruct
+ * on the query side only.
+ */
 function embeddingInput(
   value: string,
   purpose: EmbeddingPurpose,
-  provider: string,
+  retrievalInstructionId: string,
 ) {
-  if (purpose !== "query" || provider !== "self_hosted") {
-    return value;
+  if (purpose !== "query") return value;
+
+  if (retrievalInstructionId === "qwen3-query-v1") {
+    return [
+      "Instruct: Retrieve passages relevant to the compliance question.",
+      `Query: ${value}`,
+    ].join("\n");
   }
 
-  return [
-    "Instruct: Retrieve passages relevant to the compliance question.",
-    `Query: ${value}`,
-  ].join("\n");
+  if (retrievalInstructionId === "e5-query-v1") {
+    return `query: ${value}`;
+  }
+
+  return value;
 }
