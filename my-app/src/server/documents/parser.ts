@@ -1,6 +1,6 @@
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 import { ApiError } from "../api/errors";
+import { installPdfPolyfills } from "../pdf-polyfills";
 import { MAX_DOCUMENT_BYTES, SUPPORTED_DOCUMENT_TYPES } from "./document-config";
 
 export type ExtractedPage = {
@@ -44,6 +44,8 @@ export async function parseDocument(
     throw new ApiError(413, "The document size is not allowed");
   }
   if (mimeType === "application/pdf") {
+    installPdfPolyfills();
+    const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: bytes });
     try {
       const result = await parser.getText();
