@@ -49,6 +49,18 @@ export type ReleaseQuestionOptionSource = {
   metadata: Record<string, unknown>;
 };
 
+export type ReleaseQuestionFactMapping = {
+  factKey: string;
+  /**
+   * Optional per-option fact values. When present, an answered question maps
+   * each selected option through this table instead of writing the raw answer
+   * value. A `null` value writes nothing for that fact. Arrays are used for
+   * multi-value facts (for example one wizard activity expanding to several
+   * German entity-catalogue codes).
+   */
+  byOption?: Record<string, string | string[] | null>;
+};
+
 export type ReleaseQuestionSource = {
   stableKey: string;
   position: number;
@@ -60,6 +72,7 @@ export type ReleaseQuestionSource = {
   factKey: string;
   config: Record<string, unknown>;
   options: ReleaseQuestionOptionSource[];
+  factMappings: ReleaseQuestionFactMapping[];
 };
 
 export type ReleaseEntityTypeSource = {

@@ -35,9 +35,6 @@ const facts: FactDefinitionSource[] = [
   fact("annual_revenue_bucket", "enum", "Jahresumsatz", "Annual turnover", "Jahresumsatz mit rechtlich exakten Schwellenwerten.", "Annual turnover using the exact legal thresholds."),
   fact("balance_sheet_total_bucket", "enum", "Jahresbilanzsumme", "Annual balance-sheet total", "Jahresbilanzsumme mit rechtlich exakten Schwellenwerten.", "Annual balance-sheet total using the exact legal thresholds."),
   fact("sme_figures_verified", "enum", "KMU-Größenwerte geprüft", "SME figures verified", "Ob die Größenwerte korrekt berechnet wurden oder keine Partner- oder verbundenen Unternehmen bestehen.", "Whether the size figures were calculated correctly or there are no partner or linked enterprises."),
-  fact("sector_specific_regime", "enum", "Sektorspezifisches Regelwerk", "Sector-specific regime", "Zusätzliche oder vorrangige sektorspezifische Regelwerke.", "Additional or prevailing sector-specific regimes."),
-  fact("serves_critical_customers", "enum", "Leistungen für regulierte Kunden", "Services for regulated customers", "Indikator für indirekte Lieferkettenbetroffenheit.", "Indicator of indirect supply-chain exposure."),
-  fact("has_customer_security_evidence_requests", "enum", "Vertragliche Sicherheitsnachweise", "Contractual security evidence", "Ob Kunden Sicherheitsmaßnahmen oder Nachweise verlangen.", "Whether customers require security measures or evidence."),
 ];
 
 function fact(
@@ -103,9 +100,23 @@ const entityTypes = nis2EntityTypes.map((entity) => {
 
 const germanEntityCatalog = buildGermanEntityCatalog(addContent);
 
+const questionOptionAuxContent: Record<string, { de: string; en: string }> = {
+  "nis2.question.bc.activity.option.digital_msp.helper": {
+    de: "Verwaltete IT-Dienste: kontinuierliche Verwaltung oder Betrieb der IKT-Systeme von Kunden. Einmalige Beratung oder reine Softwareentwicklung allein zählt für diese Option nicht.",
+    en: "Managed IT services: ongoing management or operation of customers' ICT systems. One-off consulting or software development alone does not count for this option.",
+  },
+  "nis2.question.bc.activity.option.digital_mssp.helper": {
+    de: "Verwaltete Sicherheitsdienste: kontinuierliche Verwaltung oder Betrieb von Cybersicherheitsdiensten für Kunden. Einmalige Beratung oder reine Softwareentwicklung allein zählt für diese Option nicht.",
+    en: "Managed security services: ongoing management or operation of customers' cybersecurity services. One-off consulting or software development alone does not count for this option.",
+  },
+  "nis2.question.bc.activity.option.chemicals_manufacture_import.definition": {
+    de: "Die Kategorie erfasst Hersteller oder Importeure chemischer Stoffe oder Gemische, die nach der REACH-Verordnung registrierungspflichtig sind und der NACE-Abteilung 20 zuzuordnen sind.",
+    en: "This category covers manufacturers or importers of chemical substances or mixtures that are subject to registration under the REACH Regulation and fall under NACE division 20.",
+  },
+};
+
 type BuiltQuestionOption = {
   stableValue: string;
-  catalogCode: FactOptionSource["catalogCode"];
   labelContentKey: string;
   metadata: Record<string, unknown>;
 };
@@ -113,115 +124,90 @@ type BuiltQuestionOption = {
 function questionOptions(
   question: (typeof nis2Questions)[number],
 ): BuiltQuestionOption[] {
-  const baseOptions = question.options.map((option) => ({
-    stableValue: option.stableValue,
-    catalogCode: "all" as const,
-    labelContentKey: addContent(
-      `nis2.question.${question.stableKey}.option.${option.stableValue}`,
-      option.label,
-      option.labelEn,
-    ),
-    metadata: {
-      ...(option.metadata?.exclusive === true ? { exclusive: true } : {}),
-      ...(option.metadata?.annex ? { annex: option.metadata.annex } : {}),
-    } as Record<string, unknown>,
-  }));
-
-  if (question.factKey === "nis2_entity_types") {
-    const euOptions = baseOptions.map((option) => ({
-      ...option,
-      catalogCode: ["none_of_these", "unsure"].includes(option.stableValue)
-        ? "all" as const
-        : "eu_core" as const,
-    }));
-    return [
-      ...euOptions,
-      ...germanEntityCatalog.map((entity) => ({
-        stableValue: entity.code,
-        catalogCode: "country:DE" as const,
-        labelContentKey: entity.labelContentKey,
-        metadata: {
-          annex: entity.annex,
-          statutoryCategoryCode: entity.statutoryCategoryCode,
-        },
-      })),
-    ];
-  }
-
-  if (question.factKey === "jurisdiction_basis") {
-    const euOptions = baseOptions.map((option) => ({
-      ...option,
-      catalogCode: option.stableValue === "unsure" ? "all" as const : "eu_core" as const,
-    }));
-    return [...euOptions,
-      catalogOption(question.stableKey, "de_establishment", "Niederlassung in Deutschland", "Establishment in Germany", "country:DE"),
-      catalogOption(question.stableKey, "de_critical_installation_location", "Kritische Anlage auf deutschem Hoheitsgebiet", "Critical installation located in Germany", "country:DE"),
-      catalogOption(question.stableKey, "de_federal_administration", "Einrichtung der Bundesverwaltung", "Federal-administration entity", "country:DE"),
-      catalogOption(question.stableKey, "de_main_eu_establishment", "Hauptniederlassung in der EU in Deutschland", "Main EU establishment in Germany", "country:DE"),
-      catalogOption(question.stableKey, "de_eu_representative", "Benannter EU-Vertreter in Deutschland", "Designated EU representative in Germany", "country:DE"),
-      catalogOption(question.stableKey, "de_bsi_discretion_absent_representative", "Zuständigkeit durch förmliche BSI-Erklärung", "Jurisdiction declared formally by the BSI", "country:DE"),
-      catalogOption(question.stableKey, "nis2_telecom_service_location", "Öffentlicher Telekommunikationsdienst in Deutschland", "Public telecommunications service in Germany", "country:DE"),
-      catalogOption(question.stableKey, "de_regional_public_administration", "Regionale Verwaltung nach anwendbarem Landesrecht", "Regional administration under applicable Land law", "country:DE"),
-    ];
-  }
-
-  if (question.factKey === "sme_figures_verified") {
-    const euOptions = baseOptions.map((option) => ({
-      ...option,
-      catalogCode: option.stableValue === "yes" ? "eu_core" as const : "all" as const,
-    }));
-    return [...euOptions,
-      catalogOption(question.stableKey, "verified_de_without_it_exception", "Ja, ohne Anwendung der deutschen IT-Unabhängigkeitsausnahme", "Yes, without applying the German IT-independence exception", "country:DE"),
-      catalogOption(question.stableKey, "verified_de_with_it_exception", "Ja, mit Anwendung der deutschen IT-Unabhängigkeitsausnahme", "Yes, applying the German IT-independence exception", "country:DE"),
-    ];
-  }
-
-  return baseOptions;
+  return question.options.map((option) => {
+    const metadata = { ...(option.metadata ?? {}) } as Record<string, unknown>;
+    for (const key of ["helperContentKey", "definitionContentKey"]) {
+      const contentKey = metadata[key];
+      if (typeof contentKey === "string" && !content.has(contentKey)) {
+        const aux = questionOptionAuxContent[contentKey];
+        if (!aux) throw new Error(`Missing auxiliary content ${contentKey}`);
+        addContent(contentKey, aux.de, aux.en);
+      }
+    }
+    return {
+      stableValue: option.stableValue,
+      labelContentKey: addContent(
+        `nis2.question.${question.stableKey}.option.${option.stableValue}`,
+        option.label,
+        option.labelEn,
+      ),
+      metadata,
+    };
+  });
 }
 
-function catalogOption(
-  questionStableKey: string,
-  stableValue: string,
-  de: string,
-  en: string,
-  catalogCode: Exclude<FactOptionSource["catalogCode"], "all">,
-): BuiltQuestionOption {
-  return {
-    stableValue,
-    catalogCode,
-    labelContentKey: addContent(
-      `nis2.question.${questionStableKey}.option.${stableValue}`,
-      de,
-      en,
-    ),
-    metadata: {},
-  };
+type RegisteredFactOption = {
+  catalogCode: FactOptionSource["catalogCode"];
+  scopeEntityTypeCode?: string;
+  jurisdictionEntityTypeCode?: string;
+};
+
+const factOptionRegistry = new Map<string, Map<string, RegisteredFactOption>>();
+
+function registerFactOption(factKey: string, value: unknown) {
+  if (typeof value !== "string" || value.length === 0) return;
+  const options =
+    factOptionRegistry.get(factKey) ?? new Map<string, RegisteredFactOption>();
+  if (!options.has(value)) {
+    let registered: RegisteredFactOption = { catalogCode: "all" };
+    if (
+      factKey === "nis2_entity_types" &&
+      germanEntityCatalog.some((entity) => entity.code === value)
+    ) {
+      registered = {
+        catalogCode: "country:DE",
+        jurisdictionEntityTypeCode: value,
+      };
+    }
+    options.set(value, registered);
+  }
+  factOptionRegistry.set(factKey, options);
 }
 
 for (const question of nis2Questions) {
-  const factDefinition = facts.find((candidate) => candidate.key === question.factKey);
-  if (!factDefinition) throw new Error(`Unknown release fact ${question.factKey}`);
+  const mappings = question.factMappings ?? [{ factKey: question.factKey }];
+  for (const mapping of mappings) {
+    for (const option of question.options) {
+      if (mapping.byOption) {
+        const mapped = mapping.byOption[option.stableValue];
+        if (Array.isArray(mapped)) {
+          for (const value of mapped) registerFactOption(mapping.factKey, value);
+        } else {
+          registerFactOption(mapping.factKey, mapped);
+        }
+      } else {
+        registerFactOption(mapping.factKey, option.stableValue);
+      }
+    }
+  }
+}
 
-  factDefinition.options = questionOptions(question).map((option) => ({
-    stableValue: option.stableValue,
+for (const fact of facts) {
+  const registered = factOptionRegistry.get(fact.key);
+  if (!registered || registered.size === 0) {
+    throw new Error(`Release fact ${fact.key} has no options`);
+  }
+  fact.options = [...registered.entries()].map(([stableValue, option]) => ({
+    stableValue,
     catalogCode: option.catalogCode,
-    scopeEntityTypeCode: nis2EntityTypes.some((entity) => entity.code === option.stableValue)
-      ? option.stableValue
-      : undefined,
-    jurisdictionEntityTypeCode: germanEntityCatalog.some((entity) => entity.code === option.stableValue)
-      ? option.stableValue
-      : undefined,
+    scopeEntityTypeCode: option.scopeEntityTypeCode,
+    jurisdictionEntityTypeCode: option.jurisdictionEntityTypeCode,
   }));
 }
 
 const questions = nis2Questions.map((question) => ({
   stableKey: question.stableKey,
-  position:
-    question.stableKey === "bc.jurisdiction_country"
-      ? 2
-      : question.stableKey === "bc.entity_types"
-        ? 3
-        : question.position,
+  position: question.position,
   questionContentKey: addContent(
     `nis2.question.${question.stableKey}.text`,
     question.questionText,
@@ -244,6 +230,12 @@ const questions = nis2Questions.map((question) => ({
   required: question.required,
   factKey: question.factKey,
   config: question.config,
+  factMappings: (question.factMappings ?? [{ factKey: question.factKey }]).map(
+    (mapping) => ({
+      factKey: mapping.factKey,
+      ...(mapping.byOption ? { byOption: mapping.byOption } : {}),
+    }),
+  ),
   options: questionOptions(question).map((option, index) => ({
     stableValue: option.stableValue,
     labelContentKey: option.labelContentKey,
@@ -610,8 +602,6 @@ function fixtureFacts(overrides: Record<string, unknown> = {}) {
     annual_revenue_bucket: "revenue_at_most_10m",
     balance_sheet_total_bucket: "balance_at_most_10m",
     sme_figures_verified: "verified_de_without_it_exception",
-    serves_critical_customers: "no",
-    has_customer_security_evidence_requests: "no",
     ...overrides,
   };
 }

@@ -1,6 +1,6 @@
 # Aktuelles NIS2-Regelset / Current NIS2 Rule Set
 
-Stand / Snapshot: **2026-07-25**
+Stand / Snapshot: **2026-08-08**
 
 > **DE:** Diese Darstellung beschreibt das im Repository definierte
 > Betroffenheitscheck-Release `2026-v1`. Bereits gespeicherte Prüfungen bleiben
@@ -24,6 +24,7 @@ Stand / Snapshot: **2026-07-25**
 | Evaluator | `nis2_scope_v3`, Version `3` |
 | Ergebnisschema / Result schema | Version `4` |
 | Schwellenwertsatz / Threshold set | `2003-361-v1` |
+| Fragebogen / Questionnaire | Geführter Wizard Q1–Q6 (8 Fragen) / Guided wizard Q1–Q6 (8 questions) |
 | Vollständig unterstütztes Länderprofil / Fully supported country profile | Deutschland / Germany (`DE`) |
 | Deutsches Profil / German profile | `de-bsig-2025-amended-2026-03` |
 | EU-Anwendungsidentitäten / EU application identities | 70 |
@@ -34,44 +35,52 @@ Stand / Snapshot: **2026-07-25**
 
 ```mermaid
 flowchart TD
-    START([Start]) --> EU{Relevante Tätigkeit in der EU?<br/>Relevant activity in the EU?}
-    EU -->|Nein / No| OUT[ Nicht direkt im Anwendungsbereich<br/>Not directly in scope ]
-    EU -->|Unsicher / Unsure| CLAR[ Klärung erforderlich<br/>Clarification required ]
-    EU -->|Ja / Yes| PROFILE{Unterstütztes Länderprofil?<br/>Supported country profile?}
+    START([Start]) --> Q1{Q1 Verbindung zu Deutschland?<br/>Q1 Germany connection?}
+    Q1 -->|Kritische Anlage / Critical installation| E1[Wesentliche Einrichtung<br/>Essential entity]
+    Q1 -->|Bundesverwaltung / Federal administration| E1
+    Q1 -->|Regionale Verwaltung / Regional administration| C1[Klärung erforderlich<br/>Clarification required]
+    Q1 -->|Keine / None| N1[Nicht direkt im Anwendungsbereich<br/>Not directly in scope]
+    Q1 -->|Unsicher / Unsure| C1
+    Q1 -->|Niedergelassen / Established| Q2
+    Q1 -->|Grenzüberschreitender digitaler Anbieter<br/>Cross-border digital provider| Q2
+    Q1 -->|Telekommunikation / Telecom| Q2
 
-    PROFILE -->|Nicht DE / Not DE| CLAR
-    PROFILE -->|Deutschland / Germany| VALIDATE[Land, Zuständigkeit, Einrichtungsart<br/>und ggf. Größe prüfen<br/>Validate country, jurisdiction, entity type<br/>and size when required]
+    Q2{Q2 Besonderer Status?<br/>Q2 Special status?}
+    Q2 -->|Kritische Anlage / Critical installation| E1
+    Q2 -->|Wesentlich oder CER / Essential or CER| E1
+    Q2 -->|Unsicher / Unsure| C1
+    Q2 -->|Wichtig (Floor) / Important (floor)| Q3
+    Q2 -->|Keine / None| Q3
 
-    VALIDATE --> SPECIAL{Kritische Anlage, wesentliche<br/>Einstufung oder CER-Benennung?<br/>Critical installation, essential<br/>classification or CER designation?}
-    SPECIAL -->|Ja / Yes| PROV_E[Vorläufig: Wesentliche Einrichtung<br/>Provisional: Essential entity]
-    SPECIAL -->|Nein / No| TYPES{Passende deutsche<br/>Einrichtungsart?<br/>Matching German entity type?}
+    Q3 -->|Keine / None| FLOOR{Important floor?}
+    Q3 -->|Unsicher / Unsure| C1
+    Q3 -->|Bereiche / Sectors| Q4
 
-    TYPES -->|Keine dieser / None of these| PROV_N[Vorläufig: Nicht direkt erfasst<br/>Provisional: Not directly in scope]
-    TYPES -->|Ja / Yes| MATRIX[Deutsche Klassifikationsmatrix<br/>German classification matrix]
-    TYPES -->|Fehlt oder unsicher<br/>Missing or unsure| CLAR
+    Q4{Welche Tätigkeiten?<br/>Which activities?}
+    Q4 -->|E| E1
+    Q4 -->|Nur I / Only I| I1[Wichtige Einrichtung<br/>Important entity]
+    Q4 -->|Nur R / Only R| C2[Klärung + § 34-Hinweis<br/>Clarification + section 34 overlay]
+    Q4 -->|Keine passende / No match| FLOOR
+    Q4 -->|T / A1 / A2| Q5[Q5 Größenspannen<br/>Q5 Size ranges]
 
-    MATRIX --> PROVISIONAL[Vorläufiges Ergebnis<br/>Provisional outcome]
-    PROV_E --> PROVISIONAL
-    PROV_N --> PROVISIONAL
-    PROVISIONAL --> IMPORTANT{Behördlich als wichtig eingestuft?<br/>Authority classification: important?}
-    IMPORTANT -->|Ja, außer bereits wesentlich<br/>Yes, unless already essential| PROV_I[Vorläufig: Wichtige Einrichtung<br/>Provisional: Important entity]
-    IMPORTANT -->|Nein / No| UNRESOLVED
-    PROV_I --> UNRESOLVED{Offener entscheidender Fakt?<br/>Any unresolved decisive fact?}
-    UNRESOLVED -->|Ja / Yes| CLAR
-    UNRESOLVED -->|Nein / No| RESULT([Endgültiges Ergebnis<br/>Final outcome])
+    FLOOR -->|Ja / Yes| I1
+    FLOOR -->|Nein / No| N1
 
-    OUT --> INDIRECT[Indirekte Lieferkettenbetroffenheit<br/>separat auswerten<br/>Evaluate indirect supply-chain<br/>exposure separately]
-    RESULT --> INDIRECT
-    CLAR --> INDIRECT
+    Q5 --> Q6{Q6 Aggregation?<br/>Q6 Aggregation?}
+    Q6 -->|Bestätigt / Confirmed| RESULT([Ergebnis durch Evaluator<br/>Result from evaluator])
+    Q6 -->|Nein oder unsicher<br/>No or unsure| C1
 ```
 
-**DE:** Die Einstufung wird zunächst vorläufig berechnet. Jeder erkannte offene
-entscheidende Fakt überschreibt anschließend ein positives oder negatives
-Zwischenergebnis mit `clarification_required`.
+**DE:** Der geführte Wizard zeigt eine Frage pro Schritt. Endrouten (END)
+schreiben die äquivalenten Fakten und überlassen das Ergebnis dem unveränderten
+Evaluator; es wird nie am Evaluator vorbei abgekürzt. Q6 wird übersprungen,
+wenn die Größenklasse das Ergebnis bereits eindeutig bestimmt (siehe
+Größenlogik).
 
-**EN:** Classification is calculated provisionally first. Any detected
-unresolved decisive fact then overrides a positive or negative intermediate
-result with `clarification_required`.
+**EN:** The guided wizard shows one question per step. Terminal END routes
+write the equivalent facts and let the unchanged evaluator produce the
+outcome; the evaluator is never short-circuited. Q6 is skipped when the size
+class already determines the result (see size logic).
 
 ## Deutsche Klassifikationsmatrix / German classification matrix
 
@@ -146,6 +155,22 @@ Bilanzsumme über der jeweiligen Grenze reicht nicht aus.
 Financial limits are tested as a pair: turnover **or** balance-sheet total
 alone above the respective limit is insufficient.
 
+### Q6-Übersprungstabelle / Q6 skip table
+
+**DE:** Q6 wird nur dann angezeigt, wenn die Aggregation die Einstufung noch
+ändern könnte. Ist das Ergebnis bereits eindeutig, bestätigt der Wizard die
+Aggregation automatisch mit `verified_de_without_it_exception`.
+
+**EN:** Q6 is shown only when aggregation could still change the
+classification. When the result is already decisive, the wizard auto-confirms
+aggregation with `verified_de_without_it_exception`.
+
+| Route | Klein / Small | Mittel / Medium | Groß / Large |
+| --- | --- | --- | --- |
+| T (Telekommunikation / Telecom) | Q6 | übersprungen / skipped | übersprungen / skipped |
+| A1 (Anlage 1 / Annex 1) | Q6 | Q6 | übersprungen / skipped |
+| A2 (Anlage 2 / Annex 2) | Q6 | übersprungen / skipped | übersprungen / skipped |
+
 ## Sonder- und Überschreibungsregeln / Special and override rules
 
 | Bedingung / Condition | Wirkung / Effect |
@@ -199,30 +224,40 @@ Each of the following codes overrides the provisional outcome:
 | `unresolved_domain_registration_classification` | Domainregistrierungs-Pflichten ergeben noch keine wesentliche/wichtige Einstufung. | Domain-registration duties do not establish an essential/important classification. |
 | `unresolved_regional_administration` | Die erforderliche landesrechtliche Grundlage muss geprüft werden. | The required Land-law basis must be checked. |
 
-## Separate indirekte Betroffenheit / Separate indirect exposure
+## Wizard-Fragen / Wizard questions
 
-Die indirekte Lieferkettenbetroffenheit verändert **nicht** die gesetzliche
-Einstufung.
+| Frage / Question | Optionen / Options | Nächster Schritt / Next step |
+| --- | --- | --- |
+| Q1 Verbindung zu Deutschland / Germany connection | 8 | Endrouten oder Q2 / Terminal routes or Q2 |
+| Q2 Besonderer Status / Special status | 5 | Endrouten oder Q3/Q4/Q5 / Terminal routes or continue |
+| Q3 Bereiche / Sectors | 14 | Endrouten oder Q4 / Terminal routes or Q4 |
+| Q4 Tätigkeiten / Activities | 82 (13 Bereiche) / 82 (13 sections) | Endrouten oder Q5 / Terminal routes or Q5 |
+| Q5 Größe / Size | 3 Fragen à 4 Spannen / 3 questions, 4 ranges each | Q6 oder Ende / Q6 or result |
+| Q6 Aggregation / Aggregation | 5 | Ergebnis / Result |
 
-Indirect supply-chain exposure does **not** change the statutory
-classification.
+## Entfernte Eingaben / Removed inputs
 
-```mermaid
-flowchart TD
-    A{Leistung für wesentliche/wichtige Kunden<br/>ODER Sicherheitsnachweise gefordert?<br/>Services for essential/important customers<br/>OR security evidence requested?}
-    A -->|Mindestens einmal Ja<br/>At least one Yes| SIGNAL[Signale vorhanden<br/>Signals present]
-    A -->|Kein Ja, mindestens einmal unsicher<br/>No Yes, at least one Unsure| UNKNOWN[Unklar / Unknown]
-    A -->|Beides Nein<br/>Both No| NONE[Keine Signale / No signals]
-```
+**DE:** Die Fragen `bc.sector_specific_regime`, `bc.critical_customers` und
+`bc.security_evidence_requested` wurden mit dem Wizard entfernt. Die
+sektorspezifischen Regelwerks-Overlays und der separate Hinweis zur indirekten
+Lieferkettenbetroffenheit werden nicht mehr erzeugt; der Evaluator bleibt
+unverändert.
+
+**EN:** The questions `bc.sector_specific_regime`, `bc.critical_customers` and
+`bc.security_evidence_requested` were removed with the wizard. Sector-regime
+overlays and the separate indirect supply-chain notice are no longer produced;
+the evaluator is unchanged.
 
 ## Eingaben ohne Einfluss auf das v3-Ergebnis / Inputs not affecting the v3 outcome
 
 - **DE:** `sector_specific_regime` wird im Fragebogen erfasst und gespeichert,
   ändert im aktuellen v3-Evaluator aber weder die Einstufung noch die
-  Pflichten-Overlays.
+  Pflichten-Overlays. Im Wizard wird die Frage nicht mehr gestellt; die
+  zugrunde liegenden Fakten werden nicht mehr gesetzt.
   **EN:** `sector_specific_regime` is collected and stored by the questionnaire,
   but the current v3 evaluator changes neither classification nor obligation
-  overlays based on it.
+  overlays based on it. The wizard no longer asks the question and the
+  underlying facts are never set.
 
 - **DE:** `member_state_designation = unsure` erzeugt im aktuellen
   v3-Evaluator allein keinen offenen Fakt; die übrige Einrichtungs- und
@@ -251,7 +286,10 @@ It does not automatically mean a positive outcome or Gap Analysis eligibility.
 ## Quellen im Repository / Repository sources
 
 - [Release-Definition / Release definition](../../src/server/compliance/nis2/releases/2026-v1/release.ts)
+- [Wizard-Fragen / Wizard questions](../../src/server/compliance/nis2/releases/2026-v1/release-source.ts)
 - [Evaluator / Evaluation logic](../../src/server/applicability-check/rules.ts)
+- [Fakt-Ableitung / Fact derivation](../../src/server/applicability-check/fact-derivation.ts)
+- [Wizard-UI / Wizard UI](../../components/applicability-check/applicability-wizard.tsx)
 - [Deutscher Einrichtungsartenkatalog / German entity catalog](../../src/server/compliance/nis2/releases/2026-v1/de-profile.ts)
 - [Regelset-Schema / Rule-set schema](../../src/server/applicability-check/rule-set-schema.ts)
 - [Aktuelle Länderunterstützung / Current country support](./country-support-current-behavior.md)

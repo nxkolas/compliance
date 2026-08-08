@@ -123,6 +123,13 @@ function optionLabel(
   factKey: string,
   stableValue: string,
 ) {
+  const directLabel =
+    release.contentByStableKey[
+      `nis2.profile.de.entity.${stableValue}.label`
+    ] ??
+    release.contentByStableKey[`nis2.entity.${stableValue}.label`];
+  if (directLabel) return directLabel;
+
   const questionIndex = release.questionIndexByFactKey[factKey];
   const question =
     questionIndex === undefined ? undefined : release.questions[questionIndex];

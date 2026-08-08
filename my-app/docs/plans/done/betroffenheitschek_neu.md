@@ -1,6 +1,15 @@
 # Betroffenheitscheck Redesign — Guided Wizard (Q1–Q6)
 
-Status: pending — new plan replacing the completed tooltips plan on 2026-08-08. No code, release, or database changes have been applied by this plan.
+Status: done — implemented on 2026-08-08. The guided wizard replaces the flat
+twelve-question form in the guest and authenticated flows, the `nis2/2026-v1`
+question set is replaced in place (stable keys `bc.germany_connection`,
+`bc.special_status`, `bc.sector`, `bc.activity`, the three size-bucket
+questions, and `bc.aggregation`), the dropped facts and their UI overlays are
+removed, and the calculation and product ruleset documentation describe the new
+flow. The evaluator, thresholds, German entity catalogue, legal instruments,
+and result/evidence model are unchanged; the evaluator artifact hash is
+unchanged. The disposable development database was cleared and rebuilt per the
+runbook with zero schema drift.
 
 ## Outcome
 
@@ -587,3 +596,72 @@ That is essentially the same matrix already contained in your current rule set, 
 [3]: https://www.umco.de/blog/reach/auswirkungen-des-neuen-cybersecurity-gesetzes-nis2umsucg-auf-reach-registranten.html?utm_source=chatgpt.com "Auswirkungen des neuen Cybersecurity-Gesetzes (NIS-2 ..."
 [4]: https://www.openkritis.de/it-sicherheitsgesetz/sektor_forschung.html?utm_source=chatgpt.com "Forschungseinrichtungen in NIS2"
 [5]: https://www.gesetze-im-internet.de/bsig_2025/__28.html?utm_source=chatgpt.com "§ 28 BSIG - Einzelnorm"
+
+---
+
+## Implementation record (2026-08-08)
+
+### Delivered
+
+- **Release / question set** — the twelve `nis2/2026-v1` questions were
+  replaced by the Q1–Q6 wizard question set (`bc.germany_connection`,
+  `bc.special_status`, `bc.sector`, `bc.activity`, `bc.employee_count`,
+  `bc.annual_revenue`, `bc.balance_sheet_total`, `bc.aggregation`) in
+  `release-source.ts` / `release.ts`. `bc.sector_specific_regime`,
+  `bc.critical_customers`, and `bc.security_evidence_requested` were removed
+  together with their fact definitions.
+- **Fact mapping** — per-option fact mappings
+  (`ReleaseQuestionFactMapping.byOption`) expand wizard answers into the
+  existing evaluator facts (`fact-derivation.ts`). Terminal END routes write
+  the equivalent facts; the evaluator is never short-circuited.
+- **Visibility / route model** — composite `visibleWhen` conditions
+  (`any`/`all`), a `route_in` operator, and per-option sector filtering
+  (`getVisibleOptions`) model Q3→Q4 sections, Q5/Q6 size routes, and the Q6
+  skip table in `question-visibility.ts` and `wizard-flow.ts`.
+- **UI** — a new step-by-step `ApplicabilityWizard` component replaces the flat
+  form in the guest (`/check/applicability`) and authenticated
+  (`/tool/organizations/<id>/applicability-check/new`) flows, keeping the
+  existing help/tooltip presentation.
+- **Result card** — the indirect supply-chain section was removed;
+  sector-regime overlays and the supply-chain notice are no longer produced.
+- **Documentation** — `docs/backend-architecture/calculations/applicability-check.md`
+  was filled in; `docs/product/current-nis2-ruleset.de-en.md` describes the
+  wizard flow, question list, and Q6 skip table.
+
+### Verification
+
+- New release hashes: questionnaire
+  `b3b0dd10d6689a94da532804da72d043c7326a2d94c4a9ea85e86688304f8165`,
+  evaluator artifact (unchanged)
+  `166c7847bf42f59a2a2c731eec53bf7d612630efaff39fa1c1772c25ffe92133`,
+  aggregate
+  `f437fc99b0ddebc42dd845ae682b514cfb7fbd587a5e09b95e6f1e00b26dae1c`.
+- `npm run typecheck` passes; `npm run build` passes.
+- Vitest: 664 passed / 2 failed / 7 skipped. The two failures are the
+  pre-existing `job-execution-db.test.ts` mismatch (the test inserts a
+  `background_jobs.cancellable` column that the current Drizzle schema does not
+  define; identical before and after this change and after the DB reset).
+- Release compiler tests assert the 8-question wizard set, unique stable keys,
+  changed questionnaire/aggregate hashes, and an unchanged evaluator artifact.
+- Wizard journey tests cover: critical installation (Q1 and Q2 routes),
+  federal administration, regional administration, Q2 important floor, A1
+  medium/large, A2, telecom small/medium, domain registration (§34 overlay),
+  none, unsure, cross-border DNS, non-qualified trust, per-section none/unsure,
+  and unverified aggregation.
+- `npm run lint` and `npm run check:i18n` still report only pre-existing
+  issues in untouched files (`organization-retrieval.ts` unused constants,
+  hardcoded copy in `local-model-panel.tsx` / `tutorial-welcome.tsx`).
+
+### Database rollout
+
+- Disposable dev database (`aws-1-eu-central-1.pooler.supabase.com:6543/postgres`,
+  `APP_ENV=development`) was cleared and rebuilt: recreate → plan →
+  guarded apply. All eight apply stages passed, including server-only RLS,
+  integrity, private-storage verification, and the final zero-drift explain.
+- `db:verify:integrity`, `db:verify:server-only`, and `storage:verify` pass.
+- Remaining operator step: legal-corpus provisioning/activation requires the
+  reviewed corpus manifests (not present in the repository) per
+  `api-corpus-rollout-runbook.md`; the fixture is deliberately not substituted.
+- Pre-existing unrelated gate issue: `db:verify:organization-management`
+  references a `user_directory` relation that the current Drizzle schema does
+  not define.

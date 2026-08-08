@@ -4,23 +4,19 @@ import { compileRelease } from "@/src/server/compliance/publishing/compile-relea
 import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
 
 describe("immutable NIS2 release compiler", () => {
-  it("publishes all twelve stable questions with complete localized tooltips", () => {
-    expect(nis2ReleaseDefinition.questions).toHaveLength(12);
+  it("publishes the eight guided-wizard questions with complete localized tooltips", () => {
+    expect(nis2ReleaseDefinition.questions).toHaveLength(8);
     expect(
       nis2ReleaseDefinition.questions.map((question) => question.stableKey),
     ).toEqual([
-      "bc.eu_activity",
-      "bc.entity_types",
-      "bc.jurisdiction_country",
-      "bc.jurisdiction_basis",
-      "bc.member_state_designation",
+      "bc.germany_connection",
+      "bc.special_status",
+      "bc.sector",
+      "bc.activity",
       "bc.employee_count",
       "bc.annual_revenue",
       "bc.balance_sheet_total",
-      "bc.sme_figures_verified",
-      "bc.sector_specific_regime",
-      "bc.critical_customers",
-      "bc.security_evidence_requested",
+      "bc.aggregation",
     ]);
 
     for (const question of nis2ReleaseDefinition.questions) {
@@ -40,30 +36,32 @@ describe("immutable NIS2 release compiler", () => {
     delete release.questions[0].tooltipContentKey;
 
     expect(() => compileRelease(release)).toThrow(
-      /Missing tooltip content key for question bc\.eu_activity/,
+      /Missing tooltip content key for question bc\.germany_connection/,
     );
   });
 
-  it("changes questionnaire and aggregate identities when tooltip copy changes", () => {
+  it("changes questionnaire and aggregate identities while the evaluator artifact stays unchanged", () => {
     const original = compileRelease(nis2ReleaseDefinition);
     const changed = structuredClone(nis2ReleaseDefinition);
-    const tooltipKey = changed.questions[0].tooltipContentKey;
-    const tooltip = changed.content.find(
-      (item) => item.stableKey === tooltipKey,
+    const labelKey = changed.questions[0].options[0].labelContentKey;
+    const label = changed.content.find(
+      (item) => item.stableKey === labelKey,
     );
-    if (!tooltip) throw new Error("Tooltip fixture is missing");
-    tooltip.translations.en += " Updated.";
+    if (!label) throw new Error("Wizard option label fixture is missing");
+    label.translations.en += " Updated.";
 
     const compiled = compileRelease(changed);
     expect(compiled.hashes.questionnaire).not.toBe(
       original.hashes.questionnaire,
     );
     expect(compiled.hashes.aggregate).not.toBe(original.hashes.aggregate);
+    expect(compiled.hashes.ruleSet).toBe(original.hashes.ruleSet);
+    expect(compiled.artifact).toEqual(original.artifact);
   });
 
-  it("offers the no-related-enterprises value for question 9", () => {
+  it("offers the no-related-enterprises aggregation value", () => {
     const question = nis2ReleaseDefinition.questions.find(
-      (candidate) => candidate.stableKey === "bc.sme_figures_verified",
+      (candidate) => candidate.stableKey === "bc.aggregation",
     );
 
     expect(question?.options).toContainEqual(
@@ -72,6 +70,18 @@ describe("immutable NIS2 release compiler", () => {
         factOptionValue:
           "not_applicable_no_partner_or_linked_enterprises",
       }),
+    );
+    const fact = nis2ReleaseDefinition.facts.find(
+      (candidate) => candidate.key === "sme_figures_verified",
+    );
+    expect(
+      fact?.options.map((option) => option.stableValue),
+    ).toEqual(
+      expect.arrayContaining([
+        "verified_de_without_it_exception",
+        "verified_de_with_it_exception",
+        "not_applicable_no_partner_or_linked_enterprises",
+      ]),
     );
   });
 
@@ -129,23 +139,26 @@ describe("immutable NIS2 release compiler", () => {
     expect(first.artifact.entityTypes[0]).not.toHaveProperty("description");
   });
 
-  it("publishes country selection before a profile-driven entity catalog", () => {
+  it("publishes the guided wizard before the entity and size facts", () => {
     const orderedQuestions = [...nis2ReleaseDefinition.questions].sort(
       (left, right) => left.position - right.position,
-    );
-    const entityQuestion = orderedQuestions.find(
-      (question) => question.factKey === "nis2_entity_types",
     );
     const entityFact = nis2ReleaseDefinition.facts.find(
       (fact) => fact.key === "nis2_entity_types",
     );
 
-    expect(orderedQuestions.slice(0, 3).map((question) => question.factKey)).toEqual([
-      "eu_activity",
-      "jurisdiction_country",
-      "nis2_entity_types",
+    expect(
+      orderedQuestions.map((question) => question.stableKey),
+    ).toEqual([
+      "bc.germany_connection",
+      "bc.special_status",
+      "bc.sector",
+      "bc.activity",
+      "bc.employee_count",
+      "bc.annual_revenue",
+      "bc.balance_sheet_total",
+      "bc.aggregation",
     ]);
-    expect(entityQuestion).toBeDefined();
     expect(
       entityFact?.options.find(
         (option) => option.stableValue === "de_bsig_electricity_supplier",
@@ -244,6 +257,23 @@ describe("immutable NIS2 release compiler", () => {
     release.profiles[0].effectiveStates[0].effectiveFrom = "2027-01-01";
 
     expect(() => compileRelease(release)).toThrow(/not effective on release date/i);
+  });
+
+  it("rejects a question whose mapped fact value has no fact option", () => {
+    const release = structuredClone(nis2ReleaseDefinition);
+    const activity = release.questions.find(
+      (question) => question.stableKey === "bc.activity",
+    );
+    if (!activity) throw new Error("Activity question missing");
+    const mapping = activity.factMappings.find(
+      (candidate) => candidate.factKey === "nis2_entity_types",
+    );
+    if (!mapping?.byOption) throw new Error("Activity mapping missing");
+    mapping.byOption.energy_supply_networks = ["not_a_german_entity"];
+
+    expect(() => compileRelease(release)).toThrow(
+      /has no fact option/,
+    );
   });
 
   it("emits language-neutral evidence tied to component versions", () => {

@@ -1,4 +1,4 @@
-import { ApplicabilityQuestionnaireForm } from "@/components/applicability-check/applicability-questionnaire-form";
+import { ApplicabilityWizard } from "@/components/applicability-check/applicability-wizard";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -39,13 +39,12 @@ async function GuestApplicabilityCheckPageContent() {
         <PageHeader title={labels.title} subtitle={labels.description} />
 
         {questionnaire ? (
-          <ApplicabilityQuestionnaireForm
+          <ApplicabilityWizard
             submitUrl="/api/guest/applicability-check/submissions"
             successUrl="/check/applicability/result"
             navigationMode="document"
             questionnaire={questionnaire}
             labels={dictionary.modules.applicabilityCheck.form}
-            presentation="authenticated-stepper"
           />
         ) : (
           <Alert className="p-6 text-muted-foreground shadow-sm">

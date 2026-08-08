@@ -113,7 +113,15 @@ export function getCurrentApplicabilityDefinition(
       required: question.required,
       config: question.config,
       options,
-      factMappings: [{ factKey: question.factKey, transform: null }],
+      factMappings: (
+        question.factMappings.length > 0
+          ? question.factMappings
+          : [{ factKey: question.factKey }]
+      ).map((mapping) => ({
+        factKey: mapping.factKey,
+        transform: null,
+        ...(mapping.byOption ? { byOption: mapping.byOption } : {}),
+      })),
     };
   });
 

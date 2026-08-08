@@ -85,7 +85,7 @@ describe("applicability submission lineage", () => {
   it("does not point an applicability output at its assessment revision", async () => {
     const definition = getCurrentApplicabilityDefinition("en");
     const entryQuestion = definition.questions.find(
-      (question) => question.stableKey === "bc.eu_activity",
+      (question) => question.stableKey === "bc.germany_connection",
     );
     if (!entryQuestion) throw new Error("Applicability entry question is missing");
 
@@ -94,7 +94,7 @@ describe("applicability submission lineage", () => {
       "00000000-0000-4000-8000-000000000006",
       {
         locale: "en",
-        answers: [{ questionId: entryQuestion.id, value: "no" }],
+        answers: [{ questionId: entryQuestion.id, value: "none" }],
       },
     );
 

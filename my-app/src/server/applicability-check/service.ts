@@ -19,7 +19,6 @@ import { and, asc, eq, gt } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { withAuthorizedOrganizationCommand, type OrganizationScopeExecutor } from "../auth/organization-scope";
 import { assertCanAccessOrganization } from "../organizations/service";
-import { catalogOptionsForCountry } from "./entity-catalog";
 import { guestSubmittedExpiry } from "./guest-lifecycle";
 import {
   localizeEvaluation,
@@ -27,9 +26,11 @@ import {
 } from "./localize-evaluation";
 import {
   getVisibleQuestions,
+  getVisibleOptions,
   isAnswered,
   type ApplicabilityAnswerValue,
 } from "./question-visibility";
+import { deriveFactsForAnswers } from "./fact-derivation";
 import {
   parseStoredRuleEvaluationResult,
   type StoredRuleEvaluationResult,
@@ -61,6 +62,7 @@ export type ApplicabilityQuestionnaireDto = {
   versionLabel: string;
   questions: ApplicabilityQuestionDto[];
   entityCatalogs: Record<string, ApplicabilityOptionDto[]>;
+  contentByStableKey: Record<string, string>;
   defaultAnswers: Record<string, ApplicabilityAnswerValue>;
   latestAnswers: Record<string, ApplicabilityAnswerValue>;
   definition: {
@@ -407,6 +409,7 @@ function toQuestionnaire(
     versionLabel: definition.releaseVersionLabel,
     questions,
     entityCatalogs: getEntityCatalogs(definition.questions),
+    contentByStableKey: definition.contentByStableKey,
     defaultAnswers: getOrganizationCountryDefault({
       questions,
       latestAnswers,
@@ -470,11 +473,6 @@ function validateAnswers(
     values.set(answer.questionId, answer.value);
   }
   const record = Object.fromEntries(values);
-  const countryQuestion = definition.questions.find((question) =>
-    question.factMappings.some((mapping) => mapping.factKey === "jurisdiction_country"),
-  );
-  const countryValue = countryQuestion ? values.get(countryQuestion.id) : undefined;
-  const countryCode = typeof countryValue === "string" ? countryValue : null;
   const visible = getVisibleQuestions(definition.questions, record);
   for (const question of visible) {
     if (question.required && !isAnswered(values.get(question.id))) {
@@ -484,7 +482,7 @@ function validateAnswers(
   return visible.flatMap((question): ValidatedAnswer[] => {
     const value = values.get(question.id);
     if (!isAnswered(value)) return [];
-    const allowed = catalogOptionsForCountry(question.options, countryCode);
+    const allowed = getVisibleOptions(definition.questions, question, record);
     const selectedValues = Array.isArray(value) ? [...new Set(value)] : [value];
     if (Array.isArray(value) !== (question.answerType === "multi_choice")) {
       throw new ApiError(400, "Answer value has the wrong shape");
@@ -492,17 +490,12 @@ function validateAnswers(
     if (selectedValues.length !== (Array.isArray(value) ? value.length : 1)) {
       throw new ApiError(400, "Multi-choice answers cannot contain duplicates");
     }
-    if (
-      selectedValues.length > 1 &&
-      selectedValues.some((item) => item === "none_of_these" || item === "unsure")
-    ) {
-      throw new ApiError(400, "Exclusive answers cannot be combined");
-    }
     const options = selectedValues.map((selected) => {
       const option = allowed.find((candidate) => candidate.stableValue === selected);
       if (!option) throw new ApiError(400, "Invalid answer value");
       return option;
     });
+    assertNoExclusiveConflicts(options, selectedValues);
     return [{
       questionId: question.id,
       questionStableKey: question.stableKey,
@@ -514,15 +507,49 @@ function validateAnswers(
   });
 }
 
+function assertNoExclusiveConflicts(
+  options: ApplicabilityOptionDto[],
+  selectedValues: string[],
+) {
+  if (selectedValues.length < 2) return;
+  const optionByValue = new Map(
+    options.map((option) => [option.stableValue, option]),
+  );
+  const metadata = (stableValue: string) => {
+    const option = optionByValue.get(stableValue);
+    return option && isRecord(option.metadata) ? option.metadata : {};
+  };
+  const isExclusive = (stableValue: string) =>
+    metadata(stableValue).exclusive === true ||
+    stableValue === "none_of_these" ||
+    stableValue === "unsure";
+
+  const exclusiveValues = selectedValues.filter(isExclusive);
+  if (exclusiveValues.length === 0) return;
+
+  for (const exclusive of exclusiveValues) {
+    const group = metadata(exclusive).sectorCode ?? exclusive;
+    const conflicting = selectedValues.filter((other) => {
+      if (other === exclusive) return false;
+      if (group !== exclusive) return metadata(other).sectorCode === group;
+      return true;
+    });
+    if (conflicting.length > 0) {
+      throw new ApiError(400, "Exclusive answers cannot be combined");
+    }
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function deriveFacts(definition: Definition, answers: ValidatedAnswer[]) {
   const byId = new Map(answers.map((answer) => [answer.questionId, answer.answerValue]));
-  const facts: Record<string, unknown> = {};
-  for (const question of definition.questions) {
-    const value = byId.get(question.id);
-    if (value === undefined) continue;
-    for (const mapping of question.factMappings) facts[mapping.factKey] = value;
-  }
-  return facts;
+  return deriveFactsForAnswers(
+    definition.questions,
+    Object.fromEntries(byId),
+  );
 }
 
 async function persistSubmission(

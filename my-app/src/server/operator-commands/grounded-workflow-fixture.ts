@@ -17,18 +17,10 @@ export const DETERMINISTIC_APPLICABILITY_ANSWERS: Record<
   string,
   ApplicabilityAnswerValue
 > = {
-  "bc.eu_activity": "yes",
-  "bc.jurisdiction_country": "DE",
-  "bc.jurisdiction_basis": "de_main_eu_establishment",
-  "bc.entity_types": ["de_bsig_dns_service_provider"],
-  "bc.member_state_designation": "none",
-  "bc.employee_count": "under_50",
-  "bc.annual_revenue": "revenue_at_most_10m",
-  "bc.balance_sheet_total": "balance_at_most_10m",
-  "bc.sme_figures_verified": "verified_de_without_it_exception",
-  "bc.sector_specific_regime": "none",
-  "bc.critical_customers": "no",
-  "bc.security_evidence_requested": "no",
+  "bc.germany_connection": "de_established",
+  "bc.special_status": "none",
+  "bc.sector": ["digital"],
+  "bc.activity": ["digital_dns"],
 };
 
 /**
