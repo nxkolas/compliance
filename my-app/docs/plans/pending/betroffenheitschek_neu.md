@@ -1,3 +1,91 @@
+# Betroffenheitscheck Redesign — Guided Wizard (Q1–Q6)
+
+Status: pending — new plan replacing the completed tooltips plan on 2026-08-08. No code, release, or database changes have been applied by this plan.
+
+## Outcome
+
+After this work:
+
+1. the Betroffenheitscheck asks a guided 2–6-question wizard (Q1 Germany connection, Q2 special status, Q3 sector, Q4 specific activity, Q5 size ranges, Q6 group aggregation) instead of the current flat twelve-question form;
+2. the wizard is Germany-only: DE remains the only supported profile and Q1 covers every German-competence case;
+3. the existing `nis2_scope_v3` evaluator, thresholds, German entity catalogue, legal instruments, and result/evidence model are reused unchanged — wizard answers map onto the existing facts;
+4. the `nis2/2026-v1` release is modified in place (question set replaced, then republished after the approved disposable-dev-DB clear and reseed); no new release label is introduced;
+5. the step-by-step wizard UI replaces the flat form in both guest and authenticated flows;
+6. `bc.sector_specific_regime`, `bc.critical_customers`, and `bc.security_evidence_requested` are removed; sector-regime overlays and the indirect supply-chain notice are no longer produced; and
+7. the placeholder applicability calculation document is filled in during implementation.
+
+## Confirmed decisions
+
+- Germany-only redesign. Non-DE organizations follow Q1's routes: no German connection → not directly in scope; unsure → clarification required.
+- Modify `nis2/2026-v1` in place; do not introduce a new release label. Republishing follows the approved disposable-dev-DB clear and reseed.
+- Reuse the existing evaluator, thresholds, German entity catalogue, legal instruments, and result/evidence model unchanged. Terminal END routes are implemented by writing the equivalent facts and letting the evaluator produce the outcome — never by short-circuiting the evaluator.
+- Q4 activity options map to German entity-catalogue codes; one option may select several codes. Q3 determines which Q4 sections are visible. Q6 applies the size/skip table from the draft. The strongest applicable route wins (E → I → T → A1 → A2 → R).
+- The wizard is a step-by-step flow (one question per screen, progress indicator, back/next navigation, conditional skips) for both guest (`/check/applicability`) and authenticated flows.
+- The detailed Q1–Q6 draft below is preserved verbatim and is the authoritative design reference wherever it does not conflict with this summary.
+
+## Non-goals
+
+- No changes to evaluator rules, thresholds, the German entity catalogue, legal instruments, corpus, or the result/evidence model.
+- No new compliance release label (`2026-v2` remains the legal-catalogue successor; the modified release stays `2026-v1`).
+- No full-EU redesign and no new wizard for other countries.
+- No sector-regime or supply-chain questions in the redesigned check.
+- No changes to Gap-Analyse or other modules.
+- No data migration: the disposable development database is cleared and rebuilt per the runbook.
+
+## Current state
+
+`nis2/2026-v1` publishes twelve questions with the `nis2_scope_v3` evaluator, the German profile (`de-bsig-2025-amended-2026-03`), the reviewed German entity catalogue, and the `2003-361-v1` thresholds. The evaluator already implements the wizard's precedence classes (`always_particularly_important`, `always_important`, `telecom`, `annex_1_standard`, `annex_2_standard`, `domain_registration_obligations`, `federal_administration`, `requires_land_law`), the size matrix, and the German aggregation-verification codes.
+
+## Implementation changes
+
+### Release and question set
+
+- Replace the twelve `nis2/2026-v1` questions with the wizard question set using new stable keys: `bc.germany_connection` (single choice, terminal routes), `bc.special_status` (single choice), `bc.sector` (multi choice), `bc.activity` (multi choice, sections visible per selected sector), the existing three size-bucket questions, and `bc.aggregation` (single choice including `verified_de_without_it_exception` and `verified_de_with_it_exception`).
+- Model route logic through question visibility conditions and fact defaults per the draft's route table; keep release validation intact.
+- Remove `bc.sector_specific_regime`, `bc.critical_customers`, and `bc.security_evidence_requested` together with their fact definitions and related reason/overlay content.
+
+### Fact mapping
+
+- Map Q1 to `eu_activity`, `jurisdiction_country` (DE), and `jurisdiction_basis` (existing German basis codes); Q2 to `member_state_designation`; Q4 selections to `nis2_entity_types` (German catalogue codes); Q5 to the three bucket facts; Q6 to `sme_figures_verified` including the German verification codes.
+- Terminal END routes (critical installation, federal administration, regional administration, none, unsure) write the equivalent facts so the evaluator returns the matching outcome and reason codes.
+- Q4 options are reviewed localized release content that map to the catalogue codes they stand for.
+
+### UI
+
+- Build a step-by-step wizard component for the applicability check used by the guest (`/check/applicability`) and authenticated (`/tool/organizations/<organization-id>/applicability-check/new`) flows, keeping the existing help and tooltip presentation.
+
+### Documentation
+
+- Fill in `docs/backend-architecture/calculations/applicability-check.md` (currently a placeholder) with the implemented wizard, inputs, fact mapping, and outputs.
+
+## Verification
+
+- Release compiler tests: the new question set compiles, stable keys are unique, and questionnaire and aggregate hashes change while the evaluator artifact stays unchanged.
+- Existing evaluator tests remain unchanged and pass.
+- Wizard journey tests: critical installation → particularly important; Q2 important floor; A1 medium/large; A2; telecom small/medium; domain registration (R) → clarification with the §34 overlay; none → not directly in scope; unsure → clarification required.
+- Guest and authenticated submissions produce identical classifications; DE and EN localization verified.
+- Gap eligibility (DE `essential_entity` or `important_entity`) unchanged.
+- Database rollout: all gates from `development-database-reset-and-bootstrap.md` after the clear and republish, including schema drift, corpus, release, applicability, Gap, and build checks.
+
+## Completion criteria
+
+- The wizard replaces the flat form in both flows and produces the same outcomes as the current evaluator for every journey above.
+- The modified `2026-v1` is republished and active with a changed aggregate hash.
+- No evaluator, threshold, catalogue, or result-model change is present.
+- Dropped questions, overlays, and the supply-chain notice are gone from the release and UI.
+- Active documentation (calculation doc and product ruleset) describes the new flow.
+- All automated and manual gates pass with no schema drift.
+
+## Assumptions
+
+- Germany is the only supported profile; other countries are handled by Q1's routes.
+- The detailed draft below is preserved verbatim and is the authoritative design reference.
+- Modifying `2026-v1` in place follows the repo precedent of clearing the disposable development database before republishing.
+
+---
+
+## Detailed Design (Draft, Preserved Verbatim)
+
 Yep. **No separate activity-clarification question.** Any qualifier we need goes directly into the wording of the Q4 option.
 
 Here’s the version I’d actually ship. It keeps the legal complexity in your backend while making the user journey roughly **2–6 questions**. It also maps cleanly onto the precedence classes you already have: always particularly important → always important → telecom → Annex 1 → Annex 2 → domain-registration/regional special cases. 
