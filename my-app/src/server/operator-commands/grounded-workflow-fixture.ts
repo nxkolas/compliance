@@ -17,10 +17,7 @@ export const DETERMINISTIC_APPLICABILITY_ANSWERS: Record<
   string,
   ApplicabilityAnswerValue
 > = {
-  "bc.germany_connection": "de_established",
-  "bc.special_status": "none",
-  "bc.sector": ["digital"],
-  "bc.activity": ["digital_dns"],
+  "bc.germany_connection": "de_critical_installation",
 };
 
 /**
