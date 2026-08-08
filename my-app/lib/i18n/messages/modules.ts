@@ -171,6 +171,19 @@ export const modulesMessages = defineFeatureMessages({
               recalculationLocked:
                 "Der Betroffenheitscheck wurde inzwischen durch die Gap-Analyse gesperrt.",
               allRequired: "Bitte beantworten Sie alle Pflichtfragen.",
+              countryChangeHint:
+                "Ein Länderwechsel kann bereits beantwortete Folgefragen zurücksetzen, weil sich die verfügbaren Einrichtungsarten und Antwortoptionen ändern.",
+              countryChangeTitle: "Land wechseln?",
+              countryChangeDescriptionOne:
+                "Durch den Länderwechsel ändert sich der verfügbare Fragenkatalog. Eine bereits beantwortete Folgefrage wird zurückgesetzt.",
+              countryChangeDescriptionMany:
+                "Durch den Länderwechsel ändert sich der verfügbare Fragenkatalog. {count} bereits beantwortete Folgefragen werden zurückgesetzt.",
+              countryChangeConfirm: "Land wechseln",
+              countryChangeCancel: "Abbrechen",
+              countryChangeResetOne:
+                "Eine nicht mehr passende Folgeantwort wurde zurückgesetzt.",
+              countryChangeResetMany:
+                "{count} nicht mehr passende Folgeantworten wurden zurückgesetzt.",
             },
             guest: {
               title: "NIS2-Betroffenheit prüfen",
@@ -275,6 +288,9 @@ export const modulesMessages = defineFeatureMessages({
               },
               source: "Quelle",
               result: "Ergebnis",
+              allMeasures: "Alle Maßnahmen",
+              whatToDo: "Was ist zu tun?",
+              evidenceToCreate: "Zu erstellende Nachweise:",
               recommendedEvidence: "Empfohlene Nachweise",
               sourceRecommendation: "Ausgangsempfehlung",
               objective: "Ziel",
@@ -326,10 +342,11 @@ export const modulesMessages = defineFeatureMessages({
               prerequisiteInfoTitle: "Gut zu wissen",
               prerequisiteInfoDescription:
                 "Für den Betroffenheitscheck brauchen Sie nur wenige Basisangaben zu Ihrer Organisation. Danach können Sie direkt mit der Gap-Analyse weitermachen.",
+              prerequisiteUnsupportedOops: "OOPS!",
               prerequisiteUnsupportedTitle:
-                "Gap-Analyse für dieses Land nicht verfügbar",
+                "Dieses Land wird noch nicht unterstützt",
               prerequisiteUnsupported:
-                "Diese Version unterstützt die nationale Einstufung und Gap-Analyse derzeit nur für {countries}. Prüfen Sie Ihr gespeichertes Ergebnis oder berechnen Sie den Betroffenheitscheck neu.",
+                "Diese Version unterstützt eine nationale NIS2-Einstufung und die Gap-Analyse derzeit nur für {countries}. Ihr Ergebnis wurde gespeichert, kann aber nicht als Grundlage für eine Gap-Analyse verwendet werden.",
               prerequisiteClarificationTitle:
                 "Betroffenheit muss zuerst geklärt werden",
               prerequisiteClarification:
@@ -359,7 +376,7 @@ export const modulesMessages = defineFeatureMessages({
               noDocumentsUsed: "Für diese Gap-Analyse wurden keine Dokumente ausgewählt.",
               steps: {
                 questions: "Fragen beantworten",
-                documents: "Dokumente auswählen",
+                documents: "Dokumente hochladen",
                 review: "Angaben prüfen",
                 gaps: "Ihre Lücken",
               },
@@ -386,16 +403,40 @@ export const modulesMessages = defineFeatureMessages({
                 "Eine neuere Team-Änderung wurde gefunden. Der aktuelle Stand wird geladen.",
               continueDocuments: "Weiter zu Dokumente",
               missingAnswer: "Bitte beantworten Sie diese Frage.",
-              documentsTitle: "Dokumente Ihrer Organisation",
-              documentsDescription: "Dokumente sind optional. Verwendet wird automatisch die neueste aktive und erfolgreich indexierte Version.",
+              documentsTitle: "Ihre Dokumente",
+              documentsDescription:
+                "Der Dokumentenupload ist optional. Sie können die Gap-Analyse auch ohne Dokumente durchführen.\nWählen Sie ein Dokument aus Ihrer Dokumentenbibliothek aus oder laden Sie ein Neues hoch.\nVerwendet wird automatisch die neueste aktive und erfolgreich indexierte Version.",
+              documentLibraryTitle: "Dokumentenbibliothek",
+              documentTitleColumn: "Titel",
+              documentTypeColumn: "Typ",
+              documentSizeColumn: "Größe",
+              documentDateColumn: "Datum",
+              documentStatusColumn: "Status",
+              documentMetadataUnavailable: "Nicht verfügbar",
+              documentActive: "Aktiv",
+              documentArchived: "Archiviert",
+              documentNotReady: "Nicht bereit",
               selectDocument: "Für diese Analyse auswählen",
               noDocumentsAvailable: "Es sind noch keine verwendbaren Dokumente vorhanden.",
               noneSelected: "Keine Dokumente ausgewählt",
               continueReview: "Weiter zur Prüfung",
-              openLibrary: "Dokumentenbibliothek öffnen",
+              continueWithoutDocuments: "Ohne Dokumente fortfahren",
+              openLibrary: "Dokumente hochladen",
+              documentUploadDialogTitle: "Dokument hochladen",
+              documentUploadTitleField: "Titel",
+              documentUploadTitle: "Dokumententitel",
+              documentUploadFile: "Datei",
+              documentUploadDropzone: "Datei hierher ziehen oder auswählen",
+              documentUploadDescription:
+                "PDF, DOCX, TXT oder Markdown, maximal 10 MB.",
+              documentUploadSubmit: "Hochladen",
+              documentUploadCancel: "Abbrechen",
+              documentUploadError:
+                "Das Dokument konnte nicht hochgeladen werden.",
               notReady: "Dieses Dokument ist noch nicht für die Analyse bereit.",
               reviewTitle: "Ihre Angaben im Überblick",
               reviewQuestions: "Antworten",
+              reviewAdditionalInformation: "Weitere Angaben",
               reviewDocuments: "Ausgewählte Dokumente",
               edit: "Ändern",
               technicalDetails: "Technische Details",
@@ -424,6 +465,7 @@ export const modulesMessages = defineFeatureMessages({
               newResultBanner: "Dies ist ein neues, noch nicht bestätigtes Ergebnis. Der bisher bestätigte Stand bleibt gültig.",
               confirmedResult: "Bestätigter Stand",
               statusSummary: "Zusammenfassung",
+              identifiedGaps: "Festgestellte Lücken",
               filterAll: "Alle Lücken",
               rationale: "Begründung",
               recommendation: "Empfohlener nächster Schritt",
@@ -444,7 +486,7 @@ export const modulesMessages = defineFeatureMessages({
               supportHasDocument: "Dokument hinterlegt",
               supportNoDocument: "Kein Dokument hinterlegt",
               questionnaireDisagreement: "Die generierte Bewertung weicht von Ihrer Fragebogenantwort ab.",
-              reviewRequired: "Widersprüchliche Angaben",
+              reviewRequired: "Prüfung erforderlich!",
               contradictionDecision: "Welche Angabe soll für diese Kategorie maßgeblich sein? Die Entscheidung erstellt einen neuen, unveränderlichen Analysestand.",
               trustQuestionnaire: "Fragebogen vertrauen",
               trustDocument: "Dokument vertrauen",
@@ -825,6 +867,19 @@ export const modulesMessages = defineFeatureMessages({
               recalculationLocked:
                 "The applicability check has now been locked by the Gap Analysis.",
               allRequired: "Please answer all required questions.",
+              countryChangeHint:
+                "Changing the country may reset answered follow-up questions because the available entity types and answer options change.",
+              countryChangeTitle: "Change country?",
+              countryChangeDescriptionOne:
+                "Changing the country updates the available questionnaire catalog. One answered follow-up question will be reset.",
+              countryChangeDescriptionMany:
+                "Changing the country updates the available questionnaire catalog. {count} answered follow-up questions will be reset.",
+              countryChangeConfirm: "Change country",
+              countryChangeCancel: "Cancel",
+              countryChangeResetOne:
+                "One follow-up answer that no longer applies was reset.",
+              countryChangeResetMany:
+                "{count} follow-up answers that no longer apply were reset.",
             },
             guest: {
               title: "Check NIS2 applicability",
@@ -929,6 +984,9 @@ export const modulesMessages = defineFeatureMessages({
               },
               source: "Source",
               result: "Result",
+              allMeasures: "All measures",
+              whatToDo: "What needs to be done?",
+              evidenceToCreate: "Evidence to create:",
               recommendedEvidence: "Recommended evidence",
               sourceRecommendation: "Source recommendation",
               objective: "Objective",
@@ -980,10 +1038,11 @@ export const modulesMessages = defineFeatureMessages({
               prerequisiteInfoTitle: "Good to know",
               prerequisiteInfoDescription:
                 "The applicability check only requires a few basic details about your organization. You can then continue directly with the gap analysis.",
+              prerequisiteUnsupportedOops: "OOPS!",
               prerequisiteUnsupportedTitle:
-                "Gap Analysis is unavailable for this country",
+                "This country is not supported yet",
               prerequisiteUnsupported:
-                "This release currently supports national classification and Gap Analysis only for {countries}. Review your saved result or recalculate the applicability check.",
+                "This version currently supports national NIS2 classification and Gap Analysis only for {countries}. Your result has been saved, but it cannot be used as the basis for a Gap Analysis.",
               prerequisiteClarificationTitle:
                 "Applicability must be clarified first",
               prerequisiteClarification:
@@ -1013,7 +1072,7 @@ export const modulesMessages = defineFeatureMessages({
               noDocumentsUsed: "No documents were selected for this Gap Analysis.",
               steps: {
                 questions: "Answer questions",
-                documents: "Select documents",
+                documents: "Upload documents",
                 review: "Review information",
                 gaps: "Your gaps",
               },
@@ -1039,16 +1098,39 @@ export const modulesMessages = defineFeatureMessages({
                 "A newer team change was found. The current state is being loaded.",
               continueDocuments: "Continue to documents",
               missingAnswer: "Please answer this question.",
-              documentsTitle: "Your organization's documents",
-              documentsDescription: "Documents are optional. The latest active, successfully indexed version is used automatically.",
+              documentsTitle: "Your documents",
+              documentsDescription:
+                "Document upload is optional. You can also run the Gap Analysis without documents.\nSelect a document from your document library or upload a new one.\nThe latest active, successfully indexed version is used automatically.",
+              documentLibraryTitle: "Document library",
+              documentTitleColumn: "Title",
+              documentTypeColumn: "Type",
+              documentSizeColumn: "Size",
+              documentDateColumn: "Date",
+              documentStatusColumn: "Status",
+              documentMetadataUnavailable: "Not available",
+              documentActive: "Active",
+              documentArchived: "Archived",
+              documentNotReady: "Not ready",
               selectDocument: "Select for this analysis",
               noDocumentsAvailable: "No usable documents are available yet.",
               noneSelected: "No documents selected",
               continueReview: "Continue to review",
-              openLibrary: "Open document library",
+              continueWithoutDocuments: "Continue without documents",
+              openLibrary: "Upload documents",
+              documentUploadDialogTitle: "Upload document",
+              documentUploadTitleField: "Title",
+              documentUploadTitle: "Document title",
+              documentUploadFile: "File",
+              documentUploadDropzone: "Drag a file here or select one",
+              documentUploadDescription:
+                "PDF, DOCX, TXT, or Markdown, up to 10 MB.",
+              documentUploadSubmit: "Upload",
+              documentUploadCancel: "Cancel",
+              documentUploadError: "The document could not be uploaded.",
               notReady: "This document is not ready for analysis yet.",
               reviewTitle: "Your information at a glance",
               reviewQuestions: "Answers",
+              reviewAdditionalInformation: "Additional information",
               reviewDocuments: "Selected documents",
               edit: "Edit",
               technicalDetails: "Technical details",
@@ -1077,6 +1159,7 @@ export const modulesMessages = defineFeatureMessages({
               newResultBanner: "This is a new, unconfirmed result. The previous confirmed result remains valid.",
               confirmedResult: "Confirmed result",
               statusSummary: "Summary",
+              identifiedGaps: "Identified gaps",
               filterAll: "All gaps",
               rationale: "Rationale",
               recommendation: "Recommended next step",
@@ -1097,7 +1180,7 @@ export const modulesMessages = defineFeatureMessages({
               supportHasDocument: "Document provided",
               supportNoDocument: "No document provided",
               questionnaireDisagreement: "The generated assessment differs from your questionnaire answer.",
-              reviewRequired: "Conflicting information",
+              reviewRequired: "Review required!",
               contradictionDecision: "Which source should govern this category? The decision creates a new immutable analysis revision.",
               trustQuestionnaire: "Trust questionnaire",
               trustDocument: "Trust document",

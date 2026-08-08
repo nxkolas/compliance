@@ -27,20 +27,20 @@ export function GapFindingSources({
     : sources.slice(0, INITIAL_SOURCE_COUNT);
 
   return (
-    <footer className="mt-5 border-t pt-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <footer className="border-t border-[#3D4049] px-6 py-5 sm:px-8">
+      <p className="text-xs font-medium tracking-wide text-white uppercase">
         {labels.sources}
       </p>
       {sources.length ? (
         <TooltipProvider>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             {visibleSources.map((source) => (
               <SourceChip key={source.key} source={source} labels={labels} />
             ))}
             {hiddenCount ? (
               <button
                 type="button"
-                className="inline-flex min-h-8 items-center rounded-full border bg-background px-3 py-1 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="inline-flex min-h-9 items-center rounded-lg border-[1.5px] border-[#3D4049] bg-transparent px-3 py-1 text-sm text-stone-300 transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002BFF]"
                 aria-expanded={expanded}
                 aria-label={
                   expanded
@@ -61,7 +61,7 @@ export function GapFindingSources({
           </div>
         </TooltipProvider>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-3 text-sm text-white/60">
           {labels.noSources}
         </p>
       )}
@@ -89,19 +89,19 @@ function SourceChip({
   const content = (
     <>
       <SourceIcon kind={source.kind} />
-      <span className="min-w-0 truncate">{source.label}</span>
+      <span className="min-w-0 break-words">{source.label}</span>
       {source.href ? (
         <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
       ) : null}
       {unavailable ? (
-        <span className="truncate text-muted-foreground">
+        <span className="break-words text-white/60">
           · {labels.sourceUnavailable}
         </span>
       ) : null}
     </>
   );
   const className =
-    "inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1 text-xs text-foreground";
+    "inline-flex min-h-9 max-w-full items-center gap-2 rounded-lg border-[1.5px] border-[#3D4049] bg-transparent px-3 py-1 text-sm text-stone-300";
   const tooltip = [source.label, location, unavailable ? labels.sourceUnavailable : null]
     .filter(Boolean)
     .join(" · ");
@@ -111,7 +111,7 @@ function SourceChip({
       <TooltipTrigger asChild>
         {source.href ? (
           <a
-            className={`${className} max-w-64 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+            className={`${className} transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002BFF]`}
             href={source.href}
             target="_blank"
             rel="noopener noreferrer"
@@ -122,8 +122,8 @@ function SourceChip({
           </a>
         ) : (
           <span
-            className={`${className} max-w-64 ${
-              unavailable ? "border-dashed text-muted-foreground" : ""
+            className={`${className} ${
+              unavailable ? "border-dashed text-white/60" : ""
             }`}
             role="note"
             tabIndex={0}

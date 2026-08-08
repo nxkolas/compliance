@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -262,10 +262,16 @@ export function GapQuestionnaireStep({
               onClick={() => move(categoryIndex - 1)}
             >
               <span
-                className="w-full text-center font-sans text-base font-medium"
+                className="flex w-full items-center justify-center gap-2 px-5 text-center font-sans text-base font-medium"
                 style={{ color: "#FFFFFF80" }}
               >
-                {labels.previousCategory}
+                <ChevronLeft
+                  data-gap-category-arrow="previous"
+                  aria-hidden="true"
+                  className="size-5 shrink-0"
+                  strokeWidth={1.5}
+                />
+                <span>{labels.previousCategory}</span>
               </span>
             </Button>
           ) : (
@@ -296,6 +302,14 @@ export function GapQuestionnaireStep({
                 <span className="text-center">
                   {isLast ? labels.continueDocuments : labels.nextCategory}
                 </span>
+                {!busy && !isLast ? (
+                  <ChevronRight
+                    data-gap-category-arrow="next"
+                    aria-hidden="true"
+                    className="size-5 shrink-0"
+                    strokeWidth={1.5}
+                  />
+                ) : null}
               </span>
             </Button>
           ) : (

@@ -51,7 +51,7 @@ export default async function NewOrganizationPage({
             {dictionary.organizations.newPageTitle}
           </h1>
 
-          <p className="mt-3 max-w-4xl font-['Space_Grotesk'] text-base leading-7 font-normal text-info-foreground sm:text-lg">
+          <p className="mt-3 max-w-4xl font-['Space_Grotesk'] text-base leading-7 font-normal text-[#002BFF] sm:text-lg dark:text-info-foreground">
             {dictionary.organizations.newPageDescription}
           </p>
         </header>

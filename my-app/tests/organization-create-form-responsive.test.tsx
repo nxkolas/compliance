@@ -29,6 +29,9 @@ describe("responsive organization creation form", () => {
     expect(html).toContain('id="organization-name"');
     expect(html).toContain('id="legal-name"');
     expect(html).toContain('id="country"');
+    expect(html).toContain('id="ai-provider"');
+    expect(html).toContain("KI-Anbieter");
+    expect(html).toContain("OpenAI");
     expect(formClassName).toContain("w-full");
     expect(formClassName).toContain("min-w-0");
     expect(html).not.toContain("min-w-[1225px]");

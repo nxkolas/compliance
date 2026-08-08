@@ -67,7 +67,7 @@ export function ForgotPasswordForm({
           <h1 className="h-5 self-stretch text-4xl font-medium leading-none text-foreground">
             {success ? labels.checkEmailTitle : labels.forgotPassword}
           </h1>
-          <p className="self-stretch text-base font-normal leading-normal text-foreground">
+          <p className="self-stretch text-base font-normal leading-normal text-[#002BFF] dark:text-foreground">
             {success
               ? labels.resetInstructionsSent
               : labels.forgotPasswordDescription}

@@ -218,6 +218,8 @@ describe("unsupported-country applicability result", () => {
       />,
     );
     expect(html).toContain("This country is not supported yet");
+    expect(html).toContain("data-unsupported-country-alert");
+    expect(html).toContain("-mt-[14px] rounded-lg p-4");
     expect(html).toContain("Germany");
     expect(html).toContain("Saved reasoning");
     expect(html).toContain("National profile missing");
@@ -304,7 +306,7 @@ describe("applicability result outcomes", () => {
     expect(html).not.toContain("max-w-[1278.5px]");
   });
 
-  it("themes the meaning dialogue with semantic surface and text colors", () => {
+  it("renders the meaning dialogue with the supplied speech-bubble colors", () => {
     const html = renderOutcome("important_entity", "de");
     const meaningTitleClass = classNameOfOpeningTagBefore(
       html,
@@ -312,14 +314,30 @@ describe("applicability result outcomes", () => {
       "h2",
     );
 
-    expect(html).toContain("from-[var(--surface)]");
-    expect(html).toContain("to-[var(--card)]");
-    expect(html).toContain('stop-color="var(--surface)"');
-    expect(html).toContain('stop-color="var(--card)"');
-    expect(html).not.toContain("from-slate-800");
-    expect(html).not.toContain("#1E293B");
-    expect(html).not.toContain("#101828");
+    expect(html).toContain("data-applicability-result-speech-bubble");
+    expect(html).toContain('viewBox="0 0 761 278"');
+    expect(html).toContain('stop-color="#1A2540"');
+    expect(html).toContain('stop-color="#111825"');
+    expect(html).toContain('stroke="#3D4049"');
+    expect(html).toContain("@5xl/result-card:pt-[50px]");
+    expect(html).not.toContain("@5xl/result-card:pt-[65px]");
     expect(meaningTitleClass).toContain("text-card-foreground");
+  });
+
+  it("positions the not-in-scope speech-bubble content slightly lower", () => {
+    const html = renderOutcome("not_directly_in_scope", "de");
+
+    expect(html).toContain("@5xl/result-card:px-[58px]");
+    expect(html).toContain("@5xl/result-card:pt-[80px]");
+    expect(html).toContain("@5xl/result-card:pb-[20px]");
+  });
+
+  it("positions the clarification speech-bubble content lower", () => {
+    const html = renderOutcome("clarification_required", "de");
+
+    expect(html).toContain("@5xl/result-card:px-[58px]");
+    expect(html).toContain("@5xl/result-card:pt-[60px]");
+    expect(html).toContain("@5xl/result-card:pb-[20px]");
   });
 
   it.each(outcomeCases)(

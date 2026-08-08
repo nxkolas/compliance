@@ -95,5 +95,80 @@ describe("applicability questionnaire stepper", () => {
     expect(html).toContain(`aria-label="1: ${labels.current}"`);
     expect(html).toContain("ring-primary/20");
     expect(html).not.toContain("bg-success");
+    expect(html).toContain(`0 ${labels.of} 2 ${labels.questionsAnswered}`);
+    const calculateButton = html.match(
+      /<button[^>]*data-applicability-calculate="true"[^>]*>/,
+    )?.[0];
+    expect(calculateButton).toContain('type="button"');
+
+    const answerButton = html.match(
+      /<button[^>]*data-slot="toggle-group-item"[^>]*>/,
+    )?.[0];
+    expect(answerButton).toContain('type="button"');
+  });
+
+  it("explains the effect of changing the country next to the country field", () => {
+    const labels =
+      getDictionaryForLocale("de").modules.applicabilityCheck.form;
+    const countryQuestionnaire: ApplicabilityQuestionnaireDto = {
+      ...questionnaire,
+      questions: [{
+        id: "country-question",
+        stableKey: "bc.jurisdiction_country",
+        position: 2,
+        questionText: "Welcher EU-Mitgliedstaat ist hauptsächlich zuständig?",
+        helpText: null,
+        tooltipText: null,
+        answerType: "single_choice",
+        required: true,
+        config: { ui: { control: "select" } },
+        options: [
+          {
+            id: "country-de",
+            stableValue: "DE",
+            catalogCode: "all",
+            label: "Deutschland",
+            position: 1,
+            metadata: {},
+          },
+          {
+            id: "country-at",
+            stableValue: "AT",
+            catalogCode: "all",
+            label: "Österreich",
+            position: 2,
+            metadata: {},
+          },
+        ],
+      }],
+      latestAnswers: { "country-question": "AT" },
+    };
+    const html = renderToStaticMarkup(
+      <ApplicabilityQuestionnaireForm
+        submitUrl="/submit"
+        successUrl="/success"
+        presentation="authenticated-stepper"
+        questionnaire={countryQuestionnaire}
+        labels={labels}
+      />,
+    );
+
+    expect(html).toContain("data-country-change-info");
+    expect(html).toContain(labels.countryChangeHint);
+    expect(html).toContain("border-[#EAB446]");
+
+    const germanHtml = renderToStaticMarkup(
+      <ApplicabilityQuestionnaireForm
+        submitUrl="/submit"
+        successUrl="/success"
+        presentation="authenticated-stepper"
+        questionnaire={{
+          ...countryQuestionnaire,
+          latestAnswers: { "country-question": "DE" },
+        }}
+        labels={labels}
+      />,
+    );
+    expect(germanHtml).not.toContain("data-country-change-info");
   });
 });

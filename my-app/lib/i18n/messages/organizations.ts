@@ -66,6 +66,12 @@ export const organizationsMessages = defineFeatureMessages({
           legalNameHelp:
             "Offizieller Firmenname laut Handelsregister.",
           countryHelp: "Land, in dem die Organisation registriert ist.",
+          aiProvider: "KI-Anbieter",
+          aiProviderHelp: "Legt fest, welcher KI-Anbietermodus für die Gap-Analyse und die Erstellung des Maßnahmenplans verwendet wird.",
+          providerModes: {
+            openai: "OpenAI",
+            self_hosted: "Selbst gehostet",
+          },
           createButton: "Organisation erstellen",
           createPending: "Organisation wird erstellt...",
           createError: "Organisation konnte nicht erstellt werden",
@@ -126,7 +132,7 @@ export const organizationsMessages = defineFeatureMessages({
       searchLabel: "Organisationen durchsuchen",
       searchPlaceholder: "Nach Name oder rechtlichem Namen suchen …",
       activeTitle: "Aktive Organisationen",
-      archivedTitle: "Archivierte Organisationen",
+      archivedTitle: "Gelöschte Organisationen",
       noActive: "Keine aktiven Organisationen.",
       noArchived: "Keine archivierten Organisationen.",
       noActiveResults: "Keine aktiven Organisationen für diese Suche.",
@@ -319,6 +325,12 @@ export const organizationsMessages = defineFeatureMessages({
           legalNameHelp:
             "Official company name from the commercial register.",
           countryHelp: "Country in which the organization is registered.",
+          aiProvider: "AI provider",
+          aiProviderHelp: "Selects the AI provider mode used for gap analysis and action-plan generation.",
+          providerModes: {
+            openai: "OpenAI",
+            self_hosted: "Self-hosted",
+          },
           createButton: "Create organization",
           createPending: "Creating organization...",
           createError: "Organization could not be created",
@@ -379,7 +391,7 @@ export const organizationsMessages = defineFeatureMessages({
       searchLabel: "Search organizations",
       searchPlaceholder: "Search by name or legal name…",
       activeTitle: "Active organizations",
-      archivedTitle: "Archived organizations",
+      archivedTitle: "Deleted organizations",
       noActive: "No active organizations.",
       noArchived: "No archived organizations.",
       noActiveResults: "No active organizations match this search.",

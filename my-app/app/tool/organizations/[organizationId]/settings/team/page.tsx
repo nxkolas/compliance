@@ -36,7 +36,7 @@ export default async function OrganizationTeamPage({ params }: Props) {
     <div className="flex w-full flex-col gap-8">
       <header className="grid gap-2">
         <h1 className="text-3xl font-bold">{organization.name} · {dictionary.organizations.teamTitle}</h1>
-        <p className="max-w-2xl text-muted-foreground">{dictionary.organizations.teamDescription}</p>
+        <p className="max-w-2xl text-[#002BFF] dark:text-muted-foreground">{dictionary.organizations.teamDescription}</p>
       </header>
       <OrganizationMemberRoster
         organizationId={organizationId}

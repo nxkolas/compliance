@@ -18,7 +18,7 @@ export default async function InboxPage() {
         <section className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold">{dictionary.inbox.title}</h1>
-            <p className="max-w-2xl text-muted-foreground">
+            <p className="max-w-2xl text-[#002BFF] dark:text-muted-foreground">
               {dictionary.inbox.description}
             </p>
           </div>

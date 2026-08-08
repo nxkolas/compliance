@@ -45,7 +45,7 @@ function render(workflowValue: GapWorkflow) {
 }
 
 describe("gap analysis missing prerequisite state", () => {
-  it("renders the Figma state only when the applicability result is missing", () => {
+  it("renders the Figma state when the applicability result is missing", () => {
     const html = render(workflow({
       satisfied: false,
       status: "missing",
@@ -55,6 +55,7 @@ describe("gap analysis missing prerequisite state", () => {
 
     expect(html).toContain("data-gap-missing-prerequisite");
     expect(html).toContain("data-gap-prerequisite-speech-bubble");
+    expect(html).toContain("data-applicability-check-icon");
     expect(html).toContain("Ihre Gap-Analyse kann noch nicht gestartet werden");
     expect(html).toContain("Betroffenheitscheck durchführen");
     expect(html).toContain("Warum diese Reihenfolge?");
@@ -67,6 +68,31 @@ describe("gap analysis missing prerequisite state", () => {
     expect(html).toContain(
       'href="/tool/organizations/organization-1/applicability-check"',
     );
+  });
+
+  it("renders the unsupported-country explanation inside the robot speech bubble", () => {
+    const labels = getDefaultDictionary().modules.gapAnalysis.workflow;
+    const html = render(workflow({
+      satisfied: false,
+      status: "not_eligible",
+      reason: "unsupported_country",
+      outcome: "clarification_required",
+      countryCode: "AT",
+      supportedCountryCodes: ["DE"],
+      destination: "/tool/organizations/organization-1/applicability-check",
+    }));
+
+    expect(html).toContain("data-gap-missing-prerequisite");
+    expect(html).toContain("data-gap-prerequisite-speech-bubble");
+    expect(html).toContain("/robot-sad.svg");
+    expect(html).toContain("OOPS!");
+    expect(html).toContain(labels.prerequisiteUnsupportedTitle);
+    expect(html).toContain(
+      labels.prerequisiteUnsupported.replace("{countries}", "Deutschland"),
+    );
+    expect(html).toContain(labels.reviewApplicability);
+    expect(html).not.toContain("Warum diese Reihenfolge?");
+    expect(html).not.toContain("Gut zu wissen");
   });
 
   it("keeps incompatible applicability results on the existing blocked card", () => {

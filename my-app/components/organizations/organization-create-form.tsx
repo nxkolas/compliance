@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import type { Locale } from "@/lib/i18n-config";
@@ -20,6 +27,7 @@ type CreateOrganizationState = {
   name: string;
   legalName: string;
   country: string;
+  aiProviderMode: "openai" | "self_hosted";
 };
 
 type RequestState = {
@@ -38,6 +46,7 @@ const defaultOrganizationForm: CreateOrganizationState = {
   name: "",
   legalName: "",
   country: "DE",
+  aiProviderMode: "openai",
 };
 
 export function OrganizationCreateForm({
@@ -85,6 +94,7 @@ export function OrganizationCreateForm({
         name: organizationForm.name,
         legalName: organizationForm.legalName || null,
         countryCode: organizationForm.country || "DE",
+        aiProviderMode: organizationForm.aiProviderMode,
       });
 
       const organizationHref =
@@ -293,6 +303,43 @@ export function OrganizationCreateForm({
               }
             />
           </div>
+        </div>
+
+        {/* KI-Anbieter */}
+        <div className="flex w-full min-w-0 flex-col items-start">
+          <Label htmlFor="ai-provider" className={labelClassName}>
+            {labels.aiProvider}
+          </Label>
+
+          <p className="mt-[5px] w-full max-w-2xl font-['Space_Grotesk'] text-xs leading-5 font-normal text-foreground-subtle">
+            {labels.aiProviderHelp}
+          </p>
+
+          <Select
+            value={organizationForm.aiProviderMode}
+            onValueChange={(aiProviderMode) =>
+              setOrganizationForm((current) => ({
+                ...current,
+                aiProviderMode: aiProviderMode as CreateOrganizationState["aiProviderMode"],
+              }))
+            }
+          >
+            <SelectTrigger
+              id="ai-provider"
+              className="mt-3 h-12 w-full rounded-lg border-[1.5px] border-border-strong !bg-foreground/[0.06] px-5 font-['Space_Grotesk'] text-base font-normal text-foreground shadow-sm focus-visible:border-primary focus-visible:ring-primary/40 sm:w-72"
+            >
+              <SelectValue>
+                {labels.providerModes[organizationForm.aiProviderMode]}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {(["openai", "self_hosted"] as const).map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {labels.providerModes[mode]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Organisation erstellen */}

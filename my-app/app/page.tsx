@@ -62,7 +62,7 @@ async function HomeContent() {
               <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
                 {dictionary.home.brand}
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
+              <p className="max-w-2xl text-lg leading-8 text-[#002BFF] dark:text-muted-foreground">
                 {dictionary.home.heroDescription}
               </p>
             </div>

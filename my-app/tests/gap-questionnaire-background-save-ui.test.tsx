@@ -22,6 +22,13 @@ describe("gap questionnaire background saving", () => {
     )?.[0];
     expect(activeStep).toContain("bg-[#46A95A]");
     expect(activeStep).toContain("text-white");
+    expect(html).toContain("max-w-[1202px]");
+    expect(html).toContain("h-12");
+    expect(html).toContain("rounded-xl");
+    expect(html).toContain("xl:gap-8");
+    expect(html).toContain("cursor-pointer");
+    expect(html).toContain("disabled:cursor-not-allowed");
+    expect(html).not.toContain("h-10 rounded-lg text-sm");
   });
 
   it("keeps the next-category action available without showing a save spinner", () => {
@@ -85,6 +92,7 @@ describe("gap questionnaire background saving", () => {
     expect(html).toContain('role="progressbar"');
     expect(html).toContain('aria-valuenow="100"');
     expect(html).toContain("Next category");
+    expect(html).toContain('data-gap-category-arrow="next"');
     expect(submitButton).toBeDefined();
     expect(submitButton).not.toContain(" disabled=");
   });

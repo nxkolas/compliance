@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getVisibleQuestions,
   isAnswered,
+  isFinalVisibleAnswer,
 } from "@/src/server/applicability-check/question-visibility";
 
 const questions = [
@@ -58,5 +59,17 @@ describe("applicability question visibility", () => {
   it("treats empty multi-select answers as unanswered", () => {
     expect(isAnswered([])).toBe(false);
     expect(isAnswered(["dns_service_provider"])).toBe(true);
+  });
+
+  it("identifies only the final visible answered question", () => {
+    const answers = {
+      eu: "yes",
+      sector: ["dns_service_provider"],
+      followup: "yes",
+    };
+
+    expect(isFinalVisibleAnswer(questions, answers, "eu")).toBe(false);
+    expect(isFinalVisibleAnswer(questions, answers, "sector")).toBe(false);
+    expect(isFinalVisibleAnswer(questions, answers, "followup")).toBe(true);
   });
 });

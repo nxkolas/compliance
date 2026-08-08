@@ -150,7 +150,7 @@ export function TutorialWelcome({
             <span className="font-normal">{labels.titleSuffix}</span>
           ) : null}
         </h1>
-        <p className="mt-3 max-w-[1081px] text-base font-normal leading-7 text-blue-200 md:min-h-10 md:text-lg">
+        <p className="mt-3 max-w-[1081px] text-base font-normal leading-7 text-[#002BFF] md:min-h-10 md:text-lg dark:text-blue-200">
           {labels.description}
         </p>
       </header>

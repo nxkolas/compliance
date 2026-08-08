@@ -19,6 +19,14 @@ import {
   useComboboxAnchor,
 } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Toggle } from "@/components/ui/toggle";
 import {
@@ -36,6 +44,7 @@ import {
   getQuestionControl,
   getVisibleQuestions,
   isAnswered,
+  isFinalVisibleAnswer,
   type ApplicabilityAnswerValue,
 } from "@/src/server/applicability-check/question-visibility";
 import {
@@ -57,7 +66,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
 import { localizeUiError } from "@/lib/i18n/errors";
 
@@ -94,6 +103,20 @@ type ApplicabilityQuestionnaireFormLabels = {
   submitError: string;
   recalculationLocked: string;
   allRequired: string;
+  countryChangeHint: string;
+  countryChangeTitle: string;
+  countryChangeDescriptionOne: string;
+  countryChangeDescriptionMany: string;
+  countryChangeConfirm: string;
+  countryChangeCancel: string;
+  countryChangeResetOne: string;
+  countryChangeResetMany: string;
+};
+
+type PendingCountryChange = {
+  question: ApplicabilityQuestionDto;
+  value: ApplicabilityAnswerValue;
+  affectedAnswerCount: number;
 };
 
 export function ApplicabilityQuestionnaireForm({
@@ -116,6 +139,9 @@ export function ApplicabilityQuestionnaireForm({
   const [confirmedQuestionIds, setConfirmedQuestionIds] = useState<
     Set<string>
   >(() => new Set());
+  const [pendingCountryChange, setPendingCountryChange] =
+    useState<PendingCountryChange | null>(null);
+  const [countryResetCount, setCountryResetCount] = useState<number | null>(null);
   const [notice, setNotice] = useState<RequestState>({
     message: null,
     tone: "default",
@@ -201,9 +227,11 @@ export function ApplicabilityQuestionnaireForm({
     });
   }
 
-  function updateAnswer(
+  function applyAnswer(
     question: ApplicabilityQuestionDto,
     value: ApplicabilityAnswerValue,
+    resetCount: number | null = null,
+    confirmImmediately = false,
   ) {
     setAnswers((current) =>
       reconcileCatalogAnswers(questionnaire.questions, {
@@ -212,10 +240,61 @@ export function ApplicabilityQuestionnaireForm({
       }),
     );
     clearConfirmationsFrom(question);
+    if (confirmImmediately) confirmQuestion(question.id);
+    setCountryResetCount(resetCount);
     setNotice({ message: null, tone: "default" });
   }
 
+  function updateAnswer(
+    question: ApplicabilityQuestionDto,
+    value: ApplicabilityAnswerValue,
+  ) {
+    const nextAnswers = reconcileCatalogAnswers(questionnaire.questions, {
+      ...answers,
+      [question.id]: value,
+    });
+    const affectedAnswerCount = countChangedAnswers(
+      answers,
+      nextAnswers,
+      question.id,
+    );
+
+    if (
+      question.stableKey === "bc.jurisdiction_country" &&
+      affectedAnswerCount > 0
+    ) {
+      setPendingCountryChange({ question, value, affectedAnswerCount });
+      return;
+    }
+
+    applyAnswer(
+      question,
+      value,
+      null,
+      isFinalVisibleAnswer(questionnaire.questions, nextAnswers, question.id),
+    );
+  }
+
+  function confirmCountryChange() {
+    if (!pendingCountryChange) return;
+    applyAnswer(
+      pendingCountryChange.question,
+      pendingCountryChange.value,
+      pendingCountryChange.affectedAnswerCount,
+    );
+    setPendingCountryChange(null);
+  }
+
   function navigateToQuestion(index: number) {
+    const targetQuestion = visibleQuestions[index];
+
+    if (
+      targetQuestion &&
+      isFinalVisibleAnswer(catalogQuestions, answers, targetQuestion.id)
+    ) {
+      confirmQuestion(targetQuestion.id);
+    }
+
     setCurrentQuestionIndex(index);
   }
 
@@ -226,12 +305,10 @@ export function ApplicabilityQuestionnaireForm({
       confirmQuestion(activeQuestion.id);
     }
 
-    setCurrentQuestionIndex(index);
+    navigateToQuestion(index);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleCalculate() {
     if (!requiredComplete) {
       setNotice({ message: labels.allRequired, tone: "error" });
       return;
@@ -275,15 +352,30 @@ export function ApplicabilityQuestionnaireForm({
     }
   }
 
+  const countryChangeNotice = countryResetCount
+    ? (countryResetCount === 1
+        ? labels.countryChangeResetOne
+        : labels.countryChangeResetMany.replace("{count}", String(countryResetCount)))
+    : null;
+  const countryChangeDescription = pendingCountryChange
+    ? (pendingCountryChange.affectedAnswerCount === 1
+        ? labels.countryChangeDescriptionOne
+        : labels.countryChangeDescriptionMany.replace(
+            "{count}",
+            String(pendingCountryChange.affectedAnswerCount),
+          ))
+    : "";
+
   return (
-    <form
-      className={cn(
-        "flex w-full min-w-0 flex-col gap-6",
-        presentation === "authenticated-stepper" &&
-          "font-['Space_Grotesk'] lg:gap-8",
-      )}
-      onSubmit={handleSubmit}
-    >
+    <>
+      <form
+        className={cn(
+          "flex w-full min-w-0 flex-col gap-6",
+          presentation === "authenticated-stepper" &&
+            "font-['Space_Grotesk'] lg:gap-8",
+        )}
+        onSubmit={(event) => event.preventDefault()}
+      >
       {notice.message ? (
         <Alert
           variant={notice.tone === "error" ? "destructive" : "default"}
@@ -306,11 +398,13 @@ export function ApplicabilityQuestionnaireForm({
           isSubmitting={isSubmitting}
           labels={labels}
           onAnswerChange={updateAnswer}
+          onCalculate={() => void handleCalculate()}
           onContinue={confirmCurrentQuestionAndNavigate}
           onQuestionSelect={navigateToQuestion}
           progress={questionnaireProgress}
           requiredComplete={requiredComplete}
-          questionCount={visibleQuestions.length}
+          questionCount={questionnaire.questions.length}
+          countryChangeNotice={countryChangeNotice}
           visibleQuestions={visibleQuestions}
         />
       ) : (
@@ -349,6 +443,11 @@ export function ApplicabilityQuestionnaireForm({
                   labels={labels}
                   onChange={(value) => updateAnswer(question, value)}
                   question={question}
+                  countryChangeNotice={
+                    question.stableKey === "bc.jurisdiction_country"
+                      ? countryChangeNotice
+                      : null
+                  }
                 />
               ))}
             </div>
@@ -356,7 +455,9 @@ export function ApplicabilityQuestionnaireForm({
 
           <div className="flex justify-end">
             <Button
-              type="submit"
+              type="button"
+              data-applicability-calculate="true"
+              onClick={() => void handleCalculate()}
               size="lg"
               disabled={isSubmitting || !requiredComplete}
               className="w-full sm:w-auto"
@@ -367,8 +468,62 @@ export function ApplicabilityQuestionnaireForm({
           </div>
         </>
       )}
-    </form>
+      </form>
+
+      <Dialog
+        open={Boolean(pendingCountryChange)}
+        onOpenChange={(open) => !open && setPendingCountryChange(null)}
+      >
+        <DialogContent
+          closeLabel={labels.countryChangeCancel}
+          className="w-[min(649px,calc(100vw-32px))] max-w-none rounded-xl border-[1.5px] border-border-strong bg-card p-6 font-['Space_Grotesk'] text-card-foreground shadow-control sm:max-w-none sm:p-8"
+        >
+          <DialogHeader className="gap-3 text-left">
+            <DialogTitle className="text-xl leading-8 font-semibold text-foreground">
+              {labels.countryChangeTitle}
+            </DialogTitle>
+            <DialogDescription className="text-base leading-7 font-normal text-foreground-subtle sm:text-lg sm:leading-8">
+              {countryChangeDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3 sm:justify-end">
+            <Button
+              type="button"
+              onClick={confirmCountryChange}
+              className="h-12 rounded-lg border-0 bg-[#EAB446] px-5 text-base font-medium text-white shadow-none hover:bg-[#EAB446]/90 hover:text-white focus-visible:border-0 focus-visible:ring-0 sm:w-48"
+            >
+              {labels.countryChangeConfirm}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingCountryChange(null)}
+              className="h-12 rounded-lg border-[1.5px] border-border-strong bg-transparent px-5 text-base font-medium text-muted-foreground shadow-none hover:bg-accent hover:text-foreground sm:w-32"
+            >
+              {labels.countryChangeCancel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
+}
+
+function countChangedAnswers(
+  current: Record<string, ApplicabilityAnswerValue>,
+  next: Record<string, ApplicabilityAnswerValue>,
+  excludedQuestionId: string,
+) {
+  return Object.entries(current).filter(([questionId, value]) => {
+    if (questionId === excludedQuestionId || !isAnswered(value)) return false;
+    const nextValue = next[questionId];
+    if (!isAnswered(nextValue)) return true;
+    if (Array.isArray(value) && Array.isArray(nextValue)) {
+      return value.length !== nextValue.length ||
+        value.some((item, index) => item !== nextValue[index]);
+    }
+    return value !== nextValue;
+  }).length;
 }
 
 type AuthenticatedQuestionnaireProps = {
@@ -382,10 +537,12 @@ type AuthenticatedQuestionnaireProps = {
     question: ApplicabilityQuestionDto,
     value: ApplicabilityAnswerValue,
   ) => void;
+  onCalculate: () => void;
   onContinue: (index: number) => void;
   onQuestionSelect: (index: number) => void;
   progress: number;
   questionCount: number;
+  countryChangeNotice: string | null;
   requiredComplete: boolean;
   visibleQuestions: ApplicabilityQuestionDto[];
 };
@@ -398,10 +555,12 @@ function AuthenticatedQuestionnaire({
   isSubmitting,
   labels,
   onAnswerChange,
+  onCalculate,
   onContinue,
   onQuestionSelect,
   progress,
   questionCount,
+  countryChangeNotice,
   requiredComplete,
   visibleQuestions,
 }: AuthenticatedQuestionnaireProps) {
@@ -438,7 +597,7 @@ function AuthenticatedQuestionnaire({
           <span className="min-w-12 text-right text-base font-semibold text-foreground">
             {progress} %
           </span>
-          <span className="flex min-h-14 w-full max-w-56 items-center justify-self-end text-left font-['Space_Grotesk'] text-base leading-6 font-normal text-foreground sm:col-span-2">
+          <span className="flex min-h-14 w-auto items-center justify-self-end whitespace-nowrap text-right font-['Space_Grotesk'] text-base leading-6 font-normal text-foreground sm:col-span-2">
             {completedQuestions} {labels.of} {questionCount}{" "}
             {labels.questionsAnswered}
           </span>
@@ -454,6 +613,7 @@ function AuthenticatedQuestionnaire({
             presentation="authenticated-stepper"
             question={activeQuestion}
             stepNumber={activeQuestionIndex + 1}
+            countryChangeNotice={countryChangeNotice}
           />
         </TooltipProvider>
       ) : null}
@@ -476,7 +636,9 @@ function AuthenticatedQuestionnaire({
 
         {showSubmit ? (
           <Button
-            type="submit"
+            type="button"
+            data-applicability-calculate="true"
+            onClick={onCalculate}
             size="lg"
             disabled={isSubmitting || !requiredComplete}
             className="h-12 w-full rounded-lg px-8 text-base font-medium uppercase sm:w-auto"
@@ -591,6 +753,7 @@ function QuestionStepper({
 
 type QuestionBlockProps = {
   answer: ApplicabilityAnswerValue;
+  countryChangeNotice?: string | null;
   labels: ApplicabilityQuestionnaireFormLabels;
   onChange: (value: ApplicabilityAnswerValue) => void;
   presentation?: "default" | "authenticated-stepper";
@@ -600,6 +763,7 @@ type QuestionBlockProps = {
 
 function QuestionBlock({
   answer,
+  countryChangeNotice,
   labels,
   onChange,
   presentation = "default",
@@ -798,6 +962,7 @@ function QuestionBlock({
                 return (
                   <ToggleGroupItem
                     key={option.id}
+                    type="button"
                     value={option.stableValue}
                     className={cn(
                       "flex h-auto min-h-11 w-full shrink items-center justify-between gap-3 whitespace-normal rounded-md border px-4 py-2 text-left text-sm shadow-none transition-colors data-[state=on]:border-primary data-[state=on]:bg-primary/15 data-[state=on]:text-foreground",
@@ -840,6 +1005,18 @@ function QuestionBlock({
               })}
             </ToggleGroup>
           )}
+          {question.stableKey === "bc.jurisdiction_country" &&
+          typeof answer === "string" &&
+          answer !== "DE" ? (
+            <div
+              data-country-change-info
+              role={countryChangeNotice ? "status" : undefined}
+              className="flex w-full max-w-2xl items-start gap-3 rounded-lg border border-[#EAB446] bg-[#2A2821] px-4 py-3 text-sm leading-6 text-foreground"
+            >
+              <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-[#EAB446]" />
+              <span>{countryChangeNotice ?? labels.countryChangeHint}</span>
+            </div>
+          ) : null}
         </div>
         </div>
       </CardContent>
@@ -958,6 +1135,7 @@ function SearchableMultiSelect({
               return (
                 <Toggle
                   key={option.id}
+                  type="button"
                   pressed={selected}
                   onPressedChange={() =>
                     toggle(option.stableValue, metadata.exclusive)

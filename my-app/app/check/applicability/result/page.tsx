@@ -93,7 +93,7 @@ async function GuestApplicabilityResultPageContent({
           <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
             {labels.resultTitle}
           </h1>
-          <p className="max-w-3xl text-base leading-7 text-muted-foreground">
+          <p className="max-w-3xl text-base leading-7 text-[#002BFF] dark:text-muted-foreground">
             {labels.resultDescription}
           </p>
         </header>

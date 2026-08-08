@@ -28,7 +28,7 @@ export async function OrganizationModulePage({
     <section className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">{title}</h1>
-        <p className="text-muted-foreground">{organization.name}</p>
+        <p className="text-[#002BFF] dark:text-muted-foreground">{organization.name}</p>
       </div>
       <Card className="rounded-lg shadow-sm">
         <CardContent className="p-6 text-muted-foreground">

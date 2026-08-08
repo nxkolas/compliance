@@ -32,7 +32,26 @@ describe("organization management layout", () => {
             },
           }],
         }}
-        initialArchived={{ items: [] }}
+        initialArchived={{
+          items: [{
+            id: "00000000-0000-4000-8000-000000000002",
+            name: "Gelöschte GmbH",
+            legalName: "Gelöschte GmbH",
+            countryCode: "DE",
+            aiProviderMode: "openai",
+            archivedAt: "2026-08-03T10:00:00.000Z",
+            createdAt: "2026-08-02T10:00:00.000Z",
+            updatedAt: "2026-08-03T10:00:00.000Z",
+            activeMemberCount: 1,
+            currentUserRole: "owner",
+            allowedActions: {
+              edit: false,
+              manageMembers: false,
+              archive: false,
+              restore: true,
+            },
+          }],
+        }}
         locale="de"
         labels={dictionary.organizationManagement}
         teamLabels={dictionary.teamManagement}
@@ -48,5 +67,7 @@ describe("organization management layout", () => {
     expect(html).toContain('data-slot="dropdown-menu-trigger"');
     expect(html).toContain("max-w-[539px]");
     expect(html).toContain("/tool/organizations/new");
+    expect(html).toContain(">Gelöschte Organisationen</h2>");
+    expect(html).toContain("Gelöschte GmbH");
   });
 });

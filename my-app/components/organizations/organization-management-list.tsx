@@ -97,7 +97,10 @@ export function OrganizationManagementList({
   const [editing, setEditing] = useState<SerializedItem | null>(null);
   const [managingMembers, setManagingMembers] = useState<SerializedItem | null>(null);
   const [confirming, setConfirming] = useState<SerializedItem | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    message: string;
+    tone: "default" | "deleted" | "restored";
+  } | null>(null);
   const activeSentinel = useRef<HTMLDivElement>(null);
   const archivedSentinel = useRef<HTMLDivElement>(null);
   const requestGeneration = useRef(0);
@@ -193,11 +196,17 @@ export function OrganizationManagementList({
         },
       };
       mutateItem(updated, restoring ? "active" : "archived");
-      setNotice(restoring ? labels.restoreSuccess : labels.archiveSuccess);
+      setNotice({
+        message: restoring ? labels.restoreSuccess : labels.archiveSuccess,
+        tone: restoring ? "restored" : "deleted",
+      });
       setConfirming(null);
       router.refresh();
     } catch (error) {
-      setNotice(localizeUiError(error, { fallback: labels.mutationError }));
+      setNotice({
+        message: localizeUiError(error, { fallback: labels.mutationError }),
+        tone: "default",
+      });
     }
   }
 
@@ -206,7 +215,20 @@ export function OrganizationManagementList({
 
   return (
     <div className="grid gap-10">
-      {notice && <div role="status" className="rounded-lg border border-border-strong bg-card px-4 py-3 text-sm text-card-foreground">{notice}</div>}
+      {notice && (
+        <div
+          role="status"
+          className={
+            notice.tone === "deleted"
+              ? "-mt-2 flex min-h-14 items-center rounded-lg border border-[#FF6467] bg-[#2A232B] px-4 py-2.5 text-sm text-foreground"
+              : notice.tone === "restored"
+                ? "-mt-2 flex min-h-14 items-center rounded-lg border border-[#46A95A] bg-[#1F2A22] px-4 py-2.5 text-sm text-foreground"
+              : "flex min-h-12 items-center rounded-lg border border-border-strong bg-card px-4 py-2.5 text-sm text-card-foreground"
+          }
+        >
+          {notice.message}
+        </div>
+      )}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full max-w-[539px] rounded-lg bg-surface outline outline-[1.5px] outline-offset-[-1.5px] outline-border-strong">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/50" />
@@ -221,7 +243,7 @@ export function OrganizationManagementList({
         {createHref && createLabel && (
           <Button
             asChild
-            className="h-12 w-full justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm leading-5 font-semibold text-primary-foreground shadow-none hover:bg-primary/90 sm:w-64"
+            className="h-12 w-full justify-center gap-2 rounded-lg bg-[#002BFF] px-5 py-2.5 text-sm leading-5 font-semibold text-white shadow-none hover:bg-[#002BFF]/90 focus-visible:ring-[#002BFF]/40 sm:w-64"
           >
             <Link href={createHref}>
               <Plus className="size-4 shrink-0" />
@@ -246,6 +268,7 @@ export function OrganizationManagementList({
       {showArchived && (
         <OrganizationSection
           title={labels.archivedTitle}
+          showTitle
           empty={query ? labels.noArchivedResults : labels.noArchived}
           stream={archived}
           sentinel={archivedSentinel}
@@ -266,7 +289,7 @@ export function OrganizationManagementList({
         onSaved={(item) => {
           mutateItem(item, "active");
           setEditing(null);
-          setNotice(labels.saveSuccess);
+          setNotice({ message: labels.saveSuccess, tone: "default" });
           router.refresh();
         }}
       />
@@ -317,11 +340,11 @@ export function OrganizationManagementList({
               onClick={archiveOrRestore}
               className={
                 confirming?.archivedAt
-                  ? "h-12 w-full gap-2 rounded-lg px-5 text-base font-medium sm:w-56"
+                  ? "h-12 w-full gap-2 overflow-hidden rounded-lg border-0 bg-[#EAB446] px-4 font-['Space_Grotesk'] text-base font-medium text-white shadow-none outline-none hover:border-0 hover:bg-[#EAB446]/90 hover:text-white focus-visible:border-0 focus-visible:ring-0 sm:w-72"
                   : "inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-lg border-0 bg-destructive px-5 font-['Space_Grotesk'] text-base font-medium text-destructive-foreground shadow-none outline-none hover:bg-destructive/90 focus-visible:border-0 focus-visible:ring-0 sm:w-56"
               }
             >
-              {!confirming?.archivedAt && <Trash2 className="size-5" />}
+              {confirming?.archivedAt ? <RotateCcw className="size-5 text-white" /> : <Trash2 className="size-5" />}
               {confirming?.archivedAt ? labels.restore : labels.archive}
             </Button>
             <Button
@@ -339,9 +362,10 @@ export function OrganizationManagementList({
 }
 
 function OrganizationSection({
-  title, empty, stream, sentinel, labels, locale, onEdit, onManageMembers, onArchive, onMore,
+  title, showTitle = false, empty, stream, sentinel, labels, locale, onEdit, onManageMembers, onArchive, onMore,
 }: {
   title: string;
+  showTitle?: boolean;
   empty: string;
   stream: Stream;
   sentinel: React.RefObject<HTMLDivElement | null>;
@@ -354,7 +378,12 @@ function OrganizationSection({
 }) {
   return (
     <section aria-labelledby={`${title}-heading`} className="grid gap-4">
-      <h2 id={`${title}-heading`} className="sr-only">{title}</h2>
+      <h2
+        id={`${title}-heading`}
+        className={showTitle ? "font-['Space_Grotesk'] text-xl font-semibold text-foreground" : "sr-only"}
+      >
+        {title}
+      </h2>
       <Card className="relative rounded-xl border-[1.5px] border-border-strong !bg-card p-0 py-0 shadow-none">
         <CardContent className="grid gap-5 p-5 md:px-8 md:py-5">
           {stream.items.length === 0 && !stream.loading ? (
@@ -431,20 +460,27 @@ function OrganizationRow({
               {item.allowedActions.manageMembers ? labels.manageMembers : labels.viewMembers}
             </DropdownMenuItem>
           )}
-          {(item.allowedActions.archive || item.allowedActions.restore) && (
+          {item.allowedActions.archive && (
             <>
               <DropdownMenuSeparator className="mx-3 my-1 h-px bg-border-strong/60" />
-              <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-destructive-muted-foreground focus:bg-accent focus:text-destructive-muted-foreground [&_svg]:text-destructive-muted-foreground" variant={item.allowedActions.archive ? "destructive" : "default"} onSelect={() => onArchive(item)}>
+              <DropdownMenuItem className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-destructive-muted-foreground focus:bg-accent focus:text-destructive-muted-foreground [&_svg]:text-destructive-muted-foreground" variant="destructive" onSelect={() => onArchive(item)}>
                 <span className="flex size-4 shrink-0 items-center justify-center">
-                  {item.allowedActions.restore ? (
-                    <RotateCcw className="size-4" />
-                  ) : (
-                    <Trash2 className="size-4 text-destructive-muted-foreground" />
-                  )}
+                  <Trash2 className="size-4 text-destructive-muted-foreground" />
                 </span>
-                {item.allowedActions.restore ? labels.restore : labels.archive}
+                {labels.archive}
               </DropdownMenuItem>
             </>
+          )}
+          {item.allowedActions.restore && (
+            <DropdownMenuItem
+              className="h-12 rounded-lg px-3 py-3 text-sm font-medium text-[#EAB446] focus:bg-[#EAB446]/10 focus:text-[#EAB446] data-[highlighted]:bg-[#EAB446]/10 data-[highlighted]:text-[#EAB446]"
+              onSelect={() => onArchive(item)}
+            >
+              <span className="flex size-4 shrink-0 items-center justify-center">
+                <RotateCcw className="size-4 text-[#EAB446]" />
+              </span>
+              {labels.restore}
+            </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

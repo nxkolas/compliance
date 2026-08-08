@@ -99,6 +99,19 @@ describe("gap review step presentation", () => {
     expect(html).toContain("Vollständig umgesetzt");
     expect(html).toContain("Teilweise umgesetzt");
     expect(html).toContain("Unsicher");
+    expect(html).toContain("Weitere Angaben");
+    expect(html.indexOf("Dritte echte Frage?")).toBeLessThan(
+      html.indexOf("Weitere Angaben"),
+    );
+    expect(html.indexOf("Weitere Angaben")).toBeLessThan(
+      html.indexOf("Ausgewählte Dokumente"),
+    );
+    expect(html).toContain('id="gap-review-additional-heading"');
+    expect(html).toContain("text-xl font-bold text-white");
+    expect(html).toContain(
+      'class="mt-8" aria-labelledby="gap-review-additional-heading"',
+    );
+    expect(html).toContain("background-color:#002BFF");
     expect(html).toContain("break-words");
     expect(html).not.toContain("internal-option-implemented");
     expect(html).not.toContain("internal-question-1");

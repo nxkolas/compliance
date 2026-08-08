@@ -161,7 +161,11 @@ export function ApplicabilityResultCard({
       ) : null}
 
       {unsupportedCountry ? (
-        <Alert variant="warning" className="rounded-lg p-4">
+        <Alert
+          data-unsupported-country-alert
+          variant="warning"
+          className="-mt-[14px] rounded-lg p-4"
+        >
           <AlertTitle className="min-h-0 line-clamp-none font-semibold tracking-normal">
             {labels.unsupportedCountryTitle}
           </AlertTitle>
@@ -309,10 +313,18 @@ export function ApplicabilityResultCard({
       </Card>
 
       <section className="grid min-w-0 items-center gap-6 @5xl/result-card:mt-4 @5xl/result-card:w-full @5xl/result-card:grid-cols-[minmax(0,1.46fr)_minmax(0,1fr)] @5xl/result-card:gap-[52px]">
-        <div className="relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center px-6 py-10 sm:px-[54px] @5xl/result-card:justify-start @5xl/result-card:pt-[65px] @5xl/result-card:pb-[30px] @7xl/result-card:max-w-none">
+        <div
+          className={cn(
+            "relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center px-6 py-10 sm:px-[54px] @5xl/result-card:justify-start @5xl/result-card:pt-[50px] @5xl/result-card:pb-[30px] @7xl/result-card:max-w-none",
+            isNotDirectlyInScope &&
+              "@5xl/result-card:px-[58px] @5xl/result-card:pt-[80px] @5xl/result-card:pb-[20px]",
+            isClarificationRequired &&
+              "@5xl/result-card:px-[58px] @5xl/result-card:pt-[60px] @5xl/result-card:pb-[20px]",
+          )}
+        >
           <div
             aria-hidden="true"
-            className="absolute inset-0 rounded-xl bg-gradient-to-br from-[var(--surface)] to-[var(--card)] outline outline-[1.5px] outline-offset-[-0.75px] outline-border-strong @5xl/result-card:hidden"
+            className="absolute inset-0 rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] outline outline-[1.5px] outline-offset-[-0.75px] outline-[#3D4049] @5xl/result-card:hidden"
           />
           <SpeechBubbleBackground />
           <h2 className="relative z-10 w-full max-w-80 text-lg font-semibold tracking-wide text-card-foreground uppercase sm:text-xl @5xl/result-card:leading-5">
@@ -494,32 +506,37 @@ function SpeechBubbleBackground() {
   return (
     <svg
       aria-hidden="true"
+      data-applicability-result-speech-bubble
       className="pointer-events-none absolute inset-y-0 left-[0.25px] hidden h-full w-[calc(100%+24px)] overflow-visible @5xl/result-card:block"
-      viewBox="0 0 782 288"
+      viewBox="0 0 761 278"
       fill="none"
       preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <path
-        d="M12 0H746C752.627 0 758 5.37258 758 12V125C758 130 760.8 134.6 765.2 136.8L782 144L765.2 152C760.8 154.2 758 158 758 163V276C758 282.627 752.627 288 746 288H12C5.37258 288 0 282.627 0 276V12C0 5.37258 5.37258 0 12 0Z"
+        d="M0.75 264.75V12.75C0.75 6.12258 6.12257 0.75 12.75 0.75H723.266C729.893 0.75 735.266 6.12259 735.266 12.75V118.171C735.266 123.053 738.223 127.448 742.746 129.287L758.75 135.794L743.514 140.809C738.592 142.43 735.266 147.026 735.266 152.208V264.75C735.266 271.377 729.893 276.75 723.266 276.75H12.75C6.12258 276.75 0.75 271.377 0.75 264.75Z"
+        fill="#D9D9D9"
+      />
+      <path
+        d="M0.75 264.75V12.75C0.75 6.12258 6.12257 0.75 12.75 0.75H723.266C729.893 0.75 735.266 6.12259 735.266 12.75V118.171C735.266 123.053 738.223 127.448 742.746 129.287L758.75 135.794L743.514 140.809C738.592 142.43 735.266 147.026 735.266 152.208V264.75C735.266 271.377 729.893 276.75 723.266 276.75H12.75C6.12258 276.75 0.75 271.377 0.75 264.75Z"
         fill="url(#applicability-speech-bubble-gradient)"
-        stroke="var(--border-strong)"
+      />
+      <path
+        d="M0.75 264.75V12.75C0.75 6.12258 6.12257 0.75 12.75 0.75H723.266C729.893 0.75 735.266 6.12259 735.266 12.75V118.171C735.266 123.053 738.223 127.448 742.746 129.287L758.75 135.794L743.514 140.809C738.592 142.43 735.266 147.026 735.266 152.208V264.75C735.266 271.377 729.893 276.75 723.266 276.75H12.75C6.12258 276.75 0.75 271.377 0.75 264.75Z"
+        stroke="#3D4049"
         strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
       />
       <defs>
         <linearGradient
           id="applicability-speech-bubble-gradient"
-          x1="0"
-          y1="0"
-          x2="782"
-          y2="288"
+          x1="0.75"
+          y1="0.75"
+          x2="179.929"
+          y2="486.68"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="var(--surface)" />
-          <stop offset="1" stopColor="var(--card)" />
+          <stop stopColor="#1A2540" />
+          <stop offset="1" stopColor="#111825" />
         </linearGradient>
       </defs>
     </svg>

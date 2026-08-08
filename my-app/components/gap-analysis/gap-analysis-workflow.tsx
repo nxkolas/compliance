@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { History, Loader2, Play } from "lucide-react";
+import { Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -423,16 +423,25 @@ export function GapAnalysisWorkflow({
       labels,
       locale,
     );
-    if (workflow.prerequisite.status === "missing") {
+    const isUnsupportedCountry =
+      workflow.prerequisite.status === "not_eligible" &&
+      workflow.prerequisite.reason === "unsupported_country";
+    if (workflow.prerequisite.status === "missing" || isUnsupportedCountry) {
       return (
         <GapMissingPrerequisiteState
           destination={workflow.prerequisite.destination}
-          title={blocked.title}
+          title={
+            isUnsupportedCountry
+              ? labels.prerequisiteUnsupportedOops
+              : blocked.title
+          }
+          noticeTitle={isUnsupportedCountry ? blocked.title : undefined}
           description={blocked.description}
           action={blocked.action}
           whySequence={labels.prerequisiteWhySequence}
           infoTitle={labels.prerequisiteInfoTitle}
           infoDescription={labels.prerequisiteInfoDescription}
+          variant={isUnsupportedCountry ? "unsupported-country" : "missing"}
         />
       );
     }
@@ -480,53 +489,21 @@ export function GapAnalysisWorkflow({
     );
   }
 
+  let generatedViewContent: ReactNode = null;
   if (workflow.lifecycle.showGeneratedViews) {
-    const navigateView = (view: GapPostGenerationView) => {
-      setActiveView(view);
-      const url = new URL(window.location.href);
-      url.searchParams.delete("step");
-      url.searchParams.set("view", view);
-      window.history.pushState({}, "", url);
-    };
-    return (
-      <div className="grid gap-6">
-        {error ? <Notice tone="error">{error}</Notice> : null}
-        <nav
-          aria-label={labels.generatedViews}
-          className="flex flex-wrap gap-2 border-b pb-3"
-          role="tablist"
+    generatedViewContent = (
+      <div>
+        <Card
+          role="tabpanel"
+          className={
+            activeView === "results"
+              ? "max-w-[1202px] border-0 bg-transparent py-0 shadow-none"
+              : undefined
+          }
         >
-          <Button
-            variant={activeView === "results" ? "default" : "outline"}
-            onClick={() => navigateView("results")}
-            role="tab"
-            aria-selected={activeView === "results"}
+          <CardContent
+            className={activeView === "results" ? "px-0" : "pt-6"}
           >
-            {labels.resultsView}
-          </Button>
-          <Button
-            variant={activeView === "inputs" ? "default" : "outline"}
-            onClick={() => navigateView("inputs")}
-            role="tab"
-            aria-selected={activeView === "inputs"}
-          >
-            {labels.inputsUsed}
-          </Button>
-          <Button
-            className="ml-auto"
-            size="icon-sm"
-            variant={activeView === "history" ? "default" : "outline"}
-            onClick={() => navigateView("history")}
-            role="tab"
-            aria-selected={activeView === "history"}
-            aria-label={labels.history}
-            title={labels.history}
-          >
-            <History className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </nav>
-        <Card role="tabpanel">
-          <CardContent className="pt-6">
             {activeView === "history" ? (
               <GapHistory
                 history={loadedHistory ?? []}
@@ -555,75 +532,77 @@ export function GapAnalysisWorkflow({
   }
 
   return (
-    <div className="grid gap-6">
+    <div data-gap-workflow-shell className="grid gap-6">
       {error ? <Notice tone="error">{error}</Notice> : null}
-      {workflow.lifecycleMode !== "generating" ? (
-        <GapAnalysisStepper
-          activeStep={activeStep}
-          availableSteps={navigation.allowedSteps}
-          labels={labels}
-          onNavigate={navigate}
-          variant="questionnaire"
-        />
-      ) : null}
-      {renderedStep === "questions" ? (
-        <GapQuestionnaireStep
-          workflow={workflow}
-          labels={labels}
-          answers={answers}
-          savedAnswers={savedAnswers}
-          busy={busy === "questionnaire"}
-          saveState={answerSaveState}
-          onAnswer={saveQuestionnaireAnswer}
-          onContinue={() => void saveQuestionnaire()}
-        />
-      ) : renderedStep === "review" ? (
-        <GapReviewStep
-          workflow={workflow}
-          labels={labels}
-          answers={answers}
-          selected={selectedDocuments}
-          busy={busy}
-          generating={Boolean(pollingJobId)}
-          generationJob={generationJob}
-          editable={workflow.lifecycle.inputsEditable}
-          locale={locale}
-          onNavigate={navigate}
-          onGenerate={() => void enqueueGeneration("generate")}
-          onRetry={() => void enqueueGeneration("retry")}
-          onCancel={() => void cancelGeneration()}
-        />
-      ) : (
-        <Card>
-          <CardContent className="pt-0">
-            {renderedStep === "documents" ? (
-            <GapDocumentStep
-              organizationId={organizationId}
-              workflow={workflow}
-              labels={labels}
-              selected={selectedDocuments}
-              busy={busy === "documents"}
-              onToggle={(versionId, checked) =>
-                setSelectedDocuments((current) =>
-                  checked
-                    ? [...new Set([...current, versionId])]
-                    : current.filter((id) => id !== versionId),
-                )
-              }
-              onContinue={() => void saveDocuments()}
-            />
-          ) : (
-            <GapResultsStep
-              organizationId={organizationId}
-              workflow={workflow}
-              labels={labels}
-              locale={locale}
-              onError={setError}
-            />
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <GapAnalysisStepper
+        activeStep={
+          workflow.lifecycle.showGeneratedViews
+            ? navigation.defaultStep
+            : renderedStep
+        }
+        availableSteps={navigation.allowedSteps}
+        labels={labels}
+        navigationDisabled={workflow.lifecycle.showGeneratedViews}
+        onNavigate={navigate}
+        variant="questionnaire"
+      />
+      {generatedViewContent ??
+        (renderedStep === "questions" ? (
+          <GapQuestionnaireStep
+            workflow={workflow}
+            labels={labels}
+            answers={answers}
+            savedAnswers={savedAnswers}
+            busy={busy === "questionnaire"}
+            saveState={answerSaveState}
+            onAnswer={saveQuestionnaireAnswer}
+            onContinue={() => void saveQuestionnaire()}
+          />
+        ) : renderedStep === "review" ? (
+          <GapReviewStep
+            workflow={workflow}
+            labels={labels}
+            answers={answers}
+            selected={selectedDocuments}
+            busy={busy}
+            generating={Boolean(pollingJobId)}
+            generationJob={generationJob}
+            editable={workflow.lifecycle.inputsEditable}
+            locale={locale}
+            onNavigate={navigate}
+            onGenerate={() => void enqueueGeneration("generate")}
+            onRetry={() => void enqueueGeneration("retry")}
+            onCancel={() => void cancelGeneration()}
+          />
+        ) : renderedStep === "documents" ? (
+          <GapDocumentStep
+            organizationId={organizationId}
+            workflow={workflow}
+            labels={labels}
+            selected={selectedDocuments}
+            busy={busy === "documents"}
+            onToggle={(versionId, checked) =>
+              setSelectedDocuments((current) =>
+                checked
+                  ? [...new Set([...current, versionId])]
+                  : current.filter((id) => id !== versionId),
+              )
+            }
+            onContinue={() => void saveDocuments()}
+          />
+        ) : (
+          <Card className="max-w-[1202px] border-0 bg-transparent py-0 shadow-none">
+            <CardContent className="px-0">
+              <GapResultsStep
+                organizationId={organizationId}
+                workflow={workflow}
+                labels={labels}
+                locale={locale}
+                onError={setError}
+              />
+            </CardContent>
+          </Card>
+        ))}
     </div>
   );
 }

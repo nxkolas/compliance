@@ -26,7 +26,7 @@ export default async function OrganizationsPage({
           <h1 className="text-4xl font-bold leading-9 tracking-normal text-foreground">
             {dictionary.organizations.managementTitle}
           </h1>
-          <p className="max-w-[893px] text-lg font-bold leading-7 text-info-foreground">
+          <p className="max-w-[893px] text-lg font-bold leading-7 text-[#002BFF] dark:text-info-foreground">
             {dictionary.organizations.managementDescription}
           </p>
         </div>

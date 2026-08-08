@@ -141,7 +141,7 @@ export function LoginForm({
         <h1 className="text-4xl font-medium tracking-tight text-foreground">
           {labels.welcomeBack}
         </h1>
-        <p className="text-base font-normal text-foreground/80">
+        <p className="text-base font-normal text-[#002BFF] dark:text-foreground/80">
           {labels.signInDescription}
         </p>
       </div>

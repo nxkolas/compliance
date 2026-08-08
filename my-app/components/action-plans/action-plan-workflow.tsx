@@ -4,14 +4,30 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CircleHelp } from "lucide-react";
+import {
+  CircleCheck,
+  CircleHelp,
+  CircleX,
+  ClipboardList,
+  Loader2,
+  Pencil,
+  Save,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import type { getCurrentActionPlan } from "@/src/server/action-plans/service";
 import { actionPlansClient } from "@/src/client/action-plans";
+import { GapCategoryIcon } from "@/components/gap-analysis/gap-category-icon";
 
 type CurrentPlan = Awaited<ReturnType<typeof getCurrentActionPlan>>;
 type Labels = Dictionary["modules"]["actionPlan"]["workflow"];
@@ -25,6 +41,9 @@ export function ActionPlanWorkflow({ organizationId, current, canContribute, lab
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(
+    current?.categories.flatMap((category) => category.actions)[0]?.id ?? null,
+  );
   if (!current) {
     return (
       <div
@@ -165,92 +184,257 @@ export function ActionPlanWorkflow({ organizationId, current, canContribute, lab
       setBusy(null);
     }
   }
+
+  const actions = current.categories.flatMap((category) =>
+    category.actions.map((item) => ({ category, item })),
+  );
+  const statusCounts = {
+    all: actions.length,
+    open: 0,
+    in_progress: 0,
+    done: 0,
+    cancelled: 0,
+  };
+  for (const { item } of actions) statusCounts[item.status] += 1;
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <span className="inline-flex rounded-full border px-3 py-1 text-xs">
-          {labels.resultLanguage}: {labels.resultLanguages[current.plan.locale === "de" ? "de" : "en"]}
-        </span>
-      </div>
+    <div data-action-plan-results className="w-full max-w-[1202px]">
       {error ? <Alert variant="destructive"><AlertDescription className="text-current">{error}</AlertDescription></Alert> : null}
       {current.sourceStaleness.stale ? <Alert variant="warning"><AlertDescription className="text-current">{labels.staleSources}</AlertDescription></Alert> : null}
-      <div className="grid gap-4">
+
+      <div
+        data-action-plan-status-summary
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5"
+      >
+        <StatusCard
+          active
+          count={statusCounts.all}
+          label={labels.allMeasures}
+          status="all"
+        />
+        {(["open", "in_progress", "done", "cancelled"] as const).map(
+          (status) => (
+            <StatusCard
+              key={status}
+              count={statusCounts[status]}
+              label={labels.statuses[status]}
+              status={status}
+            />
+          ),
+        )}
+      </div>
+
+      <div className="mt-8 grid gap-4">
         {!current.categories.length ? (
           <Card><CardContent className="p-6 text-sm text-muted-foreground">{labels.empty}</CardContent></Card>
-        ) : current.categories.map((category) => (
-          <section key={category.requirementVersionId} className="grid gap-3">
-            <h2 className="text-lg font-semibold">{category.title}</h2>
-            {category.actions.map((item) => (
-              <ActionItem
-                key={item.id}
-                item={item}
-                labels={labels}
-                canContribute={canContribute}
-                busy={busy === item.id}
-                save={(status) => update(item.id, status)}
-              />
-            ))}
-          </section>
+        ) : actions.map(({ category, item }) => (
+          <ActionItem
+            key={item.id}
+            item={item}
+            categoryTitle={category.title}
+            categoryIcon={category.icon}
+            expanded={expandedItemId === item.id}
+            labels={labels}
+            canContribute={canContribute}
+            busy={busy === item.id}
+            onExpand={() => setExpandedItemId(item.id)}
+            save={(status) => update(item.id, status)}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function ActionItem({ item, labels, canContribute, busy, save }: {
+function ActionItem({
+  item,
+  categoryTitle,
+  categoryIcon,
+  expanded,
+  labels,
+  canContribute,
+  busy,
+  onExpand,
+  save,
+}: {
   item: NonNullable<CurrentPlan>["categories"][number]["actions"][number];
+  categoryTitle: string;
+  categoryIcon: string;
+  expanded: boolean;
   labels: Labels;
   canContribute: boolean;
   busy: boolean;
+  onExpand: () => void;
   save: (status: "open" | "in_progress" | "done" | "cancelled") => Promise<boolean>;
 }) {
   const [status, setStatus] = useState(item.status);
+  const changed = status !== item.status;
+
+  async function saveStatus() {
+    const saved = await save(status);
+    if (!saved) setStatus(item.status);
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <CardTitle>{item.title}</CardTitle>
-          <span className="rounded-full border px-3 py-1 text-xs">
-            {labels.priorities[item.priority]}
+    <Card
+      data-action-plan-item
+      data-action-plan-item-expanded={expanded || undefined}
+      className={`w-full gap-0 overflow-hidden rounded-xl border-0 bg-[#1B1E27] py-0 text-white shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-[#3D4049] ${
+        expanded ? "min-h-[546px]" : "min-h-32"
+      }`}
+    >
+      <button
+        type="button"
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-5 px-6 py-8 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#002BFF] sm:px-10"
+        onClick={onExpand}
+      >
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[#3D4049] bg-[#252832]">
+          <GapCategoryIcon name={categoryIcon} className="size-5 text-white" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-2xl leading-8 font-bold break-words text-white">
+            {item.title}
           </span>
+          <span className="mt-1 block text-base leading-7 break-words text-white">
+            {categoryTitle}
+          </span>
+        </span>
+      </button>
+
+      {expanded ? (
+        <div className="flex flex-1 flex-col">
+          <div className="flex-1 px-6 pb-8 sm:px-10">
+            <section aria-labelledby={`${item.id}-result`}>
+              <h3
+                id={`${item.id}-result`}
+                className="text-xl leading-7 font-bold text-white"
+              >
+                {labels.whatToDo}
+              </h3>
+              <p className="mt-3 max-w-[972px] whitespace-pre-line text-base leading-7 text-white">
+                {item.result}
+              </p>
+            </section>
+
+            {item.suggestedEvidence.length ? (
+              <GuidanceList
+                id={`${item.id}-evidence`}
+                title={labels.evidenceToCreate}
+                items={item.suggestedEvidence}
+              />
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-5 border-t border-[#3D4049] px-6 py-6 sm:px-10 lg:flex-row lg:items-end lg:justify-between">
+            <div className="grid w-full max-w-72 gap-3">
+              <span
+                id={`${item.id}-status-label`}
+                className="text-xl leading-7 font-bold text-white"
+              >
+                {labels.status}
+              </span>
+              <Select
+                value={status}
+                disabled={!canContribute || busy}
+                onValueChange={(value) => setStatus(value as typeof status)}
+              >
+                <SelectTrigger
+                  aria-labelledby={`${item.id}-status-label`}
+                  className="h-12 w-full rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base text-white shadow-none focus:ring-[#002BFF]"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="w-72 rounded-2xl border-surface bg-surface p-0 shadow-popover">
+                  {(["open", "in_progress", "done", "cancelled"] as const).map(
+                    (value) => (
+                      <SelectItem
+                        key={value}
+                        value={value}
+                        className="h-12 rounded-lg px-5 text-base"
+                      >
+                        {labels.statuses[value]}
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              type="button"
+              className="h-12 w-full rounded-lg bg-[#002BFF] px-5 text-base font-medium text-white hover:bg-[#123BFF] focus-visible:ring-[#002BFF] lg:w-72"
+              disabled={!canContribute || busy || !changed}
+              onClick={() => void saveStatus()}
+            >
+              {busy ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : (
+                <Save aria-hidden="true" className="size-4" strokeWidth={1.33} />
+              )}
+              {busy ? labels.saving : labels.save}
+            </Button>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="grid gap-5">
-        <section aria-labelledby={`${item.id}-result`}>
-          <h3 id={`${item.id}-result`} className="text-sm font-semibold">{labels.result}</h3>
-          <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{item.result}</p>
-        </section>
-        <GuidanceList id={`${item.id}-evidence`} title={labels.recommendedEvidence} items={item.suggestedEvidence} />
-        <label className="grid max-w-xs gap-1 text-sm">
-          {labels.status}
-          <select
-            className="h-10 rounded-md border bg-background px-3"
-            value={status}
-            disabled={!canContribute || busy}
-            onChange={(event) => {
-              const previous = status;
-              const next = event.target.value as typeof status;
-              setStatus(next);
-              void save(next).then((saved) => {
-                if (!saved) setStatus(previous);
-              });
-            }}
-          >
-            {(["open", "in_progress", "done", "cancelled"] as const).map((value) => <option key={value} value={value}>{labels.statuses[value]}</option>)}
-          </select>
-        </label>
-      </CardContent>
+      ) : null}
     </Card>
   );
 }
 
 function GuidanceList({ id, title, items }: { id: string; title: string; items: string[] }) {
   return (
-    <section aria-labelledby={id}>
-      <h3 id={id} className="text-sm font-semibold">{title}</h3>
-      <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
+    <section className="mt-8" aria-labelledby={id}>
+      <h3 id={id} className="text-xl leading-7 font-bold text-white">{title}</h3>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-base leading-7 text-white">
         {items.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}
       </ul>
     </section>
   );
+}
+
+type ActionStatus = "all" | "open" | "in_progress" | "done" | "cancelled";
+
+function StatusCard({
+  active = false,
+  count,
+  label,
+  status,
+}: {
+  active?: boolean;
+  count: number;
+  label: string;
+  status: ActionStatus;
+}) {
+  return (
+    <div
+      data-action-plan-status-card={status}
+      className={`min-h-28 rounded-xl p-4 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] ${
+        active
+          ? "bg-slate-800 outline-[#002BFF]"
+          : "bg-[#1B1E27] outline-[#3D4049]"
+      }`}
+    >
+      <span className="block text-4xl leading-10 font-medium text-white">
+        {count}
+      </span>
+      <span className="mt-1 flex items-center gap-2 text-base leading-7 text-white">
+        {status !== "all" ? <ActionStatusIcon status={status} /> : null}
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function ActionStatusIcon({ status }: { status: Exclude<ActionStatus, "all"> }) {
+  const className = "size-5 shrink-0 text-white";
+  if (status === "open") {
+    return <ClipboardList aria-hidden="true" className={className} strokeWidth={1.33} />;
+  }
+  if (status === "in_progress") {
+    return <Pencil aria-hidden="true" className={className} strokeWidth={1.33} />;
+  }
+  if (status === "done") {
+    return <CircleCheck aria-hidden="true" className={className} strokeWidth={1.33} />;
+  }
+  return <CircleX aria-hidden="true" className={className} strokeWidth={1.33} />;
 }

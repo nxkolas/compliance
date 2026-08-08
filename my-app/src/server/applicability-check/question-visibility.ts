@@ -44,6 +44,15 @@ export function isAnswered(
   return Array.isArray(value) ? value.length > 0 : Boolean(value);
 }
 
+export function isFinalVisibleAnswer<T extends VisibilityQuestion>(
+  questions: T[],
+  answersByQuestionId: Record<string, ApplicabilityAnswerValue | undefined>,
+  questionId: string,
+): boolean {
+  if (!isAnswered(answersByQuestionId[questionId])) return false;
+  return getVisibleQuestions(questions, answersByQuestionId).at(-1)?.id === questionId;
+}
+
 export function getQuestionControl(config: unknown): string | undefined {
   if (!isRecord(config) || !isRecord(config.ui)) {
     return undefined;
