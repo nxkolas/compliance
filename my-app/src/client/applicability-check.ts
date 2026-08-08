@@ -14,7 +14,7 @@ export const applicabilityCheckClient = {
   claim(input: { organizationId: string; checkId: string; token?: string }) {
     return request("/api/guest/applicability-check/claim", {
       method: "POST", input: { organizationId: input.organizationId, checkId: input.checkId },
-      outputSchema: z.object({ result: z.object({ organizationId: z.uuid(), result: applicabilityResultSchema }) }),
+      outputSchema: z.object({ result: applicabilityResultSchema }),
       headers: input.token ? { "x-guest-applicability-token": input.token } : undefined,
     });
   },
