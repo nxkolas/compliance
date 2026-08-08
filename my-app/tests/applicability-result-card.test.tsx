@@ -22,8 +22,6 @@ const labels = {
   legalBasis: "Legal basis",
   unresolved: "Unresolved",
   overlays: "Overlays",
-  indirect: "Indirect",
-  indirectNone: "None",
   unsupportedCountryTitle: "This country is not supported yet",
   unsupportedCountryBody:
     "Only {countries} is supported. The saved result cannot start Gap Analysis.",

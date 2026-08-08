@@ -1,4 +1,4 @@
-import { getVisibilityCondition } from "@/src/server/applicability-check/domain";
+import { collectVisibilityQuestionKeys } from "@/src/server/applicability-check/domain";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 
 const REQUIRED_LOCALES = ["de", "en"] as const;
@@ -26,7 +26,7 @@ export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
     }
   }
 
-  if (release.questions.length !== 12) errors.push(`Expected 12 questions, found ${release.questions.length}`);
+  if (release.questions.length !== 8) errors.push(`Expected 8 wizard questions, found ${release.questions.length}`);
   if (release.entityTypes.length !== 70) errors.push(`Expected 70 application entity identities, found ${release.entityTypes.length}`);
 
   for (const item of release.content) {
@@ -89,13 +89,37 @@ export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
     } else {
       errors.push(`Missing tooltip content key for question ${question.stableKey}`);
     }
-    const condition = getVisibilityCondition(question.config);
-    if (condition && !seenQuestionKeys.has(condition.questionStableKey)) errors.push(`Question ${question.stableKey} references a non-prior visibility question ${condition.questionStableKey}`);
+    for (const referencedKey of collectVisibilityQuestionKeys(question.config)) {
+      if (!seenQuestionKeys.has(referencedKey)) {
+        errors.push(`Question ${question.stableKey} references a non-prior visibility question ${referencedKey}`);
+      }
+    }
     seenQuestionKeys.add(question.stableKey);
-    const fact = release.facts.find((candidate) => candidate.key === question.factKey);
+    const mappings = question.factMappings.length > 0
+      ? question.factMappings
+      : [{ factKey: question.factKey }];
+    for (const mapping of mappings) {
+      if (!factKeys.has(mapping.factKey)) {
+        errors.push(`Unknown fact ${mapping.factKey} in mapping for question ${question.stableKey}`);
+        continue;
+      }
+      const fact = release.facts.find((candidate) => candidate.key === mapping.factKey);
+      for (const option of question.options) {
+        if (mapping.byOption) {
+          const mappedValue = mapping.byOption[option.stableValue];
+          if (mappedValue === undefined || mappedValue === null) continue;
+          for (const value of Array.isArray(mappedValue) ? mappedValue : [mappedValue]) {
+            if (!fact?.options.some((candidate) => candidate.stableValue === value)) {
+              errors.push(`Mapped fact value ${mapping.factKey}.${value} for question option ${question.stableKey}.${option.stableValue} has no fact option`);
+            }
+          }
+        } else if (!fact?.options.some((candidate) => candidate.stableValue === option.factOptionValue)) {
+          errors.push(`Question option ${question.stableKey}.${option.stableValue} has no fact option`);
+        }
+      }
+    }
     for (const option of question.options) {
       requireContent(contentByKey, option.labelContentKey, errors);
-      if (!fact?.options.some((candidate) => candidate.stableValue === option.factOptionValue)) errors.push(`Question option ${question.stableKey}.${option.stableValue} has no fact option`);
       if (option.metadata && typeof option.metadata === "object" && "catalogCode" in option.metadata) errors.push(`Question option ${question.stableKey}.${option.stableValue} stores catalog ownership in metadata`);
     }
   }
@@ -185,13 +209,24 @@ export function validateReleaseDefinition(release: Nis2ReleaseDefinition) {
     }
   }
 
-  if (!questionKeys.has("bc.eu_activity")) errors.push("Missing first jurisdiction question");
-  const orderedFactKeys = [...release.questions]
+  const expectedQuestionKeys = [
+    "bc.germany_connection",
+    "bc.special_status",
+    "bc.sector",
+    "bc.activity",
+    "bc.employee_count",
+    "bc.annual_revenue",
+    "bc.balance_sheet_total",
+    "bc.aggregation",
+  ];
+  const orderedQuestionKeys = [...release.questions]
     .sort((left, right) => left.position - right.position)
-    .slice(0, 3)
-    .map((question) => question.factKey);
-  if (orderedFactKeys.join(",") !== "eu_activity,jurisdiction_country,nis2_entity_types") {
-    errors.push("Country selection must precede entity selection");
+    .map((question) => question.stableKey);
+  if (orderedQuestionKeys.join(",") !== expectedQuestionKeys.join(",")) {
+    errors.push("Wizard question set must be ordered exactly: bc.germany_connection, bc.special_status, bc.sector, bc.activity, bc.employee_count, bc.annual_revenue, bc.balance_sheet_total, bc.aggregation");
+  }
+  for (const key of expectedQuestionKeys) {
+    if (!questionKeys.has(key)) errors.push(`Missing wizard question ${key}`);
   }
   for (const key of Object.values(release.outcomeContentKeys)) requireContent(contentByKey, key, errors);
   for (const key of Object.values(release.reasonContentKeys)) requireContent(contentByKey, key, errors);

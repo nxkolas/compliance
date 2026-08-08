@@ -11,5 +11,11 @@ export type {
   Nis2EntityRule,
   Nis2ScopeRuleSetDocument,
 } from "./rule-set-schema";
-export { getVisibilityCondition } from "./question-visibility";
+export {
+  collectVisibilityQuestionKeys,
+  getVisibilityCondition,
+  getVisibleOptions,
+  getVisibleQuestions,
+} from "./question-visibility";
+export type { VisibilityCondition } from "./question-visibility";
 export type { ApplicabilityAnswerValue } from "./question-visibility";

@@ -34,7 +34,11 @@ export type RuntimeReleaseQuestion = {
   required: boolean;
   config: unknown;
   options: RuntimeReleaseOption[];
-  factMappings: Array<{ factKey: string; transform: unknown }>;
+  factMappings: Array<{
+    factKey: string;
+    transform: unknown;
+    byOption?: Record<string, string | string[] | null>;
+  }>;
 };
 
 export type PublishedComplianceRelease = {

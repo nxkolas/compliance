@@ -152,6 +152,8 @@ export const modulesMessages = defineFeatureMessages({
             },
             form: {
               progress: "Fortschritt",
+              step: "Schritt",
+              showDefinition: "Definition anzeigen",
               answered: "beantwortet",
               of: "von",
               selectPlaceholder: "Einrichtungsart suchen oder auswählen",
@@ -849,6 +851,8 @@ export const modulesMessages = defineFeatureMessages({
             },
             form: {
               progress: "Progress",
+              step: "Step",
+              showDefinition: "Show definition",
               answered: "answered",
               of: "of",
               selectPlaceholder: "Search or select entity type",

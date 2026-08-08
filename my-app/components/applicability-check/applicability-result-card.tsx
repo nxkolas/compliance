@@ -52,8 +52,6 @@ type ApplicabilityResultCardProps = {
     legalBasis: string;
     unresolved: string;
     overlays: string;
-    indirect: string;
-    indirectNone: string;
     unsupportedCountryTitle: string;
     unsupportedCountryBody: string;
     outcomes: {
@@ -109,10 +107,6 @@ export function ApplicabilityResultCard({
     locale === "en"
       ? evaluation.unresolvedFactsEn
       : evaluation.unresolvedFacts;
-  const indirectReasons =
-    locale === "en"
-      ? evaluation.indirectExposure.reasonsEn
-      : evaluation.indirectExposure.reasons;
   const unsupportedCountry =
     result.evidence.unresolvedFactCodes.includes(
       "unresolved_unsupported_profile",
@@ -135,7 +129,6 @@ export function ApplicabilityResultCard({
     Boolean(gapAnalysisHref) && isShieldEntity && !unsupportedCountry;
   const details = getDetailSections({
     evaluation,
-    indirectReasons,
     labels,
     locale,
     unresolved,
@@ -949,13 +942,11 @@ function Metadata({ label, value }: { label: string; value: string }) {
 
 function getDetailSections({
   evaluation,
-  indirectReasons,
   labels,
   locale,
   unresolved,
 }: {
   evaluation: ApplicabilityResultDto["result"];
-  indirectReasons: string[];
   labels: ApplicabilityResultCardProps["labels"];
   locale: Locale;
   unresolved: string[];
@@ -1013,20 +1004,6 @@ function getDetailSections({
       icon: FileText,
       id: "legal-bases",
       title: labels.legalBasis,
-    },
-    {
-      content: (
-        <BulletList
-          values={
-            indirectReasons.length > 0
-              ? indirectReasons
-              : [labels.indirectNone]
-          }
-        />
-      ),
-      icon: IndirectExposureIcon,
-      id: "indirect-exposure",
-      title: labels.indirect,
     },
   ];
 
@@ -1092,42 +1069,6 @@ function DetailChevron({ className }: { className?: string }) {
         d="M3.25 5.375L7 9.125L10.75 5.375"
         stroke="currentColor"
         strokeOpacity="0.3"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IndirectExposureIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      width="15"
-      height="15"
-      className={cn(className, "size-[15px]")}
-      viewBox="0 0 15 15"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M7.5 13.75C10.9518 13.75 13.75 10.9518 13.75 7.5C13.75 4.04822 10.9518 1.25 7.5 1.25C4.04822 1.25 1.25 4.04822 1.25 7.5C1.25 10.9518 4.04822 13.75 7.5 13.75Z"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.5 5V7.5"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.5 10H7.50625"
-        stroke="currentColor"
         strokeWidth="1.25"
         strokeLinecap="round"
         strokeLinejoin="round"

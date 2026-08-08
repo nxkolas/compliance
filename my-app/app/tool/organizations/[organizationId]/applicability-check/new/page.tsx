@@ -1,4 +1,4 @@
-import { ApplicabilityQuestionnaireForm } from "@/components/applicability-check/applicability-questionnaire-form";
+import { ApplicabilityWizard } from "@/components/applicability-check/applicability-wizard";
 import { PageHeader } from "@/components/page-header";
 import {
   Alert,
@@ -43,12 +43,11 @@ export default async function NewApplicabilityCheckPage({
       />
 
       {questionnaire ? (
-        <ApplicabilityQuestionnaireForm
+        <ApplicabilityWizard
           submitUrl={`/api/organizations/${organizationId}/applicability-check/submissions`}
           successUrl={`/tool/organizations/${organizationId}/applicability-check/result`}
           questionnaire={questionnaire}
           labels={dictionary.modules.applicabilityCheck.form}
-          presentation="authenticated-stepper"
         />
       ) : (
         <Alert className="p-6 text-muted-foreground shadow-sm">
