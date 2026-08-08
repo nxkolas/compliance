@@ -16,6 +16,7 @@ import { guestMessages } from "@/lib/i18n/messages/guest";
 import { homeMessages } from "@/lib/i18n/messages/home";
 import { reportsMessages } from "@/lib/i18n/messages/reports";
 import { tutorialMessages } from "@/lib/i18n/messages/tutorial";
+import { nis2ReleaseMessages } from "@/lib/i18n/messages/nis2-release";
 
 export { defaultLocale, localeCookieName, locales, type Locale };
 
@@ -32,6 +33,7 @@ const dictionaries = {
     ...homeMessages.de,
     ...reportsMessages.de,
     ...tutorialMessages.de,
+    ...nis2ReleaseMessages.de,
   },
   en: {
     ...coreMessages.en,
@@ -45,6 +47,7 @@ const dictionaries = {
     ...homeMessages.en,
     ...reportsMessages.en,
     ...tutorialMessages.en,
+    ...nis2ReleaseMessages.en,
   },
 } as const;
 

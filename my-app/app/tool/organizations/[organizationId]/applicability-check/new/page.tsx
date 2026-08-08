@@ -1,9 +1,6 @@
 import { ApplicabilityWizard } from "@/components/applicability-check/applicability-wizard";
 import { PageHeader } from "@/components/page-header";
-import {
-  Alert,
-  AlertDescription,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
@@ -39,7 +36,9 @@ export default async function NewApplicabilityCheckPage({
     <section className="flex w-full min-w-0 flex-col gap-8 sm:gap-12">
       <PageHeader
         title={dictionary.modules.applicabilityCheck.title}
-        subtitle={dictionary.modules.applicabilityCheck.questionnaireDescription}
+        subtitle={
+          dictionary.modules.applicabilityCheck.questionnaireDescription
+        }
       />
 
       {questionnaire ? (
@@ -52,7 +51,7 @@ export default async function NewApplicabilityCheckPage({
       ) : (
         <Alert className="p-6 text-muted-foreground shadow-sm">
           <AlertDescription className="text-muted-foreground">
-            {dictionary.modules.applicabilityCheck.questionnaire.notSeeded}
+            {dictionary.modules.applicabilityCheck.questionnaire.unavailable}
           </AlertDescription>
         </Alert>
       )}

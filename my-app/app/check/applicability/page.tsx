@@ -49,7 +49,7 @@ async function GuestApplicabilityCheckPageContent() {
         ) : (
           <Alert className="p-6 text-muted-foreground shadow-sm">
             <AlertDescription className="text-muted-foreground">
-              {dictionary.modules.applicabilityCheck.questionnaire.notSeeded}
+              {dictionary.modules.applicabilityCheck.questionnaire.unavailable}
             </AlertDescription>
           </Alert>
         )}

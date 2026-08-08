@@ -105,8 +105,8 @@ export const modulesMessages = defineFeatureMessages({
               },
             },
             questionnaire: {
-              notSeeded:
-                "Der NIS2-Betroffenheitscheck wurde noch nicht vollständig in die Datenbank geseedet.",
+              unavailable:
+                "Der NIS2-Betroffenheitscheck ist in dieser Bereitstellung derzeit nicht verfügbar.",
             },
             answers: {
               title: "Antworten",
@@ -804,8 +804,8 @@ export const modulesMessages = defineFeatureMessages({
               },
             },
             questionnaire: {
-              notSeeded:
-                "The NIS2 applicability check has not been fully seeded into the database yet.",
+              unavailable:
+                "The NIS2 applicability check is currently unavailable in this deployment.",
             },
             answers: {
               title: "Answers",

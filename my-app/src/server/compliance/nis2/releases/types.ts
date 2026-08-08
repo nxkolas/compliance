@@ -1,12 +1,5 @@
 import type { Nis2EntityRule } from "@/src/server/applicability-check/domain";
-
-export type RequiredLocale = "de" | "en";
-
-export type LocalizedContentSource = {
-  stableKey: string;
-  format: "plain_text" | "markdown";
-  translations: Record<RequiredLocale, string>;
-};
+import type { Locale } from "@/lib/i18n-config";
 
 export type LegalProvisionSource = {
   code: string;
@@ -35,7 +28,8 @@ export type FactOptionSource = {
 
 export type FactDefinitionSource = {
   key: string;
-  dataType: "text" | "number" | "boolean" | "enum" | "multi_enum" | "structured";
+  dataType:
+    "text" | "number" | "boolean" | "enum" | "multi_enum" | "structured";
   labelContentKey: string;
   descriptionContentKey: string;
   options: FactOptionSource[];
@@ -127,7 +121,15 @@ export type NationalEntityTypeSource = {
   code: string;
   statutoryCategoryCode: string | null;
   annex: 1 | 2 | null;
-  classificationRule: "annex_1_standard" | "annex_2_standard" | "always_particularly_important" | "always_important" | "telecom" | "federal_administration" | "domain_registration_obligations" | "requires_land_law";
+  classificationRule:
+    | "annex_1_standard"
+    | "annex_2_standard"
+    | "always_particularly_important"
+    | "always_important"
+    | "telecom"
+    | "federal_administration"
+    | "domain_registration_obligations"
+    | "requires_land_law";
   labelContentKey: string;
   descriptionContentKey: string;
   legalProvisionKeys: string[];
@@ -142,7 +144,7 @@ export type Nis2ReleaseDefinition = {
   versionLabel: string;
   evaluatorKind: "nis2_scope_v2" | "nis2_scope_v3";
   evaluatorVersion: 2 | 3;
-  defaultLocale: RequiredLocale;
+  defaultLocale: Locale;
   effectiveFrom: string;
   requiredCorpusFamilies: string[];
   framework: {
@@ -160,7 +162,6 @@ export type Nis2ReleaseDefinition = {
     code: string;
     titleContentKey: string;
   };
-  content: LocalizedContentSource[];
   legalInstruments: LegalInstrumentSource[];
   sectors: Array<{ code: string; labelContentKey: string }>;
   entityTypes: ReleaseEntityTypeSource[];

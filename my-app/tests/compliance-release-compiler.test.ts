@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { nis2ReleaseDefinition } from "@/src/server/compliance/nis2/releases/2026-v1/release";
 import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
 import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
+import {
+  getNis2ReleaseMessage,
+  getNis2ReleaseMessageKeys,
+} from "@/lib/i18n/messages/nis2-release";
 
 describe("immutable NIS2 release compiler", () => {
   it("publishes the eight guided-wizard questions with complete localized tooltips", () => {
@@ -23,11 +27,12 @@ describe("immutable NIS2 release compiler", () => {
       expect(question.tooltipContentKey).toBe(
         `nis2.question.${question.stableKey}.tooltip`,
       );
-      const tooltip = nis2ReleaseDefinition.content.find(
-        (item) => item.stableKey === question.tooltipContentKey,
-      );
-      expect(tooltip?.translations.de.trim()).toBeTruthy();
-      expect(tooltip?.translations.en.trim()).toBeTruthy();
+      expect(
+        getNis2ReleaseMessage("de", question.tooltipContentKey!)?.trim(),
+      ).toBeTruthy();
+      expect(
+        getNis2ReleaseMessage("en", question.tooltipContentKey!)?.trim(),
+      ).toBeTruthy();
     }
   });
 
@@ -40,15 +45,11 @@ describe("immutable NIS2 release compiler", () => {
     );
   });
 
-  it("changes questionnaire and aggregate identities while the evaluator artifact stays unchanged", () => {
+  it("changes questionnaire identity for a message-key change while the evaluator stays unchanged", () => {
     const original = compileRelease(nis2ReleaseDefinition);
     const changed = structuredClone(nis2ReleaseDefinition);
-    const labelKey = changed.questions[0].options[0].labelContentKey;
-    const label = changed.content.find(
-      (item) => item.stableKey === labelKey,
-    );
-    if (!label) throw new Error("Wizard option label fixture is missing");
-    label.translations.en += " Updated.";
+    changed.questions[0].options[0].labelContentKey =
+      changed.questions[0].options[1].labelContentKey;
 
     const compiled = compileRelease(changed);
     expect(compiled.hashes.questionnaire).not.toBe(
@@ -67,16 +68,13 @@ describe("immutable NIS2 release compiler", () => {
     expect(question?.options).toContainEqual(
       expect.objectContaining({
         stableValue: "not_applicable_no_partner_or_linked_enterprises",
-        factOptionValue:
-          "not_applicable_no_partner_or_linked_enterprises",
+        factOptionValue: "not_applicable_no_partner_or_linked_enterprises",
       }),
     );
     const fact = nis2ReleaseDefinition.facts.find(
       (candidate) => candidate.key === "sme_figures_verified",
     );
-    expect(
-      fact?.options.map((option) => option.stableValue),
-    ).toEqual(
+    expect(fact?.options.map((option) => option.stableValue)).toEqual(
       expect.arrayContaining([
         "verified_de_without_it_exception",
         "verified_de_with_it_exception",
@@ -87,7 +85,8 @@ describe("immutable NIS2 release compiler", () => {
 
   it("compiles a separate German national catalog with explicit EU provenance", () => {
     const { artifact } = compileRelease(nis2ReleaseDefinition);
-    if (artifact.kind !== "nis2_scope_v3") throw new Error("Expected v3 artifact");
+    if (artifact.kind !== "nis2_scope_v3")
+      throw new Error("Expected v3 artifact");
     const germanProfile = artifact.countryProfiles.DE;
 
     expect(artifact.kind).toBe("nis2_scope_v3");
@@ -105,7 +104,9 @@ describe("immutable NIS2 release compiler", () => {
       new Set(
         germanProfile.entityCatalog
           .map((entity) => entity.statutoryCategoryCode)
-          .filter((code): code is string => Boolean(code?.startsWith("de_bsig_annex_"))),
+          .filter((code): code is string =>
+            Boolean(code?.startsWith("de_bsig_annex_")),
+          ),
       ).size,
     ).toBe(67);
     expect(
@@ -121,10 +122,7 @@ describe("immutable NIS2 release compiler", () => {
         (entity) => entity.code === "de_bsig_electricity_supplier",
       )?.legalProvisionKeys,
     ).toEqual(
-      expect.arrayContaining([
-        "de_bsig.annex_1_1_1_1",
-        "de_enwg.section_3",
-      ]),
+      expect.arrayContaining(["de_bsig.annex_1_1_1_1", "de_enwg.section_3"]),
     );
   });
 
@@ -147,9 +145,7 @@ describe("immutable NIS2 release compiler", () => {
       (fact) => fact.key === "nis2_entity_types",
     );
 
-    expect(
-      orderedQuestions.map((question) => question.stableKey),
-    ).toEqual([
+    expect(orderedQuestions.map((question) => question.stableKey)).toEqual([
       "bc.germany_connection",
       "bc.special_status",
       "bc.sector",
@@ -169,10 +165,11 @@ describe("immutable NIS2 release compiler", () => {
     });
   });
 
-  it("rejects incomplete translations", () => {
-    const release = structuredClone(nis2ReleaseDefinition);
-    release.content[0].translations.en = "";
-    expect(() => compileRelease(release)).toThrow(/Missing en translation/);
+  it("provides non-empty translations for every NIS2 release message", () => {
+    for (const key of getNis2ReleaseMessageKeys()) {
+      expect(getNis2ReleaseMessage("de", key)?.trim()).toBeTruthy();
+      expect(getNis2ReleaseMessage("en", key)?.trim()).toBeTruthy();
+    }
   });
 
   it("rejects missing metadata content references", () => {
@@ -184,56 +181,46 @@ describe("immutable NIS2 release compiler", () => {
     );
   });
 
-  it("rejects blank metadata translations in either required locale", () => {
-    for (const [key, locale] of [
-      [nis2ReleaseDefinition.framework.descriptionContentKey, "de"],
-      [nis2ReleaseDefinition.module.nameContentKey, "en"],
-      [nis2ReleaseDefinition.questionnaire.titleContentKey, "de"],
-    ] as const) {
-      const release = structuredClone(nis2ReleaseDefinition);
-      const item = release.content.find((candidate) => candidate.stableKey === key);
-      if (!item) throw new Error(`Metadata fixture ${key} is missing`);
-      item.translations[locale] = " ";
-
-      expect(() => compileRelease(release)).toThrow(
-        new RegExp(`Missing ${locale} translation`),
-      );
-    }
+  it("resolves release metadata from the i18n catalog", () => {
+    expect(
+      getNis2ReleaseMessage(
+        "de",
+        nis2ReleaseDefinition.framework.descriptionContentKey,
+      ),
+    ).toBe("Rahmenwerk zur Prüfung der NIS2-Betroffenheit.");
+    expect(
+      getNis2ReleaseMessage("en", nis2ReleaseDefinition.module.nameContentKey),
+    ).toBe("Applicability check");
   });
 
-  it("changes aggregate identity for metadata wording or reference changes", () => {
+  it("changes aggregate identity for a metadata reference change", () => {
     const original = compileRelease(nis2ReleaseDefinition);
-    const wordingChange = structuredClone(nis2ReleaseDefinition);
-    const moduleName = wordingChange.content.find(
-      (item) => item.stableKey === wordingChange.module.nameContentKey,
-    );
-    if (!moduleName) throw new Error("Module metadata fixture is missing");
-    moduleName.translations.en += " updated";
-
     const referenceChange = structuredClone(nis2ReleaseDefinition);
     referenceChange.module.nameContentKey =
       referenceChange.questionnaire.titleContentKey;
 
-    expect(compileRelease(wordingChange).hashes.aggregate).not.toBe(
-      original.hashes.aggregate,
-    );
     expect(compileRelease(referenceChange).hashes.aggregate).not.toBe(
       original.hashes.aggregate,
     );
   });
 
-  it("rejects generic entity-description placeholders", () => {
-    const release = structuredClone(nis2ReleaseDefinition);
-    const descriptionKey = release.entityTypes[0].descriptionContentKey;
-    const description = release.content.find((item) => item.stableKey === descriptionKey);
-    if (!description) throw new Error("Fixture description missing");
-    description.translations.en = "Legally defined entity type: example";
-    expect(() => compileRelease(release)).toThrow(/Generic entity description/);
+  it("keeps entity descriptions publishable in both locales", () => {
+    for (const entity of nis2ReleaseDefinition.entityTypes) {
+      for (const locale of ["de", "en"] as const) {
+        expect(
+          getNis2ReleaseMessage(locale, entity.descriptionContentKey),
+        ).not.toMatch(
+          /^(Rechtlich definierte Einrichtungsart:|Legally defined entity type:)/i,
+        );
+      }
+    }
   });
 
   it("rejects catalog ownership that disagrees with relational identity", () => {
     const release = structuredClone(nis2ReleaseDefinition);
-    const entityFact = release.facts.find((fact) => fact.key === "nis2_entity_types");
+    const entityFact = release.facts.find(
+      (fact) => fact.key === "nis2_entity_types",
+    );
     const germanOption = entityFact?.options.find(
       (option) => option.stableValue === "de_bsig_electricity_supplier",
     );
@@ -245,9 +232,10 @@ describe("immutable NIS2 release compiler", () => {
 
   it("rejects a German release with an incomplete transition declaration", () => {
     const release = structuredClone(nis2ReleaseDefinition);
-    release.profiles[0].effectiveStates = release.profiles[0].effectiveStates.filter(
-      (state) => state.code !== "de_bsi_kritisv_section_12_repeal_trigger",
-    );
+    release.profiles[0].effectiveStates =
+      release.profiles[0].effectiveStates.filter(
+        (state) => state.code !== "de_bsi_kritisv_section_12_repeal_trigger",
+      );
 
     expect(() => compileRelease(release)).toThrow(/required effective state/i);
   });
@@ -256,7 +244,9 @@ describe("immutable NIS2 release compiler", () => {
     const release = structuredClone(nis2ReleaseDefinition);
     release.profiles[0].effectiveStates[0].effectiveFrom = "2027-01-01";
 
-    expect(() => compileRelease(release)).toThrow(/not effective on release date/i);
+    expect(() => compileRelease(release)).toThrow(
+      /not effective on release date/i,
+    );
   });
 
   it("rejects a question whose mapped fact value has no fact option", () => {
@@ -271,9 +261,7 @@ describe("immutable NIS2 release compiler", () => {
     if (!mapping?.byOption) throw new Error("Activity mapping missing");
     mapping.byOption.energy_supply_networks = ["not_a_german_entity"];
 
-    expect(() => compileRelease(release)).toThrow(
-      /has no fact option/,
-    );
+    expect(() => compileRelease(release)).toThrow(/has no fact option/);
   });
 
   it("emits language-neutral evidence tied to component versions", () => {

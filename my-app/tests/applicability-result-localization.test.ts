@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  getNis2ReleaseMessage,
+  getNis2ReleaseMessageKeys,
+} from "@/lib/i18n/messages/nis2-release";
 import { localizeEvaluation } from "@/src/server/applicability-check/localize-evaluation";
 import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
 import type { StoredRuleEvaluationResult } from "@/src/server/applicability-check/rule-evaluation-schema";
@@ -34,9 +38,7 @@ describe("applicability result localization", () => {
     expect(localized.reasons).toEqual([
       "Keine erfasste Einrichtungsart angegeben.",
     ]);
-    expect(localized.reasonsEn).toEqual([
-      "No covered entity type reported.",
-    ]);
+    expect(localized.reasonsEn).toEqual(["No covered entity type reported."]);
     expect(localized.scopeBases[0]?.legalReference).toBe(
       "§ 28, Anlage 1, Anlage 2",
     );
@@ -86,9 +88,9 @@ function bundle(
   rules: unknown,
 ): PublishedComplianceRelease {
   const contentByStableKey = Object.fromEntries(
-    nis2ReleaseDefinition.content.map((item) => [
-      item.stableKey,
-      item.translations[locale] ?? item.translations.de,
+    getNis2ReleaseMessageKeys().map((key) => [
+      key,
+      getNis2ReleaseMessage(locale, key) ?? key,
     ]),
   );
   const questions = nis2ReleaseDefinition.questions.map((question) => ({
@@ -97,7 +99,7 @@ function bundle(
     position: question.position,
     questionText: contentByStableKey[question.questionContentKey] ?? "",
     helpText: question.helpContentKey
-      ? contentByStableKey[question.helpContentKey] ?? null
+      ? (contentByStableKey[question.helpContentKey] ?? null)
       : null,
     answerType: question.answerType,
     required: question.required,

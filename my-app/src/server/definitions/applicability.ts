@@ -1,4 +1,8 @@
 import type { Locale } from "@/lib/i18n-config";
+import {
+  getNis2ReleaseMessage,
+  getNis2ReleaseMessageKeys,
+} from "@/lib/i18n/messages/nis2-release";
 import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
 import { nis2ReleaseDefinition2026V2 } from "@/src/server/compliance/nis2/releases/2026-v2/release";
 import type {
@@ -25,10 +29,10 @@ export function getCurrentApplicabilityDefinition(
   locale: Locale,
 ): PublishedComplianceRelease {
   const definition = currentApplicabilityDefinition;
-  const content = new Map(
-    definition.content.map((item) => [
-      item.stableKey,
-      item.translations[locale] ?? item.translations[definition.defaultLocale],
+  const content = new Map<string, string>(
+    getNis2ReleaseMessageKeys().map((key) => [
+      key,
+      getNis2ReleaseMessage(locale, key) ?? key,
     ]),
   );
   const factByKey = new Map(definition.facts.map((fact) => [fact.key, fact]));
@@ -49,10 +53,10 @@ export function getCurrentApplicabilityDefinition(
     (typeof definition.legalInstruments)[number]["provisions"][number]
   >(
     definition.legalInstruments.flatMap((instrument) =>
-      instrument.provisions.map((provision) => [
-        `${instrument.code}.${provision.code}`,
-        provision,
-      ] as const),
+      instrument.provisions.map(
+        (provision) =>
+          [`${instrument.code}.${provision.code}`, provision] as const,
+      ),
     ),
   );
   const localized = (stableKey: string | undefined) =>
@@ -60,7 +64,7 @@ export function getCurrentApplicabilityDefinition(
   const legalLabels = (keys: string[]) =>
     keys.map((key) => {
       const provision = provisionByKey.get(key);
-      return provision ? localized(provision.citationContentKey) ?? key : key;
+      return provision ? (localized(provision.citationContentKey) ?? key) : key;
     });
 
   const questionIndexByFactKey: Record<string, number> = {};
@@ -84,7 +88,9 @@ export function getCurrentApplicabilityDefinition(
         ? germanEntityByCode.get(factOption.jurisdictionEntityTypeCode)
         : undefined;
       const entity = germanEntity ?? euEntity;
-      const sector = euEntity ? sectorByCode.get(euEntity.sectorCode) : undefined;
+      const sector = euEntity
+        ? sectorByCode.get(euEntity.sectorCode)
+        : undefined;
       const entityMetadata = entity
         ? {
             annex: entity.annex,
@@ -106,17 +112,17 @@ export function getCurrentApplicabilityDefinition(
       id: question.stableKey,
       stableKey: question.stableKey,
       position: question.position,
-      questionText: localized(question.questionContentKey) ?? question.stableKey,
+      questionText:
+        localized(question.questionContentKey) ?? question.stableKey,
       helpText: localized(question.helpContentKey),
       tooltipText: localized(question.tooltipContentKey),
       answerType: question.answerType,
       required: question.required,
       config: question.config,
       options,
-      factMappings: (
-        question.factMappings.length > 0
-          ? question.factMappings
-          : [{ factKey: question.factKey }]
+      factMappings: (question.factMappings.length > 0
+        ? question.factMappings
+        : [{ factKey: question.factKey }]
       ).map((mapping) => ({
         factKey: mapping.factKey,
         transform: null,

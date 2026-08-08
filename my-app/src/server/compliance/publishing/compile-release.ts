@@ -1,4 +1,8 @@
-import { evaluateRuleSet, parseRuleSetDocument, type Nis2ScopeRuleSetDocument } from "@/src/server/applicability-check/domain";
+import {
+  evaluateRuleSet,
+  parseRuleSetDocument,
+  type Nis2ScopeRuleSetDocument,
+} from "@/src/server/applicability-check/domain";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 import { canonicalJson, contentHash } from "./canonical-json";
 import { validateReleaseDefinition } from "./validate-release";
@@ -18,7 +22,9 @@ export type CompiledComplianceRelease = {
   };
 };
 
-export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplianceRelease {
+export function compileRelease(
+  release: Nis2ReleaseDefinition,
+): CompiledComplianceRelease {
   validateReleaseDefinition(release);
 
   const artifact = parseRuleSetDocument({
@@ -33,7 +39,8 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
     thresholds: {
       mediumEmployeeThreshold: release.thresholds.mediumEmployeeThreshold,
       mediumTurnoverThreshold: release.thresholds.mediumTurnoverThreshold,
-      mediumBalanceSheetThreshold: release.thresholds.mediumBalanceSheetThreshold,
+      mediumBalanceSheetThreshold:
+        release.thresholds.mediumBalanceSheetThreshold,
       largeEmployeeThreshold: release.thresholds.largeEmployeeThreshold,
       largeTurnoverThreshold: release.thresholds.largeTurnoverThreshold,
       largeBalanceSheetThreshold: release.thresholds.largeBalanceSheetThreshold,
@@ -82,51 +89,19 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
       module: release.module,
       questionnaire: release.questionnaire,
     }),
-    content: contentHash(release.content),
+    content: contentHash(collectContentKeys(release)),
     legal: contentHash(release.legalInstruments),
     scopeModel: contentHash({
       sectors: release.sectors,
       entityTypes: release.entityTypes,
-      content: selectContent(
-        release,
-        release.sectors.map((sector) => sector.labelContentKey).concat(
-          release.entityTypes.flatMap((entity) => [
-            entity.labelContentKey,
-            entity.descriptionContentKey,
-          ]),
-        ),
-      ),
     }),
     thresholds: contentHash(release.thresholds),
     questionnaire: contentHash({
       facts: release.facts,
       questions: release.questions,
-      content: selectContent(
-        release,
-        release.facts.flatMap((fact) => [
-          fact.labelContentKey,
-          fact.descriptionContentKey,
-        ]).concat(
-          release.questions.flatMap((question) => [
-            question.questionContentKey,
-            ...(question.helpContentKey ? [question.helpContentKey] : []),
-            ...(question.tooltipContentKey ? [question.tooltipContentKey] : []),
-            ...question.options.map((option) => option.labelContentKey),
-          ]),
-        ),
-      ),
     }),
     profiles: contentHash({
       profiles: release.profiles,
-      content: selectContent(
-        release,
-        release.profiles.flatMap((profile) =>
-          profile.entityCatalog.flatMap((entity) => [
-            entity.labelContentKey,
-            entity.descriptionContentKey,
-          ]),
-        ),
-      ),
     }),
     ruleSet: contentHash(artifact),
     aggregate: "",
@@ -140,20 +115,69 @@ export function compileRelease(release: Nis2ReleaseDefinition): CompiledComplian
     components: hashes,
   });
 
-  const secondArtifact = parseRuleSetDocument(JSON.parse(canonicalJson(artifact)));
-  if (contentHash(secondArtifact) !== hashes.ruleSet) throw new Error("Nondeterministic compliance release compilation");
+  const secondArtifact = parseRuleSetDocument(
+    JSON.parse(canonicalJson(artifact)),
+  );
+  if (contentHash(secondArtifact) !== hashes.ruleSet)
+    throw new Error("Nondeterministic compliance release compilation");
 
   for (const fixture of release.fixtures) {
     const result = evaluateRuleSet(artifact, { facts: fixture.facts });
     if (result.outcome !== fixture.expectedOutcome) {
-      throw new Error(`Golden fixture ${fixture.name} expected ${fixture.expectedOutcome}, received ${result.outcome}`);
+      throw new Error(
+        `Golden fixture ${fixture.name} expected ${fixture.expectedOutcome}, received ${result.outcome}`,
+      );
     }
   }
 
   return { artifact, hashes };
 }
 
-function selectContent(release: Nis2ReleaseDefinition, stableKeys: string[]) {
-  const selectedKeys = new Set(stableKeys);
-  return release.content.filter((item) => selectedKeys.has(item.stableKey));
+function collectContentKeys(release: Nis2ReleaseDefinition) {
+  return [
+    ...new Set([
+      release.framework.nameContentKey,
+      release.framework.descriptionContentKey,
+      release.module.nameContentKey,
+      release.questionnaire.titleContentKey,
+      release.disclaimerContentKey,
+      ...Object.values(release.outcomeContentKeys),
+      ...Object.values(release.reasonContentKeys),
+      ...release.sectors.map((sector) => sector.labelContentKey),
+      ...release.entityTypes.flatMap((entity) => [
+        entity.labelContentKey,
+        entity.descriptionContentKey,
+      ]),
+      ...release.facts.flatMap((fact) => [
+        fact.labelContentKey,
+        fact.descriptionContentKey,
+      ]),
+      ...release.questions.flatMap((question) => [
+        question.questionContentKey,
+        ...(question.helpContentKey ? [question.helpContentKey] : []),
+        ...(question.tooltipContentKey ? [question.tooltipContentKey] : []),
+        ...question.options.flatMap((option) => [
+          option.labelContentKey,
+          ...["helperContentKey", "definitionContentKey"].flatMap(
+            (metadataKey) =>
+              typeof option.metadata[metadataKey] === "string"
+                ? [option.metadata[metadataKey] as string]
+                : [],
+          ),
+        ]),
+      ]),
+      ...release.legalInstruments.flatMap((instrument) => [
+        instrument.titleContentKey,
+        ...instrument.provisions.map(
+          (provision) => provision.citationContentKey,
+        ),
+      ]),
+      ...release.profiles.flatMap((profile) =>
+        profile.entityCatalog.flatMap((entity) => [
+          entity.labelContentKey,
+          entity.descriptionContentKey,
+        ]),
+      ),
+    ]),
+  ].sort();
 }
