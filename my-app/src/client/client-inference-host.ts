@@ -94,6 +94,16 @@ export function startHostWorker(organizationId: string, baseUrl: string) {
       entry.status = status;
       emit();
     },
+    onOrganizationUnavailable: () => {
+      // Development reseeding and membership removal can leave an old
+      // connection in localStorage. It cannot become usable by retrying, and
+      // keeping it would restart the polling loop after every page reload.
+      forgetLocalModelBaseUrl(organizationId);
+      if (entries.get(organizationId) === entry) {
+        entries.delete(organizationId);
+        emit();
+      }
+    },
   }).catch(() => undefined);
   emit();
 }

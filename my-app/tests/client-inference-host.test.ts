@@ -43,6 +43,7 @@ import {
   forgetLocalModelBaseUrl,
   getHostWorkerStatus,
   isHostWorkerRunning,
+  localModelBaseUrlKey,
   rememberLocalModelBaseUrl,
   rememberedLocalModelBaseUrl,
   startHostWorker,
@@ -105,5 +106,21 @@ describe("client inference relay host", () => {
     stopHostWorker(ORGANIZATION_ID);
     expect(isHostWorkerRunning(ORGANIZATION_ID)).toBe(false);
     expect(getHostWorkerStatus(ORGANIZATION_ID)).toEqual({ state: "idle" });
+  });
+
+  it("forgets a relay whose organization is no longer available", () => {
+    rememberLocalModelBaseUrl(ORGANIZATION_ID, DEFAULT_LOCAL_MODEL_BASE_URL);
+    startHostWorker(ORGANIZATION_ID, DEFAULT_LOCAL_MODEL_BASE_URL);
+
+    const input = vi.mocked(runClientInferenceWorker).mock.calls[0]![0];
+    input.onOrganizationUnavailable?.();
+
+    expect(rememberedLocalModelBaseUrl(ORGANIZATION_ID)).toBe(
+      DEFAULT_LOCAL_MODEL_BASE_URL,
+    );
+    expect(
+      window.localStorage.getItem(localModelBaseUrlKey(ORGANIZATION_ID)),
+    ).toBeNull();
+    expect(isHostWorkerRunning(ORGANIZATION_ID)).toBe(false);
   });
 });

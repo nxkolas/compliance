@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { request } from "./api-client";
+import { ApiClientError, request } from "./api-client";
 import {
   runLocalEmbedding,
   runLocalGeneration,
@@ -64,6 +64,8 @@ export async function runClientInferenceWorker(input: {
   target: LocalModelTarget;
   signal: AbortSignal;
   onStatus?: (status: WorkerStatus) => void;
+  /** Removes a relay whose remembered organization is no longer accessible. */
+  onOrganizationUnavailable?: () => void;
   /** Pause between polls when there was nothing to do. */
   idleDelayMs?: number;
 }) {
@@ -80,6 +82,10 @@ export async function runClientInferenceWorker(input: {
     } catch (error) {
       if (input.signal.aborted) return;
       input.onStatus?.({ state: "error", message: describe(error) });
+      if (isOrganizationUnavailable(error)) {
+        input.onOrganizationUnavailable?.();
+        return;
+      }
       await delay(idleDelayMs, input.signal);
       continue;
     }
@@ -93,6 +99,14 @@ export async function runClientInferenceWorker(input: {
     input.onStatus?.({ state: "working", kind: claimed.kind });
     await handleClaim(input, claimed);
   }
+}
+
+function isOrganizationUnavailable(error: unknown) {
+  return (
+    error instanceof ApiClientError &&
+    error.status === 404 &&
+    error.code === "ORGANIZATION_NOT_FOUND"
+  );
 }
 
 async function handleClaim(
