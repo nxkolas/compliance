@@ -11,6 +11,10 @@ describe("authoritative report render snapshots", () => {
     expect(reports.inputHash.notNull).toBe(false);
   });
 
+  it("allows a report to omit the Gap revision", () => {
+    expect(reports.gapRevisionId.notNull).toBe(false);
+  });
+
   it("hashes exact content and mutable Action Plan item status canonically", () => {
     const open = snapshot("open");
     const done = snapshot("done");

@@ -17,6 +17,7 @@ import { authorizeOrganizationRead, withAuthorizedOrganizationCommand } from "@/
 import { enqueueJob, toJobDto } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { assertReportConcurrency } from "./quota";
+import { resolveReportInputRevisions } from "./input-policy";
 
 export const REPORT_STORAGE_BUCKET = "compliance-reports";
 
@@ -45,20 +46,22 @@ export async function createReport(input: { userId: string; organizationId: stri
       where: { RAW: (table, operators) => eq(table.organizationId, input.organizationId) ?? operators.sql`true` },
     }),
   ]);
-  if (!applicability?.currentRevisionId || !gap?.currentRevisionId) {
-    throw new ApiError(409, "Complete applicability and Gap analysis before creating a report", undefined, "REPORT_INPUTS_INCOMPLETE");
-  }
-  const applicabilityRevisionId = applicability.currentRevisionId;
-  const gapRevisionId = gap.currentRevisionId;
-  const documentSources = await db.select({
-    documentVersionId: analysisOutputDocumentSources.documentVersionId,
-    position: analysisOutputDocumentSources.position,
-  }).from(analysisOutputDocumentSources)
-    .where(and(
-      eq(analysisOutputDocumentSources.organizationId, input.organizationId),
-      eq(analysisOutputDocumentSources.outputRevisionId, gapRevisionId),
-    ))
-    .orderBy(asc(analysisOutputDocumentSources.position));
+  const { applicabilityRevisionId, gapRevisionId } = resolveReportInputRevisions({
+    applicability,
+    gap,
+  });
+  const actionPlanId = gapRevisionId ? plan?.id ?? null : null;
+  const documentSources = gapRevisionId
+    ? await db.select({
+        documentVersionId: analysisOutputDocumentSources.documentVersionId,
+        position: analysisOutputDocumentSources.position,
+      }).from(analysisOutputDocumentSources)
+        .where(and(
+          eq(analysisOutputDocumentSources.organizationId, input.organizationId),
+          eq(analysisOutputDocumentSources.outputRevisionId, gapRevisionId),
+        ))
+        .orderBy(asc(analysisOutputDocumentSources.position))
+    : [];
 
   const reportId = randomUUID();
   const jobId = randomUUID();
@@ -73,7 +76,7 @@ export async function createReport(input: { userId: string; organizationId: stri
       organizationId: input.organizationId,
       applicabilityRevisionId,
       gapRevisionId,
-      actionPlanId: plan?.id ?? null,
+      actionPlanId,
       renderingJobId: jobId,
       locale: input.locale,
       createdBy: input.userId,

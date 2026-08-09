@@ -25,8 +25,10 @@ Status: current simplified workflow as of 2 August 2026.
    creates complete category-scoped many-to-many Gap coverage. AI-run creation
    and final publication both require the executing worker's exact live lease;
    plan, items, links, audit, and job success publish atomically.
-6. A report pins one applicability revision, one Gap revision, an optional
-   Action Plan, and selected document versions. The successful attempt captures
+6. A report pins one applicability revision and optionally a current Gap
+   revision, Action Plan, and selected document versions. An applicability-only
+   report identifies its reduced scope and omits Gap and Action Plan sections.
+   The successful attempt captures
    one explicit render snapshot including current Action Plan item statuses,
    hashes and renders that same in-memory object, uploads to the deterministic
    report key, and atomically commits the hash with all PDF metadata. Completed

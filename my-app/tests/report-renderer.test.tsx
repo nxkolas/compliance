@@ -142,6 +142,33 @@ describe("compliance report renderer", () => {
     expect(text).toContain("Es wurde kein Maßnahmenplan erstellt.");
     expect(text).toContain("Für diesen Bericht sind keine Quellen verknüpft.");
   });
+
+  it("renders an applicability-only report without Gap or Action Plan sections", async () => {
+    const base = snapshot({ locale: "en" });
+    const pdf = await renderComplianceReport({
+      locale: "en",
+      snapshot: {
+        ...base,
+        gapRevisionId: null,
+        actionPlanId: null,
+        documentVersionIds: [],
+        content: {
+          ...base.content,
+          gap: null,
+          actions: {
+            statusCounts: { open: 0, in_progress: 0, done: 0, cancelled: 0 },
+            groups: [],
+          },
+          sourceRegister: [],
+        },
+      },
+    });
+    const text = await extractText(pdf);
+
+    expect(text).toContain("This report includes the applicability assessment only.");
+    expect(text).not.toContain("Findings and gaps");
+    expect(text).not.toContain("Action plan");
+  });
 });
 
 function zeroGapCounts() {

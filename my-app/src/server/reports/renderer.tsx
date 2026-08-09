@@ -30,6 +30,10 @@ const METHODOLOGY_STEPS = [
   "actions",
   "report",
 ] as const;
+const APPLICABILITY_ONLY_METHODOLOGY_STEPS = [
+  "applicability",
+  "report",
+] as const;
 
 const GAP_STATUS_ORDER: GapStatus[] = [
   "not_fulfilled",
@@ -55,7 +59,11 @@ export async function renderComplianceReport(input: {
   const gapLabels = modulesMessages[locale].modules.gapAnalysis.workflow;
   const actionLabels = modulesMessages[locale].modules.actionPlan.workflow;
   const { content } = snapshot;
+  const gap = content.gap;
   const organizationName = content.organization.name;
+  const methodologySteps = gap
+    ? METHODOLOGY_STEPS
+    : APPLICABILITY_ONLY_METHODOLOGY_STEPS;
 
   return renderToBuffer(
     <Document title={pdf.title} subject={pdf.subject} language={locale}>
@@ -68,6 +76,7 @@ export async function renderComplianceReport(input: {
           intro={pdf.applicabilityIntro}
         />
         <OutcomeCard locale={locale} pdf={pdf} applicability={content.applicability} compact />
+        {!gap ? <Text style={styles.empty}>{pdf.applicabilityOnlyNotice}</Text> : null}
         <Text style={styles.blockTitle}>{pdf.answers}</Text>
         <View style={styles.answerGrid}>
           {content.applicability.answers.map((answer, index) => (
@@ -79,27 +88,27 @@ export async function renderComplianceReport(input: {
         </View>
       </ContentPage>
 
-      <ContentPage organizationName={organizationName} content={content} pdf={pdf}>
+      {gap ? <ContentPage organizationName={organizationName} content={content} pdf={pdf}>
         <SectionHeading
           eyebrow={pdf.eyebrow}
           title={pdf.findingsSection}
           intro={pdf.findingsIntro}
         />
-        <HeadlineTile value={content.gap.openGapItemCount} label={pdf.openGaps} tone="danger" />
+        <HeadlineTile value={gap.openGapItemCount} label={pdf.openGaps} tone="danger" />
         <View style={styles.countStrip}>
           {GAP_STATUS_ORDER.map((status) => (
             <CountTile
               key={status}
-              value={content.gap.statusCounts[status]}
+              value={gap.statusCounts[status]}
               label={gapLabels.statuses[status]}
               tone={gapStatusTone(status)}
             />
           ))}
         </View>
-        {content.gap.findings.length === 0 ? (
+        {gap.findings.length === 0 ? (
           <Text style={styles.empty}>{pdf.noFindings}</Text>
         ) : (
-          content.gap.findings.map((finding, index) => (
+          gap.findings.map((finding, index) => (
             <FindingCard
               key={`finding-${index}`}
               finding={finding}
@@ -108,9 +117,9 @@ export async function renderComplianceReport(input: {
             />
           ))
         )}
-      </ContentPage>
+      </ContentPage> : null}
 
-      <ContentPage organizationName={organizationName} content={content} pdf={pdf}>
+      {gap ? <ContentPage organizationName={organizationName} content={content} pdf={pdf}>
         <SectionHeading
           eyebrow={pdf.eyebrow}
           title={pdf.actionsSection}
@@ -147,7 +156,7 @@ export async function renderComplianceReport(input: {
             </View>
           ))
         )}
-      </ContentPage>
+      </ContentPage> : null}
 
       <ContentPage organizationName={organizationName} content={content} pdf={pdf}>
         <SectionHeading
@@ -157,7 +166,7 @@ export async function renderComplianceReport(input: {
         />
         <Text style={styles.blockTitle}>{pdf.methodology}</Text>
         <View style={styles.methodRow}>
-          {METHODOLOGY_STEPS.map((key, index) => (
+          {methodologySteps.map((key, index) => (
             <View key={key} style={styles.methodCard}>
               <Text style={styles.methodStep}>{String(index + 1).padStart(2, "0")}</Text>
               <Text style={styles.methodTitle}>{pdf.methodologySteps[key].title}</Text>
@@ -266,7 +275,7 @@ function FindingCard({
   pdf,
   gapLabels,
 }: {
-  finding: ReportRenderSnapshot["content"]["gap"]["findings"][number];
+  finding: NonNullable<ReportRenderSnapshot["content"]["gap"]>["findings"][number];
   pdf: PdfLabels;
   gapLabels: GapLabels;
 }) {

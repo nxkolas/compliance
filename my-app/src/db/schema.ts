@@ -1796,7 +1796,7 @@ export const reports = pgTable.withRLS(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     applicabilityRevisionId: uuid("applicability_revision_id").notNull(),
-    gapRevisionId: uuid("gap_revision_id").notNull(),
+    gapRevisionId: uuid("gap_revision_id"),
     actionPlanId: uuid("action_plan_id"),
     renderingJobId: uuid("rendering_job_id").notNull().references(
       () => backgroundJobs.id,

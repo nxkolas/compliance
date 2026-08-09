@@ -172,12 +172,14 @@ async function loadReportContent(
           ) ?? operators.sql`true`,
       },
     }),
-    db.select().from(gapFindings)
-      .where(and(
-        eq(gapFindings.organizationId, report.organizationId),
-        eq(gapFindings.outputRevisionId, report.gapRevisionId),
-      ))
-      .orderBy(asc(gapFindings.position)),
+    report.gapRevisionId
+      ? db.select().from(gapFindings)
+          .where(and(
+            eq(gapFindings.organizationId, report.organizationId),
+            eq(gapFindings.outputRevisionId, report.gapRevisionId),
+          ))
+          .orderBy(asc(gapFindings.position))
+      : Promise.resolve([]),
     report.actionPlanId
       ? db.select().from(actionPlanItems)
           .where(and(
@@ -243,29 +245,31 @@ async function loadReportContent(
         answer: answer.selectedOptionLabels.join(", ") || displayValue(answer.answerValue),
       })),
     },
-    gap: {
-      openGapItemCount: gapRows.filter(
-        (gap) => statusByFindingId.get(gap.findingId) !== "fulfilled",
-      ).length,
-      statusCounts: gapStatusCounts,
-      findings: orderedFindings.map((finding) => ({
-        title: finding.requirementTitle,
-        status: finding.status as GapStatus,
-        hasOrganizationDocument: contextRows.some(
-          (item) =>
-            item.findingId === finding.id &&
-            item.context.channel === "organization_evidence",
-        ),
-        reviewNotice:
-          finding.materialContradiction && !finding.contradictionResolved
-            ? finding.summary
-            : null,
-        gaps: gapRows
-          .filter((gap) => gap.findingId === finding.id)
-          .map((gap) => gap.statement),
-        legalReferences: legalReferences.forRequirement(finding.requirementKey),
-      })),
-    },
+    gap: report.gapRevisionId
+      ? {
+          openGapItemCount: gapRows.filter(
+            (gap) => statusByFindingId.get(gap.findingId) !== "fulfilled",
+          ).length,
+          statusCounts: gapStatusCounts,
+          findings: orderedFindings.map((finding) => ({
+            title: finding.requirementTitle,
+            status: finding.status as GapStatus,
+            hasOrganizationDocument: contextRows.some(
+              (item) =>
+                item.findingId === finding.id &&
+                item.context.channel === "organization_evidence",
+            ),
+            reviewNotice:
+              finding.materialContradiction && !finding.contradictionResolved
+                ? finding.summary
+                : null,
+            gaps: gapRows
+              .filter((gap) => gap.findingId === finding.id)
+              .map((gap) => gap.statement),
+            legalReferences: legalReferences.forRequirement(finding.requirementKey),
+          })),
+        }
+      : null,
     actions: {
       statusCounts: countActionStatuses(actionRows),
       groups: orderedFindings.flatMap((finding) => {

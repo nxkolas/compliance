@@ -140,8 +140,10 @@ Tables: `action_plans`, `action_plan_items`, `action_plan_item_gaps`,
 
 1. A member with the `reports:create` capability creates a report
    (`POST /api/organizations/:id/reports`). The server pins the current
-   applicability revision, current Gap revision, the optional Action Plan,
-   and the selected document versions.
+   applicability revision and, when available, the current Gap revision, the
+   optional Action Plan, and the selected document versions. A report can be
+   created before Gap Analysis; that PDF identifies itself as
+   applicability-only and omits Gap and Action Plan sections.
 2. A `report_render` job builds an exact in-memory render snapshot (including
    current Action Plan item statuses), hashes it, renders the PDF with
    `@react-pdf/renderer`, uploads it to the `compliance-reports` bucket under

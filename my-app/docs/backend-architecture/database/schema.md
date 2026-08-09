@@ -138,7 +138,7 @@ the physical table names are the same in snake_case.
 
 | Table | Purpose |
 | --- | --- |
-| `reports` | Immutable PDF reports pinned to applicability/Gap revisions, optional Action Plan, and render metadata. |
+| `reports` | Immutable PDF reports pinned to an applicability revision, an optional Gap revision and Action Plan, and render metadata. |
 | `reportDocumentSources` | Document versions selected for a report. |
 
 ### Operations

@@ -7,7 +7,7 @@ export const reportSchema = z.object({
   id: z.uuid(),
   organizationId: z.uuid(),
   applicabilityRevisionId: z.uuid(),
-  gapRevisionId: z.uuid(),
+  gapRevisionId: z.uuid().nullable(),
   actionPlanId: z.uuid().nullable(),
   renderingJobId: z.uuid(),
   locale: z.enum(["de", "en"]),

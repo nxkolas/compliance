@@ -34,6 +34,8 @@ export const reportsMessages = defineFeatureMessages({
         applicabilitySection: "Betroffenheitsprüfung",
         applicabilityIntro:
           "Ergebnis der Prüfung und die vollständigen Angaben, auf denen es beruht.",
+        applicabilityOnlyNotice:
+          "Dieser Bericht enthält ausschließlich die Betroffenheitsprüfung. Eine Gap-Analyse und ein Maßnahmenplan sind nicht enthalten.",
         answers: "Angaben zur Prüfung",
         findingsSection: "Feststellungen und Lücken",
         findingsIntro:
@@ -111,6 +113,8 @@ export const reportsMessages = defineFeatureMessages({
         applicabilitySection: "Applicability assessment",
         applicabilityIntro:
           "The result of the assessment and the full set of answers it is based on.",
+        applicabilityOnlyNotice:
+          "This report includes the applicability assessment only. No Gap Analysis or Action Plan is included.",
         answers: "Assessment answers",
         findingsSection: "Findings and gaps",
         findingsIntro:

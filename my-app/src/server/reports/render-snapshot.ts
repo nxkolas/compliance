@@ -28,7 +28,7 @@ export type ReportContentSnapshot = {
       gaps: string[];
       legalReferences: LegalCitation[];
     }>;
-  };
+  } | null;
   actions: {
     statusCounts: Record<ReportActionStatus, number>;
     groups: Array<{
@@ -53,7 +53,7 @@ export type ReportRenderSnapshot = {
   capturedAt: string;
   locale: "de" | "en";
   applicabilityRevisionId: string;
-  gapRevisionId: string;
+  gapRevisionId: string | null;
   actionPlanId: string | null;
   documentVersionIds: string[];
   content: ReportContentSnapshot;
