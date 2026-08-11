@@ -53,7 +53,11 @@ export function ForgotPasswordForm({
           className,
         )}
       >
-        <div className="inline-flex h-16 w-56 items-center justify-start overflow-hidden bg-transparent py-10">
+        <Link
+          href="/"
+          aria-label={labels.logoAlt}
+          className="inline-flex h-16 w-56 items-center justify-start overflow-hidden bg-transparent py-10"
+        >
           <BrandLogo
             alt={labels.logoAlt}
             width={227}
@@ -61,7 +65,7 @@ export function ForgotPasswordForm({
             priority
             className="h-20 w-56 object-contain"
           />
-        </div>
+        </Link>
 
         <div className="inline-flex self-stretch flex-col items-start justify-start gap-6 overflow-hidden bg-transparent pb-4">
           <h1 className="h-5 self-stretch text-4xl font-medium leading-none text-foreground">

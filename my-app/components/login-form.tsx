@@ -127,7 +127,11 @@ export function LoginForm({
       )}
       {...props}
     >
-      <div className="flex h-16 items-center justify-start">
+      <Link
+        href="/"
+        aria-label={labels.logoAlt}
+        className="flex h-16 items-center justify-start"
+      >
         <BrandLogo
           alt={labels.logoAlt}
           width={180}
@@ -135,7 +139,7 @@ export function LoginForm({
           priority
           className="object-contain"
         />
-      </div>
+      </Link>
 
       <div className="flex self-stretch flex-col items-start gap-2 pb-4">
         <h1 className="text-4xl font-medium tracking-tight text-foreground">

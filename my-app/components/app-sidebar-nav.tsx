@@ -109,7 +109,8 @@ export function AppSidebarNav({
         {/* Logo */}
         <SidebarHeader className="w-full shrink-0 bg-transparent p-0">
           <Link
-            href="/tool/organizations"
+            href="/"
+            aria-label={labels.productName}
             className="inline-flex w-full flex-col items-start gap-4"
           >
             <div className="relative h-11 w-full">

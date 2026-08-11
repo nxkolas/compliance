@@ -59,6 +59,7 @@ describe("responsive app sidebar", () => {
     expect(html).toContain(
       "/tool/organizations/example/help",
     );
+    expect(html).toContain('href="/"');
     expect(html).not.toContain("/tool/help");
   });
 });

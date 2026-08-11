@@ -97,7 +97,11 @@ export function SignUpForm({
   return (
     <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-transparent p-4 md:p-10">
       <div className={cn("relative z-10 flex w-full max-w-[476px] flex-col items-start justify-start gap-4 px-4 font-['Space_Grotesk']", className)} {...props}>
-        <div className="h-16 flex items-center justify-start">
+        <Link
+          href="/"
+          aria-label={labels.logoAlt}
+          className="flex h-16 items-center justify-start"
+        >
           <BrandLogo
             alt={labels.logoAlt}
             width={180}
@@ -106,7 +110,7 @@ export function SignUpForm({
             style={{ height: 'auto', width: '180px' }}
             className="object-contain"
           />
-        </div>
+        </Link>
 
         <div className="self-stretch pb-4 flex flex-col justify-start items-start gap-2">
           <h1 className="text-4xl font-medium tracking-tight text-foreground">

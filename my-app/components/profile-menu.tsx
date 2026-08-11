@@ -16,7 +16,7 @@ import {
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { getLanguageOptions } from "@/lib/i18n/language-options";
-import { Inbox, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, Inbox, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 
 type ProfileMenuProps = {
@@ -24,6 +24,7 @@ type ProfileMenuProps = {
   displayName?: string | null;
   locale: Locale;
   variant?: "default" | "sidebar";
+  showPreferences?: boolean;
   labels: {
     common: Dictionary["common"];
     languages: Dictionary["languages"];
@@ -44,6 +45,7 @@ export function ProfileMenu({
   displayName,
   locale,
   labels,
+  showPreferences = true,
   variant = "default",
 }: ProfileMenuProps) {
   if (!email) {
@@ -130,6 +132,7 @@ export function ProfileMenu({
             email={email}
             locale={locale}
             labels={labels}
+            showPreferences={showPreferences}
             variant="sidebar"
           />
         </DropdownMenu>
@@ -138,11 +141,17 @@ export function ProfileMenu({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="icon"
-              className="rounded-full"
+              size="sm"
+              className="h-10 gap-1.5 rounded-lg px-1.5 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground data-[state=open]:[&_svg]:rotate-180"
               aria-label={labels.profile.openMenu}
             >
-              <UserRound className="h-4 w-4" />
+              <span
+                aria-hidden="true"
+                className="flex size-7 items-center justify-center rounded-md bg-primary font-['Space_Grotesk'] text-[9px] font-semibold uppercase leading-none text-primary-foreground"
+              >
+                {initials}
+              </span>
+              <ChevronDown className="size-3.5 text-muted-foreground transition-transform" />
             </Button>
           </DropdownMenuTrigger>
 
@@ -150,6 +159,7 @@ export function ProfileMenu({
             email={email}
             locale={locale}
             labels={labels}
+            showPreferences={showPreferences}
             variant="default"
           />
         </DropdownMenu>
@@ -162,8 +172,9 @@ function ProfileMenuContent({
   email,
   locale,
   labels,
+  showPreferences,
   variant,
-}: Pick<ProfileMenuProps, "email" | "locale" | "labels"> & {
+}: Pick<ProfileMenuProps, "email" | "locale" | "labels" | "showPreferences"> & {
   variant: "default" | "sidebar";
 }) {
   return (
@@ -186,17 +197,21 @@ function ProfileMenuContent({
           </Link>
         </DropdownMenuItem>
 
-        <LanguageSwitcher
-          locale={locale}
-          label={labels.common.language}
-          languageNames={labels.languages}
-          options={getProfileMenuLanguageOptions(
-            locale,
-            labels.languages,
-          )}
-        />
+        {showPreferences ? (
+          <>
+            <LanguageSwitcher
+              locale={locale}
+              label={labels.common.language}
+              languageNames={labels.languages}
+              options={getProfileMenuLanguageOptions(
+                locale,
+                labels.languages,
+              )}
+            />
 
-        <ThemeSwitcher label={labels.profile.darkMode} />
+            <ThemeSwitcher label={labels.profile.darkMode} />
+          </>
+        ) : null}
       </DropdownMenuGroup>
 
       <DropdownMenuSeparator />
@@ -253,12 +268,15 @@ export function ProfileMenuFallback({
   return (
     <Button
       variant="outline"
-      size="icon"
-      className="rounded-full"
+      size="sm"
+      className="h-10 gap-1.5 rounded-lg px-1.5"
       aria-label={label}
       disabled
     >
-      <UserRound className="h-4 w-4" />
+      <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <UserRound className="size-3.5" />
+      </span>
+      <ChevronDown className="size-3.5 text-muted-foreground" />
     </Button>
   );
 }
