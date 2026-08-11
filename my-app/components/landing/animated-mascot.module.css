@@ -1,0 +1,87 @@
+.root {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.root::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgb(255 255 255 / 55%) 47%,
+    rgb(0 115 255 / 38%) 52%,
+    transparent 62%
+  );
+  background-position: 145% 50%;
+  background-size: 250% 100%;
+  opacity: 0;
+  mask: url("/images/landing/landingpage-maskottchen-mit-logo.svg") center / contain no-repeat;
+  -webkit-mask: url("/images/landing/landingpage-maskottchen-mit-logo.svg") center / contain no-repeat;
+}
+
+.illustration {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .root[data-activated="true"] .illustration {
+    animation: mascot-activate 820ms ease-out;
+  }
+
+  .root[data-activated="true"]::before {
+    animation: mascot-scan 820ms ease-out;
+  }
+}
+
+@keyframes mascot-activate {
+  0%,
+  100% {
+    filter: brightness(1) saturate(1) drop-shadow(0 0 0 rgb(0 43 255 / 0%));
+  }
+
+  52% {
+    filter: brightness(1.055) saturate(1.06)
+      drop-shadow(0 10px 14px rgb(0 43 255 / 16%));
+  }
+}
+
+@keyframes mascot-scan {
+  0% {
+    background-position: 145% 50%;
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 0.75;
+  }
+
+  82% {
+    opacity: 0.65;
+  }
+
+  100% {
+    background-position: -45% 50%;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root::before {
+    display: none;
+  }
+}

@@ -1,0 +1,45 @@
+.illustration,
+.documentLeft,
+.documentRight,
+.documentCenter {
+  transition: transform 350ms ease-out;
+}
+
+.centeredIllustration {
+  transform: translateX(-50%);
+}
+
+.card[data-hovered="true"] .scope {
+  transform: translateX(-50%) translateY(-6px) scale(1.025);
+}
+
+.card[data-hovered="true"] .documentLeft {
+  transform: translate(-4px, -2px);
+}
+
+.card[data-hovered="true"] .documentRight {
+  transform: translate(4px, -2px);
+}
+
+.card[data-hovered="true"] .team {
+  transform: translateX(-50%) translateY(-4px) scale(1.025);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustration,
+  .documentLeft,
+  .documentRight,
+  .documentCenter {
+    transition: none;
+  }
+
+  .card[data-hovered="true"] .scope,
+  .card[data-hovered="true"] .team {
+    transform: translateX(-50%);
+  }
+
+  .card[data-hovered="true"] .documentLeft,
+  .card[data-hovered="true"] .documentRight {
+    transform: none;
+  }
+}

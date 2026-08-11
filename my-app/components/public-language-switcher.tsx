@@ -24,7 +24,7 @@ export async function PublicLanguageSwitcher({
   if (!showThemeSwitcher) return languageButtons;
 
   return (
-    <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
+    <div className="fixed right-4 top-14 z-50 flex -translate-y-1/2 items-center gap-2">
       {languageButtons}
       <ThemeToggleButton
         switchToDarkLabel={dictionary.common.switchToDarkMode}
