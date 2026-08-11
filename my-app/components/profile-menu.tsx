@@ -137,7 +137,7 @@ export function ProfileMenu({
           />
         </DropdownMenu>
       ) : (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"

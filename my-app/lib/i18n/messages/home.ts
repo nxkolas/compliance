@@ -16,9 +16,37 @@ export const homeMessages = defineFeatureMessages({
         titleAfter: "an jedem Ort.",
         secondaryCta: "Wie funktionierts?",
       },
+      authenticatedHero: {
+        welcomeTitleBeforeLogo: "Willkommen zurück bei",
+        continuationBefore: "Setzen Sie Ihre",
+        continuationHighlight: "NIS2-Umsetzung",
+        continuationAfter: "fort.",
+        description:
+          "Verwalten Sie Ihre Organisationen, prüfen Sie deren Betroffenheit und setzen Sie die nächsten Schritte gezielt um.",
+        previewTitle: "Ihr Arbeitsbereich",
+        previewDescription: "Alle wichtigen NIS2-Bereiche an einem Ort.",
+        previewItems: [
+          "Organisationen",
+          "Betroffenheitscheck",
+          "Gap-Analyse",
+          "Dokumente",
+          "Maßnahmenplan",
+        ],
+      },
+      newUserHero: {
+        welcomeTitleBeforeLogo: "Willkommen bei",
+        continuationBefore: "Starten Sie mit Ihrer",
+        continuationHighlight: "ersten Organisation",
+        continuationAfter: ".",
+        description:
+          "Legen Sie Ihre Organisation an und prüfen Sie anschließend, ob sie von NIS2 betroffen ist.",
+        primaryCta: "Organisation anlegen",
+        secondaryCta: "Wie funktioniert's?",
+        previewTitle: "Ihr Arbeitsbereich",
+      },
       heroDescription:
         "ComplyX ist die Web-Anwendung, die kleinen und mittelgroßen Unternehmen hilft, ihre NIS2-Betroffenheit zu prüfen, Risiken einzuschätzen und die nächsten Schritte klar zu erkennen.",
-      dashboardCta: "Zum Arbeitsbereich",
+      dashboardCta: "Zum Dashboard",
       selfCheckCta: "Betroffenheit prüfen",
       trust: {
         gdpr: "DSGVO-konform",
@@ -140,9 +168,37 @@ export const homeMessages = defineFeatureMessages({
         titleAfter: "wherever you are.",
         secondaryCta: "How does it work?",
       },
+      authenticatedHero: {
+        welcomeTitleBeforeLogo: "Welcome back to",
+        continuationBefore: "Continue your",
+        continuationHighlight: "NIS2 implementation",
+        continuationAfter: "with confidence.",
+        description:
+          "Manage your organizations, assess their scope, and put the next steps into action with confidence.",
+        previewTitle: "Your workspace",
+        previewDescription: "All key NIS2 areas in one place.",
+        previewItems: [
+          "Organizations",
+          "Scope check",
+          "Gap analysis",
+          "Documents",
+          "Action plan",
+        ],
+      },
+      newUserHero: {
+        welcomeTitleBeforeLogo: "Welcome to",
+        continuationBefore: "Start with your",
+        continuationHighlight: "first organization",
+        continuationAfter: ".",
+        description:
+          "Create your organization, then check whether it is affected by NIS2.",
+        primaryCta: "Create organization",
+        secondaryCta: "How does it work?",
+        previewTitle: "Your workspace",
+      },
       heroDescription:
         "ComplyX is the web application that helps small and medium-sized companies assess their NIS2 scope, understand risks, and clearly identify the next steps.",
-      dashboardCta: "Open workspace",
+      dashboardCta: "Go to dashboard",
       selfCheckCta: "Check your scope",
       trust: {
         gdpr: "GDPR compliant",

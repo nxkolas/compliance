@@ -8,6 +8,7 @@ import { runIdempotentCommand } from "@/src/server/api/idempotency";
 import { databaseIdempotencyRepository } from "@/src/server/idempotency";
 import { ApiError } from "@/src/server/api/errors";
 import { synchronizeAuthenticatedActor } from "@/src/server/users";
+import { revalidatePath } from "next/cache";
 
 export const GET = apiRoute(async ({ request }: { request: Request }) => {
   await connection();
@@ -31,5 +32,6 @@ export const POST = apiRoute(async ({ request }) => {
       return organization;
     },
   });
+  revalidatePath("/");
   return { status: 201, data: { organization: result.value, reused: result.reused } };
 });

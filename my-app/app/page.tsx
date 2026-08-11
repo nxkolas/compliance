@@ -10,13 +10,17 @@ import { TeamPuzzleSection } from "@/components/landing/team-puzzle-section";
 import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 import { Button } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n";
+import { createClient } from "@/lib/supabase/server";
 import { hasEnvVars } from "@/lib/utils";
 import financialGraphAnimation from "@/public/animations/financial-graph-loader.json";
+import { listOrganizationsForUserPage } from "@/src/server/organizations/service";
 import {
   ArrowRight,
+  Building2,
   Database,
   ShieldCheck,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 
@@ -65,6 +69,25 @@ export default function Home() {
 async function HomeContent() {
   const dictionary = await getDictionary();
   const home = dictionary.home;
+  const userState = await getLandingUserState();
+  const isAuthenticated = userState !== "guest";
+  const isNewUser = userState === "new-user";
+  const authenticatedHero = isNewUser
+    ? home.newUserHero
+    : home.authenticatedHero;
+  const heroPrimaryHref = isNewUser
+    ? "/tool/organizations/new"
+    : isAuthenticated
+      ? "/tool/organizations"
+      : "/check/applicability";
+  const heroPrimaryLabel = isNewUser
+    ? home.newUserHero.primaryCta
+    : isAuthenticated
+      ? home.dashboardCta
+      : home.selfCheckCta;
+  const applicabilityHref = isAuthenticated
+    ? "/tool/organizations"
+    : "/check/applicability";
   const questionCards = [
     { ...home.questions.items[0], illustration: "scope" as const },
     { ...home.questions.items[1], illustration: "documents" as const },
@@ -85,7 +108,7 @@ async function HomeContent() {
             />
           </Link>
 
-          <nav className="ml-auto hidden items-center gap-10 font-sans text-base font-medium text-white lg:flex">
+          <nav className="ml-auto hidden items-center gap-8 font-sans text-base font-medium text-white lg:flex">
             <Link
               className="transition-all duration-200 hover:text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.70)]"
               href="#nis2"
@@ -119,59 +142,136 @@ async function HomeContent() {
         <div className="absolute inset-x-0 top-[-112px] -z-10 h-[977px] w-full overflow-hidden">
           <div className="absolute inset-x-0 top-[627px] z-10 h-64 bg-[linear-gradient(180deg,rgba(2,4,14,0)_0%,rgba(2,9,40,0.156)_25%,rgba(1,13,65,0.5)_50%,rgba(1,18,91,0.844)_75%,#001674_100%)] opacity-[0.82]" />
         </div>
-        <div className="mx-auto flex min-h-[760px] max-w-[1728px] flex-col justify-center px-6 py-20 sm:px-10 lg:px-12 xl:px-[72px]">
+        <div
+          className={
+            isAuthenticated
+              ? "relative mx-auto grid min-h-[760px] max-w-[1728px] content-center gap-x-16 gap-y-12 px-6 py-20 sm:px-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-12 xl:px-[72px]"
+              : "relative mx-auto flex min-h-[760px] max-w-[1728px] flex-col justify-center px-6 py-20 sm:px-10 lg:px-12 xl:px-[72px]"
+          }
+        >
           <div className="max-w-[720px]">
-            <BrandLogo
-              alt={home.brand}
-              width={296}
-              height={96}
-              priority
-              className="mb-6 h-auto w-52 sm:w-64 lg:w-[296px]"
-            />
-            <h1 className="min-h-32 w-full max-w-[658px] text-4xl font-normal leading-[61px] text-white">
-              {home.hero.titleBefore}{" "}
-              <span className="font-normal text-[#002BFF]">
-                {home.hero.titleHighlight}
-              </span>{" "}
-              {home.hero.titleAfter}
-            </h1>
-            <p className="mt-6 max-w-[690px] text-base leading-8 text-muted-foreground sm:text-lg sm:leading-9">
-              {home.heroDescription}
+            {isAuthenticated ? (
+              <>
+                <h1 className="relative top-2 w-full max-w-[700px] text-4xl font-normal leading-[1.2] text-white sm:text-5xl lg:text-[52px]">
+                  <span className="flex flex-nowrap items-center gap-x-3">
+                    <span className="relative top-2 shrink-0 whitespace-nowrap">
+                      {authenticatedHero.welcomeTitleBeforeLogo}
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-0.5">
+                      <BrandLogo
+                        alt={home.brand}
+                        width={203}
+                        height={66}
+                        priority
+                        className="h-auto w-40 sm:w-48 lg:w-[203px]"
+                      />
+                      <span className="relative top-2 shrink-0 leading-none">
+                        .
+                      </span>
+                    </span>
+                  </span>
+                </h1>
+                <p className="mt-7 max-w-[650px] text-2xl font-normal leading-[1.35] text-white sm:text-3xl lg:text-[34px]">
+                  {authenticatedHero.continuationBefore}{" "}
+                  <span className="text-[#002BFF]">
+                    {authenticatedHero.continuationHighlight}
+                  </span>
+                  {authenticatedHero.continuationAfter === "." ? null : " "}
+                  {authenticatedHero.continuationAfter}
+                </p>
+              </>
+            ) : (
+              <>
+                <BrandLogo
+                  alt={home.brand}
+                  width={296}
+                  height={96}
+                  priority
+                  className="mb-6 h-auto w-52 sm:w-64 lg:w-[296px]"
+                />
+                <h1 className="min-h-32 w-full max-w-[658px] text-4xl font-normal leading-[61px] text-white">
+                  {home.hero.titleBefore}{" "}
+                  <span className="font-normal text-[#002BFF]">
+                    {home.hero.titleHighlight}
+                  </span>{" "}
+                  {home.hero.titleAfter}
+                </h1>
+              </>
+            )}
+            <p className={isAuthenticated ? "mt-5 max-w-[620px] text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8" : "mt-6 max-w-[690px] text-base leading-8 text-muted-foreground sm:text-lg sm:leading-9"}>
+              {isAuthenticated
+                ? authenticatedHero.description
+                : home.heroDescription}
             </p>
-            <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+            <div className={isAuthenticated ? "mt-8 flex flex-col gap-4 sm:flex-row" : "mt-9 flex flex-col gap-4 sm:flex-row"}>
               <Button
                 asChild
                 size="lg"
                 className="h-12 min-w-64 rounded-lg bg-[#002BFF] px-7 text-base transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#002BFF] hover:shadow-[0px_7px_16px_0px_rgba(0,43,255,0.55)] active:translate-y-0"
               >
-                <Link href="/check/applicability">
-                  <ApplicabilityCheckIcon />
-                  {home.selfCheckCta}
+                <Link href={heroPrimaryHref}>
+                  {isNewUser ? (
+                    <Building2 className="size-5 shrink-0" aria-hidden="true" />
+                  ) : isAuthenticated ? (
+                    <LandingDashboardIcon />
+                  ) : (
+                    <ApplicabilityCheckIcon />
+                  )}
+                  {heroPrimaryLabel}
                 </Link>
               </Button>
               <Link
                 href="#product-video"
                 className="inline-flex h-12 w-72 items-center justify-center overflow-hidden rounded-lg bg-transparent font-sans text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:text-white hover:shadow-[0px_7px_14px_0px_rgba(255,255,255,0.32)] hover:outline-white active:translate-y-0"
               >
-                <span>{home.hero.secondaryCta}</span>
+                <span>
+                  {isNewUser
+                    ? home.newUserHero.secondaryCta
+                    : home.hero.secondaryCta}
+                </span>
               </Link>
             </div>
+
+            {isAuthenticated ? (
+              <div className="mt-16 flex flex-wrap gap-3 sm:gap-6">
+                <TrustPill
+                  icon={<ShieldCheck className="size-4 text-white" />}
+                  label={home.trust.gdpr}
+                />
+                <TrustPill
+                  icon={<Database className="size-4 text-white" />}
+                  label={home.trust.frankfurt}
+                />
+                <TrustPill
+                  icon={<NoItDepartmentIcon />}
+                  label={home.trust.noItDepartment}
+                />
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-16 flex flex-wrap gap-3 sm:gap-6">
-            <TrustPill
-              icon={<ShieldCheck className="size-4 text-white" />}
-              label={home.trust.gdpr}
-            />
-            <TrustPill
-              icon={<Database className="size-4 text-white" />}
-              label={home.trust.frankfurt}
-            />
-            <TrustPill
-              icon={<NoItDepartmentIcon />}
-              label={home.trust.noItDepartment}
-            />
-          </div>
+          {!isAuthenticated ? (
+            <div className="mt-16 flex flex-wrap gap-3 sm:gap-6">
+              <TrustPill
+                icon={<ShieldCheck className="size-4 text-white" />}
+                label={home.trust.gdpr}
+              />
+              <TrustPill
+                icon={<Database className="size-4 text-white" />}
+                label={home.trust.frankfurt}
+              />
+              <TrustPill
+                icon={<NoItDepartmentIcon />}
+                label={home.trust.noItDepartment}
+              />
+            </div>
+          ) : null}
+
+          <HeroLaptopPreview
+            title={isAuthenticated
+              ? authenticatedHero.previewTitle
+              : home.statusTitle}
+          />
         </div>
       </section>
 
@@ -216,7 +316,7 @@ async function HomeContent() {
               asChild
               className="group relative h-12 min-w-72 overflow-hidden rounded-lg border-0 bg-[#002BFF] px-8 font-sans text-base font-medium text-white shadow-[0_6px_18px_rgba(0,43,255,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#002BFF] hover:text-white hover:shadow-[0_9px_24px_rgba(0,43,255,0.46)] focus-visible:ring-2 focus-visible:ring-[#6681FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#02040E] active:translate-y-0"
             >
-              <Link href="/check/applicability" className="flex items-center justify-center gap-3">
+              <Link href={applicabilityHref} className="flex items-center justify-center gap-3">
                 <CtaIntroShine />
                 <span
                   aria-hidden="true"
@@ -298,7 +398,7 @@ async function HomeContent() {
               size="lg"
               className="mt-9 h-12 min-w-64 rounded-lg bg-[#002BFF] px-7 text-base transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#002BFF] hover:shadow-[0px_7px_16px_0px_rgba(0,43,255,0.55)] active:translate-y-0"
             >
-              <Link href="/check/applicability">
+              <Link href={applicabilityHref}>
                 <ApplicabilityCheckIcon />
                 {home.selfCheckCta}
               </Link>
@@ -338,6 +438,60 @@ async function HomeContent() {
   );
 }
 
+type LandingUserState = "guest" | "new-user" | "existing-user";
+
+async function getLandingUserState(): Promise<LandingUserState> {
+  if (!hasEnvVars) {
+    return "guest";
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return "guest";
+  }
+
+  const [activeOrganizations, archivedOrganizations] = await Promise.all([
+    listOrganizationsForUserPage({
+      userId: user.id,
+      status: "active",
+      limit: 1,
+    }),
+    listOrganizationsForUserPage({
+      userId: user.id,
+      status: "archived",
+      limit: 1,
+    }),
+  ]);
+
+  return activeOrganizations.organizations.length > 0 ||
+    archivedOrganizations.organizations.length > 0
+    ? "existing-user"
+    : "new-user";
+}
+
+function HeroLaptopPreview({
+  title,
+}: {
+  title: string;
+}) {
+  return (
+    <div className="relative mx-auto mt-12 w-full max-w-[680px] xl:absolute xl:left-[55%] xl:top-1/2 xl:mt-0 xl:w-[clamp(54rem,62vw,72rem)] xl:max-w-none xl:-translate-y-1/2 2xl:left-[52%]">
+      <Image
+        src="/images/landing/authenticated-workspace-laptop.svg"
+        alt={title}
+        width={1039}
+        height={641}
+        priority
+        className="h-auto w-full max-w-none"
+      />
+    </div>
+  );
+}
+
 function TrustPill({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <div className="relative isolate flex h-9 items-center gap-2 overflow-hidden rounded-full border border-white/50 px-4 text-sm text-white before:absolute before:inset-0 before:-z-10 before:bg-[linear-gradient(90deg,rgb(255_255_255/3%),rgb(153_153_153/18%))] before:opacity-20">
@@ -364,6 +518,23 @@ function ApplicabilityCheckIcon() {
         strokeWidth="1.33"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function LandingDashboardIcon() {
+  return (
+    <svg
+      viewBox="0 0 17 17"
+      fill="none"
+      className="size-5 shrink-0"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M0.666992 0C1.03518 0 1.33398 0.298802 1.33398 0.666992V14C1.33398 14.2652 1.43942 14.5195 1.62695 14.707C1.81449 14.8946 2.06877 15 2.33398 15H15.667C16.0352 15 16.334 15.2988 16.334 15.667C16.334 16.0352 16.0352 16.334 15.667 16.334H2.33398C1.71515 16.334 1.12118 16.088 0.683594 15.6504C0.246009 15.2128 0 14.6188 0 14V0.666992C0 0.298802 0.298802 0 0.666992 0ZM4.83398 9.16699C5.20201 9.16719 5.50098 9.46592 5.50098 9.83398V12.334C5.50071 12.7018 5.20184 13.0008 4.83398 13.001C4.46596 13.001 4.16726 12.702 4.16699 12.334V9.83398C4.16699 9.46579 4.46579 9.16699 4.83398 9.16699ZM9 1.66699C9.36819 1.66699 9.66699 1.96579 9.66699 2.33398V12.334C9.66673 12.702 9.36803 13.001 9 13.001C8.63214 13.0008 8.33327 12.7018 8.33301 12.334V2.33398C8.33301 1.96592 8.63198 1.66719 9 1.66699ZM13.167 5C13.5352 5 13.834 5.2988 13.834 5.66699V12.334C13.8338 12.702 13.5351 13 13.167 13C12.7989 13 12.5002 12.702 12.5 12.334V5.66699C12.5 5.2988 12.7988 5 13.167 5Z"
+        fill="currentColor"
       />
     </svg>
   );

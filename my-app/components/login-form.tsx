@@ -4,10 +4,7 @@ import { AccountEmailField } from "@/components/auth/account-email-field";
 import { AccountPasswordField } from "@/components/auth/account-password-field";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
-import {
-  DEFAULT_TOOL_DESTINATION,
-  parseSafeToolNext,
-} from "@/lib/auth/route-policy";
+import { parseSafeToolNext } from "@/lib/auth/route-policy";
 import type { Dictionary } from "@/lib/i18n";
 import { classifyExternalError } from "@/lib/i18n/errors";
 import { createClient } from "@/lib/supabase/client";
@@ -50,9 +47,9 @@ function isTooManyAttemptsError(error: unknown) {
 }
 
 function getNextPath() {
-  if (typeof window === "undefined") return DEFAULT_TOOL_DESTINATION;
+  if (typeof window === "undefined") return "/";
   const next = new URLSearchParams(window.location.search).get("next");
-  return parseSafeToolNext(next);
+  return next ? parseSafeToolNext(next) : "/";
 }
 
 export function LoginForm({
@@ -241,7 +238,7 @@ export function LoginForm({
             <span className="font-normal">{labels.noAccount}</span>
             <Link
               href={
-                getNextPath() !== DEFAULT_TOOL_DESTINATION
+                getNextPath() !== "/"
                   ? `/auth/sign-up?next=${encodeURIComponent(getNextPath())}`
                   : "/auth/sign-up"
               }

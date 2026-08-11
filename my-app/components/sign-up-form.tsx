@@ -19,9 +19,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 function getNextPath() {
-  if (typeof window === "undefined") return parseSafeToolNext(null);
+  if (typeof window === "undefined") return "/";
   const next = new URLSearchParams(window.location.search).get("next");
-  return parseSafeToolNext(next);
+  return next ? parseSafeToolNext(next) : "/";
 }
 
 export function SignUpForm({
@@ -84,7 +84,10 @@ export function SignUpForm({
         return;
       }
 
-      const loginPath = `/auth/login?registered=true&next=${encodeURIComponent(next)}`;
+      const loginPath =
+        next === "/"
+          ? "/auth/login?registered=true"
+          : `/auth/login?registered=true&next=${encodeURIComponent(next)}`;
 
       router.push(loginPath);
     } catch (err: unknown) {
@@ -190,7 +193,9 @@ export function SignUpForm({
           <span className="font-normal">{labels.alreadyHaveAnAccount}</span>
           <Link
             href={
-              `/auth/login?next=${encodeURIComponent(getNextPath())}`
+              getNextPath() === "/"
+                ? "/auth/login"
+                : `/auth/login?next=${encodeURIComponent(getNextPath())}`
             }
             className="font-semibold text-foreground decoration-2 hover:underline"
           >
