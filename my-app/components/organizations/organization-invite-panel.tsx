@@ -147,10 +147,10 @@ export function OrganizationInvitePanel({
         {invitations.length === 0 ? (
           <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">{labels.empty}</p>
         ) : invitations.map((invitation) => (
-          <div key={invitation.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
-            <div>
-              <p className="font-medium">{invitation.email}</p>
-              <p className="text-sm text-muted-foreground">
+          <div key={invitation.id} className="flex min-w-0 items-center justify-between gap-3 rounded-md border p-3">
+            <div className="min-w-0">
+              <p className="truncate font-medium">{invitation.email}</p>
+              <p className="truncate text-sm text-muted-foreground">
                 {labels.roles[invitation.role]} · {labels.expires} {formatDate(invitation.expiresAt, locale, { dateStyle: "medium" })}
               </p>
             </div>

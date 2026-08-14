@@ -49,7 +49,7 @@ export function ForgotPasswordForm({
     >
       <div
         className={cn(
-          "relative z-10 flex w-full max-w-[476px] flex-col items-start gap-4 overflow-hidden px-4",
+          "relative z-10 flex w-full max-w-[476px] flex-col items-start gap-4 overflow-hidden sm:px-4",
           className,
         )}
       >
@@ -67,8 +67,8 @@ export function ForgotPasswordForm({
           />
         </Link>
 
-        <div className="inline-flex self-stretch flex-col items-start justify-start gap-6 overflow-hidden bg-transparent pb-4">
-          <h1 className="h-5 self-stretch text-4xl font-medium leading-none text-foreground">
+        <div className="inline-flex self-stretch flex-col items-start justify-start gap-3 overflow-hidden bg-transparent pb-4 sm:gap-6">
+          <h1 className="self-stretch text-3xl font-medium leading-tight text-foreground sm:text-4xl sm:leading-none">
             {success ? labels.checkEmailTitle : labels.forgotPassword}
           </h1>
           <p className="self-stretch text-base font-normal leading-normal text-[#002BFF] dark:text-foreground">
@@ -78,7 +78,7 @@ export function ForgotPasswordForm({
           </p>
         </div>
 
-        <div className="flex self-stretch flex-col items-start gap-6 overflow-hidden rounded-2xl bg-auth-panel p-8 shadow-auth-panel">
+        <div className="flex self-stretch flex-col items-start gap-6 overflow-hidden rounded-2xl bg-auth-panel p-5 shadow-auth-panel sm:p-8">
           {success ? (
             <p className="text-base font-normal leading-6 text-auth-placeholder">
               {labels.resetEmailSent}
@@ -126,7 +126,7 @@ export function ForgotPasswordForm({
           )}
         </div>
 
-        <div className="inline-flex items-center justify-center gap-1 overflow-hidden bg-transparent text-base text-foreground">
+        <div className="flex flex-wrap items-center justify-center gap-1 overflow-hidden bg-transparent text-base text-foreground">
           <ArrowLeft aria-hidden="true" className="size-4" />
           <span className="font-medium leading-5">{labels.backToLogin} </span>
           <div className="relative h-5 w-24">

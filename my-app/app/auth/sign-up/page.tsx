@@ -6,7 +6,7 @@ import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 export default function Page() {
   return (
     <Suspense fallback={null}>
-      <PublicLanguageSwitcher />
+      <PublicLanguageSwitcher compactOnMobile />
       <SignUpFormLoader />
     </Suspense>
   );

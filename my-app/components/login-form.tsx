@@ -119,7 +119,7 @@ export function LoginForm({
   return (
     <div
       className={cn(
-        "flex w-full max-w-[476px] flex-col items-start gap-4 px-4 font-['Space_Grotesk']",
+        "flex w-full max-w-[476px] flex-col items-start gap-4 px-4 font-['Space_Grotesk'] sm:px-6",
         className,
       )}
       {...props}
@@ -139,7 +139,7 @@ export function LoginForm({
       </Link>
 
       <div className="flex self-stretch flex-col items-start gap-2 pb-4">
-        <h1 className="text-4xl font-medium tracking-tight text-foreground">
+        <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
           {labels.welcomeBack}
         </h1>
         <p className="text-base font-normal text-[#002BFF] dark:text-foreground/80">
@@ -147,7 +147,7 @@ export function LoginForm({
         </p>
       </div>
 
-      <div className="flex self-stretch flex-col items-start gap-6 rounded-2xl border-0 bg-auth-panel p-9 shadow-none">
+      <div className="flex self-stretch flex-col items-start gap-6 rounded-2xl border-0 bg-auth-panel p-5 shadow-none sm:p-9">
         <form onSubmit={handleLogin} className="flex w-full flex-col gap-6">
           {error ? (
             <div
@@ -225,7 +225,7 @@ export function LoginForm({
         </form>
       </div>
 
-      <div className="mt-2 flex items-center justify-center gap-1 self-stretch text-base text-foreground">
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-1 self-stretch text-center text-base text-foreground">
         {isTooManyAttempts ? (
           <Link
             href="/auth/forgot-password"

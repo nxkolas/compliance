@@ -106,7 +106,7 @@ export function OrganizationInbox({
 
       <Card className="rounded-lg shadow-sm">
         <CardHeader>
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 sm:flex-nowrap sm:items-center">
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-background">
                 <Inbox className="h-4 w-4" />
@@ -152,6 +152,7 @@ export function OrganizationInbox({
                   size="sm"
                   onClick={() => handleAcceptInvitation(invitation.id)}
                   disabled={loadingInvitationId === invitation.id}
+                  className="w-full sm:w-auto"
                 >
                   {loadingInvitationId === invitation.id ? (
                     <Loader2 className="animate-spin" />

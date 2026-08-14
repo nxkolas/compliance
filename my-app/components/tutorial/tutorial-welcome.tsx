@@ -348,7 +348,7 @@ export function TutorialWelcome({
                 {currentStepIndex === 1 ? (
                   <Link
                     href={applicabilityCheckHref}
-                    className="inline-flex h-12 w-72 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                    className="inline-flex h-12 w-full max-w-72 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     <span
                       data-eigenschaft-1="Betroffenheitscheck"
@@ -368,7 +368,7 @@ export function TutorialWelcome({
                 {isDocumentsStep ? (
                   <Link
                     href={documentsHref}
-                    className="inline-flex h-12 w-72 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                    className="inline-flex h-12 w-full max-w-72 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     <FolderOpen
                       className="size-5 shrink-0"
@@ -383,7 +383,7 @@ export function TutorialWelcome({
                 {currentStepIndex === 3 ? (
                   <Link
                     href={gapAnalysisHref}
-                    className="inline-flex h-12 w-52 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                    className="inline-flex h-12 w-full max-w-52 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     <span
                       data-eigenschaft-1="Gap-Analyse"
@@ -403,7 +403,7 @@ export function TutorialWelcome({
                 {currentStepIndex === 4 ? (
                   <Link
                     href={actionPlanHref}
-                    className="inline-flex h-12 w-60 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                    className="inline-flex h-12 w-full max-w-60 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     <span
                       data-eigenschaft-1="Maßnahmenplan"
@@ -420,7 +420,7 @@ export function TutorialWelcome({
                 {currentStepIndex === stepKeys.length - 1 ? (
                   <Link
                     href={dashboardHref}
-                    className="inline-flex h-12 w-48 items-center justify-center gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium uppercase text-white transition-colors hover:bg-[#0022cc]"
+                    className="inline-flex h-12 w-full max-w-48 items-center justify-center gap-2 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium uppercase text-white transition-colors hover:bg-[#0022cc]"
                   >
                     <span
                       data-eigenschaft-1="Dashboard"

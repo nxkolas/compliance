@@ -28,19 +28,19 @@ export default async function ImprintPage() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       <Suspense fallback={null}>
-        <PublicLanguageSwitcher showThemeSwitcher />
+        <PublicLanguageSwitcher showThemeSwitcher compactOnMobile />
       </Suspense>
 
       <main className="dark min-h-screen overflow-hidden bg-transparent text-white">
-        <header className="dark fixed inset-x-0 top-0 z-40 h-28 bg-[#02040E]/25 text-white backdrop-blur-md">
-          <div className="relative mx-auto flex h-full max-w-[1728px] items-start gap-8 px-6 pb-14 pt-4 sm:items-center sm:px-10 sm:py-0 lg:px-12 xl:px-[72px]">
+        <header className="dark fixed inset-x-0 top-0 z-40 h-32 bg-[#02040E]/25 text-white backdrop-blur-md sm:h-28">
+          <div className="relative mx-auto flex h-full max-w-[1728px] items-start gap-8 px-4 pb-14 pt-4 sm:items-center sm:px-10 sm:py-0 lg:px-12 xl:px-[72px]">
             <Link href="/" aria-label={home.brand} className="shrink-0">
               <BrandLogo
                 alt={home.brand}
                 width={203}
                 height={66}
                 priority
-                className="h-auto w-36 sm:w-44 lg:w-[203px]"
+                className="h-auto w-28 sm:w-44 lg:w-[203px]"
               />
             </Link>
 
@@ -59,7 +59,7 @@ export default async function ImprintPage() {
               </Link>
             </nav>
 
-            <div className="absolute bottom-3 right-4 text-sm sm:static sm:mr-32">
+            <div className="absolute right-4 bottom-2 text-sm sm:static sm:mr-32">
               {hasEnvVars ? (
                 <Suspense fallback={<div className="h-8 w-48" />}>
                   <AuthButton />
@@ -72,12 +72,12 @@ export default async function ImprintPage() {
             </div>
           </div>
         </header>
-        <div aria-hidden="true" className="h-28" />
+        <div aria-hidden="true" className="h-32 sm:h-28" />
 
         <section className="relative isolate overflow-hidden pb-16 pt-14 sm:pb-24">
           <div className="mx-auto max-w-[1728px] px-6 sm:px-10 lg:px-12 xl:px-[72px]">
             <header className="max-w-[1432px]">
-              <h1 className="text-4xl font-bold leading-9 tracking-tight text-white">
+              <h1 className="text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
                 {imprint.title}
               </h1>
               <p className="mt-4 text-base font-normal leading-7 text-white/80 sm:text-lg">

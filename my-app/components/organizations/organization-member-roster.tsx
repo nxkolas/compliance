@@ -116,7 +116,7 @@ export function OrganizationMemberRoster({
           const busy = pending === member.userId;
           const canManageMember = controls.canManage && (member.role !== "owner" || controls.canManageOwners);
           return (
-            <article key={member.userId} className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_176px_32px] items-center gap-4 border-t border-border-strong/50 px-3">
+            <article key={member.userId} className="grid min-h-[90px] grid-cols-[minmax(0,1fr)_32px] items-center gap-3 border-t border-border-strong/50 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_176px_32px] sm:gap-4 sm:py-0">
               <div className="flex min-w-0 items-center gap-3">
                 <OrganizationAvatar id={member.userId} name={member.displayName || member.email || labels.unresolvedMember} className="size-10" />
                 <div className="min-w-0">
@@ -124,17 +124,19 @@ export function OrganizationMemberRoster({
                   <p className="truncate text-sm text-foreground-subtle">{member.email}</p>
                 </div>
               </div>
-              {canManageMember ? (
-                <Select value={member.role} disabled={busy} onValueChange={(value) => void updateRole(member, value as OrganizationRole)}>
-                  <SelectTrigger aria-label={labels.role} className="h-12 w-44 rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base shadow-none"><SelectValue /></SelectTrigger>
-                  <SelectContent className="w-44 rounded-2xl border-surface bg-surface p-0 shadow-popover">
-                    {(["owner", "contributor", "viewer"] as const).map((role) => <SelectItem key={role} value={role} className="h-12 rounded-lg px-5 text-base">{labels.roles[role]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="flex h-12 w-44 items-center rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base">{labels.roles[member.role]}</div>
-              )}
-              <div className="flex size-8 items-center justify-center">
+              <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
+                {canManageMember ? (
+                  <Select value={member.role} disabled={busy} onValueChange={(value) => void updateRole(member, value as OrganizationRole)}>
+                    <SelectTrigger aria-label={labels.role} className="h-12 w-full rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base shadow-none sm:w-44"><SelectValue /></SelectTrigger>
+                    <SelectContent className="w-44 rounded-2xl border-surface bg-surface p-0 shadow-popover">
+                      {(["owner", "contributor", "viewer"] as const).map((role) => <SelectItem key={role} value={role} className="h-12 rounded-lg px-5 text-base">{labels.roles[role]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex h-12 w-full items-center rounded-lg border-[1.5px] border-border-strong bg-surface px-5 text-base sm:w-44">{labels.roles[member.role]}</div>
+                )}
+              </div>
+              <div className="order-2 flex size-8 items-center justify-center sm:order-none">
                 {busy ? <Loader2 className="size-4 animate-spin text-foreground-subtle" /> : isSelf ? (
                   <Button type="button" variant="ghost" size="icon-sm" aria-label={labels.leave} title={labels.leave} onClick={() => void leave()} className="size-8 rounded-[10px] text-foreground-subtle"><LogOut className="size-4" /></Button>
                 ) : canManageMember ? (
@@ -175,13 +177,13 @@ export function OrganizationMemberRoster({
                     <p className="truncate text-sm text-muted-foreground">{member.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Select
                     value={member.role}
                     disabled={!controls.canManage || busy}
                     onValueChange={(value) => void updateRole(member, value as OrganizationRole)}
                   >
-                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="min-w-32 flex-1 sm:w-40 sm:flex-none"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {(["owner", "contributor", "viewer"] as const).map((role) => (
                         <SelectItem key={role} value={role}>{labels.roles[role]}</SelectItem>

@@ -59,7 +59,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       <Suspense fallback={<HomeFallback />}>
-        <PublicLanguageSwitcher showThemeSwitcher />
+        <PublicLanguageSwitcher showThemeSwitcher compactOnMobile />
         <HomeContent />
       </Suspense>
     </div>
@@ -96,15 +96,15 @@ async function HomeContent() {
 
   return (
     <main className="dark min-h-screen overflow-hidden bg-transparent text-white">
-      <header className="dark fixed inset-x-0 top-0 z-40 h-28 bg-[#02040E]/25 text-white backdrop-blur-md">
-        <div className="relative mx-auto flex h-full max-w-[1728px] items-start gap-8 px-6 pb-14 pt-4 sm:items-center sm:px-10 sm:py-0 lg:px-12 xl:px-[72px]">
+      <header className="dark fixed inset-x-0 top-0 z-40 h-32 bg-[#02040E]/25 text-white backdrop-blur-md sm:h-28">
+        <div className="relative mx-auto flex h-full max-w-[1728px] items-start gap-8 px-4 pb-14 pt-4 sm:items-center sm:px-10 sm:py-0 lg:px-12 xl:px-[72px]">
           <Link href="/" aria-label={home.brand} className="shrink-0">
             <BrandLogo
               alt={home.brand}
               width={203}
               height={66}
               priority
-              className="h-auto w-36 sm:w-44 lg:w-[203px]"
+              className="h-auto w-28 sm:w-44 lg:w-[203px]"
             />
           </Link>
 
@@ -123,7 +123,7 @@ async function HomeContent() {
             </Link>
           </nav>
 
-          <div className="absolute bottom-3 right-4 text-sm sm:static sm:mr-32">
+          <div className="absolute right-4 bottom-2 text-sm sm:static sm:mr-32">
             {hasEnvVars ? (
               <Suspense fallback={<div className="h-8 w-48" />}>
                 <AuthButton />
@@ -136,7 +136,7 @@ async function HomeContent() {
           </div>
         </div>
       </header>
-      <div aria-hidden="true" className="h-28" />
+      <div aria-hidden="true" className="h-32 sm:h-28" />
 
       <section className="relative isolate min-h-[760px]">
         <div className="absolute inset-x-0 top-[-112px] -z-10 h-[977px] w-full overflow-hidden">
@@ -153,7 +153,7 @@ async function HomeContent() {
             {isAuthenticated ? (
               <>
                 <h1 className="relative top-2 w-full max-w-[700px] text-4xl font-normal leading-[1.2] text-white sm:text-5xl lg:text-[52px]">
-                  <span className="flex flex-nowrap items-center gap-x-3">
+                  <span className="flex flex-col items-start gap-2 sm:flex-row sm:flex-nowrap sm:items-center sm:gap-x-3">
                     <span className="relative top-2 shrink-0 whitespace-nowrap">
                       {authenticatedHero.welcomeTitleBeforeLogo}
                     </span>
@@ -163,7 +163,7 @@ async function HomeContent() {
                         width={203}
                         height={66}
                         priority
-                        className="h-auto w-40 sm:w-48 lg:w-[203px]"
+                        className="h-auto w-32 sm:w-48 lg:w-[203px]"
                       />
                       <span className="relative top-2 shrink-0 leading-none">
                         .
@@ -189,7 +189,7 @@ async function HomeContent() {
                   priority
                   className="mb-6 h-auto w-52 sm:w-64 lg:w-[296px]"
                 />
-                <h1 className="min-h-32 w-full max-w-[658px] text-4xl font-normal leading-[61px] text-white">
+                <h1 className="w-full max-w-[658px] text-4xl font-normal leading-[1.2] text-white sm:min-h-32 sm:leading-[61px]">
                   {home.hero.titleBefore}{" "}
                   <span className="font-normal text-[#002BFF]">
                     {home.hero.titleHighlight}
@@ -222,7 +222,7 @@ async function HomeContent() {
               </Button>
               <Link
                 href="#product-video"
-                className="inline-flex h-12 w-72 items-center justify-center overflow-hidden rounded-lg bg-transparent font-sans text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:text-white hover:shadow-[0px_7px_14px_0px_rgba(255,255,255,0.32)] hover:outline-white active:translate-y-0"
+                className="inline-flex h-12 w-full max-w-72 items-center justify-center overflow-hidden rounded-lg bg-transparent font-sans text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:text-white hover:shadow-[0px_7px_14px_0px_rgba(255,255,255,0.32)] hover:outline-white active:translate-y-0"
               >
                 <span>
                   {isNewUser
@@ -314,7 +314,7 @@ async function HomeContent() {
           <div className="mt-12 flex justify-center">
             <Button
               asChild
-              className="group relative h-12 min-w-72 overflow-hidden rounded-lg border-0 bg-[#002BFF] px-8 font-sans text-base font-medium text-white shadow-[0_6px_18px_rgba(0,43,255,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#002BFF] hover:text-white hover:shadow-[0_9px_24px_rgba(0,43,255,0.46)] focus-visible:ring-2 focus-visible:ring-[#6681FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#02040E] active:translate-y-0"
+              className="group relative h-12 w-full max-w-72 overflow-hidden rounded-lg border-0 bg-[#002BFF] px-8 font-sans text-base font-medium text-white shadow-[0_6px_18px_rgba(0,43,255,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#002BFF] hover:text-white hover:shadow-[0_9px_24px_rgba(0,43,255,0.46)] focus-visible:ring-2 focus-visible:ring-[#6681FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#02040E] active:translate-y-0"
             >
               <Link href={applicabilityHref} className="flex items-center justify-center gap-3">
                 <CtaIntroShine />

@@ -8,6 +8,27 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("action plan empty state", () => {
+  it("renders the Figma available state after a completed gap analysis", () => {
+    const labels = getDefaultDictionary().modules.actionPlan.workflow;
+    const html = renderToStaticMarkup(
+      <ActionPlanWorkflow
+        organizationId="organization-1"
+        current={null}
+        availableGapRevisionId="gap-revision-1"
+        canContribute
+        labels={labels}
+      />,
+    );
+
+    expect(html).toContain("data-action-plan-available-state");
+    expect(html).toContain("data-action-plan-available-speech-bubble");
+    expect(html).toContain("/images/robot.svg");
+    expect(html).toContain("Ihr Maßnahmenplan ist verfügbar");
+    expect(html).toContain("Erstellen Sie Ihren Maßnahmenplan");
+    expect(html).toContain("Maßnahmenplan erstellen");
+    expect(html).not.toContain("data-action-plan-empty-state");
+  });
+
   it("renders the Figma empty state without changing the existing destination", () => {
     const labels = getDefaultDictionary().modules.actionPlan.workflow;
     const html = renderToStaticMarkup(

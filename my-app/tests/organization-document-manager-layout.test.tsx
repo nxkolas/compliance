@@ -82,7 +82,9 @@ describe("OrganizationDocumentManager layout", () => {
     expect(html).toContain(">Datum<");
     expect(html).toContain(">Status<");
     expect(html).toContain("Dokumente hochladen");
-    expect(html).toContain("h-12 w-64");
+    expect(html).toContain("h-12 w-full");
+    expect(html).toContain("sm:w-64");
+    expect(html).toContain("touch-scroll-x");
     expect(html).toContain("bg-primary");
     expect(html).toContain(
       "border-b border-foreground/[0.04] pt-3.5 pb-1.5",

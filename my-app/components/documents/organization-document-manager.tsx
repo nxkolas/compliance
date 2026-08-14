@@ -293,7 +293,7 @@ export function OrganizationDocumentManager({
         <div
           role="tablist"
           aria-label={labels.statusColumn}
-          className="flex min-w-0 gap-5 overflow-x-auto"
+          className="touch-scroll-x flex min-w-0 gap-5 overflow-x-auto"
         >
           <FolderFilter
             count={counts.all}
@@ -330,7 +330,7 @@ export function OrganizationDocumentManager({
             }}
           >
             <DialogTrigger asChild>
-              <Button className="h-12 w-64 cursor-pointer gap-2 overflow-hidden rounded-lg bg-primary px-5 font-['Space_Grotesk'] text-base font-medium text-primary-foreground shadow-none hover:bg-primary">
+              <Button className="h-12 w-full cursor-pointer gap-2 overflow-hidden rounded-lg bg-primary px-5 font-['Space_Grotesk'] text-base font-medium text-primary-foreground shadow-none hover:bg-primary sm:w-64">
                 <Upload className="size-5" strokeWidth={1.5} />
                 {labels.uploadDocument}
               </Button>
@@ -463,7 +463,12 @@ export function OrganizationDocumentManager({
       </div>
 
       <Card className="w-full min-w-0 gap-0 overflow-hidden rounded-xl border-0 bg-card py-px shadow-none outline-[1.2px] outline-offset-[-1.2px] outline-border-strong">
-        <div className="overflow-x-auto">
+        <div
+          className="touch-scroll-x overflow-x-auto"
+          role="region"
+          aria-label={labels.titleColumn}
+          tabIndex={0}
+        >
             <div
               aria-hidden="true"
               className="relative h-12 min-w-[1190px] border-b border-foreground/10 font-['Space_Grotesk']"
@@ -687,14 +692,14 @@ export function OrganizationDocumentManager({
           overlayClassName="border border-scrim bg-scrim/75 backdrop-blur-[3px]"
           className="block h-72 w-[min(649px,calc(100vw-32px))] max-w-none overflow-hidden rounded-xl border-0 bg-card p-0 font-['Space_Grotesk'] text-card-foreground shadow-control outline-[1.5px] outline-offset-[-1.5px] outline-border-strong sm:max-w-none [&>[data-slot=dialog-close]]:top-[15px] [&>[data-slot=dialog-close]]:right-4 [&>[data-slot=dialog-close]]:flex [&>[data-slot=dialog-close]]:size-8 [&>[data-slot=dialog-close]]:items-center [&>[data-slot=dialog-close]]:justify-center [&>[data-slot=dialog-close]]:rounded-[10px] [&>[data-slot=dialog-close]]:text-foreground-subtle [&>[data-slot=dialog-close]]:opacity-100 [&>[data-slot=dialog-close]]:ring-offset-0 [&>[data-slot=dialog-close]]:hover:bg-foreground/5 [&>[data-slot=dialog-close]]:focus:ring-0 [&>[data-slot=dialog-close]]:data-[state=open]:!bg-transparent"
         >
-          <DialogTitle className="absolute top-[38px] left-[49px] h-10 w-80 text-lg leading-5 font-normal text-foreground">
+          <DialogTitle className="absolute top-7 left-6 right-14 text-lg leading-6 font-normal text-foreground sm:top-[38px] sm:left-[49px] sm:right-auto sm:h-10 sm:w-80 sm:leading-5">
             {labels.archiveDialogTitle}
           </DialogTitle>
-          <DialogDescription className="absolute top-20 left-[49px] h-24 w-[min(564px,calc(100%-98px))] text-lg leading-8 font-normal text-foreground-subtle">
+          <DialogDescription className="absolute top-16 right-6 left-6 text-base leading-6 font-normal text-foreground-subtle sm:top-20 sm:right-auto sm:left-[49px] sm:h-24 sm:w-[min(564px,calc(100%-98px))] sm:text-lg sm:leading-8">
             {labels.archiveDialogDescription}
           </DialogDescription>
 
-          <div className="absolute right-[27px] bottom-[34px] flex items-center gap-3">
+          <div className="absolute right-6 bottom-5 left-6 flex items-center justify-end gap-3 sm:right-[27px] sm:bottom-[34px] sm:left-auto">
             <Button
               type="button"
               disabled={
@@ -708,7 +713,7 @@ export function OrganizationDocumentManager({
                   setArchiveTarget(null),
                 );
               }}
-              className="h-12 w-32 cursor-pointer gap-1.5 overflow-hidden rounded-lg bg-warning/75 px-4 text-base font-medium text-foreground shadow-none hover:bg-warning/85 disabled:cursor-not-allowed disabled:bg-warning/50 disabled:text-foreground/50 disabled:opacity-100"
+              className="h-12 min-w-0 flex-1 cursor-pointer gap-1.5 overflow-hidden rounded-lg bg-warning/75 px-4 text-base font-medium text-foreground shadow-none hover:bg-warning/85 disabled:cursor-not-allowed disabled:bg-warning/50 disabled:text-foreground/50 disabled:opacity-100 sm:w-32 sm:flex-none"
             >
               {archiveTarget &&
               busy === `archive-${archiveTarget.id}` ? (
@@ -726,7 +731,7 @@ export function OrganizationDocumentManager({
                 busy === `archive-${archiveTarget.id}`
               }
               onClick={() => setArchiveTarget(null)}
-              className="h-12 w-28 cursor-pointer overflow-hidden rounded-lg border-[1.5px] border-border-strong bg-transparent px-4 text-base font-medium text-muted-foreground shadow-none hover:bg-foreground/5 hover:text-muted-foreground disabled:cursor-not-allowed"
+              className="h-12 min-w-0 flex-1 cursor-pointer overflow-hidden rounded-lg border-[1.5px] border-border-strong bg-transparent px-4 text-base font-medium text-muted-foreground shadow-none hover:bg-foreground/5 hover:text-muted-foreground disabled:cursor-not-allowed sm:w-28 sm:flex-none"
             >
               {labels.cancel}
             </Button>

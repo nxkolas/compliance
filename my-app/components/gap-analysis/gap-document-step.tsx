@@ -106,7 +106,12 @@ export function GapDocumentStep({
         </h3>
 
         <Card className="w-full min-w-0 gap-0 overflow-hidden rounded-xl border-0 bg-card py-px shadow-none outline-[1.2px] outline-offset-[-1.2px] outline-border-strong">
-          <div className="overflow-x-auto">
+          <div
+            className="touch-scroll-x overflow-x-auto"
+            role="region"
+            aria-label={labels.documentLibraryTitle}
+            tabIndex={0}
+          >
             <table
               aria-label={labels.documentLibraryTitle}
               className="w-full min-w-[1190px] table-fixed border-collapse text-left font-['Space_Grotesk']"

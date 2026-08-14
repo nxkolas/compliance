@@ -94,7 +94,7 @@ export function ReportWorkflow({
       ) : null}
       {canCreate ? (
         <Button
-          className="justify-self-start"
+          className="w-full justify-self-start sm:w-auto"
           disabled={busy !== null}
           onClick={() =>
             act("create", () =>
@@ -115,18 +115,19 @@ export function ReportWorkflow({
           <CardHeader>
             <CardTitle>{labels.title}</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm">
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="min-w-0 break-words text-sm">
               <p>{formatDateTime(report.createdAt, locale)}</p>
               <p className="text-muted-foreground">
                 {labels.statuses[report.state]} · {labels.sourceHash}:{" "}
                 {report.inputHash?.slice(0, 12) ?? "—"}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               {report.state === "ready" ? (
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() =>
                     act(`download-${report.id}`, async () => {
                       const result = await reportsClient.download(
@@ -145,6 +146,7 @@ export function ReportWorkflow({
               canCreate ? (
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() =>
                     act(`cancel-${report.id}`, () =>
                       jobsClient.cancel(report.renderingJobId),

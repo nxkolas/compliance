@@ -33,6 +33,7 @@ type LanguageButtonsProps = Pick<
 > & {
   ariaLabel: string;
   className?: string;
+  compactOnMobile?: boolean;
 };
 
 function useLocaleChange() {
@@ -82,6 +83,7 @@ export function LanguageButtons({
   languageNames,
   ariaLabel,
   className,
+  compactOnMobile = false,
 }: LanguageButtonsProps) {
   const { isPending, setLocale } = useLocaleChange();
 
@@ -102,9 +104,20 @@ export function LanguageButtons({
           aria-pressed={option.active}
           disabled={isPending}
           onClick={() => setLocale(option.locale)}
-          className="min-w-20"
+          className={
+            compactOnMobile
+              ? "min-w-0 px-2 sm:min-w-20 sm:px-3"
+              : "min-w-20"
+          }
         >
-          {option.label}
+          {compactOnMobile ? (
+            <>
+              <span className="sm:hidden">{option.locale.toUpperCase()}</span>
+              <span className="hidden sm:inline">{option.label}</span>
+            </>
+          ) : (
+            option.label
+          )}
         </Button>
       ))}
     </div>

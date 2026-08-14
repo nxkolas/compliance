@@ -1,12 +1,13 @@
 import { ActionPlanWorkflow } from "@/components/action-plans/action-plan-workflow";
 import { PageHeader } from "@/components/page-header";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getCurrentActionPlan,
 } from "@/src/server/action-plans";
 import { assertCanAccessOrganization } from "@/src/server/organizations/service";
 import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
+import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis";
 import { connection } from "next/server";
 
 export default async function ActionPlanPage({
@@ -17,9 +18,28 @@ export default async function ActionPlanPage({
   await connection();
   const user = await requireAuth();
   const dictionary = await getDictionary();
+  const locale = await getLocale();
   const { organizationId } = await params;
   const membership = await assertCanAccessOrganization(user.id, organizationId);
   const current = await getCurrentActionPlan(user.id, organizationId);
+  const gapWorkflow = current
+    ? null
+    : await getGapAnalysisWorkflow({
+        userId: user.id,
+        organizationId,
+        locale,
+      });
+  const actionableGapCount = gapWorkflow
+    ? gapWorkflow.gapCounts.all - gapWorkflow.gapCounts.fulfilled
+    : 0;
+  const availableGapRevisionId =
+    gapWorkflow?.revision &&
+    gapWorkflow.lifecycle.canFinalize &&
+    gapWorkflow.canManage &&
+    actionableGapCount > 0 &&
+    gapWorkflow.reviewBlockers.length === 0
+      ? gapWorkflow.revision.id
+      : null;
 
   return (
     <section className="flex w-full min-w-0 flex-col gap-8 xl:pl-[17px]">
@@ -31,6 +51,7 @@ export default async function ActionPlanPage({
       <ActionPlanWorkflow
         organizationId={organizationId}
         current={current}
+        availableGapRevisionId={availableGapRevisionId}
         canContribute={hasOrganizationCapability(membership.role, "plans:contribute")}
         labels={dictionary.modules.actionPlan.workflow}
       />

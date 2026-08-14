@@ -271,6 +271,10 @@ export const modulesMessages = defineFeatureMessages({
               { label: "Fortschritt", value: "Pro Aufgabe" },
             ],
             workflow: {
+              planAvailable: "Ihr Maßnahmenplan ist verfügbar",
+              createPlanTitle: "Erstellen Sie Ihren Maßnahmenplan",
+              createPlanDescription:
+                "Auf Basis Ihrer Ergebnisse erhalten Sie priorisierte Maßnahmen mit konkreten To-dos, Zuständigkeiten und Fristen.",
               noPlan: "Ihr Maßnahmenplan ist noch nicht verfügbar",
               noApprovedRevision:
                 "Der Maßnahmenplan entsteht aus Ihren Ergebnissen. Starten Sie zuerst mit dem Betroffenheitscheck und anschließend mit der Gap-Analyse.",
@@ -281,6 +285,8 @@ export const modulesMessages = defineFeatureMessages({
                 "Sie müssen nicht alles auf einmal erledigen.\nComplyX führt Sie Schritt für Schritt durch den Prozess.\nNach dem Betroffenheitscheck geht es mit der Gap-Analyse weiter.",
               generate: "Maßnahmenplan erstellen",
               generating: "Plan wird erstellt …",
+              generationFailed:
+                "Der Maßnahmenplan konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
               stale: "Dieser Plan ist veraltet.",
               staleSources: "Quellen des aktiven Plans haben sich geändert; der Plan bleibt bearbeitbar.",
               resultLanguage: "Ergebnissprache",
@@ -969,6 +975,10 @@ export const modulesMessages = defineFeatureMessages({
               { label: "Progress", value: "Per task" },
             ],
             workflow: {
+              planAvailable: "Your action plan is available",
+              createPlanTitle: "Create your action plan",
+              createPlanDescription:
+                "Based on your results, you will receive prioritized measures with concrete to-dos, responsibilities, and deadlines.",
               noPlan: "Your action plan is not available yet",
               noApprovedRevision:
                 "The action plan is created from your results. Start with the applicability check and then continue with the gap analysis.",
@@ -979,6 +989,8 @@ export const modulesMessages = defineFeatureMessages({
                 "You do not have to complete everything at once.\nComplyX guides you through the process step by step.\nAfter the applicability check, continue with the gap analysis.",
               generate: "Create action plan",
               generating: "Creating plan…",
+              generationFailed:
+                "The action plan could not be created. Please try again.",
               stale: "This plan is stale.",
               staleSources: "Sources of the active plan changed; the plan remains editable.",
               resultLanguage: "Result language",

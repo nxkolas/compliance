@@ -140,13 +140,13 @@ export function GapResultsStep({
       {workflow.lifecycle.locked ? (
         <div
           data-gap-results-locked
-          className="mt-6 flex h-16 w-full max-w-[1111px] items-center gap-4 rounded-xl bg-[#191F3C] px-6 text-base leading-7 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-[#122272]"
+          className="mt-6 flex min-h-16 w-full max-w-[1111px] items-center gap-4 rounded-xl bg-[#191F3C] px-5 py-3 text-base leading-7 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-[#122272] sm:px-6"
         >
           <LockKeyhole
             aria-hidden="true"
             className="size-5 shrink-0 text-[#002BFF]"
           />
-          <p>{labels.lockedByActionPlan}</p>
+          <p className="min-w-0 break-words">{labels.lockedByActionPlan}</p>
         </div>
       ) : null}
 

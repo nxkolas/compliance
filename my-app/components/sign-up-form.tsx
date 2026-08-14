@@ -98,8 +98,8 @@ export function SignUpForm({
   };
 
   return (
-    <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-transparent p-4 md:p-10">
-      <div className={cn("relative z-10 flex w-full max-w-[476px] flex-col items-start justify-start gap-4 px-4 font-['Space_Grotesk']", className)} {...props}>
+    <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-transparent px-4 py-8 sm:px-6 md:p-10">
+      <div className={cn("relative z-10 flex w-full max-w-[476px] flex-col items-start justify-start gap-4 font-['Space_Grotesk']", className)} {...props}>
         <Link
           href="/"
           aria-label={labels.logoAlt}
@@ -116,7 +116,7 @@ export function SignUpForm({
         </Link>
 
         <div className="self-stretch pb-4 flex flex-col justify-start items-start gap-2">
-          <h1 className="text-4xl font-medium tracking-tight text-foreground">
+          <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
             {labels.createAccountTitle}
           </h1>
           <p className="text-base font-normal text-[#002BFF] dark:text-foreground/80">
@@ -124,7 +124,7 @@ export function SignUpForm({
           </p>
         </div>
 
-        <div className="flex self-stretch flex-col items-start justify-start gap-6 rounded-2xl bg-auth-panel p-8 shadow-none">
+        <div className="flex self-stretch flex-col items-start justify-start gap-6 rounded-2xl bg-auth-panel p-5 shadow-none sm:p-8">
           <form onSubmit={handleSignUp} className="w-full flex flex-col gap-5">
             
             <div className="self-stretch flex flex-col justify-start items-start gap-2">
@@ -189,7 +189,7 @@ export function SignUpForm({
           </form>
         </div>
 
-        <div className="mt-2 flex items-center justify-center gap-1 self-stretch text-base text-foreground">
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1 self-stretch text-center text-base text-foreground">
           <span className="font-normal">{labels.alreadyHaveAnAccount}</span>
           <Link
             href={

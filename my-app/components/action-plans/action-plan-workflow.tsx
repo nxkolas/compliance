@@ -27,14 +27,16 @@ import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
 import type { getCurrentActionPlan } from "@/src/server/action-plans/service";
 import { actionPlansClient } from "@/src/client/action-plans";
+import { pollJob } from "@/src/client/job-polling";
 import { GapCategoryIcon } from "@/components/gap-analysis/gap-category-icon";
 
 type CurrentPlan = Awaited<ReturnType<typeof getCurrentActionPlan>>;
 type Labels = Dictionary["modules"]["actionPlan"]["workflow"];
 
-export function ActionPlanWorkflow({ organizationId, current, canContribute, labels }: {
+export function ActionPlanWorkflow({ organizationId, current, availableGapRevisionId = null, canContribute, labels }: {
   organizationId: string;
   current: CurrentPlan;
+  availableGapRevisionId?: string | null;
   canContribute: boolean;
   labels: Labels;
 }) {
@@ -44,6 +46,113 @@ export function ActionPlanWorkflow({ organizationId, current, canContribute, lab
   const [expandedItemId, setExpandedItemId] = useState<string | null>(
     current?.categories.flatMap((category) => category.actions)[0]?.id ?? null,
   );
+  async function generatePlan() {
+    if (!availableGapRevisionId) return;
+    setBusy("generation");
+    setError(null);
+    try {
+      const started = await actionPlansClient.generate(organizationId, {
+        gapRevisionId: availableGapRevisionId,
+      });
+      const job = await pollJob({
+        jobId: started.data.job.id,
+        signal: new AbortController().signal,
+        finalRefresh: () => undefined,
+      });
+      if (job.state !== "succeeded" || !job.result?.actionPlanId) {
+        throw new Error(job.safeError?.message ?? labels.generationFailed);
+      }
+      router.refresh();
+    } catch (caught) {
+      setError(localizeUiError(caught, { fallback: labels.generationFailed }));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  if (!current && availableGapRevisionId) {
+    return (
+      <div
+        data-action-plan-available-state
+        className="mt-8 w-full max-w-[1274px] sm:mt-12 lg:mt-16 xl:mt-16"
+      >
+        {error ? (
+          <Alert variant="destructive" className="mb-6 max-w-[673px]">
+            <AlertDescription className="text-current">{error}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="relative flex min-w-0 flex-col xl:min-h-[410px]">
+          <section className="relative min-h-[320px] w-full max-w-[697px] overflow-visible">
+            <svg
+              data-action-plan-available-speech-bubble
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 size-full"
+              viewBox="0 0 697 320"
+              fill="none"
+              preserveAspectRatio="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M0.75 307.25V12.75C0.75 6.123 6.123 0.75 12.75 0.75H661.25C667.877 0.75 673.25 6.123 673.25 12.75V139.75C673.25 144.04 675.54 148.005 679.26 150.147L694.75 159.07L680.18 165.866C675.95 167.837 673.25 172.078 673.25 176.742V307.25C673.25 313.877 667.877 319.25 661.25 319.25H12.75C6.123 319.25 0.75 313.877 0.75 307.25Z"
+                fill="url(#action-plan-available-gradient)"
+                stroke="#3D4049"
+                strokeWidth="1.5"
+              />
+              <defs>
+                <linearGradient
+                  id="action-plan-available-gradient"
+                  x1="0.75"
+                  y1="0.75"
+                  x2="281"
+                  y2="505"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop stopColor="#1A2540" />
+                  <stop offset="1" stopColor="#111825" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            <div className="relative z-10 px-6 pt-8 sm:px-10 xl:px-[46px] xl:pt-[34px]">
+              <h2 className="max-w-[560px] text-2xl leading-8 font-bold tracking-tight text-white sm:text-3xl sm:leading-9">
+                {labels.planAvailable}
+              </h2>
+              <p className="mt-[14px] max-w-[562px] text-base leading-7 text-white">
+                <strong className="font-bold">{labels.createPlanTitle}</strong>
+                <br />
+                {labels.createPlanDescription}
+              </p>
+              <Button
+                type="button"
+                className="mt-[29px] h-12 w-full gap-3 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none hover:bg-[#123BFF] sm:w-64"
+                disabled={busy === "generation"}
+                onClick={() => void generatePlan()}
+              >
+                {busy === "generation" ? (
+                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                ) : (
+                  <ClipboardList aria-hidden="true" className="size-4" strokeWidth={1.33} />
+                )}
+                {busy === "generation" ? labels.generating : labels.generate}
+              </Button>
+            </div>
+          </section>
+
+          <div className="order-first mb-6 flex w-full justify-center xl:absolute xl:top-3 xl:left-[690px] xl:order-none xl:mb-0 xl:h-[354px] xl:w-[516px] xl:items-center xl:justify-start">
+            <Image
+              src="/images/robot.svg"
+              alt=""
+              width={516}
+              height={354}
+              className="h-auto w-full max-w-[420px] object-contain xl:max-w-none"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!current) {
     return (
       <div

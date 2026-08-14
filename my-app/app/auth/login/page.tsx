@@ -7,7 +7,7 @@ export default function Page() {
   return (
     <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-transparent p-4">
       <Suspense fallback={null}>
-        <PublicLanguageSwitcher />
+        <PublicLanguageSwitcher compactOnMobile />
       </Suspense>
 
       {/* VORDERGRUND: Die Maske schwebt darüber */}
