@@ -9,7 +9,7 @@ Du musst verstehen, was NIS2 überhaupt bedeutet — welche Branchen betroffen s
 Erst wenn du die NIS2-Grundlagen kennst, kannst du sinnvolle Fragen formulieren — z.B. "Haben Sie mehr als 50 Mitarbeiter?" oder "Sind Sie in Sektor X tätig?" Das sind keine zufälligen Fragen, die kommen direkt aus der Richtlinie.
 
 **3\. Dann: KMU kontaktieren & Interviews führen**  
-Jetzt erst gehst du zu den Unternehmen — mit Vorwissen und einem durchdachten Leitfaden.
+Jetzt erst gehst du zu den Unternehmen  mit Vorwissen und einem durchdachten Leitfaden.
 
 **4\. Dann: Requirements Engineering**  
 Aus den Interview-Ergebnissen leitest du ab, was die App wirklich können muss.  
