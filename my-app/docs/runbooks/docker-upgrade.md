@@ -8,7 +8,7 @@ a critical security fix.
    do not mix independently selected database/Auth/REST/Storage versions.
 3. Review migrations, configuration changes, deprecations, CVEs, licenses, and
    rollback compatibility.
-4. Build the web, worker, and hardened platform targets from one revision. Run
+4. Build the web, operator, and hardened platform targets from one revision. Run
    tests, every Compose configuration, template validation, SBOM generation,
    vulnerability scans, and signing.
 5. Recreate two empty disposable test databases from the vector bootstrap,

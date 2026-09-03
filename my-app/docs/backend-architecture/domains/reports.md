@@ -17,7 +17,7 @@ versions.
    available, the current Gap revision, optional Action Plan, and the Gap
    revision's selected document versions. It then enqueues a `report_render`
    job and returns `202`.
-2. The worker builds an **exact in-memory render snapshot** — including
+2. The job handler builds an **exact in-memory render snapshot** — including
    current Action Plan item statuses and legal references — and hashes it
    (`src/server/reports/render-snapshot.ts`).
 3. The same snapshot object is rendered with `@react-pdf/renderer`

@@ -1,16 +1,16 @@
 # Action Plan Calculation
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## What this calculation produces
 
 The Action Plan (Maßnahmenplan) converts a finalized Gap revision into
-remediation items with titles, descriptions, and statuses, so an organization
+remediation items with titles, result text, suggested evidence lists, and statuses, so an organization
 can track what to do. Each organization may create **one** Action Plan, ever,
 from its current, compatible, unblocked Gap revision.
 
-It is a distinct grounded provider operation — separate from Gap generation —
-with its own code-owned contract
+It uses the shared NIS2 grounding policy while retaining a distinct workflow
+prompt, operation kind, query unit, and code-owned output contract
 (`src/server/action-plans/current-contract.ts`).
 
 ## Inputs
@@ -34,7 +34,7 @@ The server owns:
   uncovered, and no item may reference gaps outside its category.
 - **Ordering, priority, and persistence metadata**.
 
-The provider supplies only the item titles, descriptions, and optional
+The provider supplies only the item titles, result text, suggested evidence, and optional
 organization citations within the strict schema; it cannot add, drop, or
 re-scope gaps.
 
@@ -43,26 +43,28 @@ re-scope gaps.
 1. A member with the `plans:manage` capability starts generation
    (`POST /api/organizations/:id/action-plan`), which enqueues an
    `action_plan_generation` job and returns `202`.
-2. The worker pins the source Gap revision, retrieves evidence per category,
+2. The job handler pins the source Gap revision, retrieves evidence per category,
    and runs the grounded provider operation with the Action Plan schema.
 3. Output is validated (language, schema, coverage, citations) with a bounded
    repair pass.
-4. The result is published only under the worker's **live lease**:
+4. The result is published only under the executor's **live lease**:
    `assertActionPlanPublicationLease` verifies the job is still running, owned
-   by this worker, lease unexpired, and not cancelled.
+   by this executor, lease unexpired, and not cancelled.
 
 ## Publication
 
 One transaction publishes:
 
-- the `action_plans` row pinned to the source Gap revision, generation job,
-  and AI run;
-- `action_plan_items` with generated content and initial status;
+- the `action_plans` row pinned to the source Gap revision and generation job;
+- `action_plan_items` with separate `result` text and `suggested_evidence`
+  JSON arrays plus initial status;
 - `action_plan_item_gaps` coverage links;
 - audit rows and job success.
 
 After publication the plan is immutable except for **item status**, which can
 be updated status-only (`PATCH /api/organizations/:id/action-plan/items/:itemId`).
+All selected AI runs resolve through `action_plans.generation_job_id` and
+`ai_processing_runs.job_id`.
 
 ## Practical navigation
 

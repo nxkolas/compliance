@@ -4,7 +4,7 @@
 
 1. Confirm a successful backup less than 24 hours old.
 2. Confirm the release manifest contains one Git revision and digest-addressed
-   web, worker, database, Storage, Studio, and postgres-meta images.
+   web, operator, database, Storage, Studio, and postgres-meta images.
 3. Run application-host preflight.
 4. Deploy the inactive color:
 
@@ -14,8 +14,8 @@
 
 5. For disposable staging, the script runs vector bootstrap, Drizzle push, and
    append-only audit bootstrap in that order, then reconciles private buckets,
-   drains the old worker, starts the new worker, atomically switches Caddy, and
-   records a release manifest. Production deliberately skips this disposable
+   atomically switches Caddy, and records a release manifest. Production
+   deliberately skips this disposable
    schema path and requires a separately reviewed clean-baseline procedure.
 6. Run production-safe Auth, Storage, readiness, queue, and AI smoke checks.
 
@@ -32,8 +32,8 @@ Production runs only from a version tag or protected manual approval. Repeat
 the staging procedure with the production environment. Stop staging if the
 shared host approaches its production resource reserve.
 
-Application rollback switches Caddy to the preceding compatible web digest and
-restores its worker color. Database schema is never automatically downgraded.
+Application rollback switches Caddy to the preceding compatible web digest.
+Database schema is never automatically downgraded.
 If old code is incompatible, forward-fix or execute the verified restore
 procedure.
 
@@ -41,7 +41,6 @@ procedure.
 
 - `/api/health/live` proves process liveness.
 - `/api/health/ready` proves bounded database access.
-- `scripts/health/worker.ts` proves worker/database readiness.
 - Caddy, Kong, PostgreSQL, and Storage must be healthy.
 - Only ports 80/443 are public on the application host.
 

@@ -66,7 +66,6 @@ export type GroundingExecutionDependencies = {
 };
 
 type GroundedOperationInput<T> = {
-  operation: "gap_analysis";
   runOperationKind?:
     | "gap_analysis"
     | "gap_conflict_resolution"
@@ -93,7 +92,6 @@ type GroundedOperationInput<T> = {
   outputContract: GroundedOutputContract<T>;
   idempotencyKey: string;
   generationReservationKey?: string;
-  generationAttemptKey?: string;
   durableExecutionAttempt?: number;
   providerAttempt?: number;
   assessmentRevisionId?: string;
@@ -131,7 +129,6 @@ type RecoveryCompatibility = {
 
 export async function prepareGroundingOperation(
   input: {
-    operation: "gap_analysis";
     organizationId: string;
     workflowReleaseId: string;
     jobId?: string | null;
@@ -139,7 +136,6 @@ export async function prepareGroundingOperation(
   dependencies: Pick<GroundingExecutionDependencies, "providers"> = {},
 ): Promise<PreparedGroundingOperation> {
   const policy = await resolveGroundingPolicy({
-    operation: input.operation,
     organizationId: input.organizationId,
   });
   const provider = selectGroundedProvider({
@@ -184,7 +180,6 @@ export async function runGroundedOperation<T>(
     input.preparedGrounding ??
     (await prepareGroundingOperation(
       {
-        operation: input.operation,
         organizationId: input.organizationId,
         workflowReleaseId: input.workflowReleaseId,
         jobId: input.jobId,
@@ -368,7 +363,6 @@ export async function runGroundedOperation<T>(
       jobId: input.jobId,
       idempotencyKey: input.idempotencyKey,
       generationReservationKey: input.generationReservationKey,
-      generationAttemptKey: input.generationAttemptKey,
       durableExecutionAttempt: input.durableExecutionAttempt,
       providerAttempt: input.providerAttempt,
       operationKind,
@@ -543,7 +537,6 @@ export async function runGroundedOperation<T>(
 function assertGenerationAttemptInput(input: {
   idempotencyKey: string;
   generationReservationKey?: string;
-  generationAttemptKey?: string;
   durableExecutionAttempt?: number;
   providerAttempt?: number;
   jobId?: string;
@@ -551,15 +544,12 @@ function assertGenerationAttemptInput(input: {
 }) {
   const values = [
     input.generationReservationKey,
-    input.generationAttemptKey,
     input.durableExecutionAttempt,
     input.providerAttempt,
   ];
   if (values.every((value) => value === undefined)) return;
   if (
     !input.generationReservationKey ||
-    !input.generationAttemptKey ||
-    input.idempotencyKey !== input.generationAttemptKey ||
     !Number.isInteger(input.durableExecutionAttempt) ||
     input.durableExecutionAttempt! < 1 ||
     !Number.isInteger(input.providerAttempt) ||

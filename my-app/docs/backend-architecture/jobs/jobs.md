@@ -1,6 +1,6 @@
 # Background Jobs
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## Why durable jobs
 
@@ -27,7 +27,7 @@ stateDiagram-v2
     running --> succeeded
     running --> failed : retries exhausted
     running --> queued : retryable failure / parked wait
-    running --> cancelled : worker finalizes cancellation
+    running --> cancelled : executor finalizes cancellation
     running --> running : lease recovery by new owner
     succeeded --> [*]
     failed --> [*]
@@ -53,7 +53,7 @@ Key mechanics:
 - **Cancellation**: cancelling a queued job transitions it immediately to
   `cancelled`. Cancelling a running job records `cancellation_requested_at`
   (the API then reports `cancellation_requested`) and the handler receives an
-  abort signal; the worker finalizes the row to `cancelled` and fails any
+  abort signal; the executor finalizes the row to `cancelled` and fails any
   in-flight AI run. Non-cancellable jobs reject with `409`.
 - **Progress**: `progress_current`, `progress_total`, and `progress_message`
   are durable and exposed by the polling endpoint.
@@ -73,8 +73,6 @@ All adapters drain the same queue with the same handlers
 | --- | --- | --- |
 | `after_response` | Next.js `after()` following a `202` response | 25 jobs, ~4:45 min |
 | `recovery_route` | `GET/POST /api/internal/jobs/drain` (cron secret) | 50 jobs, ~4:45 min |
-| `resident_worker` | `src/worker/main.ts` long-lived loop | 100 jobs per 4-minute cycle |
-| `script` | Operator scripts | caller-defined |
 
 ## Job catalog
 
@@ -93,7 +91,7 @@ Job kinds, their triggers, and their outcomes are defined in
 | `maintenance_cleanup` | Operator scheduling | `src/server/api/cleanup.ts` | — |
 
 Organization-scoped jobs pin the requester (`requested_by`) and the
-organization, so worker handlers use the pinned identity instead of replaying
+organization, so handlers use the pinned identity instead of replaying
 a human session. Capability requirements for reading progress and cancelling
 are part of each definition.
 
@@ -102,7 +100,7 @@ are part of each definition.
 Where a handler publishes an immutable business result, it:
 
 1. re-enters a transaction;
-2. verifies the parent job is still `running` and owned by this worker's
+2. verifies the parent job is still `running` and owned by this executor's
    current lease (`assertLiveParentJobForAiRun`, action-plan
    `assertActionPlanPublicationLease`);
 3. persists the result, the AI-run success state, audit rows, and the current
@@ -115,5 +113,4 @@ A candidate produced after lease turnover is discarded instead of published.
 - Definitions, payload schemas, capabilities: `src/server/jobs/definitions.ts`.
 - State machine: `src/server/jobs/state-machine.ts`.
 - Drain and runtime: `src/server/job-execution/`.
-- Worker entry point: `src/worker/main.ts`.
 - Polling/cancellation routes: `app/api/jobs/`.

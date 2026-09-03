@@ -23,8 +23,46 @@ export const applicabilityResultSchema = z.object({
   outputRevisionNumber: z.number().int().positive(),
   createdAt: z.iso.datetime(),
   assessmentRevisionId: z.uuid().nullable(),
-  evidence: z.object({ outcome: z.string() }).loose(),
-  result: z.object({ outcome: z.string() }).loose(),
+  evidence: z.json(),
+  result: z.object({
+    outcome: z.enum(["essential_entity", "important_entity", "not_directly_in_scope", "clarification_required"]),
+    label: z.string(),
+    labelEn: z.string(),
+    reasons: z.array(z.string()),
+    reasonsEn: z.array(z.string()),
+    sizeClassification: z.enum(["small", "medium", "large", "unknown"]),
+    jurisdiction: z.object({
+      countryCode: z.string().nullable(),
+      countryProfileVersion: z.string().nullable(),
+    }),
+    matchedEntityTypes: z.array(z.object({
+      code: z.string(),
+      label: z.string(),
+      labelEn: z.string(),
+      legalReference: z.string(),
+    })),
+    scopeBases: z.array(z.object({
+      code: z.string(),
+      description: z.string(),
+      descriptionEn: z.string(),
+      legalReference: z.string().nullable(),
+    })),
+    unresolvedFacts: z.array(z.string()),
+    unresolvedFactsEn: z.array(z.string()),
+    obligationOverlays: z.array(z.object({
+      code: z.string(),
+      description: z.string(),
+      descriptionEn: z.string(),
+      legalReference: z.string().nullable(),
+    })),
+    indirectExposure: z.object({
+      status: z.enum(["none", "signals_present", "unknown"]),
+      reasons: z.array(z.string()),
+      reasonsEn: z.array(z.string()),
+    }),
+    disclaimer: z.string(),
+    disclaimerEn: z.string(),
+  }).partial().required({ outcome: true }),
   definition: z.object({
     hash: z.string().min(1),
     versionLabel: z.string(),
@@ -33,26 +71,72 @@ export const applicabilityResultSchema = z.object({
   }),
 });
 
-export const applicabilityQuestionnaireSchema = z
-  .object({
-    id: z.string().min(1),
-    questions: z.array(z.unknown()),
-    defaultAnswers: z.record(z.string(), z.unknown()),
-    latestAnswers: z.record(z.string(), z.unknown()),
-    definition: z.object({
-      hash: z.string().min(1),
-      versionLabel: z.string(),
-      supportedJurisdictionCodes: z.array(z.string().length(2)),
-    }),
-  })
-  .loose();
+const applicabilityAnswerValueSchema = z.union([
+  z.string(),
+  z.array(z.string()),
+]);
+const applicabilityOptionSchema = z.object({
+  id: z.string(),
+  stableValue: z.string(),
+  catalogCode: z.string(),
+  label: z.string(),
+  position: z.number().int().nonnegative(),
+  metadata: z.json(),
+});
 
-export const applicabilityOverviewSchema = z
-  .object({ assessmentId: z.uuid() })
-  .loose();
-export const applicabilityAnswersSchema = z
-  .object({ assessmentId: z.uuid(), answers: z.array(z.unknown()) })
-  .loose();
+export const applicabilityQuestionnaireSchema = z.object({
+  id: z.string().min(1),
+  locale: z.enum(["de", "en"]),
+  title: z.string(),
+  code: z.string(),
+  versionLabel: z.string(),
+  questions: z.array(z.object({
+    id: z.string(),
+    stableKey: z.string(),
+    position: z.number().int().nonnegative(),
+    questionText: z.string(),
+    helpText: z.string().nullable(),
+    tooltipText: z.string().nullable(),
+    answerType: z.string(),
+    required: z.boolean(),
+    config: z.json(),
+    options: z.array(applicabilityOptionSchema),
+  })),
+  entityCatalogs: z.record(z.string(), z.array(applicabilityOptionSchema)),
+  contentByStableKey: z.record(z.string(), z.string()),
+  defaultAnswers: z.record(z.string(), applicabilityAnswerValueSchema),
+  latestAnswers: z.record(z.string(), applicabilityAnswerValueSchema),
+  definition: z.object({
+    hash: z.string().min(1),
+    versionLabel: z.string(),
+    supportedJurisdictionCodes: z.array(z.string().length(2)),
+  }),
+  guestSession: z.object({ id: z.uuid(), token: z.string() }).optional(),
+});
+
+export const applicabilityOverviewSchema = z.object({
+  assessmentId: z.uuid(),
+  assessmentRevisionId: z.uuid(),
+  assessmentRevisionNumber: z.number().int().positive(),
+  submittedAt: z.iso.datetime(),
+  result: applicabilityResultSchema.nullable(),
+});
+export const applicabilityAnswersSchema = z.object({
+  assessmentId: z.uuid(),
+  assessmentRevisionId: z.uuid(),
+  assessmentRevisionNumber: z.number().int().positive(),
+  submittedAt: z.iso.datetime(),
+  answers: z.array(z.object({
+    questionId: z.string(),
+    questionStableKey: z.string(),
+    questionText: z.string(),
+    questionConfig: z.json(),
+    questionPosition: z.number().int().nonnegative(),
+    answerValue: z.json(),
+    answerLabel: z.string().nullable(),
+    answerMetadata: z.json(),
+  })),
+});
 export const claimGuestApplicabilityCheckSchema = z.object({
   organizationId: z.uuid(),
   checkId: z.uuid().optional(),

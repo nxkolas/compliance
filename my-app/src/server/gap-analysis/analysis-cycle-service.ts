@@ -437,7 +437,6 @@ export async function executeGapGenerationJob(input: {
         corpusSnapshotIds: [...new Set(generated.context.flatMap((item) => typeof item.metadata.snapshotId === "string" ? [item.metadata.snapshotId] : []))],
       },
       generationJobId: input.jobId,
-      aiProcessingRunId: generated.runId,
       createdBy: input.userId,
       createdAt: now,
     }).returning();
@@ -493,7 +492,6 @@ export async function executeGapGenerationJob(input: {
       if (groundedFinding.gaps.length) {
         const storedGaps = await tx.insert(gapItems).values(groundedFinding.gaps.map((gap, gapPosition) => ({
           organizationId: input.organizationId,
-          outputRevisionId: revision.id,
           findingId: finding.id,
           stableKey: `${gap.questionStableKey}.${gapPosition + 1}`,
           kind: gap.kind,

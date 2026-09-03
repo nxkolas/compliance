@@ -95,9 +95,9 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
       }
     : null;
   const findings = revision ? await loadFindings(input.organizationId, revision.id, input.locale) : [];
-  const generationRun = revision?.aiProcessingRunId
-    ? await db.query.aiProcessingRuns.findFirst({
-        where: { RAW: (table, operators) => eq(table.id, revision.aiProcessingRunId!) ?? operators.sql`true` },
+  const generationJob = revision?.generationJobId
+    ? await db.query.backgroundJobs.findFirst({
+        where: { RAW: (table, operators) => eq(table.id, revision.generationJobId!) ?? operators.sql`true` },
       })
     : null;
   const generationActive = cycle?.cycle.stage === "generating";
@@ -132,12 +132,37 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
         eligibleForAnalysis: !document.archivedAt && version?.indexingStatus === "succeeded",
       })),
     },
-    run: generationRun ? { errorCode: generationRun.failureCode } : null,
+    run: generationJob ? { errorCode: generationJob.errorCode } : null,
     revision: revision ? { id: revision.id, outputLocale: revision.locale, createdAt: revision.createdAt } : null,
     acceptedRevision: revision ? { id: revision.id, outputLocale: revision.locale, createdAt: revision.createdAt } : null,
     candidateRevision: null,
     activePlan: plan ? { sourceGapArtifactRevisionId: plan.sourceGapRevisionId } : null,
-    analysisCycle: cycle,
+    analysisCycle: cycle
+      ? {
+          draft: {
+            id: cycle.draft.id,
+            status: cycle.draft.status,
+            outputLocale: cycle.draft.outputLocale,
+            lockVersion: cycle.draft.lockVersion,
+            generationJobId: cycle.draft.generationJobId,
+            outputGapRevisionId: cycle.draft.outputGapRevisionId,
+          },
+          selected: cycle.selected.map(({ documentId, selectionOrigin }) => ({
+            documentId,
+            selectionOrigin,
+          })),
+          summary: {
+            baseAcceptedGapRevisionId: cycle.summary.baseAcceptedGapRevisionId,
+            baseAcceptedGapRevisionNumber:
+              cycle.summary.baseAcceptedGapRevisionNumber,
+            assessmentRevisionId: cycle.summary.assessmentRevisionId,
+            assessmentRevisionNumber: cycle.summary.assessmentRevisionNumber,
+            gapAnalysisReleaseId: cycle.summary.gapAnalysisReleaseId,
+            gapAnalysisReleaseVersion: cycle.summary.gapAnalysisReleaseVersion,
+            requirementCount: cycle.summary.requirementCount,
+          },
+        }
+      : null,
     prerequisite,
     history,
     generatedInputs,

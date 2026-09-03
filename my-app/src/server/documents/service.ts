@@ -233,15 +233,6 @@ export async function createDocumentSourceAccess(
   return { url: options.page ? `${data.signedUrl}#page=${options.page}` : data.signedUrl };
 }
 
-export async function updateOrganizationDocument(input: { userId: string; organizationId: string; documentId: string; title: string; expectedVersion?: number }) {
-  await withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "documents:write" }, async ({ executor }) => {
-    const [document] = await executor.update(documents).set({ name: input.title.trim(), updatedAt: new Date() })
-      .where(and(eq(documents.id, input.documentId), eq(documents.organizationId, input.organizationId))).returning();
-    if (!document) throw new ApiError(404, "Document not found");
-  });
-  return getOrganizationDocumentDetail(input.userId, input.organizationId, input.documentId);
-}
-
 export async function restoreOrganizationDocument(userId: string, organizationId: string, documentId: string) {
   await withAuthorizedOrganizationCommand({ actorUserId: userId, organizationId, capability: "documents:archive" }, async ({ executor }) => {
     await executor.update(documents).set({ archivedAt: null, updatedAt: new Date() })

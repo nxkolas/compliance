@@ -13,13 +13,19 @@ const expectedConstraints = [
   "analysis_outputs_current_revision_identity_fk",
   "analysis_output_revisions_output_tenant_fk",
   "analysis_output_revisions_assessment_tenant_fk",
+  "analysis_output_revisions_generation_job_tenant_fk",
+  "gap_analysis_cycles_generation_job_tenant_fk",
   "gap_analysis_cycles_stage_lineage_check",
   "ai_processing_runs_lifecycle_check",
   "ai_processing_runs_generation_attempt_check",
   "ai_processing_run_context_source_check",
   "ai_processing_run_context_channel_check",
   "gap_findings_resolution_check",
+  "gap_findings_original_finding_tenant_fk",
   "action_plans_gap_revision_tenant_fk",
+  "action_plans_generation_job_tenant_fk",
+  "action_plan_items_suggested_evidence_array_check",
+  "reports_rendering_job_tenant_fk",
   "reports_pdf_locator_check",
 ] as const;
 
@@ -28,7 +34,6 @@ const expectedIndexes = [
   "analysis_outputs_organization_kind_unique",
   "gap_analysis_cycles_unfinished_unique",
   "ai_processing_runs_operation_idempotency_unique",
-  "ai_processing_runs_generation_attempt_unique",
   "ai_processing_runs_generation_reservation_idx",
   "gap_findings_revision_requirement_unique",
   "gap_items_finding_stable_key_unique",
@@ -163,11 +168,14 @@ async function main() {
           where exists (
             select 1
             from gap_items gap
-            where gap.output_revision_id = plan.source_gap_revision_id
+            join gap_findings finding on finding.id = gap.finding_id
+            where finding.output_revision_id = plan.source_gap_revision_id
               and not exists (
                 select 1
                 from action_plan_item_gaps link
-                where link.action_plan_id = plan.id
+                join action_plan_items linked_item
+                  on linked_item.id = link.action_plan_item_id
+                where linked_item.action_plan_id = plan.id
                   and link.gap_item_id = gap.id
               )
           ) or exists (
@@ -177,8 +185,7 @@ async function main() {
               and not exists (
                 select 1
                 from action_plan_item_gaps link
-                where link.action_plan_id = plan.id
-                  and link.action_plan_item_id = item.id
+                where link.action_plan_item_id = item.id
               )
           )
         ) as "incompleteActionPlans",

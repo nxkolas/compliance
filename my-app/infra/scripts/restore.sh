@@ -93,9 +93,9 @@ canary_key="$(read_env STORAGE_RESTORE_CANARY_OBJECT)"
 canary_version="$(read_env STORAGE_RESTORE_CANARY_VERSION_ID)"
 canary_sha="$(read_env STORAGE_RESTORE_CANARY_SHA256)"
 if [[ -n "$canary_key" && "$canary_key" != replace* && -n "$canary_version" && "$canary_version" != replace* && "$canary_sha" =~ ^[0-9a-f]{64}$ ]]; then
-  worker_image="$(read_env WORKER_IMAGE)"
-  [[ "$worker_image" =~ @sha256:[0-9a-f]{64}$ ]] || {
-    echo "WORKER_IMAGE must use an immutable digest" >&2
+  operator_image="$(read_env OPERATOR_IMAGE)"
+  [[ "$operator_image" =~ @sha256:[0-9a-f]{64}$ ]] || {
+    echo "OPERATOR_IMAGE must use an immutable digest" >&2
     exit 1
   }
   docker run --rm \
@@ -105,7 +105,7 @@ if [[ -n "$canary_key" && "$canary_key" != replace* && -n "$canary_version" && "
     -e S3_FORCE_PATH_STYLE="$(read_env GLOBAL_S3_FORCE_PATH_STYLE)" \
     -e S3_ACCESS_KEY_ID="$(read_env STORAGE_INVENTORY_ACCESS_KEY_ID)" \
     -e S3_SECRET_ACCESS_KEY="$(read_env STORAGE_INVENTORY_SECRET_ACCESS_KEY)" \
-    "$worker_image" node_modules/tsx/dist/cli.mjs scripts/s3-operator.ts \
+    "$operator_image" node_modules/tsx/dist/cli.mjs scripts/s3-operator.ts \
     get-object "$(read_env GLOBAL_S3_BUCKET)" "$canary_key" "$canary_version" \
     > "$temporary_object"
   printf '%s  %s\n' "$canary_sha" "$temporary_object" | sha256sum --check --status

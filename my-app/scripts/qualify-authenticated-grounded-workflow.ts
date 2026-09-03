@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { closeDbConnection, db } from "@/src/db";
 import {
   actionPlanItemGaps,
+  actionPlanItems,
   aiProcessingRunContext,
   aiProcessingRuns,
   backgroundJobs,
@@ -175,7 +176,7 @@ async function main() {
     throw new Error("Grounded Action Plan did not produce multiple actions");
   }
   assertNoPlaceholder(
-    plan.items.flatMap((item) => [item.title, item.description]),
+    plan.items.flatMap((item) => [item.title, item.result, ...item.suggestedEvidence]),
   );
 
   const runs = await db
@@ -211,9 +212,13 @@ async function main() {
       .from(gapItemContextLinks)
       .where(eq(gapItemContextLinks.organizationId, organization.id)),
     db
-      .select()
+      .select({ gapItemId: actionPlanItemGaps.gapItemId })
       .from(actionPlanItemGaps)
-      .where(eq(actionPlanItemGaps.actionPlanId, plan.plan.id)),
+      .innerJoin(
+        actionPlanItems,
+        eq(actionPlanItems.id, actionPlanItemGaps.actionPlanItemId),
+      )
+      .where(eq(actionPlanItems.actionPlanId, plan.plan.id)),
   ]);
   if (
     !contexts.length ||

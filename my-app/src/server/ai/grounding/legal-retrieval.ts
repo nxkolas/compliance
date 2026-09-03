@@ -84,21 +84,21 @@ export async function retrieveMappedProvisionRows(input: {
       eq(legalCorpusFamilies.id, legalCorpusSnapshots.familyId),
     )
     .innerJoin(
-      legalSourceVersions,
-      eq(legalSourceVersions.id, legalCorpusSnapshotMembers.sourceVersionId),
-    )
-    .innerJoin(legalSources, eq(legalSources.id, legalSourceVersions.sourceId))
-    .innerJoin(
-      legalSourceRenditions,
-      eq(legalSourceRenditions.id, legalCorpusSnapshotMembers.renditionId),
-    )
-    .innerJoin(
       legalSourceProcessingGenerations,
       eq(
         legalSourceProcessingGenerations.id,
         legalCorpusSnapshotMembers.processingGenerationId,
       ),
     )
+    .innerJoin(
+      legalSourceRenditions,
+      eq(legalSourceRenditions.id, legalSourceProcessingGenerations.renditionId),
+    )
+    .innerJoin(
+      legalSourceVersions,
+      eq(legalSourceVersions.id, legalSourceRenditions.sourceVersionId),
+    )
+    .innerJoin(legalSources, eq(legalSources.id, legalSourceVersions.sourceId))
     .innerJoin(
       legalSourceChunks,
       eq(
@@ -209,21 +209,21 @@ export async function retrievePinnedLegalContext(
       eq(legalCorpusFamilies.id, legalCorpusSnapshots.familyId),
     )
     .innerJoin(
-      legalSourceVersions,
-      eq(legalSourceVersions.id, legalCorpusSnapshotMembers.sourceVersionId),
-    )
-    .innerJoin(legalSources, eq(legalSources.id, legalSourceVersions.sourceId))
-    .innerJoin(
-      legalSourceRenditions,
-      eq(legalSourceRenditions.id, legalCorpusSnapshotMembers.renditionId),
-    )
-    .innerJoin(
       legalSourceProcessingGenerations,
       eq(
         legalSourceProcessingGenerations.id,
         legalCorpusSnapshotMembers.processingGenerationId,
       ),
     )
+    .innerJoin(
+      legalSourceRenditions,
+      eq(legalSourceRenditions.id, legalSourceProcessingGenerations.renditionId),
+    )
+    .innerJoin(
+      legalSourceVersions,
+      eq(legalSourceVersions.id, legalSourceRenditions.sourceVersionId),
+    )
+    .innerJoin(legalSources, eq(legalSources.id, legalSourceVersions.sourceId))
     .innerJoin(
       legalSourceChunks,
       eq(

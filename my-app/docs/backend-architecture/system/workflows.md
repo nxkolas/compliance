@@ -52,7 +52,7 @@ Tables: `organizations`, `organization_memberships`,
    (`POST /api/organizations/:id/document-upload-sessions/:sessionId/complete`).
    The server verifies the object's size, MIME type, and hash before creating
    an immutable `document_versions` row.
-3. A `document_indexing` job is enqueued. The worker parses the file
+3. A `document_indexing` job is enqueued. The job handler parses the file
    (`src/server/documents/parser.ts`), chunks it, computes search vectors and
    embeddings, and stores `document_chunks`.
 4. Members read the document list and metadata under
@@ -83,7 +83,7 @@ flowchart TD
     B --> C[Finalize questionnaire]
     C --> D[Select evidence documents]
     D --> E[Enqueue gap_analysis job]
-    E --> F[Worker: pin legal snapshot + retrieve evidence]
+    E --> F[Job handler: pin legal snapshot + retrieve evidence]
     F --> G[Grounded generation per category]
     G --> H[Validate output and citations]
     H --> I[Publish findings, gaps, revision atomically]
@@ -101,7 +101,7 @@ flowchart TD
    (`PUT .../gap-analysis/cycles/:cycleId/evidence`).
 4. `POST .../gap-analysis/cycles/:cycleId/generation-jobs` enqueues a
    `gap_analysis` job and returns `202`.
-5. The worker pins legal corpus snapshots, retrieves legal and organization
+5. The job handler pins legal corpus snapshots, retrieves legal and organization
    evidence, invokes the provider through the current contract, and validates
    strict grounded output. One transaction publishes normalized findings,
    atomic gaps, exact evidence links, the immutable output revision,
@@ -128,7 +128,7 @@ Tables: `gap_analysis_cycles`, `gap_analysis_cycle_documents`,
 2. A `action_plan_generation` job runs a distinct grounded provider operation
    that produces complete, category-scoped, many-to-many Gap coverage.
 3. Plan, items, gap links, audit rows, and job success publish atomically
-   under the worker's live lease.
+   under the executor's live lease.
 4. Item statuses can be updated status-only
    (`PATCH /api/organizations/:id/action-plan/items/:itemId`); the plan itself
    is immutable.

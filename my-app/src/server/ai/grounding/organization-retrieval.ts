@@ -1,8 +1,6 @@
 import { createHash } from "node:crypto";
 import { retrieveDocumentEvidence } from "@/src/server/documents";
 import {
-  CHUNKING_VERSION,
-  EMBEDDING_DIMENSIONS,
 } from "@/src/server/documents/domain";
 import { resolveOrganizationEmbeddingConfig } from "@/src/server/documents/service";
 import type { GroundingContextItem } from "./types";

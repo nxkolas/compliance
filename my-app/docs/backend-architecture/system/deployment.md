@@ -1,23 +1,18 @@
 # Deployment
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## Execution model
 
-The application ships as one code base with two runnable server processes:
+The application ships as one web process:
 
 - The **web process** (`next start`) serves pages and API routes. After
   returning a `202` response it can run a bounded portable job drain via
   Next.js `after()` (`src/server/job-execution/after-response.ts`).
-- The **resident worker** (`npm run worker`) is a long-lived process that
-  continuously drains the same job queue
-  (`src/worker/main.ts`, up to 100 jobs per 4-minute drain cycle).
-
-A scheduled, authenticated recovery route
-(`app/api/internal/jobs/drain/route.ts`) provides durable wake-ups for
-deployments without a resident worker. Hosted deployments register it as a
-cron job; self-hosted deployments can call it from a scheduler or run the
-resident worker instead.
+- A scheduled, authenticated recovery route
+  (`app/api/internal/jobs/drain/route.ts`) provides durable wake-ups for
+  all deployments. Hosted deployments register it as a cron job; self-hosted
+  deployments can call the authenticated route from their scheduler.
 
 All execution surfaces use the same handlers; hosting differences only change
 who wakes the queue.
@@ -34,7 +29,8 @@ who wakes the queue.
 
 ### Private self-hosted (Docker Compose)
 
-- Web container plus a resident worker container.
+- Web container with after-response drains plus an authenticated scheduled
+  call to the recovery route.
 - PostgreSQL, Supabase Auth, and Storage run in the same Compose project
   (`infra/compose/app-host/`), coordinated with Caddy as the TLS edge.
 - Blue/green release projects swap application images by digest without
@@ -44,8 +40,9 @@ who wakes the queue.
 
 ### Local development
 
-- Next.js dev server plus `npm run worker:local` against a hosted Supabase
-  project; `.env.local` holds configuration.
+- Next.js dev server against a hosted Supabase project; `.env.local` holds
+  configuration. Requests trigger after-response drains, and the recovery
+  route can be invoked with `CRON_SECRET` when needed.
 - Optional local model testing runs Ollama natively on the host
   (`docs/ai/local-ai.md` in this folder).
 
@@ -56,7 +53,6 @@ flowchart TB
     Client[Client]
     Caddy[Caddy - TLS edge]
     Web[Web container]
-    Worker[Worker container]
     Kong[Supabase Kong gateway]
     Auth[Supabase Auth]
     DB[(PostgreSQL)]
@@ -68,13 +64,9 @@ flowchart TB
     Caddy --> Web
     Web --> Kong
     Web --> DB
-    Worker --> DB
-    Worker --> Storage
     Web --> Storage
     Web --> AI
-    Worker --> AI
     Web --> Obs
-    Worker --> Obs
     Kong --> Auth
     Kong --> Storage
 ```
@@ -99,7 +91,7 @@ deployment-wide provider configuration only supplies the fallback.
 
 ## Security posture of containers
 
-First-party web and worker containers run non-root, read-only, capability-free,
+The first-party web container runs non-root, read-only, capability-free,
 with PID/memory/CPU bounds and tmpfs for temporary writes. Only Caddy keeps
 `NET_BIND_SERVICE`; no service mounts the Docker socket; images are pinned by
 digest.
@@ -113,6 +105,5 @@ digest.
 
 - This document describes the topology conceptually. Step-by-step deployment
   procedures are intentionally not part of this self-contained folder.
-- The worker and web process share the schema; there is no separate job
-  database.
-
+- Job execution uses the same PostgreSQL schema as the web application; there
+  is no separate queue service or worker deployment.

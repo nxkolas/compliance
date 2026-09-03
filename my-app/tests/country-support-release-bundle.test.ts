@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getSupportedCountryCodes } from "@/src/server/applicability-check/country-support";
 import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
-import { groundingPolicyDefinitions } from "@/src/server/ai/grounding/policy-definition";
+import { nis2GroundingPolicy } from "@/src/server/ai/grounding/policy-definition";
 import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
 import { nis2ReleaseDefinition } from "@/src/server/compliance/nis2/releases/2026-v1/release";
 import { guidedV6GapRelease } from "@/src/server/gap-analysis/releases/guided-v6/release";
@@ -34,7 +34,7 @@ describe("current Germany country-support bundle", () => {
       expect.arrayContaining(["nis2-eu-primary", "nis2-de-primary"]),
     );
     expect(
-      groundingPolicyDefinitions.gap_analysis.jurisdictionCodes,
+      nis2GroundingPolicy.jurisdictionCodes,
     ).toEqual(expect.arrayContaining(["EU", "DE"]));
   });
 

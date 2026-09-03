@@ -88,6 +88,10 @@ export const relations = defineRelations(schema, (r) => ({
     }),
     documents: r.many.analysisOutputDocumentSources(),
     findings: r.many.gapFindings(),
+    generationJob: r.one.backgroundJobs({
+      from: r.analysisOutputRevisions.generationJobId,
+      to: r.backgroundJobs.id,
+    }),
   },
   analysisOutputDocumentSources: {
     outputRevision: r.one.analysisOutputRevisions({
@@ -185,6 +189,10 @@ export const relations = defineRelations(schema, (r) => ({
     }),
     items: r.many.gapItems(),
     contextLinks: r.many.gapFindingContextLinks(),
+    originalFinding: r.one.gapFindings({
+      from: r.gapFindings.originalFindingId,
+      to: r.gapFindings.id,
+    }),
   },
   gapItems: {
     finding: r.one.gapFindings({
@@ -230,6 +238,10 @@ export const relations = defineRelations(schema, (r) => ({
       optional: false,
     }),
     items: r.many.actionPlanItems(),
+    generationJob: r.one.backgroundJobs({
+      from: r.actionPlans.generationJobId,
+      to: r.backgroundJobs.id,
+    }),
   },
   actionPlanItems: {
     plan: r.one.actionPlans({
@@ -295,7 +307,6 @@ export const relations = defineRelations(schema, (r) => ({
       optional: false,
     }),
     renditions: r.many.legalSourceRenditions(),
-    processingGenerations: r.many.legalSourceProcessingGenerations(),
   },
   legalSourceRenditions: {
     sourceVersion: r.one.legalSourceVersions({
@@ -305,11 +316,6 @@ export const relations = defineRelations(schema, (r) => ({
     }),
   },
   legalSourceProcessingGenerations: {
-    sourceVersion: r.one.legalSourceVersions({
-      from: r.legalSourceProcessingGenerations.sourceVersionId,
-      to: r.legalSourceVersions.id,
-      optional: false,
-    }),
     rendition: r.one.legalSourceRenditions({
       from: r.legalSourceProcessingGenerations.renditionId,
       to: r.legalSourceRenditions.id,
@@ -344,16 +350,6 @@ export const relations = defineRelations(schema, (r) => ({
     snapshot: r.one.legalCorpusSnapshots({
       from: r.legalCorpusSnapshotMembers.snapshotId,
       to: r.legalCorpusSnapshots.id,
-      optional: false,
-    }),
-    sourceVersion: r.one.legalSourceVersions({
-      from: r.legalCorpusSnapshotMembers.sourceVersionId,
-      to: r.legalSourceVersions.id,
-      optional: false,
-    }),
-    rendition: r.one.legalSourceRenditions({
-      from: r.legalCorpusSnapshotMembers.renditionId,
-      to: r.legalSourceRenditions.id,
       optional: false,
     }),
     processingGeneration: r.one.legalSourceProcessingGenerations({

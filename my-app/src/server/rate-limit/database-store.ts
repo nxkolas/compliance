@@ -12,7 +12,6 @@ export const databaseRateLimitStore: RateLimitStore = {
         target: [apiRateLimitWindows.key, apiRateLimitWindows.windowStartedAt],
         set: {
           requestCount: sql`${apiRateLimitWindows.requestCount} + 1`,
-          updatedAt: new Date(),
         },
       })
       .returning({ count: apiRateLimitWindows.requestCount });

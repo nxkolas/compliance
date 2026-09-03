@@ -53,12 +53,12 @@ The organization ID in a URL is never authority by itself.
 | Audit read | yes | no | yes |
 
 Platform operators have a separate capability (`corpus:operate`) used by
-operator commands and worker processes, not by web users.
+operator commands and the server-side job runtime, not by web users.
 
 ## Row-level security
 
 Every ordinary public table has RLS enabled with no browser-role application
-policies. Direct browser access is denied by default; trusted web and worker
+policies. Direct browser access is denied by default; trusted application
 connections use the application role and rely on the service-layer scopes
 above. This makes RLS a second line of defense rather than the primary
 authorization mechanism.

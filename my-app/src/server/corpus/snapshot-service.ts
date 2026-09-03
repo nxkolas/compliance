@@ -34,24 +34,28 @@ export async function activateLegalCorpusSnapshot(input: {
     if (!family) throw new Error(`Unknown legal corpus family: ${input.familyCode}`);
     const members = await tx.select({
       sourceVersionId: legalSourceVersions.id,
+      sourceId: legalSources.id,
       renditionId: legalSourceRenditions.id,
       processingGenerationId: legalSourceProcessingGenerations.id,
       status: legalSourceProcessingGenerations.status,
       familyId: legalSources.familyId,
     }).from(legalSourceProcessingGenerations)
-      .innerJoin(legalSourceVersions, eq(legalSourceProcessingGenerations.sourceVersionId, legalSourceVersions.id))
-      .innerJoin(legalSources, and(eq(legalSourceVersions.sourceId, legalSources.id), eq(legalSourceVersions.familyId, legalSources.familyId)))
-      .innerJoin(legalSourceRenditions, and(
+      .innerJoin(
+        legalSourceRenditions,
         eq(legalSourceProcessingGenerations.renditionId, legalSourceRenditions.id),
+      )
+      .innerJoin(
+        legalSourceVersions,
         eq(legalSourceRenditions.sourceVersionId, legalSourceVersions.id),
-      ))
+      )
+      .innerJoin(legalSources, and(eq(legalSourceVersions.sourceId, legalSources.id), eq(legalSourceVersions.familyId, legalSources.familyId)))
       .where(inArray(legalSourceProcessingGenerations.id, generationIds));
     if (members.length !== generationIds.length) throw new Error("A processing generation does not exist or has invalid lineage");
     if (members.some((member) => member.familyId !== family.id)) throw new Error("Snapshot members must belong to one corpus family");
     if (members.some((member) => member.status !== "succeeded")) throw new Error("Every snapshot member must have succeeded processing");
     const ordered = [...members].sort((left, right) => left.sourceVersionId.localeCompare(right.sourceVersionId));
-    if (new Set(ordered.map((member) => member.sourceVersionId)).size !== ordered.length) {
-      throw new Error("A snapshot may include only one processing generation per source version");
+    if (new Set(ordered.map((member) => member.sourceId)).size !== ordered.length) {
+      throw new Error("A snapshot may include only one processing generation per legal source");
     }
     const hash = contentHash(ordered.map((member) => ({
       sourceVersionId: member.sourceVersionId,
@@ -66,8 +70,6 @@ export async function activateLegalCorpusSnapshot(input: {
     if (!snapshot) throw new Error("Could not create corpus snapshot");
     await tx.insert(legalCorpusSnapshotMembers).values(ordered.map((member, position) => ({
       snapshotId: snapshot.id,
-      sourceVersionId: member.sourceVersionId,
-      renditionId: member.renditionId,
       processingGenerationId: member.processingGenerationId,
       position,
     })));

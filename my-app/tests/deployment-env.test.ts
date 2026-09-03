@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getAcceptanceEnvironment } from "@/src/config/env/test";
 import { getWebEnvironment } from "@/src/config/env/web";
-import { getWorkerEnvironment } from "@/src/config/env/worker";
 
 const productionEnvironment: NodeJS.ProcessEnv = {
   NODE_ENV: "production",
@@ -23,17 +22,13 @@ const productionEnvironment: NodeJS.ProcessEnv = {
   SELF_HOSTED_AI_SMALL_MODEL: "compliance-chat",
   SELF_HOSTED_AI_EMBEDDING_MODEL: "compliance-embedding",
   SELF_HOSTED_AI_SUPPORTS_STRUCTURED_OUTPUTS: "true",
-  WORKER_ID: "production-blue-1",
-  WORKER_DEBUG_ERRORS: "0",
+  AI_DEBUG_ERRORS: "0",
 };
 
 describe("deployment environment contracts", () => {
-  it("accepts the production web and worker topology", () => {
+  it("accepts the production web topology", () => {
     expect(getWebEnvironment(productionEnvironment).APP_ENV).toBe(
       "production",
-    );
-    expect(getWorkerEnvironment(productionEnvironment).WORKER_ID).toBe(
-      "production-blue-1",
     );
   });
 

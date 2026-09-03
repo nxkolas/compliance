@@ -19,6 +19,5 @@ This folder contains system architecture, data model, and API design notes.
 
 Durable background work uses one PostgreSQL-backed execution module with
 multiple bounded wake-up adapters. Next.js `after()` handles low-latency
-request-driven execution, an authenticated internal route provides scheduled
-recovery, and the resident worker repeats the same drain for self-hosted
-throughput. Job polling observes durable state and never executes work.
+request-driven execution, and an authenticated internal route provides
+scheduled recovery. Job polling observes durable state and never executes work.

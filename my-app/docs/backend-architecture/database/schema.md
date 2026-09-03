@@ -1,6 +1,6 @@
 # Database Schema
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## Source of truth
 
@@ -41,8 +41,8 @@ erDiagram
     assessmentRevisions ||--o{ assessmentAnswers : answers
     analysisOutputs ||--o{ analysisOutputRevisions : revisions
     analysisOutputRevisions ||--o{ gapFindings : findings
-    analysisOutputRevisions ||--o{ gapItems : items
     gapFindings ||--o{ gapFindingContextLinks : cites
+    gapFindings ||--o{ gapItems : items
     aiProcessingRuns ||--o{ aiProcessingRunContext : context
     gapFindingContextLinks }o--|| aiProcessingRunContext : references
     actionPlans ||--o{ actionPlanItems : items
@@ -79,7 +79,7 @@ the physical table names are the same in snake_case.
 | `assessmentAnswers` | Localized answer rows pinned to an assessment revision. |
 | `guestApplicabilityChecks` | Temporary public applicability submissions and result snapshots until claim or expiry. |
 | `analysisOutputs` | Stable identity of one generated result per organization and kind. |
-| `analysisOutputRevisions` | Immutable published result revisions with inputs, provenance, and outcome metadata. |
+| `analysisOutputRevisions` | Immutable published result revisions with inputs, outcome metadata, and generation-job lineage. |
 | `analysisOutputDocumentSources` | Document versions selected as evidence for an output revision. |
 
 ### Documents
@@ -97,7 +97,7 @@ the physical table names are the same in snake_case.
 | `gapAnalysisCycles` | One unfinished cycle per organization: stage, draft answers, generation job, and output revision pointers. |
 | `gapAnalysisCycleDocuments` | Selected evidence document versions for a cycle. |
 | `gapFindings` | Normalized findings per requirement with status, criticality, and contradiction metadata. |
-| `gapItems` | Atomic gaps (missing/partial/uncertain) with statements and recommendations. |
+| `gapItems` | Atomic gaps (missing/partial/uncertain) belonging to a finding, with statements and recommendations. |
 | `gapFindingContextLinks` | Exact evidence links per finding with relationship (`supporting`/`conflicting`) and resolution disposition. |
 | `gapItemContextLinks` | Exact evidence links per atomic gap item. |
 
@@ -106,8 +106,8 @@ the physical table names are the same in snake_case.
 | Table | Purpose |
 | --- | --- |
 | `actionPlans` | The single Action Plan per organization, pinned to a source Gap revision. |
-| `actionPlanItems` | Generated plan items with title, description, and status-only mutation. |
-| `actionPlanItemGaps` | Many-to-many coverage links from plan items to gap items. |
+| `actionPlanItems` | Generated plan items with title, separate result text, a JSON string array of suggested evidence, and status-only mutation. |
+| `actionPlanItemGaps` | Many-to-many coverage links from plan items to gap items; the owning plan is reached through the item. |
 
 ### AI processing
 
@@ -132,7 +132,7 @@ the physical table names are the same in snake_case.
 | `guidanceChunks` | Chunks of guidance text. |
 | `guidanceProvisionBindings` | Reviewed provision bindings for guidance chunks. |
 | `legalCorpusSnapshots` | Validated, immutable selections of processed source versions. |
-| `legalCorpusSnapshotMembers` | Exact members of a snapshot (source version, rendition, processing generation). |
+| `legalCorpusSnapshotMembers` | Exact processing-generation members of a snapshot; rendition, version, and source resolve through the normalized hierarchy. |
 
 ### Reports
 
@@ -183,7 +183,7 @@ The schema defines 22 enums, including:
   (`pgTable.withRLS(...)`).
 - Browser-facing roles have no application policies, so direct client access
   is denied by default.
-- Trusted web and worker connections authenticate as the application role and
+- Trusted application connections authenticate as the application role and
   rely on server-side capability checks and organization scopes for tenant
   locality.
 - Audit tables are append-only via operator triggers.
@@ -199,10 +199,17 @@ The schema defines 22 enums, including:
 - A contradiction decision creates a new Gap revision instead of editing the
   old one.
 - Organizations are archived, never deleted.
-- Job-linked AI-run creation and Action Plan/report publication lock the
-  parent job and require the executing worker to own its current, unexpired
+- Job-linked AI-run creation and Gap/Action Plan/report publication lock the
+  parent job and require the executing drain to own its current, unexpired
   lease; a candidate produced after lease turnover is discarded.
 - One Action Plan may be created per organization, ever.
+
+Normalized lineage deliberately has one path for each fact:
+`gap_item -> finding -> output_revision`,
+`action_plan_item_gap -> item -> plan`, and
+`legal_chunk/snapshot_member -> processing_generation -> rendition -> version -> source`.
+Generated Gap and Action Plan artifacts point to a job; all selected AI runs
+are found through `ai_processing_runs.job_id`.
 
 ## Practical navigation
 

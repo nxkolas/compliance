@@ -9,7 +9,6 @@ import {
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
 import { authorizeOrganizationRead, withAuthorizedOrganizationCommand, type OrganizationScopeExecutor } from "../auth/organization-scope";
-import { parseActionDescription } from "./action-description";
 
 type ActionPriority = "low" | "medium" | "high" | "critical";
 
@@ -20,14 +19,6 @@ export async function getCurrentActionPlan(userId: string, organizationId: strin
   });
   if (!plan) return null;
   return loadBundle(plan, scope.executor);
-}
-
-export async function getActionPlanDetail(userId: string, organizationId: string, planId: string) {
-  const scope = await authorizeOrganizationRead({ actorUserId: userId, organizationId, capability: "plans:read" });
-  const plan = await scope.executor.query.actionPlans.findFirst({
-    where: { RAW: (table, operators) => and(eq(table.id, planId), eq(table.organizationId, organizationId)) ?? operators.sql`true` },
-  });
-  return plan ? loadBundle(plan, scope.executor) : null;
 }
 
 export async function updateActionPlanItem(input: {
@@ -72,7 +63,6 @@ async function loadBundle(plan: typeof actionPlans.$inferSelect, executor: Organ
     position: finding.position,
     actions: items.filter((item) => item.findingId === finding.id).map((item) => ({
       ...item,
-      ...parseActionDescription(item.description, plan.locale === "de" ? "de" : "en"),
       priority: actionPriority(finding.criticality),
       gaps: links.filter((link) => link.actionPlanItemId === item.id).map((link) => gaps.find((gap) => gap.id === link.gapItemId)).filter(Boolean),
     })),

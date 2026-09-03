@@ -1,6 +1,6 @@
 # Gap-Analyse Calculation
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## What this calculation produces
 
@@ -61,7 +61,7 @@ optional organization citations allowed by the strict current schema.
 
 ## Grounded generation
 
-For each category, the worker runs the grounded pipeline described in
+For each category, the job handler runs the grounded pipeline described in
 [AI Usage](../ai/usage.md):
 
 1. Pin legal snapshot scope and resolve the provider.
@@ -93,6 +93,10 @@ One transaction publishes:
 - the successful AI-run state and the current pointer on `analysis_outputs`;
 - audit rows and job success.
 
+The revision points to its generation job. Every selected category run is
+resolved through `ai_processing_runs.job_id`; there is no single-run pointer
+on the revision.
+
 Missing or weak evidence does not block generation — it is reported as
 `insufficient_evidence`, not fabricated.
 
@@ -106,8 +110,9 @@ one of two paths (`contradiction-resolution-service.ts`):
 - **Trust document**: a new `gap_conflict_resolution` job regenerates exactly
   that one finding from only the exact cited excerpts.
 
-Either choice creates a new immutable Gap revision with actor/time, original
-lineage, source choice, and exact resolution citation IDs. Findings and gaps
+Either choice creates a new immutable Gap revision with actor/time, a
+tenant-safe self-reference to the original finding, source choice, and exact
+resolution citation IDs. Findings and gaps
 are never edited in place.
 
 ## Practical navigation
@@ -121,4 +126,3 @@ are never edited in place.
 - Publication: `src/server/gap-analysis/` (atomic-gap-generation and
   workflow services).
 - Contradiction resolution: `contradiction-resolution-service.ts`.
-

@@ -14,7 +14,7 @@ import {
   gapItems,
 } from "@/src/db/schema";
 import { currentGapDefinitionHash, getCurrentGapDefinition } from "@/src/server/definitions";
-import { resolveGroundedProviderForOrganization } from "@/src/server/ai/grounding/gateway";
+import { prepareGroundingOperation } from "@/src/server/ai/grounding/gateway";
 import type { GroundedProvider } from "@/src/server/ai/grounding/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ApiError } from "../api/errors";
@@ -122,7 +122,6 @@ export async function executeGapContradictionResolutionJob(input: {
       ? await tx.select().from(gapItemContextLinks).where(inArray(gapItemContextLinks.gapItemId, oldGapIds))
       : [];
 
-    let resolutionRunId = source.revision.aiProcessingRunId;
     const contextIdMap = new Map<string, string>();
     if (generated) {
       const now = new Date();
@@ -148,7 +147,6 @@ export async function executeGapContradictionResolutionJob(input: {
         completedAt: now,
       }).returning();
       if (!run) throw new Error("Conflict-resolution AI run was not created");
-      resolutionRunId = run.id;
       const contextsToCopy = contextLinks.map(({ context }) => context);
       if (contextsToCopy.length) {
         await tx.insert(aiProcessingRunContext).values(contextsToCopy.map((context, position) => {
@@ -187,7 +185,6 @@ export async function executeGapContradictionResolutionJob(input: {
       inputHash: hashJson({ sourceRevisionId: source.revision.id, findingId: source.finding.id, sourceChoice: input.sourceChoice, resolutionCitationIds }),
       result: { version: 1, conflictResolution: { findingId: source.finding.id, sourceChoice: input.sourceChoice } },
       generationJobId: input.jobId,
-      aiProcessingRunId: resolutionRunId,
       createdBy: input.userId,
       createdAt: now,
     }).returning();
@@ -216,7 +213,6 @@ export async function executeGapContradictionResolutionJob(input: {
         resolutionCitationIds: target ? resolutionCitationIds : finding.resolutionCitationIds,
         decidedBy: target ? input.userId : finding.decidedBy,
         decidedAt: target ? now : finding.decidedAt,
-        originalOutputRevisionId: target ? source.revision.id : finding.originalOutputRevisionId,
         originalFindingId: target ? finding.id : finding.originalFindingId,
         position: finding.position,
       };
@@ -229,7 +225,6 @@ export async function executeGapContradictionResolutionJob(input: {
       return {
         id,
         organizationId: input.organizationId,
-        outputRevisionId: revision.id,
         findingId: findingIdMap.get(gap.findingId)!,
         stableKey: gap.stableKey,
         kind: gap.kind,
@@ -241,7 +236,6 @@ export async function executeGapContradictionResolutionJob(input: {
     const regeneratedGaps = generated?.output.gaps.map((gap, position) => ({
       id: randomUUID(),
       organizationId: input.organizationId,
-      outputRevisionId: revision.id,
       findingId: findingIdMap.get(source.finding.id)!,
       stableKey: `${source.finding.requirementKey}.gap.${position + 1}`,
       kind: gap.kind,
@@ -324,22 +318,13 @@ async function regenerateFromDocument(input: {
   source: Awaited<ReturnType<typeof requireResolvableFinding>>;
   conflictingDocuments: Array<{ context: typeof aiProcessingRunContext.$inferSelect }>;
 }) {
-  const organization = await db.query.organizations.findFirst({
-    columns: { aiProviderMode: true },
-    where: { RAW: (table, operators) => eq(table.id, input.organizationId) ?? operators.sql`true` },
-  });
-  if (!organization) throw new ApiError(404, "Organization not found");
-  // Resolved through the gateway rather than constructed here, so an
-  // organization running its own model reaches it through the browser relay.
-  // Building the provider directly used to be this call site's one difference
-  // from the other two, and it would have quietly bypassed the relay.
   const provider =
     input.provider ??
-    (await resolveGroundedProviderForOrganization({
+    (await prepareGroundingOperation({
       organizationId: input.organizationId,
-      providerMode: organization.aiProviderMode,
+      workflowReleaseId: currentGapDefinitionHash,
       jobId: input.jobId,
-    }));
+    })).provider;
   const definition = getCurrentGapDefinition(input.source.revision.locale as "de" | "en");
   const manifest = {
     sourceRevisionId: input.sourceRevisionId,

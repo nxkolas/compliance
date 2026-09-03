@@ -15,7 +15,6 @@ Development runs on the host against a hosted Supabase project:
 
 ```powershell
 npm run dev          # Next.js
-npm run worker:local # background worker
 ```
 
 Configuration lives in `.env.local`, which is git-ignored. Database schema
@@ -60,8 +59,8 @@ mode, or less than 100 GB free on the application host.
 
 ### Security exceptions
 
-First-party web and worker containers are non-root, read-only, capability-free,
-PID/memory/CPU bounded, and use tmpfs for temporary writes. Signed derivative
+First-party web and command-only operator containers are non-root, read-only,
+capability-free, PID/memory/CPU bounded, and use tmpfs for temporary writes. Signed derivative
 database, Storage, Studio, and postgres-meta images add a verified WAL-G build
 or remove unused vulnerable package-manager trees; postgres-meta also receives
 the exact security-fixed GnuTLS package. Caddy alone retains

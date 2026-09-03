@@ -21,7 +21,7 @@ function harness(cycles: JobExecutionCycleResult[]) {
 
 const input = () => ({
   invocationId: "test-drain-1",
-  adapter: "script" as const,
+  adapter: "recovery_route" as const,
   maxJobs: 10,
   deadline: new Date(10_000),
   deadlineMarginMs: 0,
@@ -98,11 +98,10 @@ describe("portable job drain", () => {
       test.drain({
         ...input(),
         signal: controller.signal,
-        abortStopReason: "graceful_shutdown",
       }),
     ).resolves.toMatchObject({
       claimed: 0,
-      stopReason: "graceful_shutdown",
+      stopReason: "caller_abort",
     });
     expect(test.ensureSchedules).not.toHaveBeenCalled();
   });

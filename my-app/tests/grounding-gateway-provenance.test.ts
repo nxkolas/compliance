@@ -143,7 +143,6 @@ describe("grounding gateway provenance", () => {
       statements: z.array(z.string().min(1)).length(2),
     });
     const result = await runGroundedOperation({
-      operation: "gap_analysis",
       actor: { userId: "00000000-0000-4000-8000-000000000001" },
       organizationId: "00000000-0000-4000-8000-000000000002",
       outputLocale: "en",
@@ -291,12 +290,12 @@ describe("grounding gateway provenance", () => {
     expect(mocks.runValues).toEqual([
       expect.objectContaining({
         generationReservationKey: reservationIdentity,
-        generationAttemptKey: firstAttemptIdentity,
+        idempotencyKey: firstAttemptIdentity,
         durableExecutionAttempt: 1,
       }),
       expect.objectContaining({
         generationReservationKey: reservationIdentity,
-        generationAttemptKey: secondAttemptIdentity,
+        idempotencyKey: secondAttemptIdentity,
         durableExecutionAttempt: 2,
       }),
     ]);
@@ -363,7 +362,6 @@ function runDurableGroundedAttempt(input: {
 }) {
   const outputSchema = z.object({ value: z.string() });
   return runGroundedOperation({
-    operation: "gap_analysis",
     runOperationKind: "gap_analysis",
     actor: { userId: "00000000-0000-4000-8000-000000000001" },
     organizationId: "00000000-0000-4000-8000-000000000002",
@@ -390,7 +388,6 @@ function runDurableGroundedAttempt(input: {
     },
     idempotencyKey: input.attemptIdentity,
     generationReservationKey: input.reservationIdentity,
-    generationAttemptKey: input.attemptIdentity,
     durableExecutionAttempt: input.durableExecutionAttempt,
     providerAttempt: 1,
     assessmentRevisionId: "00000000-0000-4000-8000-000000000003",

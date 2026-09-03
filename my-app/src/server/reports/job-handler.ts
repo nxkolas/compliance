@@ -17,7 +17,6 @@ import { throwIfJobExecutionAborted } from "@/src/server/job-execution/abort";
 import type { BackgroundJobRecord } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { assertLiveParentJobForAiRun } from "@/src/server/ai/generation/job-run-lifecycle";
-import { parseActionDescription } from "@/src/server/action-plans/action-description";
 import {
   formatLegalCitations,
   type LegalCitation,
@@ -286,7 +285,8 @@ async function loadReportContent(
           findingTitle: finding.requirementTitle,
           items: items.map((action) => ({
             title: action.title,
-            ...parseActionDescription(action.description, locale),
+            result: action.result,
+            suggestedEvidence: action.suggestedEvidence,
             status: action.status,
           })),
         }];

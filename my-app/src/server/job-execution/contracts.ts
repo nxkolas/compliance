@@ -1,8 +1,6 @@
 export const JOB_EXECUTION_ADAPTERS = [
   "after_response",
   "recovery_route",
-  "resident_worker",
-  "script",
 ] as const;
 
 export type JobExecutionAdapter = (typeof JOB_EXECUTION_ADAPTERS)[number];
@@ -12,7 +10,6 @@ export const JOB_DRAIN_STOP_REASONS = [
   "max_jobs",
   "deadline",
   "caller_abort",
-  "graceful_shutdown",
 ] as const;
 
 export type JobDrainStopReason = (typeof JOB_DRAIN_STOP_REASONS)[number];
@@ -23,10 +20,6 @@ export type DrainJobsInput = {
   maxJobs: number;
   deadline: Date;
   signal?: AbortSignal;
-  abortStopReason?: Extract<
-    JobDrainStopReason,
-    "caller_abort" | "graceful_shutdown"
-  >;
   /** Stop leasing new work this long before the handler deadline. */
   deadlineMarginMs?: number;
 };

@@ -1,6 +1,6 @@
 # Legal Corpus
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## Purpose
 
@@ -38,8 +38,8 @@ flowchart LR
 - **Processing generation** (`legal_source_processing_generations`): one
   parse/chunk run per rendition, executed by the `legal_source_processing`
   job.
-- **Chunks** (`legal_source_chunks`): text chunks with generated search
-  vectors.
+- **Chunks** (`legal_source_chunks`): text chunks belonging to one processing
+  generation, with generated search vectors.
 - **Bindings** (`legal_provision_chunk_bindings`): reviewed stable provision
   keys bound to exact chunks — the bridge between legal text and the code's
   requirement keys.
@@ -47,7 +47,10 @@ flowchart LR
   `guidance_provision_bindings`): curated secondary material, retrieved
   optionally and never persisted as citable evidence.
 - **Snapshot** (`legal_corpus_snapshots` + members): a validated, immutable
-  selection of successful processing generations per family.
+  selection of successful processing generations per family. Members store
+  only the generation ID and position; rendition, version, and source are
+  reached through the normalized parent path. Activation rejects two
+  generations derived from the same legal source.
 
 ## Operator pipeline
 
@@ -56,7 +59,7 @@ feature:
 
 1. Operators create sources/versions/renditions from a reviewed manifest
    (scripts + `src/server/corpus/`).
-2. Workers process each rendition into chunks and search vectors.
+2. The portable job runtime processes each rendition into chunks and search vectors.
 3. Reviewers bind stable provision keys to exact chunks; validation proves
    completeness and citation resolvability.
 4. Activation validates the candidate, then advances the family's immutable
@@ -81,4 +84,3 @@ added.
 - Snapshot activation: `src/server/corpus/snapshot-service.ts`.
 - Retrieval integration: `src/server/ai/grounding/legal-retrieval.ts`.
 - Operator scripts: `scripts/` (provision, validate, activate, export).
-

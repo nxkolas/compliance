@@ -35,7 +35,6 @@ export function createJobDrain(dependencies: DrainDependencies) {
       cancelled: 0,
       parked: 0,
     };
-    const abortStopReason = input.abortStopReason ?? "caller_abort";
     const deadlineController = new AbortController();
     const deadlineDelayMs = Math.max(0, input.deadline.getTime() - startedAt);
     const deadlineTimer = setTimeout(
@@ -55,7 +54,7 @@ export function createJobDrain(dependencies: DrainDependencies) {
     });
 
     try {
-      if (input.signal?.aborted) return finish(abortStopReason);
+      if (input.signal?.aborted) return finish("caller_abort");
       if (deadlineReached(input, dependencies.now(), marginMs)) {
         return finish("deadline");
       }
@@ -63,7 +62,7 @@ export function createJobDrain(dependencies: DrainDependencies) {
       await dependencies.ensureSchedules();
 
       while (true) {
-        if (input.signal?.aborted) return finish(abortStopReason);
+        if (input.signal?.aborted) return finish("caller_abort");
         if (deadlineReached(input, dependencies.now(), marginMs)) {
           return finish("deadline");
         }
@@ -105,13 +104,6 @@ function validateInput(
   }
   if (!Number.isSafeInteger(marginMs) || marginMs < 0) {
     throw new TypeError("Job drain deadlineMarginMs must be a non-negative safe integer");
-  }
-  if (
-    input.abortStopReason !== undefined &&
-    input.abortStopReason !== "caller_abort" &&
-    input.abortStopReason !== "graceful_shutdown"
-  ) {
-    throw new TypeError("Job drain abortStopReason is invalid");
   }
 }
 

@@ -21,7 +21,7 @@ inbound firewall port is needed.
 
 ```mermaid
 sequenceDiagram
-    participant W as Worker (job)
+    participant W as Job executor
     participant S as Server
     participant B as Organization browser
     participant M as Local model
@@ -101,4 +101,3 @@ re-embedding migration rather than mixing vector spaces.
 - Claim/heartbeat/result routes: `app/api/organizations/:id/client-inference/`.
 - Local development: run Ollama on the host; select `self_hosted` via
   `AI_DEFAULT_PROVIDER` or per-organization settings.
-

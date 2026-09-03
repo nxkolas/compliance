@@ -23,7 +23,7 @@ require_env() {
 
 for name in \
   APP_DATA_ROOT PLATFORM_PROJECT_NAME GLOBAL_S3_BUCKET GLOBAL_S3_ENDPOINT \
-  GLOBAL_S3_FORCE_PATH_STYLE REGION WORKER_IMAGE \
+  GLOBAL_S3_FORCE_PATH_STYLE REGION OPERATOR_IMAGE \
   STORAGE_INVENTORY_ACCESS_KEY_ID STORAGE_INVENTORY_SECRET_ACCESS_KEY; do
   require_env "$name"
 done
@@ -47,9 +47,9 @@ install -d -o 10001 -g 10001 -m 0700 "$evidence_dir"
 "${compose[@]}" exec -T db wal-g backup-push /var/lib/postgresql/data
 "${compose[@]}" exec -T db wal-g backup-list --json > "$evidence_dir/postgresql-backups.json"
 
-worker_image="$(read_env WORKER_IMAGE)"
-[[ "$worker_image" =~ @sha256:[0-9a-f]{64}$ ]] || {
-  echo "WORKER_IMAGE must use an immutable digest" >&2
+operator_image="$(read_env OPERATOR_IMAGE)"
+[[ "$operator_image" =~ @sha256:[0-9a-f]{64}$ ]] || {
+  echo "OPERATOR_IMAGE must use an immutable digest" >&2
   exit 1
 }
 storage_endpoint="$(read_env GLOBAL_S3_ENDPOINT)"
@@ -63,7 +63,7 @@ docker run --rm \
   -e S3_FORCE_PATH_STYLE="$(read_env GLOBAL_S3_FORCE_PATH_STYLE)" \
   -e S3_ACCESS_KEY_ID="$inventory_access_key" \
   -e S3_SECRET_ACCESS_KEY="$inventory_secret_key" \
-  "$worker_image" node_modules/tsx/dist/cli.mjs scripts/s3-operator.ts \
+  "$operator_image" node_modules/tsx/dist/cli.mjs scripts/s3-operator.ts \
   inventory "$storage_bucket" > "$evidence_dir/storage-inventory.jsonl"
 
 sha256sum \

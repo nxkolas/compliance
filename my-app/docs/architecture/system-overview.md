@@ -8,9 +8,9 @@ executable operator procedures live in the linked specialist documents.
 
 ## Short answer
 
-The product is a Next.js application with two server execution surfaces: the
-web process and an optional resident worker. They share server services, a
-PostgreSQL database, private Supabase Storage, and the durable job runtime.
+The product is a Next.js application whose web process owns both HTTP handling
+and bounded background-job execution. It uses PostgreSQL, private Supabase
+Storage, and a durable job runtime.
 
 - Next.js renders pages and exposes thin HTTP route handlers.
 - Supabase provides authentication and private object storage. Browser session
@@ -36,7 +36,6 @@ flowchart LR
     Auth[Supabase Auth]
     DB[(PostgreSQL)]
     Storage[Supabase private Storage]
-    Worker[Resident worker optional]
     AI[OpenAI or OpenAI-compatible AI]
     Docling[Docling optional]
 
@@ -45,18 +44,14 @@ flowchart LR
     Web -->|Drizzle queries and durable jobs| DB
     Web -->|signed upload or server download| Storage
     Web -->|portable job drain| DB
-    Worker -->|lease heartbeat and fenced publication| DB
     Web -->|generation and embeddings| AI
-    Worker -->|generation and embeddings| AI
-    Worker -->|read and write objects| Storage
-    Worker -->|document conversion| Docling
+    Web -->|read and write objects| Storage
+    Web -->|document conversion| Docling
 ```
 
-In a small or serverless deployment, Next.js can start a portable job drain
-after a response and a scheduled authenticated recovery route supplies durable
-wake-ups. The private self-hosted topology also runs the resident worker for
-continuous throughput. All modes invoke the same handlers; hosting and wake-up
-mechanisms do not create separate business implementations.
+Next.js starts a portable job drain after a response, and a scheduled
+authenticated recovery route supplies durable wake-ups. Both entry points
+invoke the same handlers.
 
 ## Main modules
 
@@ -67,7 +62,7 @@ mechanisms do not create separate business implementations.
 | HTTP boundary | `app/api/`, `src/server/api/` | Authentication, route/input validation, envelopes, request IDs, and service dispatch |
 | Domain services and contracts | `src/server/<domain>/`, `src/contracts/` | Authorization, rules, transactions, persistence, and DTOs |
 | Code-owned definitions | `src/server/definitions/`, `src/server/compliance/`, `src/server/gap-analysis/releases/` | Questionnaires, rules, requirements, localization, and prompt contracts |
-| Jobs and workers | `src/server/jobs/`, `src/server/job-execution/`, `src/worker/` | Queueing, leases, heartbeats, cancellation, retries, and handlers |
+| Background jobs | `src/server/jobs/`, `src/server/job-execution/` | Queueing, leases, heartbeats, cancellation, retries, and handlers |
 | AI and retrieval | `src/server/ai/`, `lib/ai/` | Provider selection, evidence retrieval, prompts, generation, and validation |
 | Database | `src/db/` | Drizzle schema, relations, pool, and query entry point |
 | Files and output | `src/server/documents/`, `src/server/corpus/`, `src/server/reports/` | Private objects, versions, chunks, embeddings, legal corpus, and PDFs |
@@ -113,7 +108,7 @@ and commands use the scope functions in
 the organization predicate through the query or transaction. All ordinary
 public tables have RLS enabled with no browser-role application policies.
 Default-deny RLS protects direct browser access; service-layer scopes protect
-tenant locality for trusted web and worker connections.
+tenant locality for trusted server connections.
 
 Retryable commands use durable idempotency where required. Expensive commands
 normally enqueue a `background_jobs` row, return `202`, and let the browser poll
@@ -134,7 +129,7 @@ the implemented publication seams; they do not make arbitrary external side
 effects exactly-once.
 
 Remote Storage and AI work stays outside database transactions. Publication
-re-enters a transaction and verifies the current lease. Worker handlers use the
+re-enters a transaction and verifies the current lease. Job handlers use the
 organization identity pinned on the job rather than replaying a human session.
 
 ## Grounded generation flow

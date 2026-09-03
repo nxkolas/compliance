@@ -110,7 +110,6 @@ async function generateAtomicGapCategoriesCurrent(
   const runIdsByCategory: Record<string, string> = {};
   const preparedGrounding = await prepareGroundingOperation(
     {
-      operation: "gap_analysis",
       organizationId: input.organizationId,
       workflowReleaseId: input.release.id,
       jobId: input.jobId,
@@ -182,7 +181,6 @@ async function generateAtomicGapCategoriesCurrent(
         "organization_document",
       );
       const grounded = await runGroundedOperation<GapCategoryResponse>({
-        operation: "gap_analysis",
         runOperationKind: input.runOperationKind,
         actor: input.actor,
         organizationId: input.organizationId,
@@ -271,7 +269,6 @@ async function generateAtomicGapCategoriesCurrent(
         },
         idempotencyKey: callAttemptIdentity,
         generationReservationKey: reservationIdentity,
-        generationAttemptKey: callAttemptIdentity,
         durableExecutionAttempt,
         providerAttempt,
         assessmentRevisionId: input.assessmentRevisionId,

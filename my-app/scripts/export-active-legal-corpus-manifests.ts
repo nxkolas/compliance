@@ -72,12 +72,12 @@ async function main() {
         ),
       )
       .innerJoin(
-        legalSourceVersions,
-        eq(legalSourceVersions.id, legalCorpusSnapshotMembers.sourceVersionId),
+        legalSourceRenditions,
+        eq(legalSourceRenditions.id, legalSourceProcessingGenerations.renditionId),
       )
       .innerJoin(
-        legalSourceRenditions,
-        eq(legalSourceRenditions.id, legalCorpusSnapshotMembers.renditionId),
+        legalSourceVersions,
+        eq(legalSourceVersions.id, legalSourceRenditions.sourceVersionId),
       )
       .innerJoin(
         legalSources,

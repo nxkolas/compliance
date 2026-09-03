@@ -11,7 +11,7 @@ import {
 } from "@/src/server/content-processing/defaults";
 import type { ContentChunker, ContentParser } from "@/src/server/content-processing/types";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 type Dependencies = {
   parser?: ContentParser;
@@ -28,10 +28,10 @@ export async function executeLegalSourceProcessingJob(
     generation: legalSourceProcessingGenerations,
     rendition: legalSourceRenditions,
   }).from(legalSourceProcessingGenerations)
-    .innerJoin(legalSourceRenditions, and(
+    .innerJoin(
+      legalSourceRenditions,
       eq(legalSourceRenditions.id, legalSourceProcessingGenerations.renditionId),
-      eq(legalSourceRenditions.sourceVersionId, legalSourceProcessingGenerations.sourceVersionId),
-    ))
+    )
     .where(eq(legalSourceProcessingGenerations.id, input.processingGenerationId))
     .limit(1);
   const target = row[0];
@@ -65,8 +65,6 @@ export async function executeLegalSourceProcessingJob(
       if (chunks.length) {
         await tx.insert(legalSourceChunks).values(chunks.map((chunk, position) => ({
           processingGenerationId: target.generation.id,
-          sourceVersionId: target.generation.sourceVersionId,
-          renditionId: target.generation.renditionId,
           position,
           pageNumber: chunk.pageNumber,
           sectionPath: chunk.sectionLabel,

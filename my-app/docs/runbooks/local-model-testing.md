@@ -82,8 +82,7 @@ AI_DEFAULT_PROVIDER=self_hosted
 ```
 
 and set `AI_EMBEDDING_DIM` to whatever the embedding model actually returns
-(768 for `embeddinggemma`), then restart `npm run dev` and
-`npm run worker:local`.
+(768 for `embeddinggemma`), then restart `npm run dev`.
 
 Leaving it commented keeps the application on OpenAI, embeddings included, even
 when every other value in the block is set.

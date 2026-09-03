@@ -8,7 +8,7 @@ import { PDFParse } from "pdf-parse";
  * Ingests authored guidance and binds it to legal provision keys.
  *
  * Usage:
- *   tsx scripts/provision-guidance.ts --pdf <path> [--dry] [--reviewer <name>]
+ *   tsx scripts/provision-guidance.ts [--pdf <path>] [--dry] [--reviewer <name>]
  *
  * The source is ENISA's NIS2 Technical Implementation Guidance, which is
  * licensed CC BY 4.0 under Commission Decision 2011/833/EU. Commercial reuse is
@@ -86,11 +86,12 @@ const EVIDENCE_BUDGET = 420;
 
 async function main() {
   const pdfPath = readArgument("--pdf");
-  if (!pdfPath) throw new Error("--pdf <path> is required");
   const dry = process.argv.includes("--dry");
   const reviewer = readArgument("--reviewer") ?? "provision-guidance";
 
-  const parser = new PDFParse({ data: readFileSync(pdfPath) });
+  const parser = new PDFParse({
+    data: pdfPath ? readFileSync(pdfPath) : await downloadOfficialPdf(),
+  });
   const extracted = await parser.getText();
   await parser.destroy();
   const text = stripPageFurniture(extracted.text);
@@ -156,6 +157,18 @@ async function main() {
   } finally {
     await sql.end();
   }
+}
+
+async function downloadOfficialPdf() {
+  const response = await fetch(SOURCE.url, { redirect: "follow" });
+  if (!response.ok) {
+    throw new Error(`Official guidance returned HTTP ${response.status}`);
+  }
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (new TextDecoder().decode(bytes.subarray(0, 5)) !== "%PDF-") {
+    throw new Error("Official guidance response is not a PDF");
+  }
+  return bytes;
 }
 
 /** Removes running headers, page markers and footnote lines. */

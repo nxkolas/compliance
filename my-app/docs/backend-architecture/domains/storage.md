@@ -52,7 +52,7 @@ per domain (`src/server/uploads/quota.ts`, `src/server/reports/quota.ts`).
 
 - Downloads (`GET .../documents/:id/download`) and report downloads stream
   from Storage through the server with authorization.
-- Worker processes use a server-side Supabase admin client to read and write
+- Job handlers use a server-side Supabase admin client to read and write
   objects (`src/server/supabase-admin.ts`).
 - Object identity (bucket + key), content hash, and lineage are recorded on
   the corresponding database rows; Storage itself is treated as
@@ -74,4 +74,3 @@ per domain (`src/server/uploads/quota.ts`, `src/server/reports/quota.ts`).
 - Corpus storage configuration: `src/server/corpus/config.ts`.
 - Report storage: `src/server/reports/service.ts`.
 - Admin client: `src/server/supabase-admin.ts`.
-

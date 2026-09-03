@@ -49,7 +49,6 @@ import {
 } from "../ai/generation";
 import { configuredCategoryConcurrency } from "../ai/generation/concurrency";
 import { assertLiveParentJobForAiRun } from "../ai/generation/job-run-lifecycle";
-import { serializeActionDescription } from "./action-description";
 import { assertActionPlanPublicationLease } from "./publication-lease-policy";
 
 const BUILD_HASH = process.env.APP_BUILD_SHA ?? currentGapDefinitionHash;
@@ -279,7 +278,6 @@ export async function executeActionPlanGenerationJob(input: {
 
   const preparedGrounding = await prepareGroundingOperation(
     {
-      operation: "gap_analysis",
       organizationId: input.organizationId,
       workflowReleaseId: currentGapDefinitionHash,
       jobId: input.jobId,
@@ -390,7 +388,6 @@ export async function executeActionPlanGenerationJob(input: {
       };
       let responsePolicy: ActionPlanCategoryPolicy | undefined;
       const grounded = await runGroundedOperation<ActionPlanCategoryResponse>({
-        operation: "gap_analysis",
         runOperationKind: "action_plan_generation",
         actor: { userId: input.userId },
         organizationId: input.organizationId,
@@ -478,7 +475,6 @@ export async function executeActionPlanGenerationJob(input: {
         },
         idempotencyKey: callAttemptIdentity,
         generationReservationKey: reservationIdentity,
-        generationAttemptKey: callAttemptIdentity,
         durableExecutionAttempt,
         providerAttempt,
         assessmentRevisionId: revision.assessmentRevisionId,
@@ -616,7 +612,6 @@ export async function executeActionPlanGenerationJob(input: {
         organizationId: input.organizationId,
         sourceGapRevisionId: input.sourceGapRevisionId,
         generationJobId: input.jobId,
-        aiProcessingRunId: runIds[0],
         locale: input.locale,
         inputHash: hash(manifest),
         createdBy: input.userId,
@@ -641,11 +636,8 @@ export async function executeActionPlanGenerationJob(input: {
             actionPlanId: plan.id,
             findingId: category.sourceFindingId,
             title: action.title,
-            description: serializeActionDescription(
-              action.result,
-              action.suggestedEvidence,
-              input.locale,
-            ),
+            result: action.result,
+            suggestedEvidence: action.suggestedEvidence,
             position,
           })
           .returning();
@@ -654,7 +646,6 @@ export async function executeActionPlanGenerationJob(input: {
         await tx.insert(actionPlanItemGaps).values(
           action.gapKeys.map((gapKey) => ({
             organizationId: input.organizationId,
-            actionPlanId: plan.id,
             actionPlanItemId: stored.id,
             gapItemId: requireMapValue(
               gapByKey,
@@ -811,11 +802,16 @@ async function hasCompletePublishedPlan(input: {
         gapItemId: actionPlanItemGaps.gapItemId,
       })
       .from(actionPlanItemGaps)
-      .where(eq(actionPlanItemGaps.actionPlanId, input.actionPlanId)),
+      .innerJoin(
+        actionPlanItems,
+        eq(actionPlanItems.id, actionPlanItemGaps.actionPlanItemId),
+      )
+      .where(eq(actionPlanItems.actionPlanId, input.actionPlanId)),
     db
       .select({ id: gapItems.id })
       .from(gapItems)
-      .where(eq(gapItems.outputRevisionId, input.sourceGapRevisionId)),
+      .innerJoin(gapFindings, eq(gapFindings.id, gapItems.findingId))
+      .where(eq(gapFindings.outputRevisionId, input.sourceGapRevisionId)),
   ]);
   if (!items.length || !sourceGaps.length) return false;
   const linkedItemIds = new Set(links.map((link) => link.actionPlanItemId));

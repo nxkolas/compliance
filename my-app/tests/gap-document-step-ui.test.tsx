@@ -40,7 +40,7 @@ function workflowFixture() {
         },
       ],
     },
-  } as never;
+  } as unknown as Parameters<typeof GapDocumentStep>[0]["workflow"];
 }
 
 function collectElements(node: ReactNode) {

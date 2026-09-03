@@ -98,7 +98,8 @@ installation is provisioned with:
 
 ```powershell
 npm run db:provision:legal-corpus -- provision <manifest.json>
-npm run jobs:drain:local
+$headers = @{ Authorization = "Bearer $env:CRON_SECRET" }
+Invoke-RestMethod http://localhost:3000/api/internal/jobs/drain -Headers $headers
 npm run db:provision:legal-corpus -- bind <bindings.json>
 $env:CORPUS_OPERATOR_IDENTITY = "<deployment identity>"
 npm run db:activate:legal-snapshot -- <family-code> <generation-id,...>
@@ -116,7 +117,7 @@ Run the repository checks and current-schema smoke:
 ```powershell
 npm run verify
 npm run test:ai
-npm run test:worker
+npm run test:jobs
 npm run test:routes
 npm run test:report
 npm run db:smoke:gap

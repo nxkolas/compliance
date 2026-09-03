@@ -19,14 +19,14 @@ read_env() {
 app_environment="$(read_env APP_ENV)"
 data_root="$(read_env APP_DATA_ROOT)"
 web_image="$(read_env WEB_IMAGE)"
-worker_image="$(read_env WORKER_IMAGE)"
+operator_image="$(read_env OPERATOR_IMAGE)"
 database_image="$(read_env COMPLIANCETOOL_DB_IMAGE)"
 storage_image="$(read_env COMPLIANCETOOL_STORAGE_IMAGE)"
 studio_image="$(read_env COMPLIANCETOOL_STUDIO_IMAGE)"
 meta_image="$(read_env COMPLIANCETOOL_META_IMAGE)"
 revision="$(read_env RELEASE_REVISION)"
 digest_pattern='@sha256:[0-9a-f]{64}$'
-[[ "$web_image" =~ $digest_pattern && "$worker_image" =~ $digest_pattern &&
+[[ "$web_image" =~ $digest_pattern && "$operator_image" =~ $digest_pattern &&
    "$database_image" =~ $digest_pattern && "$storage_image" =~ $digest_pattern &&
    "$studio_image" =~ $digest_pattern && "$meta_image" =~ $digest_pattern ]] || {
   echo "All release and hardened platform images must be immutable digests" >&2
@@ -68,12 +68,6 @@ fi
 "${release[@]}" --profile "$color" up -d --wait "web-$color"
 
 active_file="$(read_env CADDY_ACTIVE_UPSTREAM_FILE)"
-old_color="$(sed -n 's/.*web-\(blue\|green\).*/\1/p' "$active_file" | head -n1 || true)"
-if [[ -n "$old_color" && "$old_color" != "$color" ]]; then
-  "${release[@]}" --profile "$old_color" stop --timeout 300 "worker-$old_color" || true
-fi
-"${release[@]}" --profile "$color" up -d --wait "worker-$color"
-
 temporary_file="$data_root/releases/.active-upstream.${revision}.$$"
 printf 'reverse_proxy web-%s:3000\n' "$color" > "$temporary_file"
 chmod 0644 "$temporary_file"
@@ -88,7 +82,7 @@ manifest="$data_root/releases/${revision}.manifest"
   printf 'revision=%s\n' "$revision"
   printf 'color=%s\n' "$color"
   printf 'web_image=%s\n' "$web_image"
-  printf 'worker_image=%s\n' "$worker_image"
+  printf 'operator_image=%s\n' "$operator_image"
   printf 'database_image=%s\n' "$database_image"
   printf 'storage_image=%s\n' "$storage_image"
   printf 'studio_image=%s\n' "$studio_image"

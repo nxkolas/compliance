@@ -1,6 +1,6 @@
 # API Conventions
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 All HTTP routes live under `app/api/` and are thin. They authenticate,
 validate, enforce limits, and dispatch to a server service in
@@ -48,6 +48,11 @@ Error:
 Every response carries an `x-request-id` header. An inbound
 `x-request-id` is accepted if it matches the schema; otherwise a UUID is
 generated (`src/server/api/request-id.ts`).
+
+Health endpoints intentionally return bare health payloads. Authorized
+document download and source-access endpoints return redirects rather than a
+JSON envelope. The guest applicability routes construct the same envelope
+directly because they also manage a guest-session cookie.
 
 ## Authentication and authorization
 
@@ -146,4 +151,3 @@ job endpoint (`GET /api/jobs/:jobId`). See [Jobs](../jobs/jobs.md).
   request-id).
 - Contracts for envelopes, IDs, and DTOs: `src/contracts/`.
 - Every route: [Route map](./route-map.md).
-

@@ -19,16 +19,6 @@ x-web: &web
   cpus: 3
   stop_grace_period: 30s
 
-x-worker: &worker
-  <<: *app-security
-  image: ${WORKER_IMAGE}
-  env_file: ["${APP_ENV_FILE}"]
-  restart: unless-stopped
-  networks: [edge, app, data]
-  mem_limit: 6g
-  cpus: 4
-  stop_grace_period: 5m
-
 services:
   web-blue:
     <<: *web
@@ -38,21 +28,9 @@ services:
     <<: *web
     profiles: [green]
 
-  worker-blue:
-    <<: *worker
-    profiles: [blue]
-    environment:
-      WORKER_ID: ${APP_ENV}-blue
-
-  worker-green:
-    <<: *worker
-    profiles: [green]
-    environment:
-      WORKER_ID: ${APP_ENV}-green
-
   database-plan:
     <<: *app-security
-    image: ${WORKER_IMAGE}
+    image: ${OPERATOR_IMAGE}
     env_file: ["${APP_ENV_FILE}"]
     restart: "no"
     command: [node, node_modules/tsx/dist/cli.mjs, scripts/disposable-schema-workflow.ts, plan]
@@ -62,7 +40,7 @@ services:
 
   database-bootstrap:
     <<: *app-security
-    image: ${WORKER_IMAGE}
+    image: ${OPERATOR_IMAGE}
     env_file: ["${APP_ENV_FILE}"]
     restart: "no"
     command: [node, node_modules/tsx/dist/cli.mjs, scripts/disposable-schema-workflow.ts, apply, --target, "${DISPOSABLE_SCHEMA_TARGET}"]

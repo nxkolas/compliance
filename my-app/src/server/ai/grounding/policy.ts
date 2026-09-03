@@ -1,12 +1,9 @@
 import { db } from "@/src/db";
 import { eq } from "drizzle-orm";
 import { ApiError } from "../../api/errors";
-import { groundingPolicyDefinitions } from "./policy-definition";
-
-export { groundingPolicyDefinitions } from "./policy-definition";
+import { nis2GroundingPolicy } from "./policy-definition";
 
 export async function resolveGroundingPolicy(input: {
-  operation: keyof typeof groundingPolicyDefinitions;
   organizationId: string;
 }) {
   const organization = await db.query.organizations.findFirst({
@@ -23,7 +20,7 @@ export async function resolveGroundingPolicy(input: {
     throw new ApiError(409, "The organization is archived", undefined, "ORGANIZATION_ARCHIVED");
   }
   return {
-    ...groundingPolicyDefinitions[input.operation],
+    ...nis2GroundingPolicy,
     providerPolicy: { selectedProviderMode: organization.aiProviderMode },
   };
 }

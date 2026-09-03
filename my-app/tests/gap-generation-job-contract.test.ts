@@ -48,7 +48,6 @@ describe("gap generation enqueue route", () => {
         outputLocale: "de",
         lockVersion: 2,
         generationJobId: jobId,
-        aiProcessingRunId: null,
         outputGapRevisionId: null,
       },
       job: {

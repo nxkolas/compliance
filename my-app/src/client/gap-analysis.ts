@@ -1,6 +1,8 @@
 import * as z from "zod";
 import {
-  gapEntitySchema,
+  gapAssessmentSchema,
+  gapAssessmentRevisionSchema,
+  gapAnalysisCycleDtoSchema,
   gapGenerationEnqueueResponseSchema,
   gapQuestionnaireInputSchema,
   gapQuestionnaireDraftAnswerSchema,
@@ -24,13 +26,13 @@ function analysisCycleBase(organizationId: string) {
 export const gapAnalysisClient = {
   prepareGapAnalysisCycle(organizationId: string, input: { assessmentId: string; selectedDocumentIds: string[] }) {
     return request(analysisCycleBase(organizationId), {
-      method: "POST", input, idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ analysisCycle: z.unknown() }),
+      method: "POST", input, idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ analysisCycle: gapAnalysisCycleDtoSchema }),
     });
   },
 
   replaceGapAnalysisEvidence(organizationId: string, input: { cycleId: string; selectedDocumentIds: string[] }) {
     return request(`${analysisCycleBase(organizationId)}/${encodeURIComponent(input.cycleId)}/evidence`, {
-      method: "PUT", input: { selectedDocumentIds: input.selectedDocumentIds }, outputSchema: z.object({ analysisCycle: z.unknown() }),
+      method: "PUT", input: { selectedDocumentIds: input.selectedDocumentIds }, outputSchema: z.object({ analysisCycle: gapAnalysisCycleDtoSchema }),
     });
   },
 
@@ -88,14 +90,14 @@ export const gapAnalysisClient = {
 
   createAssessment(organizationId: string, signal?: AbortSignal) {
     return request(`${gapBase(organizationId)}/assessments`, {
-      method: "POST", outputSchema: z.object({ assessment: gapEntitySchema }), signal,
+      method: "POST", outputSchema: z.object({ assessment: gapAssessmentSchema }), signal,
       idempotencyKey: crypto.randomUUID(),
     });
   },
 
   submitQuestionnaire(organizationId: string, input: z.infer<typeof gapQuestionnaireInputSchema>, signal?: AbortSignal) {
     return request(`${gapBase(organizationId)}/questionnaire-submissions`, {
-      method: "POST", input: gapQuestionnaireInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ revision: gapEntitySchema }), signal,
+      method: "POST", input: gapQuestionnaireInputSchema.parse(input), idempotencyKey: crypto.randomUUID(), outputSchema: z.object({ revision: gapAssessmentRevisionSchema }), signal,
     });
   },
 
@@ -117,7 +119,7 @@ export const gapAnalysisClient = {
             questionId: z.string(),
             optionId: z.string(),
           }),
-        }).loose(),
+        }),
         signal,
       },
     );

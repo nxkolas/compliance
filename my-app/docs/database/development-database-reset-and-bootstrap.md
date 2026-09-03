@@ -34,9 +34,13 @@ Then provision the real corpus manifest, drain legal-source processing jobs,
 bind reviewed stable provisions, validate completeness, and only then activate
 the exact successful generation IDs:
 
+For local fixture data, `npm run db:seed:legal-corpus-fixture` also provisions
+the pinned ENISA guidance source, its 13 chapter chunks, and reviewed bindings.
+
 ```powershell
 npm run db:provision:legal-corpus -- provision <manifest.json>
-npm run jobs:drain:local
+$headers = @{ Authorization = "Bearer $env:CRON_SECRET" }
+Invoke-RestMethod http://localhost:3000/api/internal/jobs/drain -Headers $headers
 npm run db:bind:gap-corpus-provisions
 npm run db:validate:legal-corpus -- <family-code> <generation-id,...>
 $env:CORPUS_OPERATOR_IDENTITY='<deployment identity>'

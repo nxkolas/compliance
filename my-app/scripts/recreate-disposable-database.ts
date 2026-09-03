@@ -1,7 +1,10 @@
-import "dotenv/config";
+import { config as loadEnvironment } from "dotenv";
 import {
   recreateDisposableDatabase,
 } from "@/src/server/operator-commands/recreate-disposable-database";
+
+loadEnvironment({ path: ".env.local", quiet: true });
+loadEnvironment({ quiet: true });
 
 function option(name: string) {
   const index = process.argv.indexOf(name);

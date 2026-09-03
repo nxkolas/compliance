@@ -1,13 +1,13 @@
 # System Overview
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## Short answer
 
-The product is a Next.js application with two server execution surfaces: the
-**web process** and an optional **resident worker**. Both share the same
-server services, a PostgreSQL database, private Supabase object storage, and
-one durable job runtime.
+The product is a Next.js application whose web process serves requests and
+runs the portable job runtime after responses or through an authenticated
+scheduled recovery route. It uses PostgreSQL and private Supabase object
+storage.
 
 - The web process renders pages and exposes thin HTTP API routes.
 - Supabase provides authentication and private object storage. Browser
@@ -26,7 +26,6 @@ one durable job runtime.
 flowchart LR
     Browser[Browser / API client]
     Web[Next.js web process]
-    Worker[Resident worker - optional]
     DB[(PostgreSQL)]
     Auth[Supabase Auth]
     Storage[Supabase Storage - private buckets]
@@ -38,10 +37,7 @@ flowchart LR
     Web -->|Drizzle queries and durable jobs| DB
     Web -->|signed upload / server download| Storage
     Web -->|grounded generation and embeddings| AI
-    Worker -->|lease heartbeat and fenced publication| DB
-    Worker -->|generation, embeddings, object IO| Storage
-    Worker -->|generation and embeddings| AI
-    Worker -->|document conversion| Docling
+    Web -->|portable job execution| Docling
 ```
 
 ## Processes and execution surfaces
@@ -52,7 +48,6 @@ mechanisms do not create separate business implementations.
 | Surface | Location | Role |
 | --- | --- | --- |
 | Web process | `next start` | Renders pages, serves API routes, runs a portable job drain after responses. |
-| Resident worker | `src/worker/main.ts` | Optional long-lived process that continuously drains the job queue in self-hosted deployments. |
 | Recovery route | `app/api/internal/jobs/drain/route.ts` | Authenticated scheduled endpoint that wakes and drains jobs (cron in hosted deployments). |
 | Scripts | `scripts/` | Operator and verification commands run directly against the same services. |
 
@@ -63,7 +58,7 @@ mechanisms do not create separate business implementations.
 | HTTP boundary | `app/api/`, `src/server/api/` | Authentication, input validation, envelopes, request IDs, rate limits, service dispatch |
 | Domain services and contracts | `src/server/<domain>/`, `src/contracts/` | Authorization, rules, transactions, persistence, DTOs |
 | Code-owned definitions | `src/server/definitions/`, `src/server/compliance/`, `src/server/gap-analysis/releases/` | Questionnaires, rules, requirements, localization, prompt contracts |
-| Jobs and workers | `src/server/jobs/`, `src/server/job-execution/`, `src/worker/` | Queueing, leases, heartbeats, cancellation, retries, handlers |
+| Jobs | `src/server/jobs/`, `src/server/job-execution/` | Queueing, leases, heartbeats, cancellation, retries, handlers |
 | AI and retrieval | `src/server/ai/`, `lib/ai/` | Provider selection, evidence retrieval, prompts, generation, validation |
 | Database | `src/db/` | Drizzle schema, relations, connection pool |
 | Files and output | `src/server/documents/`, `src/server/corpus/`, `src/server/reports/`, `src/server/uploads/` | Private objects, versions, chunks, embeddings, legal corpus, PDFs |
@@ -101,7 +96,7 @@ through the query or transaction.
 
 All ordinary public tables have RLS enabled with no browser-role application
 policies. Default-deny RLS protects direct browser access; the service layer
-provides tenant locality for trusted web and worker connections.
+provides tenant locality for trusted application connections.
 
 Expensive commands normally enqueue a `background_jobs` row, return `202`,
 and let the browser poll an authorized status endpoint.
@@ -153,4 +148,3 @@ the corpus is evidence for generation, never executable configuration.
 - [Database schema](../database/schema.md) — the data model.
 - [Jobs](../jobs/jobs.md) — the durable job runtime.
 - [API conventions](../api/conventions.md) — request/response contract.
-

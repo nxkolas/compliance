@@ -5,6 +5,7 @@ import {
   legalProvisionChunkBindings,
   legalSourceChunks,
   legalSourceProcessingGenerations,
+  legalSourceRenditions,
   legalSources,
   legalSourceVersions,
 } from "@/src/db/schema";
@@ -28,7 +29,14 @@ export async function validateLegalCorpusActivationCandidate(input: {
     status: legalSourceProcessingGenerations.status,
     familyCode: legalCorpusFamilies.code,
   }).from(legalSourceProcessingGenerations)
-    .innerJoin(legalSourceVersions, eq(legalSourceVersions.id, legalSourceProcessingGenerations.sourceVersionId))
+    .innerJoin(
+      legalSourceRenditions,
+      eq(legalSourceRenditions.id, legalSourceProcessingGenerations.renditionId),
+    )
+    .innerJoin(
+      legalSourceVersions,
+      eq(legalSourceVersions.id, legalSourceRenditions.sourceVersionId),
+    )
     .innerJoin(legalSources, and(
       eq(legalSources.id, legalSourceVersions.sourceId),
       eq(legalSources.familyId, legalSourceVersions.familyId),

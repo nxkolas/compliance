@@ -1,6 +1,6 @@
 # AI Usage
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
 ## What AI is used for
 
@@ -15,7 +15,9 @@ The backend uses AI in three places:
 ## Provider model
 
 Each organization has an AI provider mode (`ai_provider_mode`:
-`openai` or `self_hosted`). Provider selection is resolved per operation:
+`openai` or `self_hosted`). One code-owned NIS2 grounding policy supplies the
+provider and legal scope for Gap generation, contradiction resolution, and
+Action Plan generation:
 
 - `openai` — the server calls OpenAI directly through the AI SDK
   (`src/server/ai/grounding/providers/ai-sdk.ts`).
@@ -51,8 +53,8 @@ flowchart TD
 
 `prepareGroundingOperation` resolves:
 
-- the grounding policy (which legal corpus families, provider, and language
-  rules apply for the operation);
+- the shared NIS2 grounding policy (legal corpus families, jurisdictions, and
+  provider selection);
 - the concrete provider;
 - the pinned legal snapshot scope (`resolvePinnedLegalScope`), so generation
   is reproducible against a fixed set of legal sources.
@@ -77,7 +79,8 @@ Every context item carries a stable citation ID and excerpt hash.
 ### Prompt and output contract
 
 The prompt is built by `lib/ai/prompts/` from the query units and context.
-The response schema is a strict Zod contract per domain, defined in
+Query units, prompts, operation kinds, locale, and response schemas remain
+workflow-specific. The response schema is a strict Zod contract per domain, defined in
 `src/server/gap-analysis/current-contract.ts` and
 `src/server/action-plans/current-contract.ts`. The model supplies only bounded
 prose and optional organization citations; the server owns categories, gap
@@ -106,13 +109,14 @@ Every provider call is recorded in `ai_processing_runs`:
   (`APP_BUILD_SHA`);
 - the input manifest (query units, selected evidence versions, pinned legal
   snapshots, assessment revision);
-- attempt counts, token usage, cost, and the validated output;
+- attempt counts, token usage, and the validated output;
 - `claim_validation` status and per-claim results.
 
 `ai_processing_run_context` stores the exact admitted evidence with scores
 and citation metadata — the canonical record findings link to.
 
-Runs are idempotency-keyed per operation. A run that already produced
+Runs are idempotency-keyed per operation, and `generation_reservation_key`
+groups repair/retry candidates. A run that already produced
 validated output is recovered (not re-invoked) when a parked job wakes or a
 retry re-enters the gateway; a run whose business result already published is
 rejected as a duplicate.
@@ -146,4 +150,3 @@ rejected as a duplicate.
 - Prompts and model configuration: `lib/ai/`.
 - Provider implementations: `src/server/ai/grounding/providers/`.
 - Browser relay specifics: [Local AI](./local-ai.md).
-

@@ -4,6 +4,7 @@ import {
   legalCorpusFamilies,
   legalSourceChunks,
   legalSourceProcessingGenerations,
+  legalSourceRenditions,
   legalSources,
   legalSourceVersions,
 } from "@/src/db/schema";
@@ -143,8 +144,12 @@ async function main() {
       ),
     )
     .innerJoin(
+      legalSourceRenditions,
+      eq(legalSourceProcessingGenerations.renditionId, legalSourceRenditions.id),
+    )
+    .innerJoin(
       legalSourceVersions,
-      eq(legalSourceProcessingGenerations.sourceVersionId, legalSourceVersions.id),
+      eq(legalSourceRenditions.sourceVersionId, legalSourceVersions.id),
     )
     .innerJoin(legalSources, eq(legalSourceVersions.sourceId, legalSources.id))
     .innerJoin(legalCorpusFamilies, eq(legalSources.familyId, legalCorpusFamilies.id));

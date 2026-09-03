@@ -1,5 +1,4 @@
 export {
-  getActionPlanDetail,
   getCurrentActionPlan,
   updateActionPlanItem,
 } from "./service";

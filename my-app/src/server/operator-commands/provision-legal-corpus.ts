@@ -129,7 +129,6 @@ export async function provisionLegalCorpus(
       }
 
       await tx.insert(legalSourceProcessingGenerations).values({
-        sourceVersionId: version.id,
         renditionId: rendition.id,
         status: "pending",
         ...sourceInput.processing,

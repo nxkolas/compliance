@@ -73,7 +73,7 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 CMD ["node", "server.js"]
 
-FROM runtime AS worker
+FROM runtime AS operator
 ARG VCS_REF=unknown
 ARG SOURCE_URL=unknown
 LABEL org.opencontainers.image.revision="${VCS_REF}" \
@@ -90,9 +90,6 @@ COPY --chown=10001:10001 public ./public
 COPY --chown=10001:10001 scripts ./scripts
 COPY --chown=10001:10001 infra/config/supabase/db-init ./infra/config/supabase/db-init
 USER 10001:10001
-HEALTHCHECK --interval=15s --timeout=6s --start-period=15s --retries=4 \
-  CMD ["node", "node_modules/tsx/dist/cli.mjs", "scripts/health/worker.ts"]
-CMD ["node", "node_modules/tsx/dist/cli.mjs", "src/worker/main.ts"]
 
 # The coordinated Storage image runs Node directly but retains npm globally.
 # Removing that unused package-manager tree eliminates its runtime tar CVE

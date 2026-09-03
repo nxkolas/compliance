@@ -1,10 +1,10 @@
 # Portable job execution
 
-Status: current as of 3 August 2026.
+Status: current as of 3 September 2026.
 
-Run the dedicated Node worker with `npm run worker`; use `npm run worker:once`
-or `npm run jobs:drain:local` for a bounded drain. Multiple workers may lease
-jobs concurrently. Leases, heartbeats, attempts, progress, cancellation
+Jobs run through the bounded after-response drain and the authenticated
+`/api/internal/jobs/drain` recovery route. Multiple invocations may lease jobs
+concurrently. Leases, heartbeats, attempts, progress, cancellation
 requests, payloads, errors, and inline result locators are durable in
 `background_jobs`.
 
@@ -58,13 +58,12 @@ cannot be cancelled. Public job DTOs expose neither payload nor lease details.
 Handler execution is at least once. A lease can expire after a handler starts,
 so handlers that publish durable results must remain idempotent and verify the
 live lease fence inside the publication transaction. The web after-response
-path, recovery route, resident worker, and scripts all call the same drain and
+path and recovery route call the same drain and
 definition-owned execution implementation. Browser job polling is deliberately
 read-only and is not a recovery mechanism.
 
 Every production deployment must provide recovery independent of browser
-activity. The private self-hosted release topology includes its resident worker.
-Managed-cloud production must set `JOB_RECOVERY_ENABLED=true`, configure
+activity. Set `JOB_RECOVERY_ENABLED=true`, configure
 `CRON_SECRET`, and invoke `/api/internal/jobs/drain` on a schedule. The
 after-response adapter improves latency but is not the durable recovery
 guarantee.
@@ -76,8 +75,7 @@ scheduler, release reconciler, approval finalizer, or separate job-result table.
 Operational checks:
 
 ```powershell
-npm run test:worker
-npm run worker:once
+npm run test:jobs
 ```
 
 Investigate repeated failures through the job’s safe error and server logs;

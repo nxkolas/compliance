@@ -347,9 +347,9 @@ export const organizationEmbeddingMigrations = pgTable.withRLS(
 export const organizationModelSettings = pgTable.withRLS(
   "organization_model_settings",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
     organizationId: uuid("organization_id")
       .notNull()
+      .primaryKey()
       .references(() => organizations.id, { onDelete: "cascade" }),
     generationModelId: text("generation_model_id").notNull(),
     generationMaxContextTokens: integer("generation_max_context_tokens").notNull(),
@@ -375,13 +375,6 @@ export const organizationModelSettings = pgTable.withRLS(
     updatedAt: updatedAt(),
   },
   (table) => [
-    uniqueIndex("organization_model_settings_organization_unique").on(
-      table.organizationId,
-    ),
-    uniqueIndex("organization_model_settings_identity_unique").on(
-      table.organizationId,
-      table.id,
-    ),
     check(
       "organization_model_settings_context_check",
       sql`${table.generationMaxContextTokens} > 0`,
@@ -732,11 +725,15 @@ export const analysisOutputRevisions = pgTable.withRLS(
     outcomeCode: text("outcome_code"),
     gapEligible: boolean("gap_eligible"),
     generationJobId: uuid("generation_job_id"),
-    aiProcessingRunId: uuid("ai_processing_run_id"),
     createdBy: uuid("created_by").notNull(),
     createdAt: createdAt(),
   },
   (table) => [
+    foreignKey({
+      name: "analysis_output_revisions_generation_job_tenant_fk",
+      columns: [table.organizationId, table.generationJobId],
+      foreignColumns: [backgroundJobs.organizationId, backgroundJobs.id],
+    }).onDelete("restrict"),
     foreignKey({
       name: "analysis_output_revisions_output_tenant_fk",
       columns: [table.organizationId, table.outputId],
@@ -857,6 +854,11 @@ export const gapAnalysisCycles = pgTable.withRLS(
         analysisOutputRevisions.organizationId,
         analysisOutputRevisions.id,
       ],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "gap_analysis_cycles_generation_job_tenant_fk",
+      columns: [table.organizationId, table.generationJobId],
+      foreignColumns: [backgroundJobs.organizationId, backgroundJobs.id],
     }).onDelete("restrict"),
     check("gap_analysis_cycles_locale_check", sql`${table.locale} in ('de', 'en')`),
     check(
@@ -1083,14 +1085,11 @@ export const aiProcessingRuns = pgTable.withRLS(
     organizationId: uuid("organization_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    jobId: uuid("job_id").references(() => backgroundJobs.id, {
-      onDelete: "set null",
-    }),
+    jobId: uuid("job_id"),
     idempotencyKey: text("idempotency_key")
       .default(sql`gen_random_uuid()::text`)
       .notNull(),
     generationReservationKey: text("generation_reservation_key"),
-    generationAttemptKey: text("generation_attempt_key"),
     durableExecutionAttempt: integer("durable_execution_attempt"),
     providerAttempt: integer("provider_attempt"),
     operationKind: aiOperationKindEnum("operation_kind").notNull(),
@@ -1110,8 +1109,6 @@ export const aiProcessingRuns = pgTable.withRLS(
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
     cachedInputTokens: integer("cached_input_tokens"),
-    costAmount: numeric("cost_amount", { precision: 14, scale: 6 }),
-    costCurrency: varchar("cost_currency", { length: 3 }),
     failureCode: text("failure_code"),
     failureMessage: text("failure_message"),
     createdAt: createdAt(),
@@ -1123,6 +1120,11 @@ export const aiProcessingRuns = pgTable.withRLS(
       table.organizationId,
       table.id,
     ),
+    foreignKey({
+      name: "ai_processing_runs_job_tenant_fk",
+      columns: [table.organizationId, table.jobId],
+      foreignColumns: [backgroundJobs.organizationId, backgroundJobs.id],
+    }).onDelete("restrict"),
     uniqueIndex("ai_processing_runs_operation_idempotency_unique").on(
       table.organizationId,
       table.operationKind,
@@ -1134,17 +1136,10 @@ export const aiProcessingRuns = pgTable.withRLS(
       table.operationKind,
       table.generationReservationKey,
     ),
-    uniqueIndex("ai_processing_runs_generation_attempt_unique")
-      .on(
-        table.organizationId,
-        table.operationKind,
-        table.generationAttemptKey,
-      )
-      .where(sql`${table.generationAttemptKey} is not null`),
     check("ai_processing_runs_locale_check", sql`${table.outputLocale} in ('de', 'en')`),
     check(
       "ai_processing_runs_generation_attempt_check",
-      sql`(${table.generationReservationKey} is null and ${table.generationAttemptKey} is null and ${table.durableExecutionAttempt} is null and ${table.providerAttempt} is null) or (${table.generationReservationKey} is not null and ${table.generationAttemptKey} is not null and ${table.durableExecutionAttempt} > 0 and ${table.providerAttempt} > 0)`,
+      sql`(${table.generationReservationKey} is null and ${table.durableExecutionAttempt} is null and ${table.providerAttempt} is null) or (${table.generationReservationKey} is not null and ${table.durableExecutionAttempt} > 0 and ${table.providerAttempt} > 0)`,
     ),
     check(
       "ai_processing_runs_lifecycle_check",
@@ -1258,9 +1253,6 @@ export const legalSourceProcessingGenerations = pgTable.withRLS(
   "legal_source_processing_generations",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    sourceVersionId: uuid("source_version_id")
-      .notNull()
-      .references(() => legalSourceVersions.id, { onDelete: "cascade" }),
     renditionId: uuid("rendition_id")
       .notNull()
       .references(() => legalSourceRenditions.id, { onDelete: "cascade" }),
@@ -1298,12 +1290,6 @@ export const legalSourceChunks = pgTable.withRLS(
       .references(() => legalSourceProcessingGenerations.id, {
         onDelete: "cascade",
       }),
-    sourceVersionId: uuid("source_version_id")
-      .notNull()
-      .references(() => legalSourceVersions.id, { onDelete: "cascade" }),
-    renditionId: uuid("rendition_id")
-      .notNull()
-      .references(() => legalSourceRenditions.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
     pageNumber: integer("page_number"),
     sectionPath: text("section_path"),
@@ -1387,9 +1373,6 @@ export const guidanceChunks = pgTable.withRLS(
     sectionPath: text("section_path"),
     text: text("text").notNull(),
     contentHash: text("content_hash").notNull(),
-    searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`to_tsvector('simple', coalesce("text", ''))`,
-    ),
     createdAt: createdAt(),
   },
   (table) => [
@@ -1397,10 +1380,6 @@ export const guidanceChunks = pgTable.withRLS(
       table.sourceId,
       table.position,
     ),
-    // Retrieval is binding-driven; this index only backs a later fallback
-    // search. `simple` does no stemming, so it will never be the primary path
-    // for German queries.
-    index("guidance_chunks_search_idx").using("gin", table.searchVector),
   ],
 );
 
@@ -1461,12 +1440,6 @@ export const legalCorpusSnapshotMembers = pgTable.withRLS(
     snapshotId: uuid("snapshot_id")
       .notNull()
       .references(() => legalCorpusSnapshots.id, { onDelete: "cascade" }),
-    sourceVersionId: uuid("source_version_id")
-      .notNull()
-      .references(() => legalSourceVersions.id, { onDelete: "restrict" }),
-    renditionId: uuid("rendition_id")
-      .notNull()
-      .references(() => legalSourceRenditions.id, { onDelete: "restrict" }),
     processingGenerationId: uuid("processing_generation_id")
       .notNull()
       .references(() => legalSourceProcessingGenerations.id, {
@@ -1475,7 +1448,7 @@ export const legalCorpusSnapshotMembers = pgTable.withRLS(
     position: integer("position").notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.snapshotId, table.sourceVersionId] }),
+    primaryKey({ columns: [table.snapshotId, table.processingGenerationId] }),
     uniqueIndex("legal_corpus_snapshot_members_position_unique").on(
       table.snapshotId,
       table.position,
@@ -1551,7 +1524,6 @@ export const gapFindings = pgTable.withRLS(
     resolutionCitationIds: jsonb("resolution_citation_ids").$type<string[]>(),
     decidedBy: uuid("decided_by"),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
-    originalOutputRevisionId: uuid("original_output_revision_id"),
     originalFindingId: uuid("original_finding_id"),
     position: integer("position").notNull(),
     createdAt: createdAt(),
@@ -1566,12 +1538,9 @@ export const gapFindings = pgTable.withRLS(
       ],
     }).onDelete("cascade"),
     foreignKey({
-      name: "gap_findings_original_output_tenant_fk",
-      columns: [table.organizationId, table.originalOutputRevisionId],
-      foreignColumns: [
-        analysisOutputRevisions.organizationId,
-        analysisOutputRevisions.id,
-      ],
+      name: "gap_findings_original_finding_tenant_fk",
+      columns: [table.organizationId, table.originalFindingId],
+      foreignColumns: [table.organizationId, table.id],
     }).onDelete("restrict"),
     uniqueIndex("gap_findings_revision_requirement_unique").on(
       table.outputRevisionId,
@@ -1597,7 +1566,6 @@ export const gapItems = pgTable.withRLS(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     organizationId: uuid("organization_id").notNull(),
-    outputRevisionId: uuid("output_revision_id").notNull(),
     findingId: uuid("finding_id").notNull(),
     stableKey: text("stable_key").notNull(),
     kind: gapItemKindEnum("kind").notNull(),
@@ -1611,14 +1579,6 @@ export const gapItems = pgTable.withRLS(
       name: "gap_items_finding_tenant_fk",
       columns: [table.organizationId, table.findingId],
       foreignColumns: [gapFindings.organizationId, gapFindings.id],
-    }).onDelete("cascade"),
-    foreignKey({
-      name: "gap_items_output_tenant_fk",
-      columns: [table.organizationId, table.outputRevisionId],
-      foreignColumns: [
-        analysisOutputRevisions.organizationId,
-        analysisOutputRevisions.id,
-      ],
     }).onDelete("cascade"),
     uniqueIndex("gap_items_finding_stable_key_unique").on(
       table.findingId,
@@ -1698,13 +1658,7 @@ export const actionPlans = pgTable.withRLS(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     sourceGapRevisionId: uuid("source_gap_revision_id").notNull(),
-    generationJobId: uuid("generation_job_id").references(() => backgroundJobs.id, {
-      onDelete: "restrict",
-    }),
-    aiProcessingRunId: uuid("ai_processing_run_id").references(
-      () => aiProcessingRuns.id,
-      { onDelete: "restrict" },
-    ),
+    generationJobId: uuid("generation_job_id"),
     locale: varchar("locale", { length: 5 }).notNull(),
     inputHash: text("input_hash").notNull(),
     createdBy: uuid("created_by").notNull(),
@@ -1724,6 +1678,11 @@ export const actionPlans = pgTable.withRLS(
         analysisOutputRevisions.id,
       ],
     }).onDelete("restrict"),
+    foreignKey({
+      name: "action_plans_generation_job_tenant_fk",
+      columns: [table.organizationId, table.generationJobId],
+      foreignColumns: [backgroundJobs.organizationId, backgroundJobs.id],
+    }).onDelete("restrict"),
     check("action_plans_locale_check", sql`${table.locale} in ('de', 'en')`),
   ],
 );
@@ -1736,7 +1695,8 @@ export const actionPlanItems = pgTable.withRLS(
     actionPlanId: uuid("action_plan_id").notNull(),
     findingId: uuid("finding_id").notNull(),
     title: text("title").notNull(),
-    description: text("description").notNull(),
+    result: text("result").notNull(),
+    suggestedEvidence: jsonb("suggested_evidence").$type<string[]>().notNull(),
     status: actionPlanItemStatusEnum("status").default("open").notNull(),
     position: integer("position").notNull(),
     createdAt: createdAt(),
@@ -1761,6 +1721,10 @@ export const actionPlanItems = pgTable.withRLS(
       table.organizationId,
       table.id,
     ),
+    check(
+      "action_plan_items_suggested_evidence_array_check",
+      sql`jsonb_typeof(${table.suggestedEvidence}) = 'array'`,
+    ),
   ],
 );
 
@@ -1768,7 +1732,6 @@ export const actionPlanItemGaps = pgTable.withRLS(
   "action_plan_item_gaps",
   {
     organizationId: uuid("organization_id").notNull(),
-    actionPlanId: uuid("action_plan_id").notNull(),
     actionPlanItemId: uuid("action_plan_item_id").notNull(),
     gapItemId: uuid("gap_item_id").notNull(),
   },
@@ -1798,10 +1761,7 @@ export const reports = pgTable.withRLS(
     applicabilityRevisionId: uuid("applicability_revision_id").notNull(),
     gapRevisionId: uuid("gap_revision_id"),
     actionPlanId: uuid("action_plan_id"),
-    renderingJobId: uuid("rendering_job_id").notNull().references(
-      () => backgroundJobs.id,
-      { onDelete: "restrict" },
-    ),
+    renderingJobId: uuid("rendering_job_id").notNull(),
     locale: varchar("locale", { length: 5 }).notNull(),
     inputHash: text("input_hash"),
     createdBy: uuid("created_by").notNull(),
@@ -1836,6 +1796,11 @@ export const reports = pgTable.withRLS(
       name: "reports_action_plan_tenant_fk",
       columns: [table.organizationId, table.actionPlanId],
       foreignColumns: [actionPlans.organizationId, actionPlans.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "reports_rendering_job_tenant_fk",
+      columns: [table.organizationId, table.renderingJobId],
+      foreignColumns: [backgroundJobs.organizationId, backgroundJobs.id],
     }).onDelete("restrict"),
     check("reports_locale_check", sql`${table.locale} in ('de', 'en')`),
     check(
@@ -1913,7 +1878,6 @@ export const idempotencyRecords = pgTable.withRLS(
     state: idempotencyStateEnum("state").default("in_progress").notNull(),
     responseStatus: integer("response_status"),
     resultLocator: jsonb("result_locator"),
-    errorCode: text("error_code"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1940,7 +1904,6 @@ export const apiRateLimitWindows = pgTable.withRLS(
     windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
     requestCount: integer("request_count").default(0).notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    updatedAt: updatedAt(),
   },
   (table) => [
     primaryKey({ columns: [table.key, table.windowStartedAt] }),

@@ -66,7 +66,7 @@ export function createAiSdkGroundedProvider(
         if (
           issues.length > 0 &&
           process.env.NODE_ENV !== "production" &&
-          process.env.WORKER_DEBUG_ERRORS === "1"
+          process.env.AI_DEBUG_ERRORS === "1"
         ) {
           console.error(
             "AI schema validation diagnostic",

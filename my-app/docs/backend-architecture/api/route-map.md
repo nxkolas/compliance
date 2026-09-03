@@ -1,8 +1,8 @@
 # API Route Map
 
-> Status: current as of 7 August 2026.
+> Status: current as of 3 September 2026.
 
-All routes are under `app/api/` and return the standard envelope. `:id`
+All routes are under `app/api/`. JSON application routes return the standard envelope; health checks return a small bare health payload, and document download/source-access routes return redirects. `:id`
 placeholders are entity UUIDs; `:organizationId` is the tenant scope.
 
 ## Organizations and tenancy
@@ -80,7 +80,7 @@ Guest (public) flow:
 | GET | `/api/organizations/:organizationId/gap-analysis/history` | Revision history |
 | GET | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId` | Read a Gap revision |
 | GET | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/inputs` | Pinned inputs of a revision |
-| POST | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/contradictions/:findingId/resolve` | Resolve a contradiction |
+| POST | `/api/organizations/:organizationId/gap-analysis/revisions/:revisionId/contradictions/:findingId/resolve` | Enqueue contradiction resolution (202) |
 
 ## Action plan
 
@@ -125,8 +125,9 @@ Guest (public) flow:
 ## Notes
 
 - There are no platform-administrator web routes: legal corpus processing and
-  snapshot activation are operator/worker operations.
-- The `202`-returning routes are: generation jobs, action plan generation,
-  and report creation.
+  snapshot activation are operator/job-runtime operations.
+- The `202`-returning routes are Gap generation, contradiction resolution,
+  Action Plan generation, report creation, and local-inference result/failure
+  acknowledgement.
 - Route behavior details and DTOs live in `src/contracts/` per domain; the
   shared envelope is documented in [Conventions](./conventions.md).
