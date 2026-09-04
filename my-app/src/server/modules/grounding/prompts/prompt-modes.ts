@@ -1,4 +1,4 @@
-import type { AssistantMode } from "@/lib/ai/types";
+import type { AssistantMode } from "@/src/server/platform/ai/types";
 
 export type CitationStrictness = "standard" | "strict" | "document";
 

@@ -1,8 +1,8 @@
 import { generateObject } from "ai";
 import type * as z from "zod";
-import { getChatModelId, getComplianceChatModelById } from "@/lib/ai/models";
-import type { AiProviderMode } from "@/lib/ai/types";
-import { getGenerationOptions } from "@/lib/ai/generation-options";
+import { getChatModelId, getComplianceChatModelById } from "@/src/server/platform/ai/models";
+import type { AiProviderMode } from "@/src/server/platform/ai/types";
+import { getGenerationOptions } from "@/src/server/platform/ai/generation-options";
 import type { GroundedProvider } from "../types";
 import {
   combineAbortSignals,

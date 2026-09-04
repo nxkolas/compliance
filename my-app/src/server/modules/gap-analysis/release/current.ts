@@ -1,4 +1,4 @@
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import { compileGapAnalysisRelease } from "../publishing/compile-release";
 import { currentGapContractDefinition } from "../current-contract";
 import type { LoadedGapRelease } from "../release-loader";

@@ -3,7 +3,7 @@ import { ApiClientError } from "@/src/client/api-client";
 import {
   classifyExternalError,
   localizeUiError,
-} from "@/lib/i18n/errors";
+} from "@/src/i18n/errors";
 
 describe("UI error localization", () => {
   it("maps stable API codes without exposing diagnostic messages", () => {

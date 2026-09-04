@@ -18,11 +18,12 @@ describe("client/server dependency boundary", () => {
   });
 
   /**
-   * `lib/ai/providers` reads `OPENAI_API_KEY`, and `lib/ai/models` builds on it.
+   * `src/server/platform/ai/providers` reads `OPENAI_API_KEY`, and
+   * `src/server/platform/ai/models` builds on it.
    * Neither would leak the key if bundled -- a variable without the
    * `NEXT_PUBLIC_` prefix resolves to undefined in the browser -- but the
    * failure would be a confusing runtime error in a credential path, and a
-   * later rename could turn it into a real leak. `lib/ai/types` carries no
+   * later rename could turn it into a real leak. The shared AI types carry no
    * secrets and is deliberately still importable by client code.
    */
   it("keeps AI credential modules out of client-side code", () => {
@@ -32,7 +33,9 @@ describe("client/server dependency boundary", () => {
         return (
           (file.includes("src\\client") || file.includes("src/client") ||
             source.startsWith('"use client"')) &&
-          /@\/lib\/ai\/(?:models|providers)(?:\/|["'])/.test(source)
+          /@\/src\/server\/platform\/ai\/(?:models|providers)(?:\/|["'])/.test(
+            source,
+          )
         );
       });
     expect(offenders).toEqual([]);

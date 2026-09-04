@@ -1,5 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { getLocale } from "@/lib/i18n";
+import { getLocale } from "@/src/i18n";
 import { gapAnalysisGenerationJobSchema } from "@/src/contracts/gap-analysis/generation";
 import type { JobDto } from "@/src/contracts/common/jobs";
 import { requireApiUser } from "@/src/server/platform/http/auth";

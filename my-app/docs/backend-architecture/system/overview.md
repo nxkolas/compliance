@@ -59,7 +59,7 @@ mechanisms do not create separate business implementations.
 | Business modules | `src/server/modules/`, `src/contracts/` | Authorization, rules, workflows, persistence, and public module interfaces |
 | Code-owned definitions | `src/server/modules/applicability-check/release/`, `src/server/modules/compliance/nis2/`, `src/server/modules/gap-analysis/release/` | Questionnaires, rules, requirements, localization, prompt contracts |
 | Jobs | `src/server/platform/jobs/`, `src/server/bootstrap/job-definitions.ts` | Generic queue execution plus composition of business handlers |
-| AI and retrieval | `src/server/platform/ai/`, `src/server/modules/grounding/`, `lib/ai/` | Provider integration, evidence retrieval, prompts, generation, validation |
+| AI and retrieval | `src/server/platform/ai/`, `src/server/modules/grounding/`, `src/server/platform/ai/` | Provider integration, evidence retrieval, prompts, generation, validation |
 | Database | `src/db/` | Drizzle schema, relations, connection pool |
 | Files and output | `src/server/modules/documents/`, `src/server/modules/legal-corpus/`, `src/server/modules/reports/`, `src/server/platform/storage/` | Private objects, versions, chunks, embeddings, legal corpus, PDFs |
 | Tenancy and access | `src/server/platform/auth/`, `src/server/modules/organizations/` | Session actors, capabilities, organization scopes, membership |

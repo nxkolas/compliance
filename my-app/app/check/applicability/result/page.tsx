@@ -1,8 +1,8 @@
 import { ApplicabilityResultCard } from "@/components/applicability-check/applicability-result-card";
 import { GuestApplicabilityActions } from "@/components/applicability-check/guest/guest-applicability-actions";
 import { Button } from "@/components/ui/button";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { createClient } from "@/lib/supabase/server";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { createClient } from "@/src/supabase/server";
 import { getGuestApplicabilityToken } from "@/src/server/modules/applicability-check";
 import { getGuestApplicabilityCheck } from "@/src/server/modules/applicability-check";
 import { ArrowLeft, RefreshCw } from "lucide-react";

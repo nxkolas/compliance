@@ -12,8 +12,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import type { Locale } from "@/lib/i18n-config";
-import { cn } from "@/lib/utils";
+import type { Locale } from "@/src/i18n/config";
+import { cn } from "@/src/utils";
 import type { ApplicabilityResultDto } from "@/src/server/modules/applicability-check";
 import {
   BadgeAlert,

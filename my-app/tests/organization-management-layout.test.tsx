@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { OrganizationManagementList } from "@/components/organizations/organization-management-list";
-import { getDefaultDictionary } from "@/lib/i18n";
+import { getDefaultDictionary } from "@/src/i18n";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),

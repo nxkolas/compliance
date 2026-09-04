@@ -13,10 +13,10 @@ import {
   getDictionary,
   getLocale,
   type Dictionary,
-} from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
-import { createClient } from "@/lib/supabase/server";
-import { hasEnvVars } from "@/lib/utils";
+} from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
+import { createClient } from "@/src/supabase/server";
+import { hasEnvVars } from "@/src/utils";
 import {
   getOrganizationForUser,
   listOrganizationsForUserPage,

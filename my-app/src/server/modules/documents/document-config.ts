@@ -1,4 +1,4 @@
-import type { AiProviderMode } from "@/lib/ai/types";
+import type { AiProviderMode } from "@/src/server/platform/ai/types";
 import { contentHash } from "@/src/server/platform/canonical-json";
 
 export const DOCUMENT_STORAGE_BUCKET = "organization-evidence";

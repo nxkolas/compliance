@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { documentTypeLabel } from "@/lib/documents/format";
+import { documentTypeLabel } from "@/src/documents/format";
 import { documentsClient } from "@/src/client/documents";
 import type { GapLabels, GapWorkflow } from "./types";
 

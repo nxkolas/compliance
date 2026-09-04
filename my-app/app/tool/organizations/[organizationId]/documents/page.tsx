@@ -1,7 +1,7 @@
 import { OrganizationDocumentManager } from "@/components/documents/organization-document-manager";
 import { PageHeader } from "@/components/page-header";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { documentListQuerySchema } from "@/src/contracts/documents";
 import { listOrganizationDocumentDtos } from "@/src/server/modules/documents";
 import { connection } from "next/server";

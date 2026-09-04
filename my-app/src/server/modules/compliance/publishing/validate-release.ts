@@ -2,7 +2,7 @@ import { collectVisibilityQuestionKeys } from "../runtime-release/question-visib
 import {
   getNis2ReleaseMessage,
   getNis2ReleaseMessageKeys,
-} from "@/lib/i18n/messages/nis2-release";
+} from "@/src/i18n/messages/nis2-release";
 import type { Nis2ReleaseDefinition } from "../nis2/releases/types";
 
 const REQUIRED_LOCALES = ["de", "en"] as const;

@@ -5,9 +5,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { formatDateTime } from "@/lib/i18n/format";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { formatDateTime } from "@/src/i18n/format";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { getApplicabilityAnswersForUser } from "@/src/server/modules/applicability-check";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";

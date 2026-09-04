@@ -1,4 +1,4 @@
-import type { AssistantMode, RetrievedContextChunk } from "@/lib/ai/types";
+import type { AssistantMode, RetrievedContextChunk } from "@/src/server/platform/ai/types";
 import { getPromptModeConfig } from "./prompt-modes";
 
 export type CitationPolicy = {

@@ -1,5 +1,5 @@
 import type { GapLabels, GapWorkflow } from "./types";
-import { formatDateTime } from "@/lib/i18n/format";
+import { formatDateTime } from "@/src/i18n/format";
 
 export function GapHistory({
   history,

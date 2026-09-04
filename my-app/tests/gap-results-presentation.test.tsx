@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { modulesMessages } from "@/lib/i18n/messages/modules";
+import { modulesMessages } from "@/src/i18n/messages/modules";
 import type { GapWorkflow } from "@/components/gap-analysis/types";
 
 vi.mock("next/navigation", () => ({

@@ -9,16 +9,16 @@ import {
 import {
   localeCookieName,
   type Locale,
-} from "@/lib/i18n-config";
+} from "@/src/i18n/config";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/src/utils";
 import { Check, Languages } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import {
   getLanguageOptions,
   type LanguageOption,
-} from "@/lib/i18n/language-options";
+} from "@/src/i18n/language-options";
 
 type LanguageSwitcherProps = {
   locale: Locale;

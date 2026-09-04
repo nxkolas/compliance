@@ -1253,7 +1253,7 @@ Update:
 - database structure documentation for the new columns/enums;
 - reset/bootstrap runbook;
 - operator rollout runbook; and
-- localized UI copy in `lib/i18n/messages/modules.ts`.
+- localized UI copy in `src/i18n/messages/modules.ts`.
 
 Create a new dated QA artifact directory containing:
 

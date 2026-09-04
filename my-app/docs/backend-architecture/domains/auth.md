@@ -8,8 +8,8 @@ Authentication is provided by Supabase Auth:
 
 - The browser signs in through the application; session cookies terminate at
   the application origin, not in the browser's storage.
-- Server-side Supabase clients (`lib/supabase/server.ts`) resolve the request
-  session; `proxy.ts` (delegating to `lib/supabase/proxy.ts`) refreshes
+- Server-side Supabase clients (`src/supabase/server.ts`) resolve the request
+  session; `proxy.ts` (delegating to `src/supabase/proxy.ts`) refreshes
   sessions during navigation and API requests.
 - API routes call `requireApiUser()` (`src/server/platform/http/auth.ts`), which
   resolves the authenticated actor or throws `401`.
@@ -71,7 +71,7 @@ entity, request ID, metadata); platform operations write
 
 ## Practical navigation
 
-- Session and actor resolution: `lib/supabase/server.ts`,
+- Session and actor resolution: `src/supabase/server.ts`,
   `src/server/platform/auth/authenticated-actor.ts`,
   `src/server/platform/auth/user-projection.ts`.
 - Capabilities and scopes: `src/server/platform/auth/capabilities.ts`,

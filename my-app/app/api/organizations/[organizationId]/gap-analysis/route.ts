@@ -1,4 +1,4 @@
-import { getLocale } from "@/lib/i18n";
+import { getLocale } from "@/src/i18n";
 import { apiRoute } from "@/src/server/platform/http/handler";
 import { requireApiUser } from "@/src/server/platform/http/auth";
 import { getGapAnalysisWorkflow } from "@/src/server/modules/gap-analysis";

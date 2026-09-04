@@ -1,4 +1,4 @@
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 
 const localeTags = {
   de: "de-DE",

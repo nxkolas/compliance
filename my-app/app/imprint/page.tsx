@@ -1,8 +1,8 @@
 import { AuthButton } from "@/components/auth-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
-import { getDictionary } from "@/lib/i18n";
-import { hasEnvVars } from "@/lib/utils";
+import { getDictionary } from "@/src/i18n";
+import { hasEnvVars } from "@/src/utils";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";

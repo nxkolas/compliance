@@ -9,9 +9,9 @@ import { LandingQuestionCard } from "@/components/landing/question-card";
 import { TeamPuzzleSection } from "@/components/landing/team-puzzle-section";
 import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 import { Button } from "@/components/ui/button";
-import { getDictionary } from "@/lib/i18n";
-import { createClient } from "@/lib/supabase/server";
-import { hasEnvVars } from "@/lib/utils";
+import { getDictionary } from "@/src/i18n";
+import { createClient } from "@/src/supabase/server";
+import { hasEnvVars } from "@/src/utils";
 import financialGraphAnimation from "@/public/animations/financial-graph-loader.json";
 import { listOrganizationsForUserPage } from "@/src/server/modules/organizations";
 import {

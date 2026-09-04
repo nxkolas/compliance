@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { OrganizationInbox } from "@/components/organizations/organization-inbox";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { listMailboxInvitationsForUser } from "@/src/server/modules/organizations";
 import { connection } from "next/server";
 

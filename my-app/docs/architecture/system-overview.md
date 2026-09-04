@@ -63,7 +63,7 @@ invoke the same handlers.
 | Domain services and contracts | `src/server/<domain>/`, `src/contracts/` | Authorization, rules, transactions, persistence, and DTOs |
 | Code-owned definitions | `src/server/definitions/`, `src/server/compliance/`, `src/server/gap-analysis/releases/` | Questionnaires, rules, requirements, localization, and prompt contracts |
 | Background jobs | `src/server/jobs/`, `src/server/job-execution/` | Queueing, leases, heartbeats, cancellation, retries, and handlers |
-| AI and retrieval | `src/server/ai/`, `lib/ai/` | Provider selection, evidence retrieval, prompts, generation, and validation |
+| AI and retrieval | `src/server/ai/`, `src/server/platform/ai/` | Provider selection, evidence retrieval, prompts, generation, and validation |
 | Database | `src/db/` | Drizzle schema, relations, pool, and query entry point |
 | Files and output | `src/server/documents/`, `src/server/corpus/`, `src/server/reports/` | Private objects, versions, chunks, embeddings, legal corpus, and PDFs |
 | Operations | `scripts/`, `infra/`, `docs/runbooks/` | Guarded schema operations, qualification, deployment, and recovery |

@@ -1,4 +1,4 @@
-import type { AiProviderMode } from "@/lib/ai/types";
+import type { AiProviderMode } from "@/src/server/platform/ai/types";
 
 export type ModelCapabilityProfile = {
   supportsStreaming: boolean;

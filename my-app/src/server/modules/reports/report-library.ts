@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import * as z from "zod";
 import { and, asc, eq, inArray, lt, or, sql } from "drizzle-orm";
-import type { Locale } from "@/lib/i18n-config";
-import { localizedFilename } from "@/lib/i18n/format";
-import { reportsMessages } from "@/lib/i18n/messages/reports";
+import type { Locale } from "@/src/i18n/config";
+import { localizedFilename } from "@/src/i18n/format";
+import { reportsMessages } from "@/src/i18n/messages/reports";
 import {
   analysisOutputDocumentSources,
   auditEvents,

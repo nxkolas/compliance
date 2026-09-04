@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import { db } from "@/src/db";
 import { guestApplicabilityChecks } from "@/src/db/schema";
 import {

@@ -1,4 +1,4 @@
-import { locales, type Locale } from "@/lib/i18n-config";
+import { locales, type Locale } from "@/src/i18n/config";
 
 export type LanguageOption = {
   locale: Locale;

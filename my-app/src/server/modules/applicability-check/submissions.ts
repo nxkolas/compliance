@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import { analysisOutputRevisions, analysisOutputs, assessmentAnswers, assessmentRevisions, assessments, auditEvents } from "@/src/db/schema";
 import {
   currentApplicabilityDefinitionHash,

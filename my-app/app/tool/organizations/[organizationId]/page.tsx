@@ -1,9 +1,9 @@
 import { ProductModuleContent } from "@/components/product-module-content";
-import { getDictionary } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { getOrganizationDashboard } from "@/src/server/modules/organizations";
 import { connection } from "next/server";
-import { buildDashboardPresentation } from "@/lib/i18n/dashboard";
+import { buildDashboardPresentation } from "@/src/i18n/dashboard";
 
 export default async function OrganizationPage({ params }: { params: Promise<{ organizationId: string }> }) {
   await connection(); const user = await requireAuth(); const dictionary = await getDictionary(); const { organizationId } = await params;

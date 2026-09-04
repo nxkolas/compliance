@@ -1,4 +1,4 @@
-import type { Dictionary, Locale } from "@/lib/i18n";
+import type { Dictionary, Locale } from "@/src/i18n";
 import type { getGapAnalysisWorkflow } from "@/src/server/modules/gap-analysis/workflow-reader";
 
 export type GapWorkflow = Awaited<

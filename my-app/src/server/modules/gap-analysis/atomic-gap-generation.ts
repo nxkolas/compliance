@@ -8,7 +8,7 @@ import {
   type GroundingContextItem,
   type QueryUnit,
 } from "../grounding/types";
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import type { AtomicGapTriggerPolicy } from "./trigger-policy";
 import type { LoadedGapRelease } from "./release-loader";
 import {

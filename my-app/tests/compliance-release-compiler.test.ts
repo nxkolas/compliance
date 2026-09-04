@@ -5,7 +5,7 @@ import { evaluateRuleSet } from "@/src/server/modules/compliance/nis2/rules";
 import {
   getNis2ReleaseMessage,
   getNis2ReleaseMessageKeys,
-} from "@/lib/i18n/messages/nis2-release";
+} from "@/src/i18n/messages/nis2-release";
 
 describe("immutable NIS2 release compiler", () => {
   it("publishes the eight guided-wizard questions with complete localized tooltips", () => {

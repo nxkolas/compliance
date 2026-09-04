@@ -42,14 +42,14 @@ import { OrganizationAvatar, organizationInitials } from "./organization-avatar"
 import { OrganizationInvitePanel } from "./organization-invite-panel";
 import { OrganizationMemberRoster } from "./organization-member-roster";
 import { organizationsClient } from "@/src/client/organizations";
-import type { Locale } from "@/lib/i18n-config";
-import type { Dictionary } from "@/lib/i18n";
+import type { Locale } from "@/src/i18n/config";
+import type { Dictionary } from "@/src/i18n";
 import type {
   OrganizationInvitationDto,
   OrganizationListItem,
   OrganizationMemberDto,
 } from "@/src/server/modules/organizations/types";
-import { localizeUiError } from "@/lib/i18n/errors";
+import { localizeUiError } from "@/src/i18n/errors";
 
 type SerializeDates<T> = T extends Date
   ? string

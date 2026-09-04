@@ -12,12 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { organizationsClient } from "@/src/client/organizations";
-import type { Dictionary } from "@/lib/i18n";
+import type { Dictionary } from "@/src/i18n";
 import type {
   OrganizationMemberDto,
   OrganizationRole,
 } from "@/src/server/modules/organizations/types";
-import { localizeUiError } from "@/lib/i18n/errors";
+import { localizeUiError } from "@/src/i18n/errors";
 import { OrganizationAvatar } from "./organization-avatar";
 
 type SerializedMember = Omit<OrganizationMemberDto, "createdAt"> & {

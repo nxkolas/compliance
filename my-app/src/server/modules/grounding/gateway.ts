@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type * as z from "zod";
-import type { AiProviderMode } from "@/lib/ai/types";
+import type { AiProviderMode } from "@/src/server/platform/ai/types";
 import { db } from "@/src/db";
 import { aiProcessingRunContext, aiProcessingRuns } from "@/src/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
@@ -22,7 +22,7 @@ import {
   generationSettingsFrom,
   readOrganizationModelSettings,
 } from "../organizations/model-settings-service";
-import { getGenerationOptions } from "@/lib/ai/generation-options";
+import { getGenerationOptions } from "@/src/server/platform/ai/generation-options";
 import {
   resolveGroundingRetrievalQuery,
   type GroundedOutputContract,

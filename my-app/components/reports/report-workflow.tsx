@@ -11,9 +11,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
-import { formatDateTime } from "@/lib/i18n/format";
+import type { Dictionary, Locale } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
+import { formatDateTime } from "@/src/i18n/format";
 import { reportsClient } from "@/src/client/reports";
 import { jobsClient } from "@/src/client/jobs";
 import type { listReports } from "@/src/server/modules/reports/report-library";

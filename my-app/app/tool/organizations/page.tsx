@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { OrganizationManagementList } from "@/components/organizations/organization-management-list";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { listOrganizationsForUserPage } from "@/src/server/modules/organizations";
 
 export default async function OrganizationsPage({

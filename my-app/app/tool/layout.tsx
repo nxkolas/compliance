@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { synchronizeAuthenticatedActor } from "@/src/server/platform/auth/user-directory";
 import { ClientInferenceRelayHost } from "@/components/organizations/client-inference-relay-host";
 

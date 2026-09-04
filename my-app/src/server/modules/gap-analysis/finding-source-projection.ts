@@ -1,4 +1,4 @@
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 
 const MAX_SECTION_LABEL_LENGTH = 160;
 

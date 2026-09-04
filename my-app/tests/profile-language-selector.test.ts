@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDictionaryForLocale } from "@/lib/i18n";
+import { getDictionaryForLocale } from "@/src/i18n";
 import { getProfileMenuLanguageOptions } from "@/components/profile-menu";
 
 describe("authenticated profile language selector", () => {

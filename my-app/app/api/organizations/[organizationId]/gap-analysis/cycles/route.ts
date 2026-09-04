@@ -1,5 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { getLocale } from "@/lib/i18n";
+import { getLocale } from "@/src/i18n";
 import { gapAnalysisCyclePrepareSchema } from "@/src/contracts/gap-analysis/generation";
 import { requireApiUser } from "@/src/server/platform/http/auth";
 import { ApiError } from "@/src/server/platform/http/errors";

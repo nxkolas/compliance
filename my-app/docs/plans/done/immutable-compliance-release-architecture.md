@@ -24,7 +24,7 @@ The database foundations should support later compliance checks without prematur
 
 1. Design generic database foundations, but implement and migrate only NIS2 now.
 2. Treat every published release as completely immutable, including questions, options, legal references, translations, profiles, parameters, and compiled rules.
-3. Keep static interface text in `lib/i18n.ts`; store only dynamic/versioned compliance content in the database localization model.
+3. Keep static interface text in `src/i18n/index.ts`; store only dynamic/versioned compliance content in the database localization model.
 4. Use normalized tables as the authoritative authoring model and retain `rule_sets.rules` only as an immutable compiled execution artifact.
 5. Continue authoring legal content in reviewed repository files. Do not add an admin editor or permit direct production edits.
 6. Clear and reseed current development data; do not build a legacy-data converter or dual-write compatibility layer.
@@ -74,7 +74,7 @@ The database foundations should support later compliance checks without prematur
 - Do not migrate current development assessments, guest checks, results, or organization facts.
 - Do not automatically copy answers between releases.
 - Do not automatically re-evaluate historical assessments.
-- Do not move static navigation, button, layout, or other application-shell translations out of `lib/i18n.ts`.
+- Do not move static navigation, button, layout, or other application-shell translations out of `src/i18n/index.ts`.
 - Do not give browser roles direct read access to “safe” definition tables.
 - Do not manage ordinary tables or columns through hand-written Supabase SQL.
 - Do not use `db:reset`; the cutover uses the approved `db:clear` and `db:push` workflow.
@@ -701,7 +701,7 @@ Expected existing files:
 - `components/applicability-check/applicability-result-card.tsx`
 - guest and organization applicability API routes
 - guest cookie/session handling
-- `lib/i18n.ts` only for new static UI labels such as outdated-release messaging
+- `src/i18n/index.ts` only for new static UI labels such as outdated-release messaging
 - `docs/architecture/db-schema-plan.md`
 - `docs/architecture/database-structure.md`
 

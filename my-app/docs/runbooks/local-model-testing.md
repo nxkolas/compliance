@@ -248,7 +248,7 @@ Raise Ollama's side with `OLLAMA_CONTEXT_LENGTH` and restart the service.
 ### Thinking models
 
 A thinking model must be told not to think. `getGenerationOptions`
-([generation-options.ts](../../lib/ai/generation-options.ts)) sends
+([generation-options.ts](../../src/server/platform/ai/generation-options.ts)) sends
 `reasoning_effort` for Ollama and `chat_template_kwargs` for vLLM, selected by
 the organization's recorded thinking style; with no recorded style it sends both
 and each server ignores the one it does not know.

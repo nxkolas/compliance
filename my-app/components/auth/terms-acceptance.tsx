@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dictionary } from "@/lib/i18n";
+import type { Dictionary } from "@/src/i18n";
 
 export function TermsAcceptance({
   labels,

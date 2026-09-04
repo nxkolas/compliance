@@ -21,7 +21,7 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 import { NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/proxy";
+import { updateSession } from "@/src/supabase/proxy";
 import { config as proxyConfig } from "@/proxy";
 
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

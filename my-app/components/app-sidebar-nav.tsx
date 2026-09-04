@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { Dictionary } from "@/lib/i18n";
+import type { Dictionary } from "@/src/i18n";
 import { useSidebarOrganizationId } from "@/components/use-sidebar-organization-id";
 import Image from "next/image";
 import Link from "next/link";

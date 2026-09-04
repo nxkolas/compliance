@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
-vi.mock("@/lib/i18n", () => ({ getLocale: mocks.getLocale }));
+vi.mock("@/src/i18n", () => ({ getLocale: mocks.getLocale }));
 vi.mock("@/src/server/platform/http/auth", () => ({ requireApiUser: mocks.requireApiUser }));
 vi.mock("@/src/server/platform/http/operation-rate-limit", () => ({ enforceOperationRateLimit: mocks.enforceOperationRateLimit }));
 vi.mock("@/src/server/platform/idempotency", () => ({

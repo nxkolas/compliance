@@ -23,8 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Dictionary } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
+import type { Dictionary } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
 import type { getCurrentActionPlan } from "@/src/server/modules/action-plans/action-plan";
 import { actionPlansClient } from "@/src/client/action-plans";
 import { pollJob } from "@/src/client/job-polling";

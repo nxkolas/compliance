@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
   redirect: mocks.redirect,
 }));
 
-vi.mock("@/lib/supabase/require-auth", () => ({
+vi.mock("@/src/supabase/require-auth", () => ({
   requireAuth: vi.fn().mockResolvedValue({ id: "user-1" }),
 }));
 

@@ -142,7 +142,7 @@ historical research.
 ## Step 3 — Wire the optional host-run local model
 
 No application code changes are required. The provider abstraction in
-[lib/ai/providers.ts](../../../lib/ai/providers.ts) already supports an
+[src/server/platform/ai/providers.ts](../../../src/server/platform/ai/providers.ts) already supports an
 arbitrary OpenAI-compatible base URL, and Ollama serves `/v1` natively, so
 LiteLLM is not replaced by anything.
 
@@ -280,7 +280,7 @@ the audited pins in `versions.env`.
 - `infra/compose/app-host/` and the production deployment path
 - The `Dockerfile` and all six build targets
 - `containers.yml` image build, signing, scanning, and publication
-- The three-mode AI provider abstraction in `lib/ai/`
+- The three-mode AI provider abstraction in `src/server/platform/ai/`
 - Any change to `AI_EMBEDDING_DIM` or the `vector(1536)` schema
 
 ## Housekeeping noted during inspection

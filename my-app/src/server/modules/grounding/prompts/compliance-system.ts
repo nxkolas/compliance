@@ -1,6 +1,6 @@
 import type { OrganizationDto } from "@/src/server/modules/organizations/types";
-import type { RetrievedContextChunk } from "@/lib/ai/types";
-import type { ModelCapabilityProfile } from "@/lib/ai/model-capabilities";
+import type { RetrievedContextChunk } from "@/src/server/platform/ai/types";
+import type { ModelCapabilityProfile } from "@/src/server/platform/ai/model-capabilities";
 import type { PromptModeConfig } from "./prompt-modes";
 import { getCitationPolicy, sourceIdsForContext } from "./citation-rules";
 import { outputContractInstruction } from "./output-contracts";

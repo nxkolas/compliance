@@ -8,10 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { formatDate as formatLocalizedDate } from "@/lib/i18n/format";
-import { localizeUiError } from "@/lib/i18n/errors";
+import { cn } from "@/src/utils";
+import type { Dictionary, Locale } from "@/src/i18n";
+import { formatDate as formatLocalizedDate } from "@/src/i18n/format";
+import { localizeUiError } from "@/src/i18n/errors";
 import type { OrganizationMailboxInvitationDto } from "@/src/server/modules/organizations/types";
 import { Check, Inbox, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";

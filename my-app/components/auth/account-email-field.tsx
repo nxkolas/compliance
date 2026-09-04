@@ -2,8 +2,8 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Dictionary } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import type { Dictionary } from "@/src/i18n";
+import { cn } from "@/src/utils";
 import { Mail } from "lucide-react";
 
 export function AccountEmailField({

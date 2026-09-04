@@ -1,4 +1,4 @@
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import { getGapAnalysisRevision, getGapAnalysisWorkflow } from "./workflow-reader";
 
 export async function getGapHistory(userId: string, organizationId: string, locale: Locale = "de") {

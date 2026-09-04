@@ -78,7 +78,8 @@ Every context item carries a stable citation ID and excerpt hash.
 
 ### Prompt and output contract
 
-The prompt is built by `lib/ai/prompts/` from the query units and context.
+The assistant prompt is built by `src/server/modules/grounding/prompts/` from
+the query units and context.
 Query units, prompts, operation kinds, locale, and response schemas remain
 workflow-specific. The response schema is a strict Zod contract per domain, defined in
 `src/server/modules/gap-analysis/current-contract.ts` and
@@ -147,6 +148,6 @@ rejected as a duplicate.
 
 - Gateway and grounding: `src/server/modules/grounding/`.
 - Generation coordination: `src/server/platform/ai/generation/`.
-- Prompts and model configuration: `lib/ai/`.
+- Prompts and model configuration: `src/server/platform/ai/`.
 - Provider implementations: `src/server/modules/grounding/providers/`.
 - Browser relay specifics: [Local AI](./local-ai.md).

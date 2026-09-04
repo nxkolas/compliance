@@ -1,4 +1,4 @@
-import type { AiCitation, ComplianceAssistantOutput } from "@/lib/ai/types";
+import type { AiCitation, ComplianceAssistantOutput } from "@/src/server/platform/ai/types";
 
 /**
  * Prompt text that asks the model for a stable Markdown shape while still

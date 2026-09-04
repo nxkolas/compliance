@@ -16,11 +16,11 @@ vi.mock("next/navigation", () => ({
   useSelectedLayoutSegment: vi.fn().mockReturnValue(null),
 }));
 
-vi.mock("@/lib/supabase/require-auth", () => ({
+vi.mock("@/src/supabase/require-auth", () => ({
   requireAuth: vi.fn().mockResolvedValue({ id: "user-1" }),
 }));
 
-vi.mock("@/lib/i18n", () => ({
+vi.mock("@/src/i18n", () => ({
   getDictionary: vi.fn().mockResolvedValue({
     modules: {
       applicabilityCheck: {

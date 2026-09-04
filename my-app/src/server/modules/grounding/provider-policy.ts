@@ -1,4 +1,4 @@
-import type { AiProviderMode } from "@/lib/ai/types";
+import type { AiProviderMode } from "@/src/server/platform/ai/types";
 import { ApiError } from "../../platform/http/errors";
 import type { GroundedProvider } from "./types";
 

@@ -3,7 +3,7 @@ import {
   SectionedMultiSelect,
   WizardBackButton,
 } from "@/components/applicability-check/applicability-wizard";
-import { getDictionaryForLocale } from "@/lib/i18n";
+import { getDictionaryForLocale } from "@/src/i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { ApplicabilityQuestionnaireDto } from "@/src/server/modules/applicability-check";
 import { getCurrentApplicabilityDefinition } from "@/src/server/modules/applicability-check/release/current";

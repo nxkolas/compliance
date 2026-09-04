@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/src/supabase/server";
 import {
   projectAuthenticatedActor,
   type AuthenticatedActor,

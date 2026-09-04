@@ -1,5 +1,5 @@
 import { OrganizationModulePageSkeleton } from "@/components/navigation-loading";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { getOrganizationForUser } from "@/src/server/modules/organizations";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";

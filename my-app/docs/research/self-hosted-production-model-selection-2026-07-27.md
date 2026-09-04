@@ -36,7 +36,7 @@ post-validation
 [Action Plan schema](../../src/server/action-plans/generation-schema.ts)).
 Interactive answers must also preserve prompt-local source IDs and abstain when
 context is missing
-([response validator](../../lib/ai/prompts/response-validator.ts)).
+([response validator](../../src/server/modules/grounding/prompts/response-validator.ts)).
 
 Qwen3.5-27B is a dense 27B model with a native 262,144-token context window and
 global coverage across 201 languages and dialects. Qwen publishes a first-party
@@ -120,7 +120,7 @@ The Qwen model card documents vLLM's `qwen3` reasoning parser,
 
 Do not begin at the model's full 262K context. The application currently admits
 at most ten retrieved chunks when the capability profile is at least 64K
-([prompt builder](../../lib/ai/prompts/prompt-builder.ts)), so 128K preserves
+([prompt builder](../../src/server/modules/grounding/prompts/prompt-builder.ts)), so 128K preserves
 substantial headroom without spending memory on an unused maximum. Raise it
 only after a workload trace demonstrates a need.
 
@@ -132,7 +132,7 @@ low-concurrency policy; vLLM memory admission is not the business queue.
 
 The current self-hosted defaults claim no structured-output or tool support,
 only 16K context, low citation reliability, and temperature 0.1
-([model capabilities](../../lib/ai/model-capabilities.ts)). After qualification,
+([model capabilities](../../src/server/platform/ai/model-capabilities.ts)). After qualification,
 configure:
 
 ```env

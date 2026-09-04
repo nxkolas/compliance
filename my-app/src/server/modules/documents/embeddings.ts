@@ -1,6 +1,6 @@
 import { embedMany } from "ai";
-import { getComplianceEmbeddingModel } from "@/lib/ai/models";
-import type { AiProviderMode } from "@/lib/ai/types";
+import { getComplianceEmbeddingModel } from "@/src/server/platform/ai/models";
+import type { AiProviderMode } from "@/src/server/platform/ai/types";
 import {
   DEFAULT_EMBEDDING_PROVIDER,
   EMBEDDING_DIMENSIONS,

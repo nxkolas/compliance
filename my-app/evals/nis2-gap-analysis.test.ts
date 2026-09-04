@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPromptModeConfig } from "../lib/ai/prompts/prompt-modes";
+import { getPromptModeConfig } from "../src/server/modules/grounding/prompts/prompt-modes";
 
 describe("NIS2 gap-analysis mode", () => {
   it("requires curated citations and uses low temperature", () => {

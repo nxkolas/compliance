@@ -1,5 +1,5 @@
-import type { Locale } from "@/lib/i18n-config";
-import { defineFeatureMessages } from "@/lib/i18n/define-messages";
+import type { Locale } from "@/src/i18n/config";
+import { defineFeatureMessages } from "@/src/i18n/define-messages";
 
 export const nis2ReleaseMessages = defineFeatureMessages({
   de: {

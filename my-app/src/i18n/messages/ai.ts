@@ -1,4 +1,4 @@
-import { defineFeatureMessages } from "@/lib/i18n/define-messages";
+import { defineFeatureMessages } from "@/src/i18n/define-messages";
 
 export const aiMessages = defineFeatureMessages({
   de: {

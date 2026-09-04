@@ -2,7 +2,7 @@ import { GapAnalysisStepper } from "@/components/gap-analysis/gap-analysis-stepp
 import { GapDocumentStep } from "@/components/gap-analysis/gap-document-step";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { modulesMessages } from "@/lib/i18n/messages/modules";
+import { modulesMessages } from "@/src/i18n/messages/modules";
 import {
   Children,
   isValidElement,

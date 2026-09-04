@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { GapAnalysisWorkflow } from "@/components/gap-analysis/gap-analysis-workflow";
 import type { GapWorkflow } from "@/components/gap-analysis/types";
-import { getDefaultDictionary } from "@/lib/i18n";
+import { getDefaultDictionary } from "@/src/i18n";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),

@@ -1,10 +1,10 @@
 // Aliased: @react-pdf's Image takes no alt prop, and the name `Image` trips
 // the jsx-a11y alt-text rule that next/image is registered with.
 import { Document, Image as PdfImage, Page, Text, View, renderToBuffer } from "@react-pdf/renderer";
-import { modulesMessages } from "@/lib/i18n/messages/modules";
-import { reportsMessages } from "@/lib/i18n/messages/reports";
-import { formatDateTime } from "@/lib/i18n/format";
-import type { Dictionary } from "@/lib/i18n";
+import { modulesMessages } from "@/src/i18n/messages/modules";
+import { reportsMessages } from "@/src/i18n/messages/reports";
+import { formatDateTime } from "@/src/i18n/format";
+import type { Dictionary } from "@/src/i18n";
 import { formatLegalCitations } from "@/src/server/modules/compliance";
 import type { GapStatus } from "@/src/server/modules/gap-analysis";
 import type { ReportActionStatus, ReportRenderSnapshot } from "./render-snapshot";

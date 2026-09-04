@@ -3,7 +3,7 @@ import type {
   AssistantMode,
   ComplianceAssistantOutput,
   RetrievedContextChunk,
-} from "@/lib/ai/types";
+} from "@/src/server/platform/ai/types";
 import { buildAssistantOutputContract } from "./output-contracts";
 import { contextHasScope } from "./citation-rules";
 import { getPromptModeConfig } from "./prompt-modes";

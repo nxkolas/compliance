@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
-import { getDictionary, getLocale } from "@/lib/i18n";
+import { getDictionary, getLocale } from "@/src/i18n";
 import { serializeBrowserSupabaseEnvironment } from "@/src/config/env/supabase";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";

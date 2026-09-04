@@ -2,9 +2,9 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Dictionary } from "@/lib/i18n";
-import { ACCOUNT_PASSWORD_MIN_LENGTH } from "@/lib/auth/password-policy";
-import { cn } from "@/lib/utils";
+import type { Dictionary } from "@/src/i18n";
+import { ACCOUNT_PASSWORD_MIN_LENGTH } from "@/src/auth/password-policy";
+import { cn } from "@/src/utils";
 import { Eye, EyeOff, Lock } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";

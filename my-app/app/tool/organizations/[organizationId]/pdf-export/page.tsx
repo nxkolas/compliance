@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { ReportWorkflow } from "@/components/reports/report-workflow";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { hasOrganizationCapability } from "@/src/server/platform/auth/capabilities";
 import { assertCanAccessOrganization } from "@/src/server/modules/organizations";
 import { listReports } from "@/src/server/modules/reports";

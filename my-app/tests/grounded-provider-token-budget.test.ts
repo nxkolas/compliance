@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const generateObject = vi.hoisted(() => vi.fn());
 
 vi.mock("ai", () => ({ generateObject }));
-vi.mock("@/lib/ai/models", () => ({
+vi.mock("@/src/server/platform/ai/models", () => ({
   getChatModelId: () => "test-model",
   getComplianceChatModelById: () => "model-handle",
 }));

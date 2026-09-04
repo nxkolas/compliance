@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "@/src/utils";
 import {
   getVisibleOptions,
   getVisibleQuestions,
@@ -22,7 +22,7 @@ import type {
   ApplicabilityQuestionnaireDto,
 } from "@/src/server/modules/applicability-check";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
-import { localizeUiError } from "@/lib/i18n/errors";
+import { localizeUiError } from "@/src/i18n/errors";
 import {
   ArrowLeft,
   Check,

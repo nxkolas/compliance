@@ -9,7 +9,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import { CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 

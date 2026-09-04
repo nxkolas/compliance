@@ -4,7 +4,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getDefaultDictionary, type Dictionary } from "@/lib/i18n";
+import { getDefaultDictionary, type Dictionary } from "@/src/i18n";
 import type { CSSProperties, ReactNode } from "react";
 
 type AppShellProps = {

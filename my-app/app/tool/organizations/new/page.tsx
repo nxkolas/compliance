@@ -1,6 +1,6 @@
 import { OrganizationCreateForm } from "@/components/organizations/organization-create-form";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { connection } from "next/server";
 
 type NewOrganizationPageProps = {

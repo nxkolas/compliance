@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getNis2ReleaseMessage,
   getNis2ReleaseMessageKeys,
-} from "@/lib/i18n/messages/nis2-release";
+} from "@/src/i18n/messages/nis2-release";
 import { localizeEvaluation } from "@/src/server/modules/applicability-check/localize-evaluation";
 import { evaluateRuleSet } from "@/src/server/modules/compliance/nis2/rules";
 import type { StoredRuleEvaluationResult } from "@/src/server/modules/compliance/nis2/rule-evaluation-schema";

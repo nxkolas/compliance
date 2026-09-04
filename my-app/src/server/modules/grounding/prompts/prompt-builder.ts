@@ -3,8 +3,8 @@ import type { OrganizationDto } from "@/src/server/modules/organizations/types";
 import type {
   AssistantMode,
   RetrievedContextChunk,
-} from "@/lib/ai/types";
-import type { ModelCapabilityProfile } from "@/lib/ai/model-capabilities";
+} from "@/src/server/platform/ai/types";
+import type { ModelCapabilityProfile } from "@/src/server/platform/ai/model-capabilities";
 import {
   renderComplianceSystemPrompt,
   renderComplianceSystemPromptTemplate,

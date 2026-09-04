@@ -1,4 +1,4 @@
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import { db } from "@/src/db";
 import { getCurrentApplicabilityDefinition } from "./release/current";
 import { type LocalizedRuleEvaluationResult } from "./localize-evaluation";

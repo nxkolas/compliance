@@ -72,7 +72,7 @@ Static application copy belongs in typed, feature-level message modules:
 - Errors, statuses, and enum display mappings
 
 German and English messages for a feature should be colocated and validated as
-having identical keys. `lib/i18n.ts` may remain as a compatibility facade while
+having identical keys. `src/i18n/index.ts` may remain as a compatibility facade while
 callers are migrated.
 
 ### Database-backed content
@@ -111,7 +111,7 @@ displaying raw codes or transforming identifiers cosmetically.
 
 - Add a small message-definition helper that enforces identical German and
   English key structures without constraining translated string values.
-- Split the current `lib/i18n.ts` dictionary by product feature.
+- Split the current `src/i18n/index.ts` dictionary by product feature.
 - Assemble the feature modules into the existing `Dictionary` interface.
 - Preserve `getLocale()`, `getDictionary()`, and `getDefaultDictionary()` as a
   stable facade during migration.

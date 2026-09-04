@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/src/utils";
+import { createClient } from "@/src/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Dictionary } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
+import type { Dictionary } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 

@@ -10,7 +10,7 @@ import {
   FolderOpen,
   TrendingUp,
 } from "lucide-react";
-import type { Dictionary } from "@/lib/i18n";
+import type { Dictionary } from "@/src/i18n";
 import type { OrganizationProgressStepKey } from "@/src/contracts/organization-progress";
 import { useEffect, useState } from "react";
 

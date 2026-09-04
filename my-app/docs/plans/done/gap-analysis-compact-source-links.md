@@ -407,7 +407,7 @@ other consumer.
 Update the current product documentation so it no longer claims technical
 audit details are available from the normal result card:
 
-- `lib/i18n/messages/modules.ts`
+- `src/i18n/messages/modules.ts`
 - `docs/product/gap-analysis-current-workflow.md`
 - `docs/product/product-structure.md` if it describes the browser read model
 

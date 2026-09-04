@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateComplianceResponse } from "../lib/ai/prompts/response-validator";
+import { validateComplianceResponse } from "../src/server/modules/grounding/prompts/response-validator";
 
 describe("refusal and uncertainty behavior", () => {
   it("flags no-context answers that do not state insufficient sourced information", () => {

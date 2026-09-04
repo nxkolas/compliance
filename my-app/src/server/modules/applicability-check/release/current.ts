@@ -1,8 +1,8 @@
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 import {
   getNis2ReleaseMessage,
   getNis2ReleaseMessageKeys,
-} from "@/lib/i18n/messages/nis2-release";
+} from "@/src/i18n/messages/nis2-release";
 import { compileRelease } from "@/src/server/modules/compliance";
 import { nis2ReleaseDefinition2026V2 } from "@/src/server/modules/compliance";
 import type {

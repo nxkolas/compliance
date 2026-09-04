@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACCOUNT_PASSWORD_MIN_LENGTH,
   isValidAccountPassword,
-} from "@/lib/auth/password-policy";
+} from "@/src/auth/password-policy";
 
 describe("account password policy", () => {
   it("requires at least 10 characters", () => {

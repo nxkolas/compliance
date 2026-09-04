@@ -4,20 +4,20 @@ import {
   localeCookieName,
   locales,
   type Locale,
-} from "@/lib/i18n-config";
-import { coreMessages } from "@/lib/i18n/messages/core";
-import { authMessages } from "@/lib/i18n/messages/auth";
-import { navigationMessages } from "@/lib/i18n/messages/navigation";
-import { aiMessages } from "@/lib/i18n/messages/ai";
-import { organizationsMessages } from "@/lib/i18n/messages/organizations";
-import { assessmentMessages } from "@/lib/i18n/messages/assessment";
-import { modulesMessages } from "@/lib/i18n/messages/modules";
-import { guestMessages } from "@/lib/i18n/messages/guest";
-import { homeMessages } from "@/lib/i18n/messages/home";
-import { reportsMessages } from "@/lib/i18n/messages/reports";
-import { tutorialMessages } from "@/lib/i18n/messages/tutorial";
-import { nis2ReleaseMessages } from "@/lib/i18n/messages/nis2-release";
-import { legalPagesMessages } from "@/lib/i18n/messages/legal-pages";
+} from "@/src/i18n/config";
+import { coreMessages } from "@/src/i18n/messages/core";
+import { authMessages } from "@/src/i18n/messages/auth";
+import { navigationMessages } from "@/src/i18n/messages/navigation";
+import { aiMessages } from "@/src/i18n/messages/ai";
+import { organizationsMessages } from "@/src/i18n/messages/organizations";
+import { assessmentMessages } from "@/src/i18n/messages/assessment";
+import { modulesMessages } from "@/src/i18n/messages/modules";
+import { guestMessages } from "@/src/i18n/messages/guest";
+import { homeMessages } from "@/src/i18n/messages/home";
+import { reportsMessages } from "@/src/i18n/messages/reports";
+import { tutorialMessages } from "@/src/i18n/messages/tutorial";
+import { nis2ReleaseMessages } from "@/src/i18n/messages/nis2-release";
+import { legalPagesMessages } from "@/src/i18n/messages/legal-pages";
 
 export { defaultLocale, localeCookieName, locales, type Locale };
 

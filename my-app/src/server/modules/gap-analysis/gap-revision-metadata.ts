@@ -1,5 +1,5 @@
 import * as z from "zod";
-import type { Locale } from "@/lib/i18n-config";
+import type { Locale } from "@/src/i18n/config";
 
 const findingDiagnosticSchema = z.object({
   requirementVersionId: z.uuid(),
