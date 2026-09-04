@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { locales } from "@/lib/i18n-config";
 import { getNis2ReleaseMessage } from "@/lib/i18n/messages/nis2-release";
-import { getCurrentApplicabilityDefinition } from "@/src/server/definitions";
-import { nis2Questions } from "@/src/server/compliance/nis2/releases/2026-v1/release-source";
+import { getCurrentApplicabilityDefinition } from "@/src/server/modules/applicability-check/release/current";
+import { nis2Questions } from "@/src/server/modules/compliance/nis2/releases/2026-v1/release-source";
 
 describe("applicability questionnaire i18n ownership", () => {
   it("localizes every semantic question and option through the i18n module", () => {

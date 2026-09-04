@@ -1,19 +1,19 @@
 import { revalidatePath } from "next/cache";
 import { actionPlanGenerationRequestSchema } from "@/src/contracts/action-plans";
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { readJsonBody } from "@/src/server/api/request";
-import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
 import {
   enqueueActionPlanGeneration,
   getCurrentActionPlan,
-} from "@/src/server/action-plans";
+} from "@/src/server/modules/action-plans";
 import {
   getAuthorizedJob,
   toJobDto,
-} from "@/src/server/jobs";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
+} from "@/src/server/platform/jobs";
+import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
 
 type Context = { params: Promise<{ organizationId: string }> };
 

@@ -1,4 +1,4 @@
-import { checkDatabaseReadiness } from "@/src/server/health";
+import { checkDatabaseReadiness } from "@/src/server/platform/health";
 
 export const dynamic = "force-dynamic";
 

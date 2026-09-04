@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getOrganizationCountryDefault } from "@/src/server/applicability-check/service";
+import { getOrganizationCountryDefault } from "@/src/server/modules/applicability-check";
 
 vi.hoisted(() => {
   process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/test";

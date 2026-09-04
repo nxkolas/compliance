@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { listOrganizationsForUserPage } from "@/src/server/organizations/service";
+import { listOrganizationsForUserPage } from "@/src/server/modules/organizations";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 

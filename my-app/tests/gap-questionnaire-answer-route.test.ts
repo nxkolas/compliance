@@ -7,8 +7,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
-vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
-vi.mock("@/src/server/gap-analysis", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({ requireApiUser: mocks.requireApiUser }));
+vi.mock("@/src/server/modules/gap-analysis", () => ({
   saveQuestionnaireDraftAnswer: mocks.saveQuestionnaireDraftAnswer,
 }));
 

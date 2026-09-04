@@ -11,7 +11,7 @@ from its current, compatible, unblocked Gap revision.
 
 It uses the shared NIS2 grounding policy while retaining a distinct workflow
 prompt, operation kind, query unit, and code-owned output contract
-(`src/server/action-plans/current-contract.ts`).
+(`src/server/modules/action-plans/current-contract.ts`).
 
 ## Inputs
 
@@ -21,7 +21,7 @@ prompt, operation kind, query unit, and code-owned output contract
 | Findings and gaps | The revision's `gap_findings` and `gap_items` |
 | Legal and organization context | Retrieved again through the grounding pipeline for each category |
 | Locale | `de` or `en` |
-| Action Plan contract | `src/server/action-plans/current-contract.ts` |
+| Action Plan contract | `src/server/modules/action-plans/current-contract.ts` |
 
 ## Deterministic part
 

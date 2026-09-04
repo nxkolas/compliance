@@ -3,12 +3,12 @@ import {
   getNis2ReleaseMessage,
   getNis2ReleaseMessageKeys,
 } from "@/lib/i18n/messages/nis2-release";
-import { localizeEvaluation } from "@/src/server/applicability-check/localize-evaluation";
-import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
-import type { StoredRuleEvaluationResult } from "@/src/server/applicability-check/rule-evaluation-schema";
-import { nis2ReleaseDefinition } from "@/src/server/compliance/nis2/releases/2026-v1/release";
-import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
-import type { PublishedComplianceRelease } from "@/src/server/compliance/runtime-release/types";
+import { localizeEvaluation } from "@/src/server/modules/applicability-check/localize-evaluation";
+import { evaluateRuleSet } from "@/src/server/modules/compliance/nis2/rules";
+import type { StoredRuleEvaluationResult } from "@/src/server/modules/compliance/nis2/rule-evaluation-schema";
+import { nis2ReleaseDefinition } from "@/src/server/modules/compliance/nis2/releases/2026-v1/release";
+import { compileRelease } from "@/src/server/modules/compliance/publishing/compile-release";
+import type { PublishedComplianceRelease } from "@/src/server/modules/compliance/runtime-release/types";
 
 describe("applicability result localization", () => {
   it("projects a result entirely from preloaded German and English bundles", () => {

@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { resolveAuthenticatedActor } from "@/src/server/auth/authenticated-actor";
+import { resolveAuthenticatedActor } from "@/src/server/platform/auth/authenticated-actor";
 
 const resolveActorForRequest = cache(resolveAuthenticatedActor);
 

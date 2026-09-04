@@ -5,7 +5,7 @@ import {
   Text,
   renderToBuffer,
 } from "@react-pdf/renderer";
-import { parseWithDocling } from "@/src/server/corpus/domain";
+import { parseWithDocling } from "@/src/server/modules/legal-corpus";
 
 const expectedText = "Controlled compliance extraction fixture";
 const endpoint = required("DOCLING_SERVICE_URL");

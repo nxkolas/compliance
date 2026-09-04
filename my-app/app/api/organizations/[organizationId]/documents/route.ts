@@ -1,8 +1,8 @@
 import { documentListQuerySchema } from "@/src/contracts/documents";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { parseInput } from "@/src/server/api/request";
-import { listOrganizationDocumentDtos } from "@/src/server/documents";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { parseInput } from "@/src/server/platform/http/request";
+import { listOrganizationDocumentDtos } from "@/src/server/modules/documents";
 
 export const GET = apiRoute(
   async ({

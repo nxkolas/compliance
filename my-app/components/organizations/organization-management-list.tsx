@@ -48,7 +48,7 @@ import type {
   OrganizationInvitationDto,
   OrganizationListItem,
   OrganizationMemberDto,
-} from "@/src/server/organizations/types";
+} from "@/src/server/modules/organizations/types";
 import { localizeUiError } from "@/lib/i18n/errors";
 
 type SerializeDates<T> = T extends Date

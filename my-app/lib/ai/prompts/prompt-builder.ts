@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { OrganizationDto } from "@/src/server/organizations/types";
+import type { OrganizationDto } from "@/src/server/modules/organizations/types";
 import type {
   AssistantMode,
   RetrievedContextChunk,

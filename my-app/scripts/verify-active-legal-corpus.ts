@@ -6,8 +6,8 @@ import {
   legalCorpusSnapshotMembers,
   legalCorpusSnapshots,
 } from "@/src/db/schema";
-import { validateLegalCorpusActivationCandidate } from "@/src/server/corpus/validation";
-import { currentGapContractDefinition } from "@/src/server/gap-analysis/current-contract";
+import { validateLegalCorpusActivationCandidate } from "@/src/server/modules/legal-corpus";
+import { currentGapContractDefinition } from "@/src/server/modules/gap-analysis";
 
 async function main() {
   for (const familyCode of currentGapContractDefinition.requiredCorpusFamilies) {

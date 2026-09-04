@@ -3,13 +3,13 @@ import * as z from "zod";
 import type {
   LanguageClassification,
   LanguageDetector,
-} from "@/src/server/ai/grounding/language-detector";
-import { localAggregateLanguageDetector } from "@/src/server/ai/grounding/language-detector";
+} from "@/src/server/modules/grounding/language-detector";
+import { localAggregateLanguageDetector } from "@/src/server/modules/grounding/language-detector";
 import {
   assertOutputLocaleMatches,
   executeLanguageValidatedProvider,
-} from "@/src/server/ai/grounding/language-policy";
-import type { GroundedProvider } from "@/src/server/ai/grounding/types";
+} from "@/src/server/modules/grounding/language-policy";
+import type { GroundedProvider } from "@/src/server/modules/grounding/types";
 
 const outputSchema = z.object({
   prose: z.string(),

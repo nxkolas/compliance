@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   bindLegalProvisions,
   provisionLegalCorpus,
-} from "../src/server/operator-commands/provision-legal-corpus";
+} from "../src/server/operations/provision-legal-corpus";
 
 async function main() {
   const command = process.argv[2];

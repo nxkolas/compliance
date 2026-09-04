@@ -20,7 +20,7 @@ provider and legal scope for Gap generation, contradiction resolution, and
 Action Plan generation:
 
 - `openai` — the server calls OpenAI directly through the AI SDK
-  (`src/server/ai/grounding/providers/ai-sdk.ts`).
+  (`src/server/modules/grounding/providers/ai-sdk.ts`).
 - `self_hosted` — two shapes:
   - An organization that recorded its chosen models in
     `organization_model_settings` runs them on a user's machine through the
@@ -30,7 +30,7 @@ Action Plan generation:
     on-premises topology where the server can reach the model over a network.
 
 The selection happens in one place
-(`src/server/ai/grounding/gateway.ts`), so all generation call sites inherit
+(`src/server/modules/grounding/gateway.ts`), so all generation call sites inherit
 the relay without knowing it exists. An unavailable selected provider fails
 explicitly; there is no silent fallback.
 
@@ -81,8 +81,8 @@ Every context item carries a stable citation ID and excerpt hash.
 The prompt is built by `lib/ai/prompts/` from the query units and context.
 Query units, prompts, operation kinds, locale, and response schemas remain
 workflow-specific. The response schema is a strict Zod contract per domain, defined in
-`src/server/gap-analysis/current-contract.ts` and
-`src/server/action-plans/current-contract.ts`. The model supplies only bounded
+`src/server/modules/gap-analysis/current-contract.ts` and
+`src/server/modules/action-plans/current-contract.ts`. The model supplies only bounded
 prose and optional organization citations; the server owns categories, gap
 kinds, priorities, ordering, mandatory citations, locale, and persistence.
 
@@ -124,7 +124,7 @@ rejected as a duplicate.
 ## Generation concurrency and failures
 
 - Category generation is coordinated with bounded concurrency
-  (`src/server/ai/generation/concurrency.ts`, `category-coordinator.ts`).
+  (`src/server/platform/ai/generation/concurrency.ts`, `category-coordinator.ts`).
 - Provider calls are limited by a permit limiter.
 - Failures are classified (`failures.ts`) into transient provider failures
   (retryable with delay), content/validation failures (non-retryable), and
@@ -145,8 +145,8 @@ rejected as a duplicate.
 
 ## Practical navigation
 
-- Gateway and grounding: `src/server/ai/grounding/`.
-- Generation coordination: `src/server/ai/generation/`.
+- Gateway and grounding: `src/server/modules/grounding/`.
+- Generation coordination: `src/server/platform/ai/generation/`.
 - Prompts and model configuration: `lib/ai/`.
-- Provider implementations: `src/server/ai/grounding/providers/`.
+- Provider implementations: `src/server/modules/grounding/providers/`.
 - Browser relay specifics: [Local AI](./local-ai.md).

@@ -1,4 +1,4 @@
-import { ApiError } from "@/src/server/api/errors";
+import { ApiError } from "@/src/server/platform/http/errors";
 import { getOpenAIProvider, getSelfHostedChatProvider } from "./providers";
 import type { AiProviderMode } from "./types";
 

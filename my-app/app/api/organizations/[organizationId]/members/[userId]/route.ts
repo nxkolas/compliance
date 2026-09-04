@@ -1,11 +1,11 @@
 import { memberUpdateSchema } from "@/src/contracts/organizations";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { readJsonBody } from "@/src/server/api/request";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { readJsonBody } from "@/src/server/platform/http/request";
 import {
   removeOrganizationMember,
   updateOrganizationMember,
-} from "@/src/server/organizations/service";
+} from "@/src/server/modules/organizations";
 
 type Context = {
   params: Promise<{ organizationId: string; userId: string }>;

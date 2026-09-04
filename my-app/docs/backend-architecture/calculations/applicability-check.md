@@ -95,7 +95,7 @@ the wizard auto-answers the aggregation question with
 
 ## Fact derivation
 
-`deriveFactsForAnswers` (`src/server/applicability-check/fact-derivation.ts`)
+`deriveFactsForAnswers` (`src/server/modules/applicability-check/fact-derivation.ts`)
 projects answered questions onto language-neutral decisive facts. Each
 question carries `factMappings`; a mapping with `byOption` expands the selected
 option value(s) through the per-option table (for example one Q4 activity to
@@ -128,10 +128,10 @@ questions.
 
 ## Source files
 
-- Release definition: `src/server/compliance/nis2/releases/2026-v1/release.ts`
-- Wizard question content: `src/server/compliance/nis2/releases/2026-v1/release-source.ts`
-- Evaluator: `src/server/applicability-check/rules.ts` (unchanged)
-- Fact derivation: `src/server/applicability-check/fact-derivation.ts`
-- Visibility/route model: `src/server/applicability-check/question-visibility.ts`
+- Release definition: `src/server/modules/compliance/nis2/releases/2026-v1/release.ts`
+- Wizard question content: `src/server/modules/compliance/nis2/releases/2026-v1/release-source.ts`
+- Evaluator: `src/server/modules/applicability-check/rules.ts` (unchanged)
+- Fact derivation: `src/server/modules/applicability-check/fact-derivation.ts`
+- Visibility/route model: `src/server/modules/applicability-check/question-visibility.ts`
 - Wizard UI: `components/applicability-check/applicability-wizard.tsx` and
   `components/applicability-check/wizard-flow.ts`

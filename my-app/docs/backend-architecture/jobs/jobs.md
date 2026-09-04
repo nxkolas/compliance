@@ -67,7 +67,7 @@ Key mechanics:
 ## Wake-up adapters
 
 All adapters drain the same queue with the same handlers
-(`src/server/job-execution/`):
+(`src/server/platform/jobs/execution/`):
 
 | Adapter | Where | Typical bound |
 | --- | --- | --- |
@@ -77,18 +77,18 @@ All adapters drain the same queue with the same handlers
 ## Job catalog
 
 Job kinds, their triggers, and their outcomes are defined in
-`src/server/jobs/definitions.ts`; handlers live in the domain modules.
+`src/server/bootstrap/job-definitions.ts`; handlers live in the domain modules.
 
 | Kind | Trigger | Handler | Result |
 | --- | --- | --- | --- |
-| `gap_analysis` | Cycle generation request | `src/server/gap-analysis/` | `analysis_output_revision` |
-| `gap_conflict_resolution` | Contradiction resolution | `src/server/gap-analysis/` | `analysis_output_revision` |
-| `action_plan_generation` | Action Plan start | `src/server/action-plans/` | `action_plan` |
-| `report_render` | Report creation | `src/server/reports/` | `report` |
-| `document_indexing` | Upload completion / retry | `src/server/documents/` | `document_version` |
-| `organization_reembedding` | Embedding model change | `src/server/documents/` | `organization` |
-| `legal_source_processing` | Corpus provisioning | `src/server/corpus/` | processing generation |
-| `maintenance_cleanup` | Operator scheduling | `src/server/api/cleanup.ts` | — |
+| `gap_analysis` | Cycle generation request | `src/server/modules/gap-analysis/` | `analysis_output_revision` |
+| `gap_conflict_resolution` | Contradiction resolution | `src/server/modules/gap-analysis/` | `analysis_output_revision` |
+| `action_plan_generation` | Action Plan start | `src/server/modules/action-plans/` | `action_plan` |
+| `report_render` | Report creation | `src/server/modules/reports/` | `report` |
+| `document_indexing` | Upload completion / retry | `src/server/modules/documents/` | `document_version` |
+| `organization_reembedding` | Embedding model change | `src/server/modules/documents/` | `organization` |
+| `legal_source_processing` | Corpus provisioning | `src/server/modules/legal-corpus/` | processing generation |
+| `maintenance_cleanup` | Operator scheduling | `src/server/bootstrap/maintenance.ts` | — |
 
 Organization-scoped jobs pin the requester (`requested_by`) and the
 organization, so handlers use the pinned identity instead of replaying
@@ -110,7 +110,7 @@ A candidate produced after lease turnover is discarded instead of published.
 
 ## Practical navigation
 
-- Definitions, payload schemas, capabilities: `src/server/jobs/definitions.ts`.
-- State machine: `src/server/jobs/state-machine.ts`.
-- Drain and runtime: `src/server/job-execution/`.
+- Definitions, payload schemas, capabilities: `src/server/bootstrap/job-definitions.ts`.
+- State machine: `src/server/platform/jobs/state-machine.ts`.
+- Drain and runtime: `src/server/platform/jobs/execution/`.
 - Polling/cancellation routes: `app/api/jobs/`.

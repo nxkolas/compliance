@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ scheduleAfterResponseDrain: vi.fn() }));
-vi.mock("@/src/server/job-execution/after-response", () => ({
+vi.mock("@/src/server/platform/jobs/execution/after-response", () => ({
   scheduleAfterResponseDrain: mocks.scheduleAfterResponseDrain,
 }));
 
-import { apiRoute } from "@/src/server/api/handler";
+import { apiRoute } from "@/src/server/platform/http/handler";
 
 describe("asynchronous API job wake-up", () => {
   beforeEach(() => vi.clearAllMocks());

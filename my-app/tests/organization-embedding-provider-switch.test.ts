@@ -51,17 +51,17 @@ const executor = vi.hoisted(() => ({
 }));
 
 vi.mock("@/src/db", () => ({ db: executor }));
-vi.mock("@/src/server/jobs", () => ({
+vi.mock("@/src/server/platform/jobs", () => ({
   enqueueJob: vi.fn(async (command: Record<string, unknown>) => {
     mocks.enqueued.push(command);
   }),
 }));
 
-import { requestEmbeddingConfigChange } from "@/src/server/organizations/embedding-migration-service";
+import { requestEmbeddingConfigChange } from "@/src/server/modules/organizations/embedding-migration-service";
 import {
   resolveEmbeddingConfig,
   withEmbeddingKey,
-} from "@/src/server/documents/document-config";
+} from "@/src/server/modules/documents/document-config";
 
 describe("organization embedding configuration change", () => {
   beforeEach(() => {

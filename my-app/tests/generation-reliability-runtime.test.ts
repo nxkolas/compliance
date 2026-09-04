@@ -6,8 +6,8 @@ import {
   normalizeOneLine,
   normalizeUniqueStrings,
   safeGenerationIssues,
-} from "@/src/server/ai/generation";
-import { ApiError } from "@/src/server/api/errors";
+} from "@/src/server/platform/ai/generation";
+import { ApiError } from "@/src/server/platform/http/errors";
 
 describe("generation reliability runtime", () => {
   it("keeps diagnostics allowlisted and excludes issue prose", () => {

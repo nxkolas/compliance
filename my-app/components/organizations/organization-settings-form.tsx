@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Dictionary } from "@/lib/i18n";
 import { localizeUiError } from "@/lib/i18n/errors";
-import type { OrganizationDto } from "@/src/server/organizations/types";
+import type { OrganizationDto } from "@/src/server/modules/organizations/types";
 import { Building2, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";

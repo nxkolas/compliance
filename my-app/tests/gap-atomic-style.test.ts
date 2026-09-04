@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateAtomicGapStatement } from "@/src/server/gap-analysis/gap-style";
+import { validateAtomicGapStatement } from "@/src/server/modules/gap-analysis/gap-style";
 
 describe("atomic Gap statement style", () => {
   it("accepts idiomatic German uncertainty wording", () => {

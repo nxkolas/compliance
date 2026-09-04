@@ -1,8 +1,12 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const schema = readFileSync(resolve(import.meta.dirname, "../src/db/schema.ts"), "utf8");
+const schemaDirectory = resolve(import.meta.dirname, "../src/db/schema");
+const schema = readdirSync(schemaDirectory)
+  .filter((fileName) => fileName.endsWith(".ts"))
+  .map((fileName) => readFileSync(resolve(schemaDirectory, fileName), "utf8"))
+  .join("\n");
 
 describe("target database indexes", () => {
   it.each([

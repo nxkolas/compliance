@@ -1,9 +1,9 @@
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { getOrganizationInvitation, resendOrganizationInvitation } from "@/src/server/organizations/service";
-import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
-import { runIdempotentCommand } from "@/src/server/api/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/idempotency";
-import type { OrganizationInvitationDto } from "@/src/server/organizations/types";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { getOrganizationInvitation, resendOrganizationInvitation } from "@/src/server/modules/organizations";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
+import type { OrganizationInvitationDto } from "@/src/server/modules/organizations";
 export const POST = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string; invitationId: string }> } }) => {
   const user = await requireApiUser(); const params = await routeContext.params;
   await enforceOperationRateLimit({ userId: user.id, operation: "invitations:write", scopeId: params.organizationId });

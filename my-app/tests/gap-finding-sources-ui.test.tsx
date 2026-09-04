@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { GapFindingSources } from "@/components/gap-analysis/gap-finding-sources";
 import { modulesMessages } from "@/lib/i18n/messages/modules";
-import type { GapFindingSource } from "@/src/server/gap-analysis/finding-source-projection";
+import type { GapFindingSource } from "@/src/server/modules/gap-analysis/finding-source-projection";
 
 const sources: GapFindingSource[] = [
   {

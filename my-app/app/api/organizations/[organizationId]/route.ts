@@ -1,10 +1,10 @@
 import { revalidatePath } from "next/cache";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { readJsonBody } from "@/src/server/api/request";
-import { getOrganizationForUser, updateOrganizationForUser } from "@/src/server/organizations/service";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { getOrganizationForUser, updateOrganizationForUser } from "@/src/server/modules/organizations";
 import { organizationInputSchema } from "@/src/contracts/organizations";
-import { scheduleAfterResponseDrain } from "@/src/server/job-execution/after-response";
+import { scheduleAfterResponseDrain } from "@/src/server/platform/jobs/execution/after-response";
 
 type Context = { params: Promise<{ organizationId: string }> };
 export const GET = apiRoute(async ({ routeContext }: { request: Request; routeContext: Context }) => {

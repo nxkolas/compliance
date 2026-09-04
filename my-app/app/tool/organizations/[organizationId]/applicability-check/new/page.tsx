@@ -6,7 +6,7 @@ import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getApplicabilityQuestionnaireForUser,
   getApplicabilityRecalculationLockForUser,
-} from "@/src/server/applicability-check";
+} from "@/src/server/modules/applicability-check";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 

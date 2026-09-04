@@ -8,7 +8,7 @@ The application ships as one web process:
 
 - The **web process** (`next start`) serves pages and API routes. After
   returning a `202` response it can run a bounded portable job drain via
-  Next.js `after()` (`src/server/job-execution/after-response.ts`).
+  Next.js `after()` (`src/server/platform/jobs/execution/after-response.ts`).
 - A scheduled, authenticated recovery route
   (`app/api/internal/jobs/drain/route.ts`) provides durable wake-ups for
   all deployments. Hosted deployments register it as a cron job; self-hosted

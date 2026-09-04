@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { nis2ReleaseDefinition } from "@/src/server/compliance/nis2/releases/2026-v1/release";
-import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
-import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
+import { nis2ReleaseDefinition } from "@/src/server/modules/compliance/nis2/releases/2026-v1/release";
+import { compileRelease } from "@/src/server/modules/compliance/publishing/compile-release";
+import { evaluateRuleSet } from "@/src/server/modules/compliance/nis2/rules";
 
 const nis2ScopeRuleSet = compileRelease(nis2ReleaseDefinition).artifact;
 

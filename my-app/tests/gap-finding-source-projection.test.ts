@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   projectGapFindingSources,
   type GapFindingSourceEvidence,
-} from "@/src/server/gap-analysis/finding-source-projection";
+} from "@/src/server/modules/gap-analysis/finding-source-projection";
 
 const organizationId = "00000000-0000-4000-8000-000000000001";
 

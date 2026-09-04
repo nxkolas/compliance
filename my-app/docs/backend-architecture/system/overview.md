@@ -1,6 +1,6 @@
 # System Overview
 
-> Status: current as of 3 September 2026.
+> Status: current as of 4 September 2026.
 
 ## Short answer
 
@@ -55,21 +55,27 @@ mechanisms do not create separate business implementations.
 
 | Module | Main location | Responsibility |
 | --- | --- | --- |
-| HTTP boundary | `app/api/`, `src/server/api/` | Authentication, input validation, envelopes, request IDs, rate limits, service dispatch |
-| Domain services and contracts | `src/server/<domain>/`, `src/contracts/` | Authorization, rules, transactions, persistence, DTOs |
-| Code-owned definitions | `src/server/definitions/`, `src/server/compliance/`, `src/server/gap-analysis/releases/` | Questionnaires, rules, requirements, localization, prompt contracts |
-| Jobs | `src/server/jobs/`, `src/server/job-execution/` | Queueing, leases, heartbeats, cancellation, retries, handlers |
-| AI and retrieval | `src/server/ai/`, `lib/ai/` | Provider selection, evidence retrieval, prompts, generation, validation |
+| HTTP boundary | `app/api/`, `src/server/platform/http/` | Authentication, input validation, envelopes, request IDs, rate limits, service dispatch |
+| Business modules | `src/server/modules/`, `src/contracts/` | Authorization, rules, workflows, persistence, and public module interfaces |
+| Code-owned definitions | `src/server/modules/applicability-check/release/`, `src/server/modules/compliance/nis2/`, `src/server/modules/gap-analysis/release/` | Questionnaires, rules, requirements, localization, prompt contracts |
+| Jobs | `src/server/platform/jobs/`, `src/server/bootstrap/job-definitions.ts` | Generic queue execution plus composition of business handlers |
+| AI and retrieval | `src/server/platform/ai/`, `src/server/modules/grounding/`, `lib/ai/` | Provider integration, evidence retrieval, prompts, generation, validation |
 | Database | `src/db/` | Drizzle schema, relations, connection pool |
-| Files and output | `src/server/documents/`, `src/server/corpus/`, `src/server/reports/`, `src/server/uploads/` | Private objects, versions, chunks, embeddings, legal corpus, PDFs |
-| Tenancy and access | `src/server/auth/`, `src/server/organizations/`, `src/server/users/` | Session actors, capabilities, organization scopes, membership |
-| Operations | `scripts/`, `infra/` | Guarded schema operations, provisioning, deployment, verification |
+| Files and output | `src/server/modules/documents/`, `src/server/modules/legal-corpus/`, `src/server/modules/reports/`, `src/server/platform/storage/` | Private objects, versions, chunks, embeddings, legal corpus, PDFs |
+| Tenancy and access | `src/server/platform/auth/`, `src/server/modules/organizations/` | Session actors, capabilities, organization scopes, membership |
+| Operations | `scripts/`, `src/server/operations/`, `infra/` | Guarded schema operations, provisioning, deployment, verification |
 
 React Server Components can call server services directly for initial reads;
 interactive browser components use the HTTP API. Both paths converge on the
 same domain services — routes are not an alternate domain layer.
 
 ## API request flow
+
+Dependencies point inward from delivery and composition code to stable module
+interfaces: `app` and `scripts` call `src/server/modules/<module>/index.ts`;
+business modules may use other modules only through those interfaces; platform
+code does not import business modules. `src/server/bootstrap/` is the explicit
+composition root for workflows that combine both layers.
 
 ```mermaid
 sequenceDiagram
@@ -89,9 +95,9 @@ sequenceDiagram
 ```
 
 Every API route authenticates independently with `requireApiUser()` in
-`src/server/api/auth.ts`. Organization identity in a URL is never authority:
+`src/server/platform/http/auth.ts`. Organization identity in a URL is never authority:
 server services resolve the actor's membership and capability through
-`src/server/auth/organization-scope.ts` and pin the organization predicate
+`src/server/platform/auth/organization-scope.ts` and pin the organization predicate
 through the query or transaction.
 
 All ordinary public tables have RLS enabled with no browser-role application
@@ -132,14 +138,17 @@ the corpus is evidence for generation, never executable configuration.
 
 ## Practical navigation
 
-1. Identify the API route under `app/api/` and follow it into
-   `src/server/<domain>/`.
-2. Follow persistence into `src/db/schema.ts` and `src/db/relations.ts`.
-3. For asynchronous work, continue through `src/server/jobs/`,
-   `src/server/job-execution/`, and the domain handler.
-4. For AI work, continue through `src/server/ai/` and `lib/ai/`.
-5. For questionnaire or rule changes, follow the release selected by
-   `src/server/definitions/`; never edit the database as content management.
+1. Identify the API route under `app/api/` and follow its import to a public
+   module interface in `src/server/modules/<module>/index.ts`.
+2. Open the owning module implementation, then follow persistence into the
+   matching file under `src/db/schema/`; relations remain in `src/db/relations.ts`.
+3. For asynchronous work, inspect the generic runtime in
+   `src/server/platform/jobs/`, its composition in
+   `src/server/bootstrap/job-definitions.ts`, and the owning module handler.
+4. For AI work, distinguish provider/runtime code in `src/server/platform/ai/`
+   from compliance evidence coordination in `src/server/modules/grounding/`.
+5. For questionnaire or rule changes, follow the owning module's `release/` or
+   `nis2/` directory; never edit the database as content management.
 
 ## Related documents in this folder
 

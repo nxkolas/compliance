@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyFindingCitationLinks,
   resolvedFindingLinkDisposition,
-} from "@/src/server/gap-analysis/evidence-link-policy";
+} from "@/src/server/modules/gap-analysis/evidence-link-policy";
 
 describe("exact contradiction link policy", () => {
   it("marks only the provider-named organization citation as conflicting", () => {

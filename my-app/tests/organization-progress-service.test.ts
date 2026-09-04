@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   findItems: vi.fn(),
 }));
 
-vi.mock("@/src/server/auth/capability-service", () => ({ requireOrganizationCapability: mocks.authorize }));
+vi.mock("@/src/server/platform/auth/capability-service", () => ({ requireOrganizationCapability: mocks.authorize }));
 vi.mock("@/src/db", () => ({ db: { query: {
   analysisOutputs: { findMany: mocks.findOutputs },
   documents: { findFirst: mocks.findDocument },
@@ -18,7 +18,7 @@ vi.mock("@/src/db", () => ({ db: { query: {
   actionPlanItems: { findMany: mocks.findItems },
 } } }));
 
-import { getOrganizationProgress } from "@/src/server/organization-progress/service";
+import { getOrganizationProgress } from "@/src/server/modules/organizations/progress-read-model";
 
 describe("organization progress service", () => {
   beforeEach(() => {

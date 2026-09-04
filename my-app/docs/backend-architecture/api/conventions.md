@@ -4,12 +4,12 @@
 
 All HTTP routes live under `app/api/` and are thin. They authenticate,
 validate, enforce limits, and dispatch to a server service in
-`src/server/<domain>/`. The shared machinery lives in `src/server/api/`.
+`src/server/<domain>/`. The shared machinery lives in `src/server/platform/http/`.
 
 ## Route handlers
 
 Most routes are declared as exported constants built with `apiRoute(...)`
-(`src/server/api/handler.ts`). The wrapper:
+(`src/server/platform/http/handler.ts`). The wrapper:
 
 - resolves a request ID;
 - validates route parameters (any `*Id` param must match the entity ID
@@ -47,7 +47,7 @@ Error:
 
 Every response carries an `x-request-id` header. An inbound
 `x-request-id` is accepted if it matches the schema; otherwise a UUID is
-generated (`src/server/api/request-id.ts`).
+generated (`src/server/platform/http/request-id.ts`).
 
 Health endpoints intentionally return bare health payloads. Authorized
 document download and source-access endpoints return redirects rather than a
@@ -56,12 +56,12 @@ directly because they also manage a guest-session cookie.
 
 ## Authentication and authorization
 
-- Every protected route calls `requireApiUser()` (`src/server/api/auth.ts`),
+- Every protected route calls `requireApiUser()` (`src/server/platform/http/auth.ts`),
   which resolves the Supabase session server-side and returns the
   authenticated actor, or throws `401`.
 - Capabilities are role-based. Organization-scoped operations use
   `authorizeOrganizationRead` / `withAuthorizedOrganizationCommand`
-  (`src/server/auth/organization-scope.ts`), which pin the organization
+  (`src/server/platform/auth/organization-scope.ts`), which pin the organization
   predicate through the whole query or transaction.
 - The organization ID in the URL is never authority; it is always re-checked
   against the actor's membership.
@@ -69,7 +69,7 @@ directly because they also manage a guest-session cookie.
 ## Validation
 
 - Bodies are read and parsed with Zod via `readJsonBody` /
-  `readOptionalJsonBody` (`src/server/api/request.ts`). Invalid input throws
+  `readOptionalJsonBody` (`src/server/platform/http/request.ts`). Invalid input throws
   `400` with the Zod issues as `details`.
 - The default JSON body ceiling is 8 MB; routes that legitimately move more
   data (relayed embedding results) pass an explicit larger cap.
@@ -77,7 +77,7 @@ directly because they also manage a guest-session cookie.
 
 ## Error codes
 
-`ApiError` (`src/server/api/errors.ts`) maps status codes to stable codes:
+`ApiError` (`src/server/platform/http/errors.ts`) maps status codes to stable codes:
 
 | Status | Default code |
 | --- | --- |
@@ -101,7 +101,7 @@ Routes may throw `ApiError` with a domain-specific code (e.g.,
 ## Idempotency
 
 Retryable commands require an `Idempotency-Key` header
-(`src/server/api/idempotency.ts`):
+(`src/server/platform/http/idempotency.ts`):
 
 - The first request creates an `in_progress` claim in
   `idempotency_records` (fingerprinted by actor, scope, operation, key, and
@@ -116,10 +116,10 @@ Result locators are typed (e.g., `analysis_output_revision`,
 
 Two layers exist:
 
-- `enforceRateLimit` (`src/server/api/rate-limit.ts`): fixed-window counter
+- `enforceRateLimit` (`src/server/platform/http/rate-limit.ts`): fixed-window counter
   against a store (durable PostgreSQL windows in
   `api_rate_limit_windows`).
-- `enforceOperationRateLimit` (`src/server/api/operation-rate-limit.ts`):
+- `enforceOperationRateLimit` (`src/server/platform/http/operation-rate-limit.ts`):
   named operation policies:
 
 | Operation | Limit |
@@ -133,7 +133,7 @@ Two layers exist:
 
 ## Pagination
 
-List routes use signed cursor pagination (`src/server/api/pagination.ts`).
+List routes use signed cursor pagination (`src/server/platform/http/pagination.ts`).
 Cursors are HMAC-signed envelopes (`scope` + column values); decoding
 validates the signature and scope. The secret is `API_CURSOR_SECRET` (or the
 Supabase secret key).
@@ -146,7 +146,7 @@ job endpoint (`GET /api/jobs/:jobId`). See [Jobs](../jobs/jobs.md).
 
 ## Practical navigation
 
-- Shared machinery: `src/server/api/` (handler, request, response, errors,
+- Shared machinery: `src/server/platform/http/` (handler, request, response, errors,
   auth, idempotency, rate-limit, operation-rate-limit, pagination,
   request-id).
 - Contracts for envelopes, IDs, and DTOs: `src/contracts/`.

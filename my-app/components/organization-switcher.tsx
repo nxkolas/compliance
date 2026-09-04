@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
-import type { OrganizationDto } from "@/src/server/organizations/types";
+import type { OrganizationDto } from "@/src/server/modules/organizations/types";
 import { organizationsClient } from "@/src/client/organizations";
 import { Check, ChevronDown, List, Loader2, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";

@@ -9,7 +9,7 @@ vi.mock("@/lib/ai/models", () => ({
   getComplianceChatModelById: () => "model-handle",
 }));
 
-import { createAiSdkGroundedProvider } from "@/src/server/ai/grounding/providers/ai-sdk";
+import { createAiSdkGroundedProvider } from "@/src/server/modules/grounding/providers/ai-sdk";
 
 describe("grounded provider token budget", () => {
   beforeEach(() => {

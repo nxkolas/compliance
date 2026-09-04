@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { actionPlanDefinitionHash } from "@/src/server/action-plans/current-contract";
-import { currentGapDefinitionHash } from "@/src/server/definitions";
+import { describe, expect, it, vi } from "vitest";
+import { actionPlanDefinitionHash } from "@/src/server/modules/action-plans/current-contract";
+import { currentGapDefinitionHash } from "@/src/server/modules/gap-analysis";
 import {
   JOB_KINDS,
   getJobDefinition,
   jobDefinitions,
-} from "@/src/server/jobs/definitions";
+} from "@/src/server/bootstrap/job-definitions";
+
+vi.mock("@/src/db", () => ({ db: {} }));
 
 const id = "00000000-0000-4000-8000-000000000001";
 
@@ -99,7 +101,10 @@ describe("background-job module", () => {
 
     for (const expected of inventory) {
       const definition = getJobDefinition(expected.kind);
-      expect(definition.payloadSchema.safeParse(expected.payload).success).toBe(true);
+      expect(
+        definition.payloadSchema.safeParse(expected.payload).success,
+        expected.kind,
+      ).toBe(true);
       expect(definition.payloadSchema.safeParse({}).success).toBe(false);
       expect(definition.organizationScoped).toBe(expected.scope);
       expect(definition.requesterRequired).toBe(expected.scope);

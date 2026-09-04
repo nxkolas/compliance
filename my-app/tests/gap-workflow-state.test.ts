@@ -8,7 +8,7 @@ import {
   resolveGapPostGenerationView,
   selectGapWorkflowRevisions,
   sortGapFindings,
-} from "@/src/server/gap-analysis/workflow-state";
+} from "@/src/server/modules/gap-analysis/workflow-state";
 
 describe("single gap lifecycle", () => {
   it.each([

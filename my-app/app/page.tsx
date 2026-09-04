@@ -13,7 +13,7 @@ import { getDictionary } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { hasEnvVars } from "@/lib/utils";
 import financialGraphAnimation from "@/public/animations/financial-graph-loader.json";
-import { listOrganizationsForUserPage } from "@/src/server/organizations/service";
+import { listOrganizationsForUserPage } from "@/src/server/modules/organizations";
 import {
   ArrowRight,
   Building2,

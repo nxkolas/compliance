@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ membership: vi.fn(), organization: vi.fn() }));
 vi.mock("@/src/db", () => ({ db: { query: { organizationMemberships: { findFirst: mocks.membership }, organizations: { findFirst: mocks.organization } } } }));
-import { requireOrganizationCapability } from "@/src/server/auth/capability-service";
+import { requireOrganizationCapability } from "@/src/server/platform/auth/capability-service";
 
 describe("archived organization capability boundary", () => {
   beforeEach(() => {

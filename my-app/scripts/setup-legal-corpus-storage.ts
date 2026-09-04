@@ -1,10 +1,10 @@
 import "dotenv/config";
-import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { getSupabaseAdminClient } from "@/src/server/platform/storage/supabase-admin";
 import {
   LEGAL_CORPUS_BUCKET,
   LEGAL_SOURCE_MIME_TYPES,
   MAX_LEGAL_SOURCE_BYTES,
-} from "@/src/server/corpus";
+} from "@/src/server/modules/legal-corpus";
 
 async function main() {
   const storage = getSupabaseAdminClient().storage;

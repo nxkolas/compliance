@@ -12,14 +12,14 @@ vi.mock("@/src/db", () => ({
   },
 }));
 
-vi.mock("@/src/server/auth/capability-service", () => ({
+vi.mock("@/src/server/platform/auth/capability-service", () => ({
   requireOrganizationCapability: mocks.authorize,
 }));
 
 import {
   authorizeOrganizationRead,
   withAuthorizedOrganizationCommand,
-} from "@/src/server/auth/organization-scope";
+} from "@/src/server/platform/auth/organization-scope";
 
 describe("organization scope", () => {
   const membership = {

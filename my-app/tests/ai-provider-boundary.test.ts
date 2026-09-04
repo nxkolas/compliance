@@ -8,7 +8,7 @@ describe("production model-call boundary", () => {
     const matches = walk(root).filter((file) => /\bgenerate(Object|Text)\s*\(/.test(readFileSync(file, "utf8")))
       .map((file) => relative(process.cwd(), file).replaceAll("\\", "/"));
     expect(matches).toEqual([
-      "src/server/ai/grounding/providers/ai-sdk.ts",
+      "src/server/modules/grounding/providers/ai-sdk.ts",
     ]);
   });
 });

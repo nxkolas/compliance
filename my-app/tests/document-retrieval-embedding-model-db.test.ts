@@ -4,7 +4,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
   embeddingIdentityKey,
   type EmbeddingCoordinates,
-} from "@/src/server/documents/document-config";
+} from "@/src/server/modules/documents/document-config";
 
 const isDisposableDatabase =
   process.env.APP_ENV === "test" && process.env.DISPOSABLE_DATABASE === "1";
@@ -42,10 +42,8 @@ describe.runIf(Boolean(databaseUrl))(
 
     afterAll(async () => {
       await sql.end();
-      const { closeDatabaseConnection } = await import(
-        "@/src/server/database-lifecycle"
-      );
-      await closeDatabaseConnection();
+      const { closeDbConnection } = await import("@/src/db");
+      await closeDbConnection();
     });
 
     it("returns evidence when the stored identity matches the active embedder", async () => {
@@ -95,12 +93,12 @@ describe.runIf(Boolean(databaseUrl))(
       fixture: { organizationId: string; userId: string; documentVersionId: string },
       active: EmbeddingCoordinates,
     ) {
-      const organizations = await import("@/src/server/organizations/service");
+      const organizations = await import("@/src/server/modules/organizations");
       vi.spyOn(organizations, "assertCanAccessOrganization").mockResolvedValue(
         undefined as never,
       );
       const { retrieveDocumentEvidence } = await import(
-        "@/src/server/documents/retrieval"
+        "@/src/server/modules/documents/retrieval"
       );
       return retrieveDocumentEvidence(
         {

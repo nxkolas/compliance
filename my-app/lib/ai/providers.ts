@@ -3,7 +3,7 @@
 // boundary; `tests/client-server-boundary.test.ts` fails the build if one does.
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenAI } from "@ai-sdk/openai";
-import { ApiError } from "@/src/server/api/errors";
+import { ApiError } from "@/src/server/platform/http/errors";
 import { aiProviderModes, type AiProviderMode } from "./types";
 
 /**

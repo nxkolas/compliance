@@ -14,14 +14,14 @@ import {
 import {
   getApplicabilityQuestionnaireForUser,
   submitApplicabilityCheckForUser,
-} from "@/src/server/applicability-check";
+} from "@/src/server/modules/applicability-check";
 import {
   enqueueActionPlanGeneration,
   executeActionPlanGenerationJob,
   getCurrentActionPlan,
-} from "@/src/server/action-plans";
-import { resolvePinnedLegalScope } from "@/src/server/ai/grounding/legal-retrieval";
-import { getCurrentGapDefinition } from "@/src/server/definitions";
+} from "@/src/server/modules/action-plans";
+import { resolvePinnedLegalScope } from "@/src/server/modules/grounding";
+import { getCurrentGapDefinition } from "@/src/server/modules/gap-analysis";
 import {
   createOrOpenGapAssessment,
   enqueueGapAnalysisGeneration,
@@ -29,13 +29,13 @@ import {
   getGapResults,
   saveQuestionnaireDraftAnswer,
   submitGapQuestionnaire,
-} from "@/src/server/gap-analysis";
-import { succeedJob } from "@/src/server/jobs";
-import { createOrganizationForUser } from "@/src/server/organizations/service";
+} from "@/src/server/modules/gap-analysis";
+import { succeedJob } from "@/src/server/platform/jobs";
+import { createOrganizationForUser } from "@/src/server/modules/organizations";
 import {
   DETERMINISTIC_APPLICABILITY_ANSWERS,
   deterministicGroundingDependencies,
-} from "@/src/server/operator-commands/grounded-workflow-fixture";
+} from "@/src/server/operations/grounded-workflow-fixture";
 
 const deterministic = process.env.WORKFLOW_QUALIFICATION_DETERMINISTIC === "true";
 const userId = process.env.WORKFLOW_QUALIFICATION_USER_ID?.trim() || randomUUID();

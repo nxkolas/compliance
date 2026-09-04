@@ -8,7 +8,7 @@ import {
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/i18n/format";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getApplicabilityAnswersForUser } from "@/src/server/applicability-check";
+import { getApplicabilityAnswersForUser } from "@/src/server/modules/applicability-check";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 

@@ -5,11 +5,11 @@ const mocks = vi.hoisted(() => ({
   createDocumentSourceAccess: vi.fn(),
 }));
 
-vi.mock("@/src/server/api/auth", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
 
-vi.mock("@/src/server/documents", () => ({
+vi.mock("@/src/server/modules/documents", () => ({
   createDocumentSourceAccess: mocks.createDocumentSourceAccess,
 }));
 
@@ -90,7 +90,7 @@ describe("document source access routes", () => {
   });
 
   it("returns the stable safe signing error", async () => {
-    const { ApiError } = await import("@/src/server/api/errors");
+    const { ApiError } = await import("@/src/server/platform/http/errors");
     mocks.createDocumentSourceAccess.mockRejectedValue(
       new ApiError(
         502,

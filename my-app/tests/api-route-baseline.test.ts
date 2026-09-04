@@ -10,17 +10,17 @@ const mocks = vi.hoisted(() => ({
   idempotencySave: vi.fn(),
 }));
 
-vi.mock("@/src/server/api/auth", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
 
-vi.mock("@/src/server/organizations/service", () => ({
+vi.mock("@/src/server/modules/organizations", () => ({
   listOrganizationsForUserPage: mocks.listOrganizationsForUserPage,
   createOrganizationForUser: mocks.createOrganizationForUser,
   getOrganizationForUser: mocks.getOrganizationForUser,
 }));
 
-vi.mock("@/src/server/idempotency", () => ({
+vi.mock("@/src/server/platform/idempotency", () => ({
   databaseIdempotencyRepository: {
     create: mocks.idempotencyCreate,
     find: mocks.idempotencyFind,
@@ -79,7 +79,7 @@ describe("existing organization route baseline", () => {
   });
 
   it("keeps the current safe authentication error response", async () => {
-    const { ApiError } = await import("@/src/server/api/errors");
+    const { ApiError } = await import("@/src/server/platform/http/errors");
     mocks.requireApiUser.mockRejectedValue(
       new ApiError(401, "Authentication required"),
     );

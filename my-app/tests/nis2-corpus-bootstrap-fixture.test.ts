@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NIS2_CORPUS_BOOTSTRAP_FIXTURE, NIS2_CORPUS_BOOTSTRAP_NOTICE } from "@/src/server/corpus/nis2-bootstrap-fixture";
+import { NIS2_CORPUS_BOOTSTRAP_FIXTURE, NIS2_CORPUS_BOOTSTRAP_NOTICE } from "@/src/server/modules/legal-corpus/nis2-bootstrap-fixture";
 
 describe("NIS2 corpus bootstrap fixture", () => {
   it("uses the required EU and German family codes and only official HTTPS PDFs", () => {

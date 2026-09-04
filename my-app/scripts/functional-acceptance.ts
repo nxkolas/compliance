@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
 import { getInternalSupabaseEnvironment } from "@/src/config/env/supabase";
-import { retrieveDocumentEvidence } from "@/src/server/documents";
+import { retrieveDocumentEvidence } from "@/src/server/modules/documents";
 
 type StoredCookie = { name: string; value: string; options?: CookieOptions };
 

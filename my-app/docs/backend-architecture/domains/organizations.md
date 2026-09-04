@@ -36,20 +36,20 @@ it.
   for `self_hosted` organizations.
 - Changing the embedding model starts a resumable
   `organization_reembedding` migration
-  (`src/server/organizations/embedding-migration-service.ts`), tracked in
+  (`src/server/modules/organizations/embedding-migration-service.ts`), tracked in
   `organization_embedding_migrations`, so documents are re-embedded into the
   new vector space without mixing spaces.
 
 ## Progress read model
 
-`src/server/organization-progress/` maintains a per-organization progress
+`src/server/modules/organizations/progress-read-model.ts` maintains a per-organization progress
 view (applicability done, gap current, action plan state) used by the
 dashboard and workflow gates (`GET /api/organizations/:id/progress`).
 
 ## Workflow permissions
 
-Actions map to capabilities by role (`src/server/organizations/workflow-permissions.ts`
-and `src/server/auth/capabilities.ts`): e.g., starting Action Plan generation
+Actions map to capabilities by role (`src/server/modules/organizations/workflow-permissions.ts`
+and `src/server/platform/auth/capabilities.ts`): e.g., starting Action Plan generation
 requires `plans:manage` (owner/contributor), reading audit requires
 `audit:read` (owner/viewer). Expensive commands additionally verify the
 workflow state (applicability done, Gap current and unblocked) before
@@ -57,10 +57,10 @@ enqueueing.
 
 ## Practical navigation
 
-- Service: `src/server/organizations/service.ts`.
-- Settings: `src/server/organizations/settings-service.ts`.
-- Model settings: `src/server/organizations/model-settings-service.ts`.
-- Embedding migration: `src/server/organizations/embedding-migration-service.ts`.
-- Progress: `src/server/organization-progress/`.
+- Service: `src/server/modules/organizations/`.
+- Settings: `src/server/modules/organizations/settings-service.ts`.
+- Model settings: `src/server/modules/organizations/model-settings-service.ts`.
+- Embedding migration: `src/server/modules/organizations/embedding-migration-service.ts`.
+- Progress: `src/server/modules/organizations/progress-read-model.ts`.
 - Routes: `app/api/organizations/`, `app/api/organization-invitations/`.
 

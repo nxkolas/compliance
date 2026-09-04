@@ -2,7 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { OrganizationInbox } from "@/components/organizations/organization-inbox";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { listMailboxInvitationsForUser } from "@/src/server/organizations/service";
+import { listMailboxInvitationsForUser } from "@/src/server/modules/organizations";
 import { connection } from "next/server";
 
 export default async function InboxPage() {

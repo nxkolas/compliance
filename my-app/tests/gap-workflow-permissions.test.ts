@@ -3,7 +3,7 @@ import {
   canContributeToOrganizationWorkflow,
   canManageOrganizationWorkflow,
   canReviewOrganizationWorkflow,
-} from "@/src/server/organizations/workflow-permissions";
+} from "@/src/server/modules/organizations/workflow-permissions";
 
 describe("Gap workflow permissions", () => {
   it("allows owners and contributors to work while viewers remain read-only", () => {

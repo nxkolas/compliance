@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { synchronizeAuthenticatedActor } from "@/src/server/users";
+import { synchronizeAuthenticatedActor } from "@/src/server/platform/auth/user-directory";
 import { ClientInferenceRelayHost } from "@/components/organizations/client-inference-relay-host";
 
 export default async function ToolLayout({ children }: { children: ReactNode }) {

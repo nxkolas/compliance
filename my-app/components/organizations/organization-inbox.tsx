@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { formatDate as formatLocalizedDate } from "@/lib/i18n/format";
 import { localizeUiError } from "@/lib/i18n/errors";
-import type { OrganizationMailboxInvitationDto } from "@/src/server/organizations/types";
+import type { OrganizationMailboxInvitationDto } from "@/src/server/modules/organizations/types";
 import { Check, Inbox, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

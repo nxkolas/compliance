@@ -1,13 +1,13 @@
 import { connection } from "next/server";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { parseInput, readJsonBody } from "@/src/server/api/request";
-import { createOrganizationForUser, getOrganizationForUser, listOrganizationsForUserPage } from "@/src/server/organizations/service";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { parseInput, readJsonBody } from "@/src/server/platform/http/request";
+import { createOrganizationForUser, getOrganizationForUser, listOrganizationsForUserPage } from "@/src/server/modules/organizations";
 import { organizationInputSchema, organizationListQuerySchema } from "@/src/contracts/organizations";
-import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
-import { ApiError } from "@/src/server/api/errors";
-import { synchronizeAuthenticatedActor } from "@/src/server/users";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
+import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
+import { ApiError } from "@/src/server/platform/http/errors";
+import { synchronizeAuthenticatedActor } from "@/src/server/platform/auth/user-directory";
 import { revalidatePath } from "next/cache";
 
 export const GET = apiRoute(async ({ request }: { request: Request }) => {

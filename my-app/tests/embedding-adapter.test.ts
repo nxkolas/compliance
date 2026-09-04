@@ -3,7 +3,7 @@ import {
   adaptEmbeddings,
   normalizeEmbedding,
   validateEmbeddings,
-} from "@/src/server/documents/embeddings";
+} from "@/src/server/modules/documents/embeddings";
 
 describe("embedding adapter", () => {
   it("normalizes a vector of the declared width to unit length", () => {

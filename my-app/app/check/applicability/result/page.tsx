@@ -3,8 +3,8 @@ import { GuestApplicabilityActions } from "@/components/applicability-check/gues
 import { Button } from "@/components/ui/button";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
-import { getGuestApplicabilityToken } from "@/src/server/applicability-check";
-import { getGuestApplicabilityCheck } from "@/src/server/applicability-check";
+import { getGuestApplicabilityToken } from "@/src/server/modules/applicability-check";
+import { getGuestApplicabilityCheck } from "@/src/server/modules/applicability-check";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";

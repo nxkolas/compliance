@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   currentApplicabilityDefinition,
   currentApplicabilityDefinitionHash,
-  currentGapDefinitionHash,
   getCurrentApplicabilityDefinition,
   isSupportedJurisdiction,
-} from "@/src/server/definitions";
-import { directRuntimeReleaseReader } from "@/src/server/compliance/runtime-release/direct-reader";
+} from "@/src/server/modules/applicability-check/release/current";
+import { directRuntimeReleaseReader } from "@/src/server/modules/applicability-check/release/readers";
+import { currentGapDefinitionHash } from "@/src/server/modules/gap-analysis/release/current";
 
 describe("code-owned executable definitions", () => {
   it("uses a stable build hash for the deployed applicability definition", async () => {

@@ -1,7 +1,7 @@
 import { ProductModuleContent } from "@/components/product-module-content";
 import { getDictionary } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getOrganizationDashboard } from "@/src/server/dashboard/service";
+import { getOrganizationDashboard } from "@/src/server/modules/organizations";
 import { connection } from "next/server";
 import { buildDashboardPresentation } from "@/lib/i18n/dashboard";
 

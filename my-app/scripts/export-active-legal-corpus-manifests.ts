@@ -13,8 +13,8 @@ import {
   legalSources,
   legalSourceVersions,
 } from "@/src/db/schema";
-import { currentGapContractDefinition } from "@/src/server/gap-analysis/current-contract";
-import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { currentGapContractDefinition } from "@/src/server/modules/gap-analysis";
+import { getSupabaseAdminClient } from "@/src/server/platform/storage/supabase-admin";
 
 function option(name: string) {
   const index = process.argv.indexOf(name);

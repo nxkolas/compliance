@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { documentListQuerySchema } from "@/src/contracts/documents";
-import { listOrganizationDocumentDtos } from "@/src/server/documents";
+import { listOrganizationDocumentDtos } from "@/src/server/modules/documents";
 import { connection } from "next/server";
 
 export default async function DocumentsPage({

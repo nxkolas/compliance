@@ -1,8 +1,8 @@
 import { organizationIdSchema } from "@/src/contracts/common/ids";
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { parseInput } from "@/src/server/api/request";
-import { getOrganizationProgress } from "@/src/server/organization-progress/service";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { parseInput } from "@/src/server/platform/http/request";
+import { getOrganizationProgress } from "@/src/server/modules/organizations";
 
 type RouteContext = {
   params: Promise<{ organizationId: string }>;

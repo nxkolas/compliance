@@ -10,9 +10,9 @@ const state = vi.hoisted(() => ({
 // below; this only stops importing the real service from opening a connection.
 vi.mock("@/src/db", () => ({ db: {} }));
 
-vi.mock("@/src/server/ai/client-inference/service", async (importOriginal) => {
+vi.mock("@/src/server/platform/ai/client-inference/service", async (importOriginal) => {
   const actual = await importOriginal<
-    typeof import("@/src/server/ai/client-inference/service")
+    typeof import("@/src/server/platform/ai/client-inference/service")
   >();
   return {
     ...actual,
@@ -31,11 +31,11 @@ vi.mock("@/src/server/ai/client-inference/service", async (importOriginal) => {
   };
 });
 
-import { createClientRelayGroundedProvider } from "@/src/server/ai/grounding/providers/client-relay";
-import { createClientRelayEmbeddingProvider } from "@/src/server/ai/client-inference/embedding-relay";
-import { inferenceInputHash } from "@/src/server/ai/client-inference/service";
-import { isClientInferenceSuspended } from "@/src/server/ai/client-inference/types";
-import { withEmbeddingKey } from "@/src/server/documents/document-config";
+import { createClientRelayGroundedProvider } from "@/src/server/modules/grounding/providers/client-relay";
+import { createClientRelayEmbeddingProvider } from "@/src/server/platform/ai/client-inference/embedding-relay";
+import { inferenceInputHash } from "@/src/server/platform/ai/client-inference/service";
+import { isClientInferenceSuspended } from "@/src/server/platform/ai/client-inference/types";
+import { withEmbeddingKey } from "@/src/server/modules/documents/document-config";
 
 const schema = z.object({ answer: z.string() });
 

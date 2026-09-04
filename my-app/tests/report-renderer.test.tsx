@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { renderComplianceReport } from "@/src/server/reports/renderer";
-import type { ReportRenderSnapshot } from "@/src/server/reports/render-snapshot";
+import { renderComplianceReport } from "@/src/server/modules/reports/renderer";
+import type { ReportRenderSnapshot } from "@/src/server/modules/reports/render-snapshot";
 import { PDFParse } from "pdf-parse";
 
 const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;

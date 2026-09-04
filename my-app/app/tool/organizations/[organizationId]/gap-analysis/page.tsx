@@ -2,12 +2,12 @@ import { GapAnalysisWorkflow } from "@/components/gap-analysis/gap-analysis-work
 import { PageHeader } from "@/components/page-header";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis";
+import { getGapAnalysisWorkflow } from "@/src/server/modules/gap-analysis";
 import { connection } from "next/server";
 import {
   deriveGapWorkflowNavigation,
   resolveGapPostGenerationView,
-} from "@/src/server/gap-analysis";
+} from "@/src/server/modules/gap-analysis";
 
 export default async function GapAnalysisPage({
   params,

@@ -15,7 +15,7 @@ vi.mock("@/src/db", () => ({
   },
 }));
 
-import { synchronizeAuthenticatedActor } from "@/src/server/users";
+import { synchronizeAuthenticatedActor } from "@/src/server/platform/auth/user-directory";
 
 describe("authenticated user directory synchronization", () => {
   beforeEach(() => {

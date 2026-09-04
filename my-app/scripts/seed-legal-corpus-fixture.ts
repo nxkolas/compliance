@@ -1,1 +1,1 @@
-import "@/src/server/operator-commands/seed-legal-corpus-fixture";
+import "@/src/server/operations/seed-legal-corpus-fixture";

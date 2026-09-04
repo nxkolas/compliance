@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/collapsible";
 import type { Locale } from "@/lib/i18n-config";
 import { cn } from "@/lib/utils";
-import type { ApplicabilityResultDto } from "@/src/server/applicability-check/service";
+import type { ApplicabilityResultDto } from "@/src/server/modules/applicability-check";
 import {
   BadgeAlert,
   Building2,

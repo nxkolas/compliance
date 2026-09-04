@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
-import { REPORT_STORAGE_BUCKET } from "@/src/server/reports";
+import { getSupabaseAdminClient } from "@/src/server/platform/storage/supabase-admin";
+import { REPORT_STORAGE_BUCKET } from "@/src/server/modules/reports";
 
 async function main() {
   const storage = getSupabaseAdminClient().storage;

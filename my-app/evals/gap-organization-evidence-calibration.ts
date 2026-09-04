@@ -5,11 +5,11 @@ import {
   admitOrganizationEvidence,
   GAP_ORGANIZATION_EVIDENCE_POLICY,
   type OrganizationEvidenceCandidate,
-} from "@/src/server/ai/grounding/organization-evidence-policy";
+} from "@/src/server/modules/grounding/organization-evidence-policy";
 import {
   CHUNKING_VERSION,
   createDocumentEmbeddingProvider,
-} from "@/src/server/documents/domain";
+} from "@/src/server/modules/documents/domain";
 
 type CalibrationFixture = {
   id: string;

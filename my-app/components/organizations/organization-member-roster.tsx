@@ -16,7 +16,7 @@ import type { Dictionary } from "@/lib/i18n";
 import type {
   OrganizationMemberDto,
   OrganizationRole,
-} from "@/src/server/organizations/types";
+} from "@/src/server/modules/organizations/types";
 import { localizeUiError } from "@/lib/i18n/errors";
 import { OrganizationAvatar } from "./organization-avatar";
 

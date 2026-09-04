@@ -1,14 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/src/server/modules/documents", () => ({
+  CHUNKING_VERSION: "paragraph-v1",
+  EMBEDDING_DIMENSIONS: 1536,
+  EMBEDDING_MODEL: "text-embedding-3-small",
+  EMBEDDING_PROVIDER: "openai",
+}));
 import {
   admitOrganizationEvidence,
   type OrganizationEvidenceCandidate,
-} from "@/src/server/ai/grounding/organization-evidence-policy";
+} from "@/src/server/modules/grounding/organization-evidence-policy";
 import {
   CHUNKING_VERSION,
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
   EMBEDDING_PROVIDER,
-} from "@/src/server/documents/document-config";
+} from "@/src/server/modules/documents/document-config";
 
 const candidate = (
   chunkId: string,

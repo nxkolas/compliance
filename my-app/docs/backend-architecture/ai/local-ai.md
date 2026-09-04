@@ -95,9 +95,9 @@ re-embedding migration rather than mixing vector spaces.
 
 ## Practical navigation
 
-- Relay implementation: `src/server/ai/client-inference/`.
-- Relay provider adapter: `src/server/ai/grounding/providers/client-relay.ts`.
-- Organization model settings: `src/server/organizations/model-settings-service.ts`.
+- Relay implementation: `src/server/platform/ai/client-inference/`.
+- Relay provider adapter: `src/server/modules/grounding/providers/client-relay.ts`.
+- Organization model settings: `src/server/modules/organizations/model-settings-service.ts`.
 - Claim/heartbeat/result routes: `app/api/organizations/:id/client-inference/`.
 - Local development: run Ollama on the host; select `self_hosted` via
   `AI_DEFAULT_PROVIDER` or per-organization settings.

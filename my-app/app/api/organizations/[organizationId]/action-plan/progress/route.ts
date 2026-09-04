@@ -1,6 +1,6 @@
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { getActionPlanProgress } from "@/src/server/action-plans";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { getActionPlanProgress } from "@/src/server/modules/action-plans";
 
 type Context = { params: Promise<{ organizationId: string }> };
 

@@ -3,9 +3,9 @@ import {
   canonicalizeUploadMimeType,
   validateUploadInput,
   type UploadPolicy,
-} from "@/src/server/uploads/policy";
-import { assertUploadSessionQuota } from "@/src/server/uploads/quota";
-import { assertReportConcurrency } from "@/src/server/reports/quota";
+} from "@/src/server/platform/storage/policy";
+import { assertUploadSessionQuota } from "@/src/server/platform/storage/quota";
+import { assertReportConcurrency } from "@/src/server/modules/reports/quota";
 
 describe("upload-session policy", () => {
   const policy: UploadPolicy = {

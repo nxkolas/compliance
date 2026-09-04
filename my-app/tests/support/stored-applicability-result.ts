@@ -1,4 +1,4 @@
-import type { Nis2Outcome } from "@/src/server/applicability-check/rule-set-schema";
+import type { Nis2Outcome } from "@/src/server/modules/compliance/nis2/rule-set-schema";
 
 const defaultCheckReleaseId = "00000000-0000-4000-8000-000000000010";
 

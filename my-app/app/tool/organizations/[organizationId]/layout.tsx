@@ -1,6 +1,6 @@
 import { OrganizationModulePageSkeleton } from "@/components/navigation-loading";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { getOrganizationForUser } from "@/src/server/organizations/service";
+import { getOrganizationForUser } from "@/src/server/modules/organizations";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";

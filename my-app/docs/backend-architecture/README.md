@@ -1,6 +1,6 @@
 # Backend Architecture
 
-> Status: current as of 7 August 2026.
+> Status: current as of 4 September 2026.
 > Scope: backend and database only. Frontend pages, browser components, and
 > browser API clients are intentionally not covered.
 
@@ -63,7 +63,7 @@ contains code pointers so you can jump from a concept to the implementation.
 - Diagrams are Mermaid and describe the backend; browsers appear only as
   system boundaries.
 - Source code is referenced by path relative to `compliance/my-app/`, e.g.
-  `src/server/gap-analysis/`.
+  `src/server/modules/gap-analysis/`.
 - The documentation is written in English. German product terms are kept
   where they are part of the product vocabulary and glossed at first use.
 
@@ -89,4 +89,3 @@ contains code pointers so you can jump from a concept to the implementation.
 - Step-by-step operational runbooks (schema changes, incident recovery,
   deployment procedures).
 - Product-level documentation of questionnaire content.
-

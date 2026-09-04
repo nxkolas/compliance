@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ApplicabilityResultCard } from "@/components/applicability-check/applicability-result-card";
-import type { ApplicabilityResultDto } from "@/src/server/applicability-check/service";
+import type { ApplicabilityResultDto } from "@/src/server/modules/applicability-check";
 import { storedApplicabilityResult } from "./support/stored-applicability-result";
 
 type Outcome = ApplicabilityResultDto["result"]["outcome"];

@@ -3,15 +3,15 @@ import {
   buildActionPlanCategoryResponseSchema,
   normalizeActionPlanCategoryResponse,
   type ActionPlanCategoryPolicy,
-} from "@/src/server/action-plans/generation-schema";
+} from "@/src/server/modules/action-plans/generation-schema";
 import * as z from "zod";
 import {
   ACTION_PLAN_GROUNDING_INSTRUCTION,
   ACTION_PLAN_PROMPT_VERSION,
   actionPlanPrompt,
   actionPlanRepairPrompt,
-} from "@/src/server/action-plans/prompt-contract";
-import { GAP_GROUNDING_INSTRUCTION } from "@/src/server/gap-analysis/grounding-instruction";
+} from "@/src/server/modules/action-plans/prompt-contract";
+import { GAP_GROUNDING_INSTRUCTION } from "@/src/server/modules/gap-analysis/grounding-instruction";
 
 const actionPolicy: ActionPlanCategoryPolicy = {
   requirementCode: "NIS2-GOV-01",

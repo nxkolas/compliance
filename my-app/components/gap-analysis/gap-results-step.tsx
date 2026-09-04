@@ -17,7 +17,7 @@ import {
   countGapStatuses,
   sortGapFindings,
   type GapStatus,
-} from "@/src/server/gap-analysis/workflow-state";
+} from "@/src/server/modules/gap-analysis/workflow-state";
 import { localizeGapError } from "./gap-error";
 import { GapFindingSources } from "./gap-finding-sources";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";

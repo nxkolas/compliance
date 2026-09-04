@@ -9,10 +9,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/cache", () => ({
   revalidatePath: mocks.revalidatePath,
 }));
-vi.mock("@/src/server/api/auth", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
-vi.mock("@/src/server/action-plans", () => ({
+vi.mock("@/src/server/modules/action-plans", () => ({
   updateActionPlanItem: mocks.updateActionPlanItem,
 }));
 

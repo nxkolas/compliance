@@ -4,10 +4,10 @@ import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import {
   getCurrentActionPlan,
-} from "@/src/server/action-plans";
-import { assertCanAccessOrganization } from "@/src/server/organizations/service";
-import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
-import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis";
+} from "@/src/server/modules/action-plans";
+import { assertCanAccessOrganization } from "@/src/server/modules/organizations";
+import { hasOrganizationCapability } from "@/src/server/platform/auth/capabilities";
+import { getGapAnalysisWorkflow } from "@/src/server/modules/gap-analysis";
 import { connection } from "next/server";
 
 export default async function ActionPlanPage({

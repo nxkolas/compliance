@@ -1,6 +1,6 @@
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { createDocumentSourceAccess } from "@/src/server/documents";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { createDocumentSourceAccess } from "@/src/server/modules/documents";
 
 export const GET = apiRoute(
   async ({

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   assertSelectedDocumentVersionScope,
   hybridScore,
-} from "@/src/server/documents/retrieval";
+} from "@/src/server/modules/documents/retrieval";
 
 vi.hoisted(() => {
   process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/test";

@@ -4,13 +4,13 @@ import { OrganizationInvitePanel } from "@/components/organizations/organization
 import { OrganizationMemberRoster } from "@/components/organizations/organization-member-roster";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { resolveOrganizationCapabilities } from "@/src/server/auth/capability-service";
+import { resolveOrganizationCapabilities } from "@/src/server/platform/auth/capability-service";
 import {
   getOrganizationForUser,
   listOrganizationInvitations,
   listOrganizationMembersPage,
-} from "@/src/server/organizations/service";
-import { synchronizeAuthenticatedActor } from "@/src/server/users";
+} from "@/src/server/modules/organizations";
+import { synchronizeAuthenticatedActor } from "@/src/server/platform/auth/user-directory";
 
 type Props = { params: Promise<{ organizationId: string }> };
 

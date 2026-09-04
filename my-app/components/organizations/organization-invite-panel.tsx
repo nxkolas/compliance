@@ -15,7 +15,7 @@ import {
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { formatDate } from "@/lib/i18n/format";
 import { localizeUiError } from "@/lib/i18n/errors";
-import type { OrganizationInvitationDto } from "@/src/server/organizations/types";
+import type { OrganizationInvitationDto } from "@/src/server/modules/organizations/types";
 import { organizationsClient } from "@/src/client/organizations";
 
 type SerializedInvitation = Omit<

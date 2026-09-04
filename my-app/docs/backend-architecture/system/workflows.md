@@ -15,7 +15,7 @@ only flow that does not require an account.
 2. `POST /api/guest/applicability-check/submissions` stores the answers in
    `guest_applicability_checks` with a claim token hash and an expiry.
 3. The check is evaluated deterministically against the current
-   applicability definition (`src/server/applicability-check/`); the result
+   applicability definition (`src/server/modules/applicability-check/`); the result
    snapshot is stored with the submission.
 4. The visitor can later claim the result via
    `POST /api/guest/applicability-check/claim`, read it via
@@ -53,7 +53,7 @@ Tables: `organizations`, `organization_memberships`,
    The server verifies the object's size, MIME type, and hash before creating
    an immutable `document_versions` row.
 3. A `document_indexing` job is enqueued. The job handler parses the file
-   (`src/server/documents/parser.ts`), chunks it, computes search vectors and
+   (`src/server/platform/content-processing/parser.ts`), chunks it, computes search vectors and
    embeddings, and stores `document_chunks`.
 4. Members read the document list and metadata under
    `/api/organizations/:id/documents`; downloads and source access are served
@@ -159,7 +159,7 @@ Tables: `reports`, `report_document_sources`, `background_jobs`.
 Operators (not organizations) maintain the authoritative legal corpus:
 
 1. Sources, versions, and renditions are created from a reviewed manifest
-   (`src/server/corpus/`).
+   (`src/server/modules/legal-corpus/`).
 2. A `legal_source_processing` job parses each rendition and produces
    `legal_source_chunks` with search vectors.
 3. Reviewers bind stable provision keys to exact chunks

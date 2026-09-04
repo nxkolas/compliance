@@ -1,7 +1,7 @@
 import {
   getApplicabilityRecalculationLockForUser,
   getApplicabilityResultForUser,
-} from "@/src/server/applicability-check";
+} from "@/src/server/modules/applicability-check";
 import "server-only";
 import { cache } from "react";
 

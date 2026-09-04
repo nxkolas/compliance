@@ -16,7 +16,7 @@ import { localizeUiError } from "@/lib/i18n/errors";
 import { formatDateTime } from "@/lib/i18n/format";
 import { reportsClient } from "@/src/client/reports";
 import { jobsClient } from "@/src/client/jobs";
-import type { listReports } from "@/src/server/reports/service";
+import type { listReports } from "@/src/server/modules/reports/report-library";
 import { pollJob } from "@/src/client/job-polling";
 
 type ReportWorkflowProps = {

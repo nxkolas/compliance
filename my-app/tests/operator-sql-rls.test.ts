@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DISPOSABLE_APPLY_STAGES } from "@/src/server/operator-commands/disposable-schema-workflow";
+import { DISPOSABLE_APPLY_STAGES } from "@/src/server/operations/disposable-schema-workflow";
 
 const sqlRoots = ["scripts/sql", "supabase/sql-editor"];
 

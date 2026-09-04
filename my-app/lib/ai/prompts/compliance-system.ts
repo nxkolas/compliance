@@ -1,4 +1,4 @@
-import type { OrganizationDto } from "@/src/server/organizations/types";
+import type { OrganizationDto } from "@/src/server/modules/organizations/types";
 import type { RetrievedContextChunk } from "@/lib/ai/types";
 import type { ModelCapabilityProfile } from "@/lib/ai/model-capabilities";
 import type { PromptModeConfig } from "./prompt-modes";

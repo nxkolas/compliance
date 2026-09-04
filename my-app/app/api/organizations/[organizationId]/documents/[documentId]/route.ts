@@ -1,7 +1,7 @@
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { ApiError } from "@/src/server/api/errors";
-import { getOrganizationDocumentDetail } from "@/src/server/documents";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { ApiError } from "@/src/server/platform/http/errors";
+import { getOrganizationDocumentDetail } from "@/src/server/modules/documents";
 
 type Context = {
   params: Promise<{ organizationId: string; documentId: string }>;

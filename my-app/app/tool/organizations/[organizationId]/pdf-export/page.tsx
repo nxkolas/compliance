@@ -2,9 +2,9 @@ import { PageHeader } from "@/components/page-header";
 import { ReportWorkflow } from "@/components/reports/report-workflow";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
-import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
-import { assertCanAccessOrganization } from "@/src/server/organizations/service";
-import { listReports } from "@/src/server/reports";
+import { hasOrganizationCapability } from "@/src/server/platform/auth/capabilities";
+import { assertCanAccessOrganization } from "@/src/server/modules/organizations";
+import { listReports } from "@/src/server/modules/reports";
 import { connection } from "next/server";
 
 export default async function PdfExportPage({ params }: { params: Promise<{ organizationId: string }> }) {

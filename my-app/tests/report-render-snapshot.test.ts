@@ -4,7 +4,7 @@ import {
   assertPendingReportFinalization,
   hashReportRenderSnapshot,
   type ReportRenderSnapshot,
-} from "@/src/server/reports/render-snapshot";
+} from "@/src/server/modules/reports/render-snapshot";
 
 describe("authoritative report render snapshots", () => {
   it("keeps the input hash null while a report is pending", () => {

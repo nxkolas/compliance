@@ -1,8 +1,8 @@
 import { revalidatePath } from "next/cache";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { createOrOpenGapAssessment, getGapAssessment } from "@/src/server/gap-analysis";
-import { runIdempotentCommand } from "@/src/server/api/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/idempotency";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { createOrOpenGapAssessment, getGapAssessment } from "@/src/server/modules/gap-analysis";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
 
 export const POST = apiRoute(async ({ request, routeContext }: { routeContext: { params: Promise<{ organizationId: string }> }; request: Request }) => {
   const user = await requireApiUser();

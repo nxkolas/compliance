@@ -1,12 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { gapContradictionResolutionSchema } from "@/src/contracts/gap-analysis/generation";
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { readJsonBody } from "@/src/server/api/request";
-import { enqueueGapContradictionResolution } from "@/src/server/gap-analysis";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
-import { getAuthorizedJob, toJobDto } from "@/src/server/jobs";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { enqueueGapContradictionResolution } from "@/src/server/modules/gap-analysis";
+import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
+import { getAuthorizedJob, toJobDto } from "@/src/server/platform/jobs";
 
 type Context = {
   params: Promise<{

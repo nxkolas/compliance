@@ -1,9 +1,9 @@
 import { jobIdSchema } from "@/src/contracts/common/ids";
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { parseInput } from "@/src/server/api/request";
-import { getAuthorizedJob } from "@/src/server/jobs";
-import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { parseInput } from "@/src/server/platform/http/request";
+import { getAuthorizedJob } from "@/src/server/platform/jobs";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
 
 type RouteContext = { params: Promise<{ jobId: string }> };
 

@@ -28,14 +28,14 @@ vi.mock("@/src/db", () => ({
     select: vi.fn(() => queryBuilder(mocks.selectResults.shift() ?? [])),
   },
 }));
-vi.mock("@/src/server/ai/grounding/gateway", () => ({
+vi.mock("@/src/server/modules/grounding/gateway", () => ({
   runGroundedOperation: mocks.runGroundedOperation,
 }));
-vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
+vi.mock("@/src/server/platform/ai/generation/job-run-lifecycle", () => ({
   assertLiveParentJobForAiRun: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { executeActionPlanGenerationJob } from "@/src/server/action-plans/generation-service";
+import { executeActionPlanGenerationJob } from "@/src/server/modules/action-plans/generation-service";
 
 describe("Action Plan generation exactly-once retry", () => {
   beforeEach(() => {

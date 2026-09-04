@@ -1,9 +1,9 @@
 import { connection } from "next/server";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { listMailboxInvitationsForUserPage } from "@/src/server/organizations/service";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { listMailboxInvitationsForUserPage } from "@/src/server/modules/organizations";
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
-import { parseInput } from "@/src/server/api/request";
+import { parseInput } from "@/src/server/platform/http/request";
 export const GET = apiRoute(async ({ request }: { request: Request }) => {
   await connection(); const user = await requireApiUser();
   const query = parseInput(paginationQuerySchema, Object.fromEntries(new URL(request.url).searchParams));

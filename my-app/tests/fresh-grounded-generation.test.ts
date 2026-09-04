@@ -69,7 +69,7 @@ vi.mock("@/src/db", () => ({
   },
 }));
 
-vi.mock("@/src/server/ai/grounding/providers/ai-sdk", () => ({
+vi.mock("@/src/server/modules/grounding/providers/ai-sdk", () => ({
   createAiSdkGroundedProvider: vi.fn(() => ({
     mode: "openai",
     provider: "openai",
@@ -78,7 +78,7 @@ vi.mock("@/src/server/ai/grounding/providers/ai-sdk", () => ({
   })),
 }));
 
-vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
+vi.mock("@/src/server/platform/ai/generation/job-run-lifecycle", () => ({
   assertLiveParentJobForAiRun: vi.fn().mockResolvedValue(undefined),
   createAiProcessingRunWithLiveJobGate: vi.fn(async (values) => ({
     id: "00000000-0000-4000-8000-000000000010",
@@ -86,7 +86,7 @@ vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
   })),
 }));
 
-vi.mock("@/src/server/ai/grounding/legal-retrieval", () => ({
+vi.mock("@/src/server/modules/grounding/legal-retrieval", () => ({
   resolvePinnedLegalScope: vi.fn().mockResolvedValue([
     {
       familyId: "00000000-0000-4000-8000-000000000011",
@@ -112,7 +112,29 @@ vi.mock("@/src/server/ai/grounding/legal-retrieval", () => ({
   ]),
 }));
 
-vi.mock("@/src/server/documents", () => ({
+vi.mock("@/src/server/modules/documents", () => ({
+  CHUNKING_VERSION: "paragraph-v1",
+  EMBEDDING_DIMENSIONS: 1536,
+  EMBEDDING_MODEL: "text-embedding-3-small",
+  EMBEDDING_PROVIDER: "openai",
+  resolveOrganizationEmbeddingConfig: vi.fn(() => ({
+    provider: "openai",
+    model: "text-embedding-3-small",
+    modelRevision: "text-embedding-3-small",
+    dimensions: 1536,
+    retrievalInstructionId: "none",
+    chunkingVersion: "paragraph-v1",
+    key: "test-embedding-key",
+  })),
+  organizationEmbeddingProvider: vi.fn(async () => ({
+    provider: "test",
+    model: "test-embedding",
+    modelRevision: "test-embedding",
+    dimensions: 2,
+    retrievalInstructionId: "none",
+    key: "test-embedding-key",
+    embed: vi.fn(async (values: string[]) => values.map(() => [0.1, 0.2])),
+  })),
   createDocumentEmbeddingProvider: vi.fn(() => ({
     provider: "test",
     model: "test-embedding",
@@ -123,9 +145,9 @@ vi.mock("@/src/server/documents", () => ({
   retrieveDocumentEvidence: vi.fn().mockResolvedValue([]),
 }));
 
-import { currentGapDefinitionHash, getCurrentGapDefinition } from "@/src/server/definitions";
-import { executeGapGenerationJob } from "@/src/server/gap-analysis/analysis-cycle-service";
-import { executeActionPlanGenerationJob } from "@/src/server/action-plans/generation-service";
+import { currentGapDefinitionHash, getCurrentGapDefinition } from "@/src/server/modules/gap-analysis";
+import { executeGapGenerationJob } from "@/src/server/modules/gap-analysis/analysis-cycle-service";
+import { executeActionPlanGenerationJob } from "@/src/server/modules/action-plans/generation-service";
 
 describe("fresh grounded generation", () => {
   beforeEach(() => {

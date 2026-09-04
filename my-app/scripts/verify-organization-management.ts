@@ -1,2 +1,2 @@
-import "@/src/server/operator-commands/verify-organization-management";
+import "@/src/server/operations/verify-organization-management";
 

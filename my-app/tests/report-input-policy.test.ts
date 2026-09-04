@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveReportInputRevisions } from "@/src/server/reports/input-policy";
+import { resolveReportInputRevisions } from "@/src/server/modules/reports/input-policy";
 
 describe("report input policy", () => {
   it("accepts a current applicability revision without a Gap revision", () => {

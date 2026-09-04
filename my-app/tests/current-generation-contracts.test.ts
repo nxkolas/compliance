@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { contentHash } from "@/src/server/compliance";
-import { hashExactPrompt } from "@/src/server/ai/generation/prompt-provenance";
+import { contentHash } from "@/src/server/modules/compliance";
+import { hashExactPrompt } from "@/src/server/platform/ai/generation/prompt-provenance";
 import {
   CURRENT_GAP_PROMPT_METADATA,
   currentGapContractDefinition,
   gapPrompt,
   normalizeGapCategoryResponse,
   type GapResponsePolicy,
-} from "@/src/server/gap-analysis/current-contract";
+} from "@/src/server/modules/gap-analysis/current-contract";
 import {
   CURRENT_ACTION_PLAN_PROMPT_METADATA,
   actionPlanDefinitionHash,
   actionPlanPrompt,
-} from "@/src/server/action-plans/current-contract";
+} from "@/src/server/modules/action-plans/current-contract";
 
 describe("current code-owned generation contracts", () => {
   it("preserves the characterized Gap v14 definition and prompt behavior", () => {

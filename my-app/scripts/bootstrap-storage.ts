@@ -1,17 +1,17 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { getSupabaseAdminClient } from "@/src/server/platform/storage/supabase-admin";
 import {
   DOCUMENT_STORAGE_BUCKET,
   MAX_DOCUMENT_BYTES,
   SUPPORTED_DOCUMENT_TYPES,
-} from "@/src/server/documents/domain";
+} from "@/src/server/modules/documents";
 import {
   LEGAL_CORPUS_BUCKET,
   LEGAL_SOURCE_MIME_TYPES,
   MAX_LEGAL_SOURCE_BYTES,
-} from "@/src/server/corpus";
-import { REPORT_STORAGE_BUCKET } from "@/src/server/reports";
+} from "@/src/server/modules/legal-corpus";
+import { REPORT_STORAGE_BUCKET } from "@/src/server/modules/reports";
 
 const buckets = [
   {

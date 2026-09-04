@@ -5,14 +5,14 @@ import {
   defaultGapStatementMaximum,
   normalizeGapCategoryResponse,
   type GapResponsePolicy,
-} from "@/src/server/gap-analysis/generation-schema";
+} from "@/src/server/modules/gap-analysis/generation-schema";
 import {
   GAP_PROMPT_VERSION,
   gapPrompt,
   gapRepairPrompt,
-} from "@/src/server/gap-analysis/prompt-contract";
-import { buildGroundedPrompt } from "@/src/server/ai/grounding/context-builder";
-import type { GroundingContextItem } from "@/src/server/ai/grounding/types";
+} from "@/src/server/modules/gap-analysis/prompt-contract";
+import { buildGroundedPrompt } from "@/src/server/modules/grounding/context-builder";
+import type { GroundingContextItem } from "@/src/server/modules/grounding/types";
 
 const UUID_PATTERN =
   /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/iu;

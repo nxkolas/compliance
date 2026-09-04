@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { GapFindingSource } from "@/src/server/gap-analysis/finding-source-projection";
+import type { GapFindingSource } from "@/src/server/modules/gap-analysis/finding-source-projection";
 import type { GapLabels } from "./types";
 
 const INITIAL_SOURCE_COUNT = 3;

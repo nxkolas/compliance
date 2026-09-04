@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { resolveRequestId } from "@/src/server/api/request-id";
-import { requireApiUser } from "@/src/server/api/auth";
-import { ApiError } from "@/src/server/api/errors";
-import { readJsonBody } from "@/src/server/api/request";
-import { getGuestApplicabilityToken, getGuestApplicabilityTokenFromRequest, guestApplicabilityCookieName } from "@/src/server/applicability-check";
-import { claimGuestApplicabilityCheckForUser } from "@/src/server/applicability-check";
+import { resolveRequestId } from "@/src/server/platform/http/request-id";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { ApiError } from "@/src/server/platform/http/errors";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { getGuestApplicabilityToken, getGuestApplicabilityTokenFromRequest, guestApplicabilityCookieName } from "@/src/server/modules/applicability-check";
+import { claimGuestApplicabilityCheckForUser } from "@/src/server/modules/applicability-check";
 import { claimGuestApplicabilityCheckSchema } from "@/src/contracts/applicability-check";
 export async function POST(request: Request) {
   const requestId = resolveRequestId(request);

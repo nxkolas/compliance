@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validateGeneratedAction } from "@/src/server/action-plans/action-style";
-import { ACTION_PLAN_PROMPT_TEMPLATE } from "@/src/server/action-plans/prompt-contract";
+import { validateGeneratedAction } from "@/src/server/modules/action-plans/action-style";
+import { ACTION_PLAN_PROMPT_TEMPLATE } from "@/src/server/modules/action-plans/prompt-contract";
 
 describe("generated Action Plan style", () => {
   it("states the validator ceilings in the model prompt", () => {

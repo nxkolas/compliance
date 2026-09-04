@@ -27,7 +27,7 @@ import {
   resolveGapPostGenerationView,
   type GapPostGenerationView,
   type GapWorkflowStep,
-} from "@/src/server/gap-analysis/workflow-state";
+} from "@/src/server/modules/gap-analysis/workflow-state";
 import { GapAnalysisStepper } from "./gap-analysis-stepper";
 import { GapDocumentStep } from "./gap-document-step";
 import { localizeGapError } from "./gap-error";

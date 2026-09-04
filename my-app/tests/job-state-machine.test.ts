@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canLeaseJob, cancellationTransition, nextFailureState } from "@/src/server/jobs/state-machine";
+import { canLeaseJob, cancellationTransition, nextFailureState } from "@/src/server/platform/jobs/state-machine";
 import { jobDtoSchema } from "@/src/contracts/common/jobs";
 
 describe("durable job state machine", () => {

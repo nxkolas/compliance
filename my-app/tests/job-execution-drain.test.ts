@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { createJobDrain } from "@/src/server/job-execution/drain";
-import type { JobExecutionCycleResult } from "@/src/server/job-execution/contracts";
+import { createJobDrain } from "@/src/server/platform/jobs/execution/drain";
+import type { JobExecutionCycleResult } from "@/src/server/platform/jobs/execution/contracts";
 
 function harness(cycles: JobExecutionCycleResult[]) {
   let now = 1_000;

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { installPdfPolyfills } from "@/src/server/pdf-polyfills";
+import { installPdfPolyfills } from "@/src/server/platform/content-processing/pdf-polyfills";
 
 type BuiltinModuleHost = {
   getBuiltinModule?: (name: string) => unknown;

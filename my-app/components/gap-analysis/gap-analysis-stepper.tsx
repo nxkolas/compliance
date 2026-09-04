@@ -1,6 +1,6 @@
 "use client";
 
-import type { GapWorkflowStep } from "@/src/server/gap-analysis/workflow-state";
+import type { GapWorkflowStep } from "@/src/server/modules/gap-analysis/workflow-state";
 import type { GapLabels } from "./types";
 
 const steps: GapWorkflowStep[] = [

@@ -1,1 +1,1 @@
-import "@/src/server/operator-commands/seed-demo-orgs";
+import "@/src/server/operations/seed-demo-orgs";

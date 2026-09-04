@@ -1,13 +1,13 @@
 import { revalidatePath } from "next/cache";
 import { getLocale } from "@/lib/i18n";
 import { gapAnalysisCyclePrepareSchema } from "@/src/contracts/gap-analysis/generation";
-import { requireApiUser } from "@/src/server/api/auth";
-import { ApiError } from "@/src/server/api/errors";
-import { apiRoute } from "@/src/server/api/handler";
-import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { readJsonBody } from "@/src/server/api/request";
-import { getGapAnalysisCycle, prepareGapAnalysisCycle } from "@/src/server/gap-analysis";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { ApiError } from "@/src/server/platform/http/errors";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { getGapAnalysisCycle, prepareGapAnalysisCycle } from "@/src/server/modules/gap-analysis";
+import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
 
 export const POST = apiRoute(async ({ request, routeContext }: {
   request: Request;

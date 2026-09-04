@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAnalysisCycleEvidenceSelection } from "@/src/server/gap-analysis/analysis-cycle-selection";
+import { buildAnalysisCycleEvidenceSelection } from "@/src/server/modules/gap-analysis/analysis-cycle-selection";
 
 describe("buildAnalysisCycleEvidenceSelection", () => {
   it("treats the submitted documents as exact and resolves selected names to current versions", () => {

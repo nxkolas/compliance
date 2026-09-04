@@ -2,14 +2,14 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "@/lib/i18n";
 import { gapAnalysisGenerationJobSchema } from "@/src/contracts/gap-analysis/generation";
 import type { JobDto } from "@/src/contracts/common/jobs";
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { readJsonBody } from "@/src/server/api/request";
-import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
-import { enqueueGapAnalysisGeneration, retryGapAnalysisGeneration } from "@/src/server/gap-analysis";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
-import { getAuthorizedJob } from "@/src/server/jobs";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { enqueueGapAnalysisGeneration, retryGapAnalysisGeneration } from "@/src/server/modules/gap-analysis";
+import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
+import { getAuthorizedJob } from "@/src/server/platform/jobs";
 
 export const POST = apiRoute(async ({ request, routeContext }: {
   request: Request;

@@ -1,7 +1,7 @@
 import { config as loadEnvironment } from "dotenv";
 import {
   recreateDisposableDatabase,
-} from "@/src/server/operator-commands/recreate-disposable-database";
+} from "@/src/server/operations/recreate-disposable-database";
 
 loadEnvironment({ path: ".env.local", quiet: true });
 loadEnvironment({ quiet: true });

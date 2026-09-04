@@ -20,7 +20,7 @@ import { hasEnvVars } from "@/lib/utils";
 import {
   getOrganizationForUser,
   listOrganizationsForUserPage,
-} from "@/src/server/organizations/service";
+} from "@/src/server/modules/organizations";
 import { Suspense } from "react";
 
 type AppSidebarProps = {

@@ -16,11 +16,11 @@ import {
   getVisibleQuestions,
   isAnswered,
   type ApplicabilityAnswerValue,
-} from "@/src/server/applicability-check/question-visibility";
+} from "@/src/server/modules/compliance/runtime-release/question-visibility";
 import type {
   ApplicabilityQuestionDto,
   ApplicabilityQuestionnaireDto,
-} from "@/src/server/applicability-check/service";
+} from "@/src/server/modules/applicability-check";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
 import { localizeUiError } from "@/lib/i18n/errors";
 import {
