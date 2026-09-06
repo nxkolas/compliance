@@ -6,10 +6,10 @@ import { AuthButton } from "@/components/auth-button";
 import { BrandLogo } from "@/components/brand-logo";
 import { PageHeader } from "@/components/page-header";
 import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
-import { getDictionary, type Dictionary } from "@/lib/i18n";
-import { createClient } from "@/lib/supabase/server";
-import { hasEnvVars } from "@/lib/utils";
-import { listOrganizationsForUserPage } from "@/src/server/organizations/service";
+import { getDictionary, type Dictionary } from "@/src/i18n";
+import { createClient } from "@/src/supabase/server";
+import { hasEnvVars } from "@/src/utils";
+import { listOrganizationsForUserPage } from "@/src/server/modules/organizations";
 
 const privacyEmail = "complyx.de@gmail.com";
 

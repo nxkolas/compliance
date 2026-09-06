@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateGapCategory,
   evaluateGapRequirement,
-} from "@/src/server/gap-analysis/deterministic-evaluator";
+} from "@/src/server/modules/gap-analysis/deterministic-evaluator";
 
 describe("guided-v6 deterministic category evaluator", () => {
   it.each([

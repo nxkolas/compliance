@@ -1,1 +1,1 @@
-import "@/src/server/operator-commands/bind-gap-corpus-provisions";
+import "@/src/server/operations/bind-gap-corpus-provisions";

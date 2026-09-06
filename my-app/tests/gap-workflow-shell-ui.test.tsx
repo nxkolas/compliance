@@ -2,11 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { GapAnalysisWorkflow } from "@/components/gap-analysis/gap-analysis-workflow";
 import type { GapWorkflow } from "@/components/gap-analysis/types";
-import { modulesMessages } from "@/lib/i18n/messages/modules";
+import { modulesMessages } from "@/src/i18n/messages/modules";
 import type {
   GapPostGenerationView,
   GapWorkflowStep,
-} from "@/src/server/gap-analysis/workflow-state";
+} from "@/src/server/modules/gap-analysis/workflow-state";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),

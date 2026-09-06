@@ -1,7 +1,7 @@
 import { LanguageButtons } from "@/components/language-switcher";
 import { ThemeToggleButton } from "@/components/theme-switcher";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { cn } from "@/src/utils";
 
 export async function PublicLanguageSwitcher({
   showThemeSwitcher = false,

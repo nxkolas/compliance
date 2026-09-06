@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getSupportedCountryCodes } from "@/src/server/applicability-check/country-support";
-import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
-import { nis2GroundingPolicy } from "@/src/server/ai/grounding/policy-definition";
-import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
-import { nis2ReleaseDefinition } from "@/src/server/compliance/nis2/releases/2026-v1/release";
-import { guidedV6GapRelease } from "@/src/server/gap-analysis/releases/guided-v6/release";
+import { getSupportedCountryCodes } from "@/src/server/modules/applicability-check/country-support";
+import { evaluateRuleSet } from "@/src/server/modules/compliance/nis2/rules";
+import { nis2GroundingPolicy } from "@/src/server/modules/grounding/policy-definition";
+import { compileRelease } from "@/src/server/modules/compliance/publishing/compile-release";
+import { nis2ReleaseDefinition } from "@/src/server/modules/compliance/nis2/releases/2026-v1/release";
+import { guidedV6GapRelease } from "@/src/server/modules/gap-analysis/releases/guided-v6/release";
 
 describe("current Germany country-support bundle", () => {
   it("ships one complete supported country with matching Gap and grounding inputs", () => {

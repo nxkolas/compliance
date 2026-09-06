@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
-import { getDefaultDictionary } from "@/lib/i18n";
+import { getDefaultDictionary } from "@/src/i18n";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

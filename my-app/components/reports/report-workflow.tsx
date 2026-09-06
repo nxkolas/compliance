@@ -15,13 +15,13 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
-import { formatDateTime, formatNumber } from "@/lib/i18n/format";
+import type { Dictionary, Locale } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
+import { formatDateTime, formatNumber } from "@/src/i18n/format";
 import { jobsClient } from "@/src/client/jobs";
 import { pollJob } from "@/src/client/job-polling";
 import { reportsClient } from "@/src/client/reports";
-import type { listReports } from "@/src/server/reports/service";
+import type { listReports } from "@/src/server/modules/reports/report-library";
 
 type ReportWorkflowProps = {
   organizationId: string;

@@ -1,5 +1,5 @@
 import { OrganizationCreateForm } from "@/components/organizations/organization-create-form";
-import { getDictionaryForLocale } from "@/lib/i18n";
+import { getDictionaryForLocale } from "@/src/i18n";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

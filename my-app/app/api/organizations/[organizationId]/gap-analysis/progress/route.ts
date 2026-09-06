@@ -1,6 +1,6 @@
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { getGapQuestionnaireProgress } from "@/src/server/gap-analysis";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { getGapQuestionnaireProgress } from "@/src/server/modules/gap-analysis";
 
 type Context = { params: Promise<{ organizationId: string }> };
 

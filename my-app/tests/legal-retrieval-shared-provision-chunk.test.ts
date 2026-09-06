@@ -18,7 +18,7 @@ vi.mock("@/src/db", () => ({
   },
 }));
 
-import { retrievePinnedLegalContext } from "@/src/server/ai/grounding/legal-retrieval";
+import { retrievePinnedLegalContext } from "@/src/server/modules/grounding/legal-retrieval";
 
 describe("legal retrieval with shared provision chunks", () => {
   it("validates every preferred provision before deduplicating shared chunks", async () => {

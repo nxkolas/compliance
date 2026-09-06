@@ -1,6 +1,6 @@
 import { GapAnalysisStepper } from "@/components/gap-analysis/gap-analysis-stepper";
 import { GapReviewStep } from "@/components/gap-analysis/gap-review-step";
-import { modulesMessages } from "@/lib/i18n/messages/modules";
+import { modulesMessages } from "@/src/i18n/messages/modules";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

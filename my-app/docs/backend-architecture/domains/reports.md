@@ -19,9 +19,9 @@ versions.
    job and returns `202`.
 2. The job handler builds an **exact in-memory render snapshot** — including
    current Action Plan item statuses and legal references — and hashes it
-   (`src/server/reports/render-snapshot.ts`).
+   (`src/server/modules/reports/render-snapshot.ts`).
 3. The same snapshot object is rendered with `@react-pdf/renderer`
-   (`src/server/reports/renderer.tsx`). Applicability-only reports explicitly
+   (`src/server/modules/reports/renderer.tsx`). Applicability-only reports explicitly
    identify their reduced scope and omit the findings and Action Plan pages.
 4. The PDF is uploaded to the `compliance-reports` bucket under a
    deterministic key derived from the report inputs.
@@ -38,12 +38,12 @@ Downloads are authorized server-side reads
 (`POST /api/organizations/:id/reports/:reportId/download`) that stream the
 PDF from Storage. Report creation is rate-limited and concurrency-bounded
 (at most three active renders per organization,
-`src/server/reports/quota.ts`).
+`src/server/modules/reports/quota.ts`).
 
 ## Practical navigation
 
-- Service: `src/server/reports/service.ts`.
-- Render job: `src/server/reports/job-handler.ts`.
-- Snapshot hashing: `src/server/reports/render-snapshot.ts`.
-- Renderer and theme: `src/server/reports/renderer.tsx`, `theme.ts`.
-- Legal references: `src/server/reports/legal-references.ts`.
+- Service: `src/server/modules/reports/report-library.ts`.
+- Render job: `src/server/modules/reports/job-handler.ts`.
+- Snapshot hashing: `src/server/modules/reports/render-snapshot.ts`.
+- Renderer and theme: `src/server/modules/reports/renderer.tsx`, `theme.ts`.
+- Legal references: `src/server/modules/reports/legal-references.ts`.

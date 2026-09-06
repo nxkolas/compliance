@@ -10,22 +10,22 @@ const mocks = vi.hoisted(() => ({
   wakeParkedJob: vi.fn(),
 }));
 
-vi.mock("@/src/server/api/auth", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
-vi.mock("@/src/server/api/operation-rate-limit", () => ({
+vi.mock("@/src/server/platform/http/operation-rate-limit", () => ({
   enforceOperationRateLimit: mocks.enforceOperationRateLimit,
 }));
-vi.mock("@/src/server/organizations/service", () => ({
+vi.mock("@/src/server/modules/organizations", () => ({
   assertCanAccessOrganization: mocks.assertCanAccessOrganization,
 }));
-vi.mock("@/src/server/ai/client-inference/service", () => ({
+vi.mock("@/src/server/platform/ai/client-inference/service", () => ({
   claimClientInference: mocks.claimClientInference,
   heartbeatClientInference: vi.fn(),
   submitClientInference: mocks.submitClientInference,
   failClientInference: mocks.failClientInference,
 }));
-vi.mock("@/src/server/jobs", () => ({ wakeParkedJob: mocks.wakeParkedJob }));
+vi.mock("@/src/server/platform/jobs", () => ({ wakeParkedJob: mocks.wakeParkedJob }));
 vi.mock("next/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next/server")>();
   return { ...actual, connection: vi.fn() };
@@ -34,7 +34,7 @@ vi.mock("next/server", async (importOriginal) => {
 import { POST as claimPOST } from "@/app/api/organizations/[organizationId]/client-inference/claim/route";
 import { POST as resultPOST } from "@/app/api/organizations/[organizationId]/client-inference/[requestId]/result/route";
 import { POST as failurePOST } from "@/app/api/organizations/[organizationId]/client-inference/[requestId]/failure/route";
-import { ApiError } from "@/src/server/api/errors";
+import { ApiError } from "@/src/server/platform/http/errors";
 
 const ORGANIZATION_ID = "9b837620-e373-4d9a-ab9f-eaa9b4590d14";
 const REQUEST_ID = "11111111-1111-4111-8111-111111111111";

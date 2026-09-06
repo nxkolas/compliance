@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   deriveAtomicGapTriggerPolicy,
   deriveCorrectedAtomicGapTriggerPolicy,
-} from "@/src/server/gap-analysis/trigger-policy";
+} from "@/src/server/modules/gap-analysis/trigger-policy";
 
 const legalProvision = {
   id: "00000000-0000-4000-8000-000000000010",

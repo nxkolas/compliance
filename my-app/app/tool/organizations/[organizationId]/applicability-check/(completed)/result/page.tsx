@@ -1,6 +1,6 @@
 import { ApplicabilityResultCard } from "@/components/applicability-check/applicability-result-card";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import {

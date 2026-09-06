@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { chunkExtractedPages } from "@/src/server/documents/chunker";
-import { parseDocument, validateDocumentUpload } from "@/src/server/documents/parser";
+import {
+  chunkExtractedPages,
+  parseDocument,
+} from "@/src/server/platform/content-processing";
+import { validateDocumentUpload } from "@/src/server/modules/documents/validation";
 
 describe("document evidence processing", () => {
   it("accepts and extracts UTF-8 text without OCR", async () => {
     const parsed = await parseDocument(
       new TextEncoder().encode("# Policy\n\nAccess reviews are quarterly."),
       "text/markdown",
+      { maxBytes: 10 * 1024 * 1024 },
     );
     expect(parsed.parserKind).toBe("plain-text");
     expect(parsed.text).toContain("Access reviews");

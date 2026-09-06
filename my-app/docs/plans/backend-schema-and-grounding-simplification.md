@@ -2,8 +2,9 @@
 
 ## Status
 
-Ready for implementation. This plan records the backend audit decisions made on
-2026-09-03. It does not include implementation changes.
+Completed on 3 September 2026. The later backend module-organization refactor
+moved several implementation paths; the paths below remain a historical record
+of the plan at the time it was approved.
 
 ## Objective
 

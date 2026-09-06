@@ -22,14 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Dictionary } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
-import type { getCurrentActionPlan } from "@/src/server/action-plans/service";
+import type { Dictionary } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
+import type { getCurrentActionPlan } from "@/src/server/modules/action-plans/action-plan";
 import { actionPlansClient } from "@/src/client/action-plans";
 import { pollJob } from "@/src/client/job-polling";
 import { GapCategoryIcon } from "@/components/gap-analysis/gap-category-icon";
 import { SequenceHelp } from "@/components/sequence-help";
-import type { PlanPreparationState } from "@/src/server/action-plans/preparation-state";
+import type { PlanPreparationState } from "@/src/server/modules/action-plans/preparation-state";
 
 type CurrentPlan = Awaited<ReturnType<typeof getCurrentActionPlan>>;
 type Labels = Dictionary["modules"]["actionPlan"]["workflow"];

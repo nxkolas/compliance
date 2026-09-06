@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ProviderLimiter } from "@/src/server/ai/grounding/provider-limiter";
+import { ProviderLimiter } from "@/src/server/modules/grounding/provider-limiter";
 import {
   configuredCategoryConcurrency,
   configuredProviderMaxConcurrency,
-} from "@/src/server/ai/generation/concurrency";
+} from "@/src/server/platform/ai/generation/concurrency";
 
 describe("AI concurrency configuration", () => {
   it.each([3, 4, 5])("preserves category concurrency %s", (value) => {

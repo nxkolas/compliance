@@ -9,7 +9,7 @@ vi.mock("@/src/db", () => ({
   db: { transaction: mocks.transaction },
 }));
 
-vi.mock("@/src/server/auth/capability-service", () => ({
+vi.mock("@/src/server/platform/auth/capability-service", () => ({
   requireOrganizationCapability: mocks.authorize,
 }));
 
@@ -18,8 +18,8 @@ import {
   analysisOutputs,
   assessmentRevisions,
 } from "@/src/db/schema";
-import { submitApplicabilityCheckForUser } from "@/src/server/applicability-check";
-import { getCurrentApplicabilityDefinition } from "@/src/server/definitions";
+import { submitApplicabilityCheckForUser } from "@/src/server/modules/applicability-check";
+import { getCurrentApplicabilityDefinition } from "@/src/server/modules/applicability-check";
 
 describe("applicability submission lineage", () => {
   const assessmentRevisionId = "00000000-0000-4000-8000-000000000003";

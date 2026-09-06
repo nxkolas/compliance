@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildCompliancePrompt } from "../lib/ai/prompts/prompt-builder";
-import { getModelCapabilityProfile } from "../lib/ai/model-capabilities";
+import { buildCompliancePrompt } from "../src/server/modules/grounding/prompts/prompt-builder";
+import { getModelCapabilityProfile } from "../src/server/platform/ai/model-capabilities";
 
 const organization = {
   id: "00000000-0000-4000-8000-000000000001",

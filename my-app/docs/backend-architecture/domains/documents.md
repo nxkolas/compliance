@@ -25,7 +25,7 @@ flowchart TD
    `current_version_id` pointer; every upload creates a new immutable
    `document_versions` row (version number, file metadata, storage key,
    content hash, embedding identity).
-2. **Parsing** (`src/server/documents/parser.ts`): PDF via `pdf-parse`,
+2. **Parsing** (`src/server/platform/content-processing/parser.ts`): PDF via `pdf-parse`,
    DOCX via `mammoth`, plus text/markdown; Docling is an optional conversion
    path.
 3. **Chunking**: `chunkExtractedPages` produces paragraph-based chunks
@@ -41,7 +41,7 @@ flowchart TD
 Vectors are only comparable within one embedding space. Every version row
 records the embedding identity: provider, model, model revision, dimensions,
 retrieval instruction profile, and chunking version, all folded into a hash
-(`src/server/documents/document-config.ts`, `embeddings.ts`). Retrieval
+(`src/server/modules/documents/document-config.ts`, `embeddings.ts`). Retrieval
 filters on that hash so a half-finished re-index never mixes spaces.
 
 Changing the organization's embedding model triggers an
@@ -59,13 +59,13 @@ already carrying the target model.
 
 ## Retrieval policy
 
-`src/server/documents/retrieval-policy.ts` decides which versions and chunks
+`src/server/modules/documents/retrieval-policy.ts` decides which versions and chunks
 may be retrieved for an organization at a given workflow step (e.g., current
 and indexed versions only during gap evidence selection).
 
 ## Practical navigation
 
-- Service and indexing jobs: `src/server/documents/service.ts`.
+- Service and indexing jobs: `src/server/modules/documents/`.
 - Parsing/chunking/embeddings: `parser.ts`, `chunker.ts`, `embeddings.ts`.
 - Configuration: `document-config.ts`.
 - Routes: `app/api/organizations/:id/documents/...`.

@@ -1,8 +1,8 @@
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
-import { assertCanAccessOrganization } from "@/src/server/organizations/service";
-import { claimClientInference } from "@/src/server/ai/client-inference/service";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { assertCanAccessOrganization } from "@/src/server/modules/organizations";
+import { claimClientInference } from "@/src/server/platform/ai/client-inference/service";
 
 type Context = { params: Promise<{ organizationId: string }> };
 

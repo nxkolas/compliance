@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import type { PreparedUploadCompletion } from "@/src/server/uploads";
+import type { PreparedUploadCompletion } from "@/src/server/platform/storage";
 
 const isDisposableDatabase =
   process.env.APP_ENV === "test" &&
@@ -32,15 +32,13 @@ describe.runIf(Boolean(databaseUrl && adminDatabaseUrl))("atomic document-upload
   afterAll(async () => {
     await sql.end();
     await adminSql.end();
-    const { closeDatabaseConnection } = await import(
-      "@/src/server/database-lifecycle"
-    );
-    await closeDatabaseConnection();
+    const { closeDbConnection } = await import("@/src/db");
+    await closeDbConnection();
   });
 
   it("commits one artifact set and replays the stored immutable version", async () => {
     const fixture = await createUploadedSession();
-    const { finalizeDocumentUpload } = await import("@/src/server/documents");
+    const { finalizeDocumentUpload } = await import("@/src/server/modules/documents");
 
     const first = await finalizeDocumentUpload({
       upload: fixture.upload,
@@ -58,7 +56,7 @@ describe.runIf(Boolean(databaseUrl && adminDatabaseUrl))("atomic document-upload
 
   it("serializes concurrent completion without duplicate artifacts", async () => {
     const fixture = await createUploadedSession();
-    const { finalizeDocumentUpload } = await import("@/src/server/documents");
+    const { finalizeDocumentUpload } = await import("@/src/server/modules/documents");
 
     const results = await Promise.all([
       finalizeDocumentUpload({ upload: fixture.upload, title: "Security policy" }),
@@ -73,7 +71,7 @@ describe.runIf(Boolean(databaseUrl && adminDatabaseUrl))("atomic document-upload
 
   it("rolls back every artifact when the final audit write fails", async () => {
     const fixture = await createUploadedSession();
-    const { finalizeDocumentUpload } = await import("@/src/server/documents");
+    const { finalizeDocumentUpload } = await import("@/src/server/modules/documents");
     const suffix = randomUUID().replaceAll("-", "_");
     const functionName = `fail_atomic_upload_audit_${suffix}`;
     const triggerName = `fail_atomic_upload_audit_${suffix}`;

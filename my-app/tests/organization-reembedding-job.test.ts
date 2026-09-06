@@ -68,7 +68,7 @@ vi.mock("@/src/db", () => {
   };
 });
 
-vi.mock("@/src/server/supabase-admin", () => ({
+vi.mock("@/src/server/platform/storage/supabase-admin", () => ({
   getSupabaseAdminClient: () => ({
     storage: {
       from: () => ({
@@ -78,8 +78,8 @@ vi.mock("@/src/server/supabase-admin", () => ({
   }),
 }));
 
-import { executeOrganizationReembeddingJob } from "@/src/server/documents/service";
-import { resolveEmbeddingConfig } from "@/src/server/documents/document-config";
+import { executeOrganizationReembeddingJob } from "@/src/server/modules/documents";
+import { resolveEmbeddingConfig } from "@/src/server/modules/documents/document-config";
 
 describe("organization re-embedding job", () => {
   beforeEach(() => {

@@ -3,7 +3,7 @@ import {
   getVisibleQuestions,
   isAnswered,
   isFinalVisibleAnswer,
-} from "@/src/server/applicability-check/question-visibility";
+} from "@/src/server/modules/compliance/runtime-release/question-visibility";
 
 const questions = [
   { id: "eu", stableKey: "bc.eu_activity", config: {} },

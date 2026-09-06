@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateReportMetrics } from "@/src/server/reports/metrics";
+import { calculateReportMetrics } from "@/src/server/modules/reports/metrics";
 
 describe("report metrics", () => {
   it("calculates rounded compliance from fully fulfilled findings only", () => {

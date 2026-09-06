@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
-import { ApiError } from "@/src/server/api/errors";
+import { ApiError } from "@/src/server/platform/http/errors";
 import {
   readJsonBody,
   readOptionalJsonBody,
-} from "@/src/server/api/request";
+} from "@/src/server/platform/http/request";
 
 const schema = z.object({ ok: z.boolean() });
 

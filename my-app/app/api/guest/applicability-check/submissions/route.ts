@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { resolveRequestId } from "@/src/server/api/request-id";
-import { ApiError } from "@/src/server/api/errors";
-import { readJsonBody } from "@/src/server/api/request";
-import { getGuestApplicabilityCookieOptions, guestApplicabilityCookieName, shouldUseSecureGuestCookie } from "@/src/server/applicability-check";
-import { submitApplicabilityCheckForGuest } from "@/src/server/applicability-check";
+import { resolveRequestId } from "@/src/server/platform/http/request-id";
+import { ApiError } from "@/src/server/platform/http/errors";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { getGuestApplicabilityCookieOptions, guestApplicabilityCookieName, shouldUseSecureGuestCookie } from "@/src/server/modules/applicability-check";
+import { submitApplicabilityCheckForGuest } from "@/src/server/modules/applicability-check";
 import { applicabilitySubmissionSchema } from "@/src/contracts/applicability-check";
 export async function POST(request: Request) {
   const requestId = resolveRequestId(request);

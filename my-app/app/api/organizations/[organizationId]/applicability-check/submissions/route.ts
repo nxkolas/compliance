@@ -1,10 +1,10 @@
 import { revalidatePath } from "next/cache";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { readJsonBody } from "@/src/server/api/request";
-import { getApplicabilityResultRevisionForUser, submitApplicabilityCheckForUser } from "@/src/server/applicability-check";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { getApplicabilityResultRevisionForUser, submitApplicabilityCheckForUser } from "@/src/server/modules/applicability-check";
 import { applicabilitySubmissionSchema } from "@/src/contracts/applicability-check";
-import { runIdempotentCommand } from "@/src/server/api/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/idempotency"; import { ApiError } from "@/src/server/api/errors";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency"; import { ApiError } from "@/src/server/platform/http/errors";
 export const POST = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string }> } }) => {
   const user = await requireApiUser(); const { organizationId } = await routeContext.params;
   const body = await readJsonBody(request, applicabilitySubmissionSchema);

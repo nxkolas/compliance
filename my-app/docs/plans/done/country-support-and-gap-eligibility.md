@@ -310,7 +310,7 @@ Files:
 - `src/contracts/applicability-check/index.ts`;
 - `components/applicability-check/applicability-result-card.tsx`;
 - authenticated and guest applicability result pages;
-- `lib/i18n/messages/modules.ts`.
+- `src/i18n/messages/modules.ts`.
 
 Work:
 
@@ -379,7 +379,7 @@ Files:
 - `src/contracts/gap-analysis/generation.ts`;
 - `components/gap-analysis/gap-analysis-workflow.tsx`;
 - `components/gap-analysis/types.ts`;
-- `lib/i18n/messages/modules.ts`.
+- `src/i18n/messages/modules.ts`.
 
 Work:
 
@@ -436,7 +436,7 @@ Files:
 - `src/server/gap-analysis/generation-service.ts`;
 - `src/server/gap-analysis/generation-schema.ts`;
 - generation/job contract tests;
-- `lib/i18n/messages/modules.ts` and `components/gap-analysis/gap-error.ts`.
+- `src/i18n/messages/modules.ts` and `components/gap-analysis/gap-error.ts`.
 
 Work:
 

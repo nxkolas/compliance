@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveGapContentTranslation } from "@/src/server/gap-analysis/localize-content";
+import { resolveGapContentTranslation } from "@/src/server/modules/gap-analysis/localize-content";
 
 describe("gap release metadata localization", () => {
   const translations = new Map([

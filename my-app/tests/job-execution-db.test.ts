@@ -18,15 +18,13 @@ describe.runIf(Boolean(databaseUrl))(
 
     afterAll(async () => {
       await sql.end();
-      const { closeDatabaseConnection } = await import(
-        "@/src/server/database-lifecycle"
-      );
-      await closeDatabaseConnection();
+      const { closeDbConnection } = await import("@/src/db");
+      await closeDbConnection();
     });
 
     it("allows only one concurrent invocation to own a live lease", async () => {
       const job = await insertJob("queued");
-      const { leaseNextJob } = await import("@/src/server/jobs");
+      const { leaseNextJob } = await import("@/src/server/platform/jobs");
 
       const leases = await Promise.all([
         leaseNextJob({
@@ -47,7 +45,7 @@ describe.runIf(Boolean(databaseUrl))(
 
     it("reclaims an expired lease and increments its attempt", async () => {
       const job = await insertJob("running");
-      const { leaseNextJob } = await import("@/src/server/jobs");
+      const { leaseNextJob } = await import("@/src/server/platform/jobs");
 
       const lease = await leaseNextJob({
         workerId: `recovery-${randomUUID()}`,

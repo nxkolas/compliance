@@ -444,7 +444,7 @@ Render document support independently from finding status:
 Likely files:
 
 - `components/gap-analysis/gap-results-step.tsx`
-- `lib/i18n.ts`
+- `src/i18n/index.ts`
 
 ### Phase 7: Implement atomic finalization and plan generation
 
@@ -534,7 +534,7 @@ Likely files:
 - `components/gap-analysis/gap-results-step.tsx`
 - confirmation dialog component
 - `components/gap-analysis/gap-analysis-workflow.tsx`
-- `lib/i18n.ts`
+- `src/i18n/index.ts`
 
 ### Phase 9: Reduce the action plan to one fixed measure set
 

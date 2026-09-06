@@ -5,7 +5,7 @@ import {
   formatNumber,
   formatPercent,
   localeTag,
-} from "@/lib/i18n/format";
+} from "@/src/i18n/format";
 
 describe("locale formatting", () => {
   it("uses explicit German and British English locale tags", () => {

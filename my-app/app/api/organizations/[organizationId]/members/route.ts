@@ -1,9 +1,9 @@
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { listOrganizationMembersPage } from "@/src/server/organizations/service";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { listOrganizationMembersPage } from "@/src/server/modules/organizations";
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
-import { parseInput } from "@/src/server/api/request";
-import { synchronizeAuthenticatedActor } from "@/src/server/users";
+import { parseInput } from "@/src/server/platform/http/request";
+import { synchronizeAuthenticatedActor } from "@/src/server/platform/auth/user-directory";
 export const GET = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string }> } }) => {
   const user = await requireApiUser(); const { organizationId } = await routeContext.params;
   await synchronizeAuthenticatedActor(user);

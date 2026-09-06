@@ -135,11 +135,11 @@ Embedding fields are the organization's **active** coordinates and follow the
 Phase 0 discipline — they advance only when a migration succeeds. Generation
 fields are freely updatable.
 
-Remove `company_hosted` from [types.ts](../../../lib/ai/types.ts),
-[providers.ts](../../../lib/ai/providers.ts),
-[models.ts](../../../lib/ai/models.ts),
-[model-capabilities.ts](../../../lib/ai/model-capabilities.ts), the `COMPANY_AI_*`
-env block, the `ai_provider_mode` pgEnum, [i18n.ts](../../../lib/i18n.ts), and
+Remove `company_hosted` from [types.ts](../../../src/server/platform/ai/types.ts),
+[providers.ts](../../../src/server/platform/ai/providers.ts),
+[models.ts](../../../src/server/platform/ai/models.ts),
+[model-capabilities.ts](../../../src/server/platform/ai/model-capabilities.ts), the `COMPANY_AI_*`
+env block, the `ai_provider_mode` pgEnum, [i18n.ts](../../../src/i18n/index.ts), and
 the organization settings selector.
 
 Two model-family quirks are currently hardcoded to the provider mode and are no
@@ -152,7 +152,7 @@ longer implied once the user picks the model:
 Both become the `embedding_instruction_profile` field, which is part of the
 Phase 0 key — the same model with a different prefix is a different vector
 space. Similarly `getGenerationOptions`
-([generation-options.ts](../../../lib/ai/generation-options.ts)) reads thinking
+([generation-options.ts](../../../src/server/platform/ai/generation-options.ts)) reads thinking
 style from the generation record instead of branching on the provider mode.
 
 `resolveOrganizationEmbeddingConfig`
@@ -160,7 +160,7 @@ style from the generation record instead of branching on the provider mode.
 choke point — eight call sites already route through it. Widen its return value;
 do not add a second resolution path.
 
-Add `import "server-only"` to `lib/ai/providers.ts` and `lib/ai/models.ts` while
+Add `import "server-only"` to `src/server/platform/ai/providers.ts` and `src/server/platform/ai/models.ts` while
 touching them, so the OpenAI key's server-side confinement is enforced by the
 build rather than by convention.
 

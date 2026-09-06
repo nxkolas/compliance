@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertLiveParentForAiRun } from "@/src/server/ai/generation/job-run-policy";
+import { assertLiveParentForAiRun } from "@/src/server/platform/ai/generation/job-run-policy";
 
 const now = new Date("2026-07-29T12:00:00.000Z");
 const organizationId = "00000000-0000-4000-8000-000000000001";

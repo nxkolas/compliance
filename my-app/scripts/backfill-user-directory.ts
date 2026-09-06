@@ -1,2 +1,2 @@
-import "@/src/server/operator-commands/backfill-user-directory";
+import "@/src/server/operations/backfill-user-directory";
 

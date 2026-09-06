@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { deriveAtomicGapKind } from "@/src/server/gap-analysis/generation-schema";
-import { atomicGapGroundedClaims } from "@/src/server/gap-analysis/grounded-claims";
+import { deriveAtomicGapKind } from "@/src/server/modules/gap-analysis/generation-schema";
+import { atomicGapGroundedClaims } from "@/src/server/modules/gap-analysis/grounded-claims";
 
 describe("atomic Gap response contract", () => {
   it("treats atomic control-state gaps as organization claims", () => {

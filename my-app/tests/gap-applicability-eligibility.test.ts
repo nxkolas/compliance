@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateGapApplicabilityPrerequisite,
   resolveGapGenerationPrerequisites,
-} from "@/src/server/gap-analysis/applicability-eligibility";
+} from "@/src/server/modules/gap-analysis/applicability-eligibility";
 import {
   fixtureCheckReleaseId,
   storedApplicabilityResult,

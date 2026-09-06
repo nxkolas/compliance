@@ -3,7 +3,7 @@ import {
   guestStartedExpiry,
   guestSubmittedExpiry,
   isGuestCleanupEligible,
-} from "@/src/server/applicability-check/guest-lifecycle";
+} from "@/src/server/modules/applicability-check/guest-lifecycle";
 
 describe("guest applicability lifecycle", () => {
   const startedAt = new Date("2026-07-16T10:00:00.000Z");

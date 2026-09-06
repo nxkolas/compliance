@@ -4,12 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const generateObject = vi.hoisted(() => vi.fn());
 
 vi.mock("ai", () => ({ generateObject }));
-vi.mock("@/lib/ai/models", () => ({
+vi.mock("@/src/server/platform/ai/models", () => ({
   getChatModelId: () => "test-model",
   getComplianceChatModelById: () => "model-handle",
 }));
 
-import { createAiSdkGroundedProvider } from "@/src/server/ai/grounding/providers/ai-sdk";
+import { createAiSdkGroundedProvider } from "@/src/server/modules/grounding/providers/ai-sdk";
 
 describe("grounded provider token budget", () => {
   beforeEach(() => {

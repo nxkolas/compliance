@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveDocumentUsageLabels } from "@/src/server/documents/usage";
+import { deriveDocumentUsageLabels } from "@/src/server/modules/documents/usage";
 
 describe("deriveDocumentUsageLabels", () => {
   it("projects accepted, candidate, draft, and active-plan usage independently", () => {

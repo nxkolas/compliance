@@ -5,11 +5,11 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
+vi.mock("@/src/supabase/server", () => ({
   createClient: mocks.createClient,
 }));
 
-import { requireApiUser } from "@/src/server/api/auth";
+import { requireApiUser } from "@/src/server/platform/http/auth";
 
 const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const originalSupabaseKey =

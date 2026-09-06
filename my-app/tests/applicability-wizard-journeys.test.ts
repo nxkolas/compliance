@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { deriveFactsForAnswers } from "@/src/server/applicability-check/fact-derivation";
-import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
-import type { ApplicabilityAnswerValue } from "@/src/server/applicability-check/question-visibility";
-import { getCurrentApplicabilityDefinition } from "@/src/server/definitions/applicability";
+import { deriveFactsForAnswers } from "@/src/server/modules/applicability-check/fact-derivation";
+import { evaluateRuleSet } from "@/src/server/modules/compliance/nis2/rules";
+import type { ApplicabilityAnswerValue } from "@/src/server/modules/compliance/runtime-release/question-visibility";
+import { getCurrentApplicabilityDefinition } from "@/src/server/modules/applicability-check/release/current";
 
 const definition = getCurrentApplicabilityDefinition("de");
 const questions = definition.questions;

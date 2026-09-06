@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 import { request } from "@/src/client/api-client";
-import { ApiError } from "@/src/server/api/errors";
-import { apiRoute } from "@/src/server/api/handler";
-import { readOptionalJsonBody } from "@/src/server/api/request";
+import { ApiError } from "@/src/server/platform/http/errors";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { readOptionalJsonBody } from "@/src/server/platform/http/request";
 import { invokeRouteContract } from "./support/route-contract";
 
 describe("API contract foundation", () => {

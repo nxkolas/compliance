@@ -1,5 +1,5 @@
 import { TutorialWelcome } from "@/components/tutorial/tutorial-welcome";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary } from "@/src/i18n";
 
 export default async function TutorialPage({
   params,

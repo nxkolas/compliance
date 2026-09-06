@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { closeDbConnection } from "@/src/db";
-import { activateLegalCorpusSnapshot } from "@/src/server/corpus";
+import { activateLegalCorpusSnapshot } from "@/src/server/modules/legal-corpus";
 
 async function main() {
   const [familyCode, generations] = process.argv.slice(2);

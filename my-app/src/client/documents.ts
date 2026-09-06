@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/src/supabase/client";
 import { uploadSessionDtoSchema } from "@/src/contracts/common/uploads";
 import {
   documentCountsSchema,

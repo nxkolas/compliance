@@ -9,27 +9,27 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
-vi.mock("@/src/server/api/auth", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
-vi.mock("@/src/server/api/operation-rate-limit", () => ({
+vi.mock("@/src/server/platform/http/operation-rate-limit", () => ({
   enforceOperationRateLimit: mocks.enforceOperationRateLimit,
 }));
-vi.mock("@/src/server/api/idempotency", () => ({
+vi.mock("@/src/server/platform/http/idempotency", () => ({
   runIdempotentCommand: vi.fn(async (input) => ({
     value: await input.execute(),
     reused: false,
   })),
 }));
-vi.mock("@/src/server/action-plans", () => ({
+vi.mock("@/src/server/modules/action-plans", () => ({
   enqueueActionPlanGeneration: mocks.enqueue,
   getCurrentActionPlan: vi.fn(),
 }));
-vi.mock("@/src/server/jobs", () => ({
+vi.mock("@/src/server/platform/jobs", () => ({
   getAuthorizedJob: mocks.getAuthorizedJob,
   toJobDto: (job: unknown) => job,
 }));
-vi.mock("@/src/server/idempotency", () => ({
+vi.mock("@/src/server/platform/idempotency", () => ({
   databaseIdempotencyRepository: {},
 }));
 

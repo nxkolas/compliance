@@ -6,7 +6,7 @@ import {
   runDisposableSchemaPlan,
   type WorkflowRunner,
   type WorkflowStage,
-} from "@/src/server/operator-commands/disposable-schema-workflow";
+} from "@/src/server/operations/disposable-schema-workflow";
 
 loadEnvironment({ path: ".env.local", quiet: true });
 loadEnvironment({ quiet: true });

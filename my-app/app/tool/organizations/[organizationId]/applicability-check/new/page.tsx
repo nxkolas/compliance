@@ -1,12 +1,12 @@
 import { ApplicabilityWizard } from "@/components/applicability-check/applicability-wizard";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import {
   getApplicabilityQuestionnaireForUser,
   getApplicabilityRecalculationLockForUser,
-} from "@/src/server/applicability-check";
+} from "@/src/server/modules/applicability-check";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 

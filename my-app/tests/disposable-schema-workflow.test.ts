@@ -5,7 +5,7 @@ import {
   runDisposableSchemaApply,
   runDisposableSchemaPlan,
   type WorkflowRunner,
-} from "@/src/server/operator-commands/disposable-schema-workflow";
+} from "@/src/server/operations/disposable-schema-workflow";
 
 const databaseUrl =
   "postgresql://operator:super-secret@db.example.test:5432/compliance_preprod";

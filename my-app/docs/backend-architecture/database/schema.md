@@ -1,13 +1,16 @@
 # Database Schema
 
-> Status: current as of 3 September 2026.
+> Status: current as of 4 September 2026.
 
 ## Source of truth
 
 The schema is owned by application code:
 
-- `src/db/schema.ts` — every table, column, enum, constraint, index,
-  generated search vector, and RLS declaration.
+- `src/db/schema.ts` — the stable public schema facade used by existing
+  imports and Drizzle tooling.
+- `src/db/schema/` — ownership-based schema files containing every table,
+  column, enum, constraint, index, generated search vector, and RLS
+  declaration. Shared enums and helpers live in `_shared.ts`.
 - `src/db/relations.ts` — Drizzle relations used by query builders.
 - `src/db/index.ts` — connection pool and typed query entry point.
 
@@ -23,8 +26,8 @@ provenance, evidence, durable operations, legal-source history, and audit.
 
 Application code owns the executable questionnaires, rules, requirement
 metadata, mappings, prompts, and localized copy. Those are versioned releases
-under `src/server/`, and changing them produces new definition hashes rather
-than database edits.
+under their owning business modules in `src/server/modules/`, and changing
+them produces new definition hashes rather than database edits.
 
 ## Core entity relationships
 
@@ -213,7 +216,8 @@ are found through `ai_processing_runs.job_id`.
 
 ## Practical navigation
 
-- Every table lives in `src/db/schema.ts`; follow relations in
+- Tables live in ownership-based files under `src/db/schema/`; use
+  `src/db/schema.ts` as the public import surface and follow relations in
   `src/db/relations.ts`.
 - For a new column or index, extend the schema and use the guarded schema
   workflow from `scripts/`; never hand-edit the database.

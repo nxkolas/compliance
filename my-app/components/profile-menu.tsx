@@ -14,8 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { getLanguageOptions } from "@/lib/i18n/language-options";
+import type { Dictionary, Locale } from "@/src/i18n";
+import { getLanguageOptions } from "@/src/i18n/language-options";
 import { ChevronDown, Inbox, LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 

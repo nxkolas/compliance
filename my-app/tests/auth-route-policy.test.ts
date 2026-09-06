@@ -8,7 +8,7 @@ import {
   isPublicGuestApiRoute,
   isPublicRoute,
   parseSafeToolNext,
-} from "@/lib/auth/route-policy";
+} from "@/src/auth/route-policy";
 
 describe("authentication route policy", () => {
   it.each([

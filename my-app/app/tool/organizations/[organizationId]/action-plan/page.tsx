@@ -1,16 +1,16 @@
 import { ActionPlanWorkflow } from "@/components/action-plans/action-plan-workflow";
 import { PageHeader } from "@/components/page-header";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import {
   getCurrentActionPlan,
-} from "@/src/server/action-plans";
-import { assertCanAccessOrganization } from "@/src/server/organizations/service";
-import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
-import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis";
+  getActionPlanGenerationStatus,
+  resolvePlanPreparation,
+} from "@/src/server/modules/action-plans";
+import { assertCanAccessOrganization } from "@/src/server/modules/organizations";
+import { hasOrganizationCapability } from "@/src/server/platform/auth/capabilities";
+import { getGapAnalysisWorkflow } from "@/src/server/modules/gap-analysis";
 import { connection } from "next/server";
-import { resolvePlanPreparation } from "@/src/server/action-plans/preparation-state";
-import { getActionPlanGenerationStatus } from "@/src/server/action-plans/generation-status";
 
 export default async function ActionPlanPage({
   params,

@@ -1,4 +1,4 @@
-import { dashboardWorkflowMessages } from "@/lib/i18n/dashboard-workflow";
+import { dashboardWorkflowMessages } from "@/src/i18n/dashboard-workflow";
 import Link from "next/link";
 import { DashboardStepIcon } from "./dashboard-step-icon";
 import { DashboardActionLink } from "./dashboard-action-link";
@@ -6,7 +6,7 @@ import { Activity, ChartNoAxesCombined, ClipboardCheck, FileText, FolderOpen, Lo
 import type { ReactNode } from "react";
 import type { z } from "zod";
 import type { dashboardSchema } from "@/src/contracts/dashboard";
-import type { Dictionary, Locale } from "@/lib/i18n";
+import type { Dictionary, Locale } from "@/src/i18n";
 import { PageHeader } from "@/components/page-header";
 
 type Dashboard = z.infer<typeof dashboardSchema>;

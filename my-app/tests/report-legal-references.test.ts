@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildLegalReferenceResolver } from "@/src/server/reports/legal-references";
+import { buildLegalReferenceResolver } from "@/src/server/modules/reports/legal-references";
 import {
   formatLegalCitations,
   legalCitationContentKey,
   splitLegalCitation,
-} from "@/src/server/compliance/legal-citation";
-import { getCurrentGapDefinition } from "@/src/server/definitions/gap";
+} from "@/src/server/modules/compliance/legal-citation";
+import { getCurrentGapDefinition } from "@/src/server/modules/gap-analysis/release/current";
 
 describe("legalCitationContentKey", () => {
   it("derives the release content key from a provision key", () => {

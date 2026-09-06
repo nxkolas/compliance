@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   authorizeDisposableDatabaseRecreation,
   databaseTargetIdentity,
-} from "@/src/server/operator-commands/recreate-disposable-database";
+} from "@/src/server/operations/recreate-disposable-database";
 
 const url = "postgresql://operator:secret@db.example.test:5432/compliance_preprod";
 

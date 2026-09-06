@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertActionPlanPublicationLease } from "@/src/server/action-plans/publication-lease-policy";
+import { assertActionPlanPublicationLease } from "@/src/server/modules/action-plans/publication-lease-policy";
 
 const now = new Date("2026-08-02T12:00:00.000Z");
 const live = {

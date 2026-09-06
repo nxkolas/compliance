@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ReportWorkflow } from "@/components/reports/report-workflow";
-import { getDefaultDictionary } from "@/lib/i18n";
+import { getDefaultDictionary } from "@/src/i18n";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),

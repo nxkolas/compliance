@@ -374,7 +374,7 @@ credentials or direct table access.
    transaction boundaries.
 8. Keep accepted results and active plans unchanged until existing explicit
    approval/reconciliation steps.
-9. Remove or quarantine lib/ai/rag.ts stubs once no live code references them.
+9. Remove or quarantine src/server/platform/ai/rag.ts stubs once no live code references them.
 
 The deterministic Betroffenheitscheck remains AI-free. Legal corpus pins may
 support citations and authored release provenance, but applicability evaluation

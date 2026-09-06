@@ -1,7 +1,7 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/src/utils";
+import { createClient } from "@/src/supabase/client";
 import { AccountEmailField } from "@/components/auth/account-email-field";
 import { AccountPasswordField } from "@/components/auth/account-password-field";
 import { BrandLogo } from "@/components/brand-logo";
@@ -9,10 +9,10 @@ import { TermsAcceptance } from "@/components/auth/terms-acceptance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { parseSafeToolNext } from "@/lib/auth/route-policy";
-import { isValidAccountPassword } from "@/lib/auth/password-policy";
-import type { Dictionary } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
+import { parseSafeToolNext } from "@/src/auth/route-policy";
+import { isValidAccountPassword } from "@/src/auth/password-policy";
+import type { Dictionary } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
 import { User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

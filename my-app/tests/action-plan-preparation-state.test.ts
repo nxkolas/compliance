@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolvePlanPreparation } from "@/src/server/action-plans/preparation-state";
+import { resolvePlanPreparation } from "@/src/server/modules/action-plans/preparation-state";
 
 const ready = {
   prerequisite: { satisfied: true, status: "eligible" },

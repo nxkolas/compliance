@@ -65,7 +65,7 @@ Invalid, external, API, or authentication destinations fall back to
 
 ## Proxy changes
 
-Refactor `lib/supabase/proxy.ts` so that it continues to resolve the Supabase
+Refactor `src/supabase/proxy.ts` so that it continues to resolve the Supabase
 user and refresh session cookies before applying the route policy.
 
 For private APIs:

@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/src/utils";
 import { BrandLogo } from "@/components/brand-logo";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/src/supabase/client";
 import { Button } from "@/components/ui/button";
-import type { Dictionary } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
+import type { Dictionary } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
 import { ArrowLeft, Mail } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";

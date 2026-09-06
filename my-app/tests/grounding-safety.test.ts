@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { buildGroundedPrompt } from "@/src/server/ai/grounding/context-builder";
-import { selectGroundedProvider } from "@/src/server/ai/grounding/provider-policy";
+import { buildGroundedPrompt } from "@/src/server/modules/grounding/context-builder";
+import { selectGroundedProvider } from "@/src/server/modules/grounding/provider-policy";
 import {
   safeGroundingFailureMessage,
   toGroundingFailureDiagnostic,
   validateGroundedClaims,
-} from "@/src/server/ai/grounding/validation";
+} from "@/src/server/modules/grounding/validation";
 import {
   resolveGroundingRetrievalQuery,
   type GroundedProvider,
   type GroundingContextItem,
-} from "@/src/server/ai/grounding/types";
+} from "@/src/server/modules/grounding/types";
 
 const provider = (mode: string): GroundedProvider => ({
   mode,

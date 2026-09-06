@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validateComplianceResponse } from "../lib/ai/prompts/response-validator";
-import type { RetrievedContextChunk } from "../lib/ai/types";
+import { validateComplianceResponse } from "../src/server/modules/grounding/prompts/response-validator";
+import type { RetrievedContextChunk } from "../src/server/platform/ai/types";
 
 const referenceChunk: RetrievedContextChunk = {
   documentId: "doc-1",

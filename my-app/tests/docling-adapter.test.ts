@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseWithDocling } from "@/src/server/corpus/adapters/docling";
+import { parseWithDocling } from "@/src/server/modules/legal-corpus/adapters/docling";
 
 afterEach(() => {
   vi.unstubAllGlobals();

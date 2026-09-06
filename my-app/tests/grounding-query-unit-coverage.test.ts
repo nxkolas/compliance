@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasCompleteQueryUnitCoverage } from "@/src/server/ai/grounding/validation";
+import { hasCompleteQueryUnitCoverage } from "@/src/server/modules/grounding/validation";
 
 describe("grounding query-unit coverage", () => {
   const queryUnits = [

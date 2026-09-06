@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { expect, test, type Page } from "@playwright/test";
-import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { getSupabaseAdminClient } from "@/src/server/platform/storage/supabase-admin";
 import postgres from "postgres";
 
 test.describe("organization management redesign", () => {

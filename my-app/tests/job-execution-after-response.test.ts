@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ drainPortableJobs: vi.fn() }));
 
-vi.mock("@/src/server/job-execution/runtime", () => ({
+vi.mock("@/src/server/platform/jobs/execution/runtime", () => ({
   drainPortableJobs: mocks.drainPortableJobs,
 }));
 
-import { scheduleAfterResponseDrain } from "@/src/server/job-execution/after-response";
+import { scheduleAfterResponseDrain } from "@/src/server/platform/jobs/execution/after-response";
 
 describe("after-response job execution adapter", () => {
   beforeEach(() => {

@@ -2,8 +2,8 @@ import { ApplicabilityResultNavigation } from "@/components/applicability-check/
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { getDictionary, getLocale } from "@/lib/i18n";
-import { requireAuth } from "@/lib/supabase/require-auth";
+import { getDictionary, getLocale } from "@/src/i18n";
+import { requireAuth } from "@/src/supabase/require-auth";
 import { LockKeyhole, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";

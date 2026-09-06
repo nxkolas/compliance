@@ -12,13 +12,13 @@ const mocks = vi.hoisted(() => ({
   getGapQuestionnaireProgress: vi.fn(),
 }));
 
-vi.mock("@/src/server/api/auth", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
-vi.mock("@/src/server/action-plans", () => ({
+vi.mock("@/src/server/modules/action-plans", () => ({
   getActionPlanProgress: mocks.getActionPlanProgress,
 }));
-vi.mock("@/src/server/gap-analysis", () => ({
+vi.mock("@/src/server/modules/gap-analysis", () => ({
   getGapQuestionnaireProgress: mocks.getGapQuestionnaireProgress,
 }));
 

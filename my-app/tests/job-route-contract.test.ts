@@ -9,9 +9,9 @@ const mocks = vi.hoisted(() => ({
   enforceOperationRateLimit: vi.fn(),
 }));
 
-vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
-vi.mock("@/src/server/api/operation-rate-limit", () => ({ enforceOperationRateLimit: mocks.enforceOperationRateLimit }));
-vi.mock("@/src/server/jobs", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({ requireApiUser: mocks.requireApiUser }));
+vi.mock("@/src/server/platform/http/operation-rate-limit", () => ({ enforceOperationRateLimit: mocks.enforceOperationRateLimit }));
+vi.mock("@/src/server/platform/jobs", () => ({
   getAuthorizedJob: mocks.getAuthorizedJob,
   requestJobCancellation: vi.fn(),
 }));

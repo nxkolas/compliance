@@ -1,1 +1,1 @@
-import "@/src/server/operator-commands/clear-db";
+import "@/src/server/operations/clear-db";

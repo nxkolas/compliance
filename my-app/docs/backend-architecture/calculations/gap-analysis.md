@@ -21,7 +21,7 @@ logic that cannot be changed by the model) and **grounded generation**
 | Questionnaire answers | Immutable `assessment_revisions` | Assertions the model may use as evidence |
 | Selected documents | `gap_analysis_cycle_documents` | Organization evidence versions, current and indexed only |
 | Legal corpus | Pinned snapshots per family | The legal basis; chosen by the grounding policy |
-| Definition release | `src/server/gap-analysis/current-contract.ts` | Code-owned questionnaire, requirements, prompts, and response schema |
+| Definition release | `src/server/modules/gap-analysis/current-contract.ts` | Code-owned questionnaire, requirements, prompts, and response schema |
 | Locale | Cycle locale (`de`/`en`) | Output language |
 
 ## Deterministic part
@@ -31,7 +31,7 @@ logic that cannot be changed by the model) and **grounded generation**
 Each requirement/category groups a set of questions. Answer values are
 `fully_implemented`, `partially_implemented`, `not_implemented`, `unsure`,
 or `not_applicable`. `evaluateGapCategory` in
-`src/server/gap-analysis/deterministic-evaluator.ts` derives the status:
+`src/server/modules/gap-analysis/deterministic-evaluator.ts` derives the status:
 
 - any `not_implemented` → `not_fulfilled`;
 - else any `partially_implemented` → `partially_fulfilled`;
@@ -42,7 +42,7 @@ or `not_applicable`. `evaluateGapCategory` in
 ### Trigger policy
 
 `deriveAtomicGapTriggerPolicy` in
-`src/server/gap-analysis/trigger-policy.ts` decides which questions trigger
+`src/server/modules/gap-analysis/trigger-policy.ts` decides which questions trigger
 generation of atomic gaps:
 
 - `partially_implemented`, `not_implemented`, and `unsure` always trigger;
@@ -118,11 +118,11 @@ are never edited in place.
 ## Practical navigation
 
 - Current contract and response schema:
-  `src/server/gap-analysis/current-contract.ts`,
+  `src/server/modules/gap-analysis/current-contract.ts`,
   `generation-schema.ts`.
 - Deterministic evaluation: `deterministic-evaluator.ts`,
   `trigger-policy.ts`.
 - Generation: `atomic-gap-generation.ts`, `generation-domain.ts`.
-- Publication: `src/server/gap-analysis/` (atomic-gap-generation and
+- Publication: `src/server/modules/gap-analysis/` (atomic-gap-generation and
   workflow services).
 - Contradiction resolution: `contradiction-resolution-service.ts`.

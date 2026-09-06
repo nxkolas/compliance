@@ -1,5 +1,5 @@
 import { SignUpForm } from "@/components/sign-up-form";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary } from "@/src/i18n";
 import { Suspense } from "react";
 import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   catalogOptionsForCountry,
   reconcileCatalogAnswers,
-} from "@/src/server/applicability-check/entity-catalog";
+} from "@/src/server/modules/applicability-check/entity-catalog";
 
 const options = [
   option("electricity_supplier", "eu_core"),

@@ -1,8 +1,8 @@
 import {
   isAnswered,
   type ApplicabilityAnswerValue,
-} from "@/src/server/applicability-check/question-visibility";
-import type { ApplicabilityQuestionDto } from "@/src/server/applicability-check/service";
+} from "@/src/server/modules/compliance/runtime-release/question-visibility";
+import type { ApplicabilityQuestionDto } from "@/src/server/modules/applicability-check";
 
 export type ActivityRoute = "E" | "I" | "T" | "A1" | "A2" | "R" | "NO";
 

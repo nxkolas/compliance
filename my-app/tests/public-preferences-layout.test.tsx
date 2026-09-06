@@ -9,8 +9,8 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "dark", setTheme: vi.fn() }),
 }));
 
-vi.mock("@/lib/i18n", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/lib/i18n")>();
+vi.mock("@/src/i18n", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/src/i18n")>();
   return {
     ...original,
     getDictionary: async () => original.getDefaultDictionary(),

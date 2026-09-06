@@ -615,7 +615,7 @@ cosmetic consistency.
 
 Primary file:
 
-- `lib/i18n.ts`
+- `src/i18n/index.ts`
 
 Connected components:
 

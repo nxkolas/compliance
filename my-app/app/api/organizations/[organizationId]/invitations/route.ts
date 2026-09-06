@@ -1,13 +1,13 @@
 import { connection } from "next/server";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { parseInput, readJsonBody } from "@/src/server/api/request";
-import { createOrganizationInvitation, getOrganizationInvitation, listOrganizationInvitationsPage } from "@/src/server/organizations/service";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { parseInput, readJsonBody } from "@/src/server/platform/http/request";
+import { createOrganizationInvitation, getOrganizationInvitation, listOrganizationInvitationsPage } from "@/src/server/modules/organizations";
 import { invitationInputSchema } from "@/src/contracts/organizations";
-import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
-import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
-import type { OrganizationInvitationDto } from "@/src/server/organizations/types";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
+import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
+import type { OrganizationInvitationDto } from "@/src/server/modules/organizations";
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
 type Context = { params: Promise<{ organizationId: string }> };
 export const GET = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: Context }) => {

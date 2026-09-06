@@ -486,7 +486,7 @@ Files:
 - `app/tool/organizations/new/page.tsx`
 - `components/organizations/organization-create-form.tsx`
 - new localized country data/selector module
-- `lib/i18n/messages/organizations.ts`
+- `src/i18n/messages/organizations.ts`
 - creation, localization, and country-selector tests
 
 Work:

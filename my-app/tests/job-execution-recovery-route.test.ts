@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ drainPortableJobs: vi.fn() }));
-vi.mock("@/src/server/job-execution/runtime", () => ({
+vi.mock("@/src/server/platform/jobs/execution/runtime", () => ({
   drainPortableJobs: mocks.drainPortableJobs,
 }));
 

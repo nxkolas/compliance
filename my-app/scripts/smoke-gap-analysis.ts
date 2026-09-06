@@ -3,7 +3,7 @@ import postgres from "postgres";
 import {
   currentGapDefinitionHash,
   getCurrentGapDefinition,
-} from "../src/server/definitions";
+} from "../src/server/modules/gap-analysis";
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;

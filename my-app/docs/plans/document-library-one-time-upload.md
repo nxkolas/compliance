@@ -532,7 +532,7 @@ Do not emit duplicate archive/restore events for idempotent no-op calls. Keep in
 - `app/tool/organizations/[organizationId]/documents/page.tsx`
 - `components/documents/organization-document-manager.tsx`
 - optionally split the large manager into table, upload-dialog, and row-action components
-- `lib/i18n/messages/modules.ts` for both German and English
+- `src/i18n/messages/modules.ts` for both German and English
 
 ### Gap Analysis boundary
 

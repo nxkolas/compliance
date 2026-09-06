@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getGenerationOptions } from "@/lib/ai/generation-options";
+import { getGenerationOptions } from "@/src/server/platform/ai/generation-options";
 
 /**
  * Ollama serves the self-hosted path and only honours `reasoning_effort`. When

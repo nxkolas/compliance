@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDictionaryForLocale } from "@/lib/i18n";
+import { getDictionaryForLocale } from "@/src/i18n";
 
 describe("privacy content", () => {
   it("contains every provided section and keeps both locales structurally aligned", () => {

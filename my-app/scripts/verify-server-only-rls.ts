@@ -1,1 +1,1 @@
-import "@/src/server/operator-commands/verify-server-only-rls";
+import "@/src/server/operations/verify-server-only-rls";

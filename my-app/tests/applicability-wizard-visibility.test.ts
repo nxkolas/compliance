@@ -3,7 +3,7 @@ import {
   getVisibleOptions,
   getVisibleQuestions,
   type ApplicabilityAnswerValue,
-} from "@/src/server/applicability-check/question-visibility";
+} from "@/src/server/modules/compliance/runtime-release/question-visibility";
 
 type FixtureQuestion = {
   id: string;

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Button } from "./ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/src/supabase/server";
 import { ProfileMenu } from "./profile-menu";
-import { getDictionary, getLocale } from "@/lib/i18n";
+import { getDictionary, getLocale } from "@/src/i18n";
 import { ArrowRight, Building2 } from "lucide-react";
 
 export async function AuthButton() {

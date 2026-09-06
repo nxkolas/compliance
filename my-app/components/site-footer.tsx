@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Dictionary } from "@/lib/i18n";
+import type { Dictionary } from "@/src/i18n";
 
 type SiteFooterProps = {
   labels: Dictionary["home"]["footer"];

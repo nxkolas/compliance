@@ -19,7 +19,7 @@ vi.mock("@/src/db", () => ({
 }));
 
 const embed = vi.hoisted(() => vi.fn());
-vi.mock("@/src/server/documents", () => ({
+vi.mock("@/src/server/modules/documents", () => ({
   createDocumentEmbeddingProvider: vi.fn(() => ({
     provider: "test",
     model: "test-embedding",
@@ -31,7 +31,7 @@ vi.mock("@/src/server/documents", () => ({
   validateEmbeddings: vi.fn(),
 }));
 
-import { retrievePinnedLegalContext } from "@/src/server/ai/grounding/legal-retrieval";
+import { retrievePinnedLegalContext } from "@/src/server/modules/grounding/legal-retrieval";
 
 const pinnedSnapshots = [
   {

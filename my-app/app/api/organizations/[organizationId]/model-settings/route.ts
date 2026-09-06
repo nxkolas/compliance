@@ -1,14 +1,14 @@
-import { requireApiUser } from "@/src/server/api/auth";
-import { apiRoute } from "@/src/server/api/handler";
-import { readJsonBody } from "@/src/server/api/request";
-import { withAuthorizedOrganizationCommand } from "@/src/server/auth/organization-scope";
-import { authorizeOrganizationRead } from "@/src/server/auth/organization-scope";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { withAuthorizedOrganizationCommand } from "@/src/server/platform/auth/organization-scope";
+import { authorizeOrganizationRead } from "@/src/server/platform/auth/organization-scope";
 import { organizationModelSettingsInputSchema } from "@/src/contracts/organizations/model-settings";
 import {
   readOrganizationModelSettings,
   writeOrganizationModelSettings,
-} from "@/src/server/organizations/model-settings-service";
-import { scheduleAfterResponseDrain } from "@/src/server/job-execution/after-response";
+} from "@/src/server/modules/organizations";
+import { scheduleAfterResponseDrain } from "@/src/server/platform/jobs/execution/after-response";
 
 type Context = { params: Promise<{ organizationId: string }> };
 

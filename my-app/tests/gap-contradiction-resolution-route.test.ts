@@ -8,16 +8,16 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
-vi.mock("@/src/server/api/auth", () => ({ requireApiUser: mocks.requireApiUser }));
-vi.mock("@/src/server/api/idempotency", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({ requireApiUser: mocks.requireApiUser }));
+vi.mock("@/src/server/platform/http/idempotency", () => ({
   runIdempotentCommand: vi.fn(async (input) => ({ value: await input.execute(), reused: false })),
 }));
-vi.mock("@/src/server/gap-analysis", () => ({ enqueueGapContradictionResolution: mocks.enqueue }));
-vi.mock("@/src/server/jobs", () => ({
+vi.mock("@/src/server/modules/gap-analysis", () => ({ enqueueGapContradictionResolution: mocks.enqueue }));
+vi.mock("@/src/server/platform/jobs", () => ({
   getAuthorizedJob: mocks.getAuthorizedJob,
   toJobDto: (job: unknown) => job,
 }));
-vi.mock("@/src/server/idempotency", () => ({ databaseIdempotencyRepository: {} }));
+vi.mock("@/src/server/platform/idempotency", () => ({ databaseIdempotencyRepository: {} }));
 
 import { POST } from "@/app/api/organizations/[organizationId]/gap-analysis/revisions/[revisionId]/contradictions/[findingId]/resolve/route";
 

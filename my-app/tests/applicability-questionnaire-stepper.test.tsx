@@ -3,10 +3,10 @@ import {
   SectionedMultiSelect,
   WizardBackButton,
 } from "@/components/applicability-check/applicability-wizard";
-import { getDictionaryForLocale } from "@/lib/i18n";
+import { getDictionaryForLocale } from "@/src/i18n";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import type { ApplicabilityQuestionnaireDto } from "@/src/server/applicability-check/service";
-import { getCurrentApplicabilityDefinition } from "@/src/server/definitions/applicability";
+import type { ApplicabilityQuestionnaireDto } from "@/src/server/modules/applicability-check";
+import { getCurrentApplicabilityDefinition } from "@/src/server/modules/applicability-check/release/current";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

@@ -40,9 +40,9 @@ import { Input } from "@/components/ui/input";
 import {
   documentTypeLabel,
   formatDocumentBytes,
-} from "@/lib/documents/format";
-import type { Dictionary, Locale } from "@/lib/i18n";
-import { formatDate } from "@/lib/i18n/format";
+} from "@/src/documents/format";
+import type { Dictionary, Locale } from "@/src/i18n";
+import { formatDate } from "@/src/i18n/format";
 import type {
   DocumentDto,
   DocumentListQuery,

@@ -34,26 +34,26 @@ sequenceDiagram
     S->>S: Create immutable document_versions row, enqueue indexing
 ```
 
-The upload layer (`src/server/uploads/`) is generic: it prepares sessions,
+The upload layer (`src/server/platform/storage/`) is generic: it prepares sessions,
 signs URLs, and verifies uploaded objects against the expected size, MIME
 type, and optional SHA-256. Per-domain policies define allowed types and
 size ceilings:
 
 - organization documents: `organization-evidence` bucket, 10 MB max
-  (`src/server/documents/document-config.ts`);
+  (`src/server/modules/documents/document-config.ts`);
 - legal sources: `legal-corpus` bucket, 50 MB max, 10-minute session TTL
-  (`src/server/corpus/config.ts`);
+  (`src/server/modules/legal-corpus/config.ts`);
 - reports: written server-side to `compliance-reports`.
 
 Upload creation/completion are rate-limited operations; quotas are enforced
-per domain (`src/server/uploads/quota.ts`, `src/server/reports/quota.ts`).
+per domain (`src/server/platform/storage/quota.ts`, `src/server/modules/reports/quota.ts`).
 
 ## Server-side access
 
 - Downloads (`GET .../documents/:id/download`) and report downloads stream
   from Storage through the server with authorization.
 - Job handlers use a server-side Supabase admin client to read and write
-  objects (`src/server/supabase-admin.ts`).
+  objects (`src/server/platform/storage/supabase-admin.ts`).
 - Object identity (bucket + key), content hash, and lineage are recorded on
   the corresponding database rows; Storage itself is treated as
   content-addressed by hash.
@@ -69,8 +69,8 @@ per domain (`src/server/uploads/quota.ts`, `src/server/reports/quota.ts`).
 
 ## Practical navigation
 
-- Upload machinery: `src/server/uploads/`.
-- Document storage configuration: `src/server/documents/document-config.ts`.
-- Corpus storage configuration: `src/server/corpus/config.ts`.
-- Report storage: `src/server/reports/service.ts`.
-- Admin client: `src/server/supabase-admin.ts`.
+- Upload machinery: `src/server/platform/storage/`.
+- Document storage configuration: `src/server/modules/documents/document-config.ts`.
+- Corpus storage configuration: `src/server/modules/legal-corpus/config.ts`.
+- Report storage: `src/server/modules/reports/report-library.ts`.
+- Admin client: `src/server/platform/storage/supabase-admin.ts`.

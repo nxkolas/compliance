@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ComplianceDashboard } from "@/components/dashboard/compliance-dashboard";
-import { getDictionaryForLocale } from "@/lib/i18n";
+import { getDictionaryForLocale } from "@/src/i18n";
 
 const source = { sourceUpdatedAt: null, stale: false, outdated: false };
 function render(phase: number, openItems = 2) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ApplicabilityQuestionDto } from "@/src/server/applicability-check/service";
-import type { ApplicabilityAnswerValue } from "@/src/server/applicability-check/question-visibility";
+import type { ApplicabilityQuestionDto } from "@/src/server/modules/applicability-check";
+import type { ApplicabilityAnswerValue } from "@/src/server/modules/compliance/runtime-release/question-visibility";
 import {
   getActivityState,
   getWizardProgressQuestions,

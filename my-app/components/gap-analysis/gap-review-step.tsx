@@ -3,7 +3,7 @@
 import { Loader2, Play } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import type { GapWorkflowStep } from "@/src/server/gap-analysis/workflow-state";
+import type { GapWorkflowStep } from "@/src/server/modules/gap-analysis/workflow-state";
 import { GapGenerationProgress } from "./gap-generation-progress";
 import type { GapLabels, GapLocale, GapWorkflow } from "./types";
 import type { JobDto } from "@/src/contracts/common/jobs";

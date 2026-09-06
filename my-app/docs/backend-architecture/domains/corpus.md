@@ -58,7 +58,7 @@ Corpus provisioning is a platform-operator workflow, not an organization
 feature:
 
 1. Operators create sources/versions/renditions from a reviewed manifest
-   (scripts + `src/server/corpus/`).
+   (scripts + `src/server/modules/legal-corpus/`).
 2. The portable job runtime processes each rendition into chunks and search vectors.
 3. Reviewers bind stable provision keys to exact chunks; validation proves
    completeness and citation resolvability.
@@ -71,7 +71,7 @@ rate-limited (`corpus:operate`).
 ## Pinning and retrieval
 
 Generation resolves the pinned legal scope per family
-(`src/server/ai/grounding/legal-retrieval.ts`): the snapshot active at the
+(`src/server/modules/grounding/legal-retrieval.ts`): the snapshot active at the
 operation is fixed, chunks are ranked lexically against the query, filtered
 by authority tier, and surfaced with stable citation IDs. This makes an
 AI-run's legal basis exact and reproducible even after new sources are
@@ -79,8 +79,8 @@ added.
 
 ## Practical navigation
 
-- Domain and services: `src/server/corpus/`.
-- Processing job: `src/server/corpus/processing-service.ts`.
-- Snapshot activation: `src/server/corpus/snapshot-service.ts`.
-- Retrieval integration: `src/server/ai/grounding/legal-retrieval.ts`.
+- Domain and services: `src/server/modules/legal-corpus/`.
+- Processing job: `src/server/modules/legal-corpus/processing-service.ts`.
+- Snapshot activation: `src/server/modules/legal-corpus/snapshot-service.ts`.
+- Retrieval integration: `src/server/modules/grounding/legal-retrieval.ts`.
 - Operator scripts: `scripts/` (provision, validate, activate, export).

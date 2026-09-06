@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readApplicabilityDraft, subscribeApplicabilityDraft, writeApplicabilityDraft } from "@/lib/applicability-draft";
+import { readApplicabilityDraft, subscribeApplicabilityDraft, writeApplicabilityDraft } from "@/src/applicability-draft";
 
 afterEach(() => vi.unstubAllGlobals());
 

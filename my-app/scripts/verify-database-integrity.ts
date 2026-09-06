@@ -1,1 +1,1 @@
-import "@/src/server/operator-commands/verify-database-integrity";
+import "@/src/server/operations/verify-database-integrity";

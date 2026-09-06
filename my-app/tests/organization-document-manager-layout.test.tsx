@@ -1,5 +1,5 @@
 import { OrganizationDocumentManager } from "@/components/documents/organization-document-manager";
-import { getDefaultDictionary } from "@/lib/i18n";
+import { getDefaultDictionary } from "@/src/i18n";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 

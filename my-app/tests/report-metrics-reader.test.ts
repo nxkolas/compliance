@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
-import type { OrganizationScopeExecutor } from "@/src/server/auth/organization-scope";
-import { readReportMetrics } from "@/src/server/reports/metrics-reader";
+import type { OrganizationScopeExecutor } from "@/src/server/platform/auth/organization-scope";
+import { readReportMetrics } from "@/src/server/modules/reports/metrics-reader";
 
 function mockExecutor(rows: Array<{ outputRevisionId: string; status: string; criticality: string }>) {
   const where = vi.fn().mockResolvedValue(rows);

@@ -12,10 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { Dictionary } from "@/lib/i18n";
-import { localizeUiError } from "@/lib/i18n/errors";
-import type { Locale } from "@/lib/i18n-config";
-import { cn } from "@/lib/utils";
+import type { Dictionary } from "@/src/i18n";
+import { localizeUiError } from "@/src/i18n/errors";
+import type { Locale } from "@/src/i18n/config";
+import { cn } from "@/src/utils";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
 import { organizationsClient } from "@/src/client/organizations";
 import { Building2, Loader2 } from "lucide-react";

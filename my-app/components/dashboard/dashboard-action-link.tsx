@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { readApplicabilityDraft, subscribeApplicabilityDraft } from "@/lib/applicability-draft";
+import { readApplicabilityDraft, subscribeApplicabilityDraft } from "@/src/applicability-draft";
 
 export function DashboardActionLink({ href, label, draftKey, startLabel, continueLabel }: { href: string; label: string; draftKey?: string; startLabel?: string; continueLabel?: string }) {
   const draft = useSyncExternalStore(subscribeApplicabilityDraft, () => draftKey ? readApplicabilityDraft(draftKey) : null, () => null);

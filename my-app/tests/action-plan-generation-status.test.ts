@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 
 const mocks = vi.hoisted(() => ({ authorize: vi.fn() }));
-vi.mock("@/src/server/auth/organization-scope", () => ({ authorizeOrganizationRead: mocks.authorize }));
-import { getActionPlanGenerationStatus } from "@/src/server/action-plans/generation-status";
+vi.mock("@/src/server/platform/auth/organization-scope", () => ({ authorizeOrganizationRead: mocks.authorize }));
+import { getActionPlanGenerationStatus } from "@/src/server/modules/action-plans/generation-status";
 
 describe("action plan generation status", () => {
   beforeEach(() => vi.clearAllMocks());

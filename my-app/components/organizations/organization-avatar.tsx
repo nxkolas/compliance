@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/src/utils";
 
 export function organizationInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);

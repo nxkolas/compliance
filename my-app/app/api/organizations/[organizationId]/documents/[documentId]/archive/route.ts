@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { archiveOrganizationDocument } from "@/src/server/documents";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { archiveOrganizationDocument } from "@/src/server/modules/documents";
 
 export const POST = apiRoute(
   async ({

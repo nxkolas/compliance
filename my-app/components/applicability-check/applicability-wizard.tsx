@@ -10,19 +10,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "@/src/utils";
 import {
   getVisibleOptions,
   getVisibleQuestions,
   isAnswered,
   type ApplicabilityAnswerValue,
-} from "@/src/server/applicability-check/question-visibility";
+} from "@/src/server/modules/compliance/runtime-release/question-visibility";
 import type {
   ApplicabilityQuestionDto,
   ApplicabilityQuestionnaireDto,
-} from "@/src/server/applicability-check/service";
+} from "@/src/server/modules/applicability-check";
 import { applicabilityCheckClient } from "@/src/client/applicability-check";
-import { localizeUiError } from "@/lib/i18n/errors";
+import { localizeUiError } from "@/src/i18n/errors";
 import {
   ArrowLeft,
   Check,
@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { readApplicabilityDraft, writeApplicabilityDraft } from "@/lib/applicability-draft";
+import { readApplicabilityDraft, writeApplicabilityDraft } from "@/src/applicability-draft";
 import {
   aggregationAutoAnswer,
   getWizardProgressQuestions,

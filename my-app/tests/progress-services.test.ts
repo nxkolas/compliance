@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getCurrentGapDefinition } from "@/src/server/definitions";
+import { getCurrentGapDefinition } from "@/src/server/modules/gap-analysis/release/current";
 
 const mocks = vi.hoisted(() => ({
   authorize: vi.fn(),
@@ -10,12 +10,12 @@ const mocks = vi.hoisted(() => ({
   where: vi.fn(),
 }));
 
-vi.mock("@/src/server/auth/organization-scope", () => ({
+vi.mock("@/src/server/platform/auth/organization-scope", () => ({
   authorizeOrganizationRead: mocks.authorize,
 }));
 
-import { getActionPlanProgress } from "@/src/server/action-plans/progress-service";
-import { getGapQuestionnaireProgress } from "@/src/server/gap-analysis/progress-service";
+import { getActionPlanProgress } from "@/src/server/modules/action-plans/progress-service";
+import { getGapQuestionnaireProgress } from "@/src/server/modules/gap-analysis/progress-service";
 
 describe("workflow progress services", () => {
   beforeEach(() => {

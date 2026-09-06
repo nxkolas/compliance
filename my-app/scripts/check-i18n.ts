@@ -3,7 +3,7 @@ import path from "node:path";
 import ts from "typescript";
 
 const roots = ["app", "components"];
-const explicitFiles = ["src/server/reports/renderer.tsx"];
+const explicitFiles = ["src/server/modules/reports/renderer.tsx"];
 const userFacingAttributes = new Set([
   "alt",
   "aria-label",

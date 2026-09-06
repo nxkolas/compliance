@@ -1,5 +1,5 @@
-import { requireAuth } from "@/lib/supabase/require-auth";
-import { getApplicabilityOverviewForUser } from "@/src/server/applicability-check";
+import { requireAuth } from "@/src/supabase/require-auth";
+import { getApplicabilityOverviewForUser } from "@/src/server/modules/applicability-check";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 

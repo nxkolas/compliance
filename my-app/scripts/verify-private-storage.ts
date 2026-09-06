@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
+import { getSupabaseAdminClient } from "@/src/server/platform/storage/supabase-admin";
 
 const requiredBuckets = [
   "organization-evidence",

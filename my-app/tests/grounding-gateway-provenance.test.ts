@@ -67,7 +67,7 @@ vi.mock("@/src/db", () => ({
   },
 }));
 
-vi.mock("@/src/server/ai/grounding/legal-retrieval", () => ({
+vi.mock("@/src/server/modules/grounding/legal-retrieval", () => ({
   resolvePinnedLegalScope: vi.fn(),
   retrievePinnedLegalContext: vi.fn().mockResolvedValue([
     {
@@ -86,7 +86,7 @@ vi.mock("@/src/server/ai/grounding/legal-retrieval", () => ({
   ]),
 }));
 
-vi.mock("@/src/server/ai/grounding/organization-retrieval", () => ({
+vi.mock("@/src/server/modules/grounding/organization-retrieval", () => ({
   retrieveOrganizationContext: vi.fn().mockResolvedValue([
     {
       channel: "organization_document",
@@ -102,7 +102,7 @@ vi.mock("@/src/server/ai/grounding/organization-retrieval", () => ({
   ]),
 }));
 
-vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
+vi.mock("@/src/server/platform/ai/generation/job-run-lifecycle", () => ({
   assertLiveParentJobForAiRun: vi.fn().mockResolvedValue(undefined),
   createAiProcessingRunWithLiveJobGate: vi.fn(async (values) => {
     mocks.runValues.push(values);
@@ -113,12 +113,12 @@ vi.mock("@/src/server/ai/generation/job-run-lifecycle", () => ({
   }),
 }));
 
-import { runGroundedOperation } from "@/src/server/ai/grounding/gateway";
+import { runGroundedOperation } from "@/src/server/modules/grounding/gateway";
 import {
   generationCallAttemptIdentity,
   generationReservationIdentity,
   parseDurableExecutionAttempt,
-} from "@/src/server/ai/generation/attempt-identity";
+} from "@/src/server/platform/ai/generation/attempt-identity";
 
 describe("grounding gateway provenance", () => {
   beforeEach(() => {
@@ -146,6 +146,7 @@ describe("grounding gateway provenance", () => {
       actor: { userId: "00000000-0000-4000-8000-000000000001" },
       organizationId: "00000000-0000-4000-8000-000000000002",
       outputLocale: "en",
+      outputLocaleInstruction: "Write every generated free-form field in English.",
       workflowReleaseId: "definition-hash",
       asOfDate: "2026-08-02",
       organizationEvidenceVersionIds: [
@@ -366,6 +367,7 @@ function runDurableGroundedAttempt(input: {
     actor: { userId: "00000000-0000-4000-8000-000000000001" },
     organizationId: "00000000-0000-4000-8000-000000000002",
     outputLocale: "en",
+    outputLocaleInstruction: "Write every generated free-form field in English.",
     workflowReleaseId: "definition-hash",
     definitionHash: "definition-hash",
     asOfDate: "2026-08-03",

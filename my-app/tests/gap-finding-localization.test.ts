@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { localizeGapFinding } from "@/src/server/gap-analysis/finding-localization";
-import type { LoadedGapRelease } from "@/src/server/gap-analysis/release-loader";
+import { localizeGapFinding } from "@/src/server/modules/gap-analysis/finding-localization";
+import type { LoadedGapRelease } from "@/src/server/modules/gap-analysis/release-loader";
 
 function requirement(
   title: string,

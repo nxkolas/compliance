@@ -9,11 +9,11 @@ const mocks = vi.hoisted(() => ({
   getOrganizationProgress: vi.fn(),
 }));
 
-vi.mock("@/src/server/api/auth", () => ({
+vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
 
-vi.mock("@/src/server/organization-progress/service", () => ({
+vi.mock("@/src/server/modules/organizations", () => ({
   getOrganizationProgress: mocks.getOrganizationProgress,
 }));
 

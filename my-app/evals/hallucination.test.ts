@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { renderComplianceSystemPrompt } from "../lib/ai/prompts/compliance-system";
-import { getPromptModeConfig } from "../lib/ai/prompts/prompt-modes";
-import { getModelCapabilityProfile } from "../lib/ai/model-capabilities";
+import { renderComplianceSystemPrompt } from "../src/server/modules/grounding/prompts/compliance-system";
+import { getPromptModeConfig } from "../src/server/modules/grounding/prompts/prompt-modes";
+import { getModelCapabilityProfile } from "../src/server/platform/ai/model-capabilities";
 
 describe("hallucination guardrails", () => {
   it("instructs the model not to invent legal deadlines or sources", () => {

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { SiteFooter } from "@/components/site-footer";
-import { getDefaultDictionary } from "@/lib/i18n";
+import { getDefaultDictionary } from "@/src/i18n";
 
 const navigation = vi.hoisted(() => ({
   pathname: "/tool/organizations/organization-1",

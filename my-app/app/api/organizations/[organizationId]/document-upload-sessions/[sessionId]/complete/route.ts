@@ -1,13 +1,13 @@
 import { revalidatePath } from "next/cache";
 import { documentUploadCompletionSchema } from "@/src/contracts/documents";
-import { apiRoute } from "@/src/server/api/handler";
-import { requireApiUser } from "@/src/server/api/auth";
-import { readJsonBody } from "@/src/server/api/request";
-import { completeDocumentUpload } from "@/src/server/documents";
-import { enforceOperationRateLimit } from "@/src/server/api/operation-rate-limit";
-import { runIdempotentCommand } from "@/src/server/api/idempotency";
-import { databaseIdempotencyRepository } from "@/src/server/idempotency";
-import { scheduleAfterResponseDrain } from "@/src/server/job-execution/after-response";
+import { apiRoute } from "@/src/server/platform/http/handler";
+import { requireApiUser } from "@/src/server/platform/http/auth";
+import { readJsonBody } from "@/src/server/platform/http/request";
+import { completeDocumentUpload } from "@/src/server/modules/documents";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
+import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
+import { scheduleAfterResponseDrain } from "@/src/server/platform/jobs/execution/after-response";
 export const POST = apiRoute(async ({ request, routeContext, requestId }: { request: Request; routeContext: { params: Promise<{ organizationId: string; sessionId: string }> }; requestId: string }) => {
   const user = await requireApiUser(); const params = await routeContext.params;
   await enforceOperationRateLimit({ userId: user.id, operation: "uploads:complete", scopeId: params.organizationId });

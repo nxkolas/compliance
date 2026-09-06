@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getDictionaryForLocale } from "@/lib/i18n";
-import { buildDashboardPresentation } from "@/lib/i18n/dashboard";
+import { getDictionaryForLocale } from "@/src/i18n";
+import { buildDashboardPresentation } from "@/src/i18n/dashboard";
 
 const dashboard = {
   applicability: { outcome: "important_entity" },

@@ -1,7 +1,7 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
-import { drainPortableJobs } from "@/src/server/job-execution/runtime";
-import { jsonError, jsonSuccess } from "@/src/server/api/response";
-import { resolveRequestId } from "@/src/server/api/request-id";
+import { drainPortableJobs } from "@/src/server/platform/jobs/execution/runtime";
+import { jsonError, jsonSuccess } from "@/src/server/platform/http/response";
+import { resolveRequestId } from "@/src/server/platform/http/request-id";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

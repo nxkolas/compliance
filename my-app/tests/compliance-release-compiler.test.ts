@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { nis2ReleaseDefinition } from "@/src/server/compliance/nis2/releases/2026-v1/release";
-import { compileRelease } from "@/src/server/compliance/publishing/compile-release";
-import { evaluateRuleSet } from "@/src/server/applicability-check/rules";
+import { nis2ReleaseDefinition } from "@/src/server/modules/compliance/nis2/releases/2026-v1/release";
+import { compileRelease } from "@/src/server/modules/compliance/publishing/compile-release";
+import { evaluateRuleSet } from "@/src/server/modules/compliance/nis2/rules";
 import {
   getNis2ReleaseMessage,
   getNis2ReleaseMessageKeys,
-} from "@/lib/i18n/messages/nis2-release";
+} from "@/src/i18n/messages/nis2-release";
 
 describe("immutable NIS2 release compiler", () => {
   it("publishes the eight guided-wizard questions with complete localized tooltips", () => {
