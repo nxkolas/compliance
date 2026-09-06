@@ -188,10 +188,10 @@ export function OrganizationInbox({
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     disabled
                     title={labels.declineUnavailable}
-                    className="h-10 w-full rounded-lg border border-white/70 bg-transparent px-4 text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] disabled:cursor-not-allowed disabled:opacity-100 sm:w-auto"
+                    className="h-10 w-full cursor-pointer rounded-lg border border-white/60 bg-[#272A2F] px-4 py-1.5 text-center font-sans text-base leading-6 font-medium text-white/70 shadow-[0px_3px_4px_0px_rgba(255,255,255,0.12)] hover:bg-[#373A40] hover:text-white/70 disabled:pointer-events-auto disabled:opacity-100 sm:w-[104px] dark:hover:bg-[#373A40]"
                   >
                     {labels.decline}
                   </Button>

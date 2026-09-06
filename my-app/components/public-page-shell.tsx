@@ -17,10 +17,6 @@ export function PublicPageShell({
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-      <Suspense fallback={null}>
-        <PublicLanguageSwitcher showThemeSwitcher compactOnMobile />
-      </Suspense>
-
       <main className="dark min-h-screen overflow-hidden bg-transparent text-white">
         <header className="dark fixed inset-x-0 top-0 z-40 h-32 bg-[#02040E]/25 text-white backdrop-blur-md sm:h-28">
           <div className="relative mx-auto flex h-full max-w-[1728px] items-start gap-8 px-4 pt-4 pb-14 sm:items-center sm:px-10 sm:py-0 lg:px-12 xl:px-[72px]">
@@ -49,16 +45,26 @@ export function PublicPageShell({
               </Link>
             </nav>
 
-            <div className="absolute right-4 bottom-2 text-sm sm:static sm:mr-32">
-              {hasEnvVars ? (
-                <Suspense fallback={<div className="h-8 w-48" />}>
-                  <AuthButton />
-                </Suspense>
-              ) : (
-                <p className="text-xs text-white/60 sm:text-sm">
-                  {dictionary.common.supabaseMissing}
-                </p>
-              )}
+            <div className="absolute top-3 right-4 z-10 flex flex-col items-end gap-3 text-sm xl:static xl:flex-row xl:items-center xl:gap-2">
+              <Suspense fallback={null}>
+                <PublicLanguageSwitcher
+                  showThemeSwitcher
+                  compactOnMobile
+                  inline
+                  className="order-1 xl:order-2"
+                />
+              </Suspense>
+              <div className="order-2 xl:order-1">
+                {hasEnvVars ? (  
+                  <Suspense fallback={<div className="h-8 w-48" />}>  
+                    <AuthButton />  
+                  </Suspense>  
+                ) : (  
+                  <p className="text-xs text-white/60 sm:text-sm">  
+                    {dictionary.common.supabaseMissing}  
+                  </p>  
+                )}
+              </div>
             </div>
           </div>
         </header>

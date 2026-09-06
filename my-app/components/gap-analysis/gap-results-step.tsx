@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowRight,
   CircleX,
   FileText,
   Loader2,
@@ -318,12 +319,16 @@ export function GapResultsStep({
       actionable.length &&
       workflow.canManage ? (
         <Button
-          className="mt-6 h-12 cursor-pointer bg-[#002BFF] px-6 text-white hover:bg-[#123BFF] disabled:cursor-not-allowed"
+          className="group mt-6 h-12 cursor-pointer gap-2.5 bg-[#002BFF] px-6 text-white hover:bg-[#123BFF] disabled:cursor-not-allowed"
           disabled={busy || Boolean(unresolvedContradictions.length)}
           onClick={generateActionPlan}
         >
-          {busy ? <Loader2 className="animate-spin" /> : null}
           {labels.generateActionPlan}
+          {busy ? (
+            <Loader2 aria-hidden="true" className="animate-spin" />
+          ) : (
+            <ArrowRight aria-hidden="true" className="size-4 transition-transform duration-200 group-hover:translate-x-1" />
+          )}
         </Button>
       ) : null}
     </section>

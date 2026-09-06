@@ -99,7 +99,10 @@ export const dashboardSchema = z.object({
     statuses: z.object({ open: z.number().int().nonnegative(), inProgress: z.number().int().nonnegative(), done: z.number().int().nonnegative(), cancelled: z.number().int().nonnegative() }),
     percentage: z.number().int().min(0).max(100),
   }),
-  report: z.object({ id: z.uuid().nullable(), state: z.string().nullable(), sourceUpdatedAt: z.iso.datetime().nullable(), stale: z.boolean(), outdated: z.boolean() }),
+  report: z.object({
+    id: z.uuid().nullable(), state: z.string().nullable(), sourceUpdatedAt: z.iso.datetime().nullable(), stale: z.boolean(), outdated: z.boolean(),
+    includes: z.object({ applicability: z.boolean(), gap: z.boolean(), actionPlan: z.boolean() }),
+  }),
   workflow: z.object({
     steps: z.array(z.object({ key: dashboardStepKeySchema, status: dashboardStepStatusSchema, updatedAt: z.iso.datetime().nullable() })).length(3),
   }),

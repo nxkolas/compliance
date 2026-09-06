@@ -1,14 +1,5 @@
-import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
-import { AppShell } from "@/components/app-shell";
-import { AuthButton } from "@/components/auth-button";
-import { BrandLogo } from "@/components/brand-logo";
-import { PageHeader } from "@/components/page-header";
-import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
+import { PublicPageShell } from "@/components/public-page-shell";
 import type { Dictionary } from "@/src/i18n";
-import { listOrganizationsForUserPage } from "@/src/server/modules/organizations";
-import { createClient } from "@/src/supabase/server";
-import { hasEnvVars } from "@/src/utils";
 
 const privacyEmail = "complyx.de@gmail.com";
 
@@ -25,7 +16,7 @@ type LegalDocumentContent = {
   }[];
 };
 
-export async function LegalPage({
+export function LegalPage({
   dictionary,
   document,
   page,
@@ -34,123 +25,38 @@ export async function LegalPage({
   document: LegalDocumentContent;
   page: "privacy" | "cookie";
 }) {
-  const viewer = await getLegalViewer();
-
-  if (viewer) {
-    return (
-      <AppShell dictionary={dictionary} organizationId={viewer.organizationId}>
-        <LegalDocument document={document} page={page} shell="app" />
-      </AppShell>
-    );
-  }
-
   return (
-    <PublicLegalShell dictionary={dictionary}>
-      <LegalDocument document={document} page={page} shell="public" />
-    </PublicLegalShell>
-  );
-}
-
-async function getLegalViewer() {
-  if (!hasEnvVars) return null;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  const organizations = await listOrganizationsForUserPage({
-    userId: user.id,
-    status: "active",
-    limit: 1,
-  });
-
-  return { organizationId: organizations.organizations[0]?.id };
-}
-
-function PublicLegalShell({
-  dictionary,
-  children,
-}: {
-  dictionary: Dictionary;
-  children: ReactNode;
-}) {
-  const home = dictionary.home;
-
-  return (
-    <main className="dark min-h-screen overflow-x-hidden bg-[#02040E] text-white">
-      <header className="dark fixed inset-x-0 top-0 z-40 h-32 bg-[#02040E]/25 text-white backdrop-blur-md sm:h-28">
-        <div className="relative mx-auto flex h-full max-w-[1728px] items-start gap-8 px-4 pt-4 pb-14 sm:items-center sm:px-10 sm:py-0 lg:px-12 xl:px-[72px]">
-          <Link href="/" aria-label={home.brand} className="shrink-0">
-            <BrandLogo
-              alt={home.brand}
-              width={203}
-              height={66}
-              priority
-              className="h-auto w-28 sm:w-44 lg:w-[203px]"
-            />
-          </Link>
-
-          <nav className="ml-auto hidden items-center gap-8 text-base font-medium text-white lg:flex">
-            <Link className="transition-colors hover:text-white/75" href="/#nis2">
-              {home.navigation.nis2}
-            </Link>
-            <Link className="transition-colors hover:text-white/75" href="/#about">
-              {home.navigation.about}
-            </Link>
-          </nav>
-
-          <div className="absolute top-3 right-4 z-10 flex flex-col items-end gap-3 text-sm xl:static xl:flex-row xl:items-center xl:gap-2">
-            <PublicLanguageSwitcher
-              showThemeSwitcher
-              compactOnMobile
-              inline
-              className="order-1 xl:order-2"
-            />
-            <div className="order-2 xl:order-1">
-              {hasEnvVars ? (
-                <Suspense fallback={<div className="h-10 w-48" />}>
-                  <AuthButton />
-                </Suspense>
-              ) : (
-                <p className="text-xs text-white/60 sm:text-sm">
-                  {dictionary.common.supabaseMissing}
-                </p>
-              )}
-            </div>
-          </div>
+    <PublicPageShell dictionary={dictionary}>
+      <section className="relative isolate overflow-hidden pt-14 pb-16 sm:pb-24">
+        <div className="mx-auto max-w-[1728px] px-6 sm:px-10 lg:px-12 xl:px-[72px]">
+          <LegalDocument document={document} page={page} />
         </div>
-      </header>
-      <div aria-hidden="true" className="h-32 sm:h-28" />
-      <div className="mx-auto w-full max-w-[1728px] px-4 pt-8 pb-16 sm:px-10 sm:pt-12 lg:px-12 xl:px-[72px]">
-        {children}
-      </div>
-    </main>
+      </section>
+    </PublicPageShell>
   );
 }
 
 export function LegalDocument({
   document,
   page,
-  shell,
 }: {
   document: LegalDocumentContent;
   page: "privacy" | "cookie";
-  shell: "app" | "public";
 }) {
   return (
     <section
       data-legal-page={page}
-      data-legal-shell={shell}
+      data-legal-shell="public"
       className="flex w-full min-w-0 flex-col"
     >
-      <PageHeader
-        title={document.title}
-        subtitle={document.introduction}
-        className="w-full [&>p]:max-w-[1130px]"
-      />
+      <header className="max-w-[1432px]">
+        <h1 className="text-3xl leading-tight font-bold tracking-tight text-white sm:text-4xl">
+          {document.title}
+        </h1>
+        <p className="mt-4 text-base leading-7 font-normal text-white/80 sm:text-lg">
+          {document.introduction}
+        </p>
+      </header>
 
       <article className="mt-12 w-full overflow-hidden rounded-xl border-[1.5px] border-[#3D4049] bg-[#1B1E27] text-white shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] sm:mt-16">
         {document.sections.map((section) => (

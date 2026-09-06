@@ -50,7 +50,7 @@ export function DashboardActivityFeed({
     }
   }
 
-  if (!items.length) return <p className="py-6 text-sm text-muted-foreground">{labels.empty}</p>;
+  if (!items.length) return <p className="flex h-full min-h-24 items-center justify-center py-6 text-center text-sm text-muted-foreground">{labels.empty}</p>;
 
   return <>
     <ul className="space-y-4">{items.map((item) => <li key={item.id}>{activityLink(item, labels.activityText[item.code], relative)}</li>)}</ul>

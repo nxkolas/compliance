@@ -347,6 +347,11 @@ async function readDashboardBase(
           : null,
         stale: reportOutdated,
         outdated: reportOutdated,
+        includes: {
+          applicability: Boolean(latestReport?.applicabilityRevisionId),
+          gap: Boolean(latestReport?.gapRevisionId),
+          actionPlan: Boolean(latestReport?.actionPlanId),
+        },
       },
       workflow: {
         steps: [
