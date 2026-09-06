@@ -1,11 +1,7 @@
-import { AuthButton } from "@/components/auth-button";
-import { BrandLogo } from "@/components/brand-logo";
-import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
+import { PublicPageShell } from "@/components/public-page-shell";
 import { getDictionary } from "@/src/i18n";
-import { hasEnvVars } from "@/src/utils";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export async function generateMetadata(): Promise<Metadata> {
   const dictionary = await getDictionary();
@@ -18,7 +14,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ImprintPage() {
   const dictionary = await getDictionary();
-  const home = dictionary.home;
   const imprint = dictionary.legal.imprint;
   const websiteUrl = process.env.APP_PUBLIC_URL ?? "http://localhost:3000";
   const websiteDisplay = websiteUrl
@@ -26,55 +21,8 @@ export default async function ImprintPage() {
     .replace(/\/$/, "");
 
   return (
-    <div className="min-h-screen bg-transparent text-white">
-      <Suspense fallback={null}>
-        <PublicLanguageSwitcher showThemeSwitcher compactOnMobile />
-      </Suspense>
-
-      <main className="dark min-h-screen overflow-hidden bg-transparent text-white">
-        <header className="dark fixed inset-x-0 top-0 z-40 h-32 bg-[#02040E]/25 text-white backdrop-blur-md sm:h-28">
-          <div className="relative mx-auto flex h-full max-w-[1728px] items-start gap-8 px-4 pb-14 pt-4 sm:items-center sm:px-10 sm:py-0 lg:px-12 xl:px-[72px]">
-            <Link href="/" aria-label={home.brand} className="shrink-0">
-              <BrandLogo
-                alt={home.brand}
-                width={203}
-                height={66}
-                priority
-                className="h-auto w-28 sm:w-44 lg:w-[203px]"
-              />
-            </Link>
-
-            <nav className="ml-auto hidden items-center gap-8 font-sans text-base font-medium text-white lg:flex">
-              <Link
-                className="transition-all duration-200 hover:text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.70)]"
-                href="/#nis2"
-              >
-                {home.navigation.nis2}
-              </Link>
-              <Link
-                className="transition-all duration-200 hover:text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.70)]"
-                href="/#about"
-              >
-                {home.navigation.about}
-              </Link>
-            </nav>
-
-            <div className="absolute right-4 bottom-2 text-sm sm:static sm:mr-32">
-              {hasEnvVars ? (
-                <Suspense fallback={<div className="h-8 w-48" />}>
-                  <AuthButton />
-                </Suspense>
-              ) : (
-                <p className="text-xs text-white/60 sm:text-sm">
-                  {dictionary.common.supabaseMissing}
-                </p>
-              )}
-            </div>
-          </div>
-        </header>
-        <div aria-hidden="true" className="h-32 sm:h-28" />
-
-        <section className="relative isolate overflow-hidden pb-16 pt-14 sm:pb-24">
+    <PublicPageShell dictionary={dictionary}>
+      <section className="relative isolate overflow-hidden pt-14 pb-16 sm:pb-24">
           <div className="mx-auto max-w-[1728px] px-6 sm:px-10 lg:px-12 xl:px-[72px]">
             <header className="max-w-[1432px]">
               <h1 className="text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
@@ -149,10 +97,8 @@ export default async function ImprintPage() {
               </ImprintSection>
             </article>
           </div>
-        </section>
-
-      </main>
-    </div>
+      </section>
+    </PublicPageShell>
   );
 }
 

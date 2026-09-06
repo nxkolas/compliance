@@ -4,6 +4,22 @@ export const legalPagesMessages = defineFeatureMessages({
   de: {
     legal: {
       footerNavigationLabel: "Rechtliche Informationen",
+      licenses: {
+        metadataTitle: "Drittanbieter-Lizenzen | ComplyX",
+        metadataDescription:
+          "Lizenzen der von ComplyX verwendeten Open-Source-Software.",
+        title: "Drittanbieter-Lizenzen",
+        introduction:
+          "ComplyX verwendet Open-Source-Software. Die {count} nachfolgend aufgeführten Pakete werden unter den angegebenen Lizenzen weitergegeben, jeweils einschließlich des vollständigen Lizenztexts. Erstellt am {date}.",
+        filterPlaceholder: "Nach Paket, Herausgeber oder Lizenz filtern…",
+        filterAriaLabel: "Pakete filtern",
+        licenseFilterAriaLabel: "Nach Lizenz filtern",
+        allLicenses: "Alle Lizenzen ({count})",
+        packageCount: "{shown} von {total} Paketen",
+        missingLicense:
+          "Für dieses Paket wurde keine Lizenzdatei mitgeliefert; angegebene Lizenz: {license}.",
+        notice: "Hinweis",
+      },
       privacy: {
         metadataTitle: "Datenschutz | ComplyX",
         metadataDescription:
@@ -281,6 +297,22 @@ export const legalPagesMessages = defineFeatureMessages({
   en: {
     legal: {
       footerNavigationLabel: "Legal information",
+      licenses: {
+        metadataTitle: "Third-Party Licenses | ComplyX",
+        metadataDescription:
+          "Licenses for open-source software used by ComplyX.",
+        title: "Third-Party Licenses",
+        introduction:
+          "ComplyX bundles open-source software. The {count} packages below are redistributed under the licenses shown, with the full license text of each. Generated {date}.",
+        filterPlaceholder: "Filter by package, publisher or license…",
+        filterAriaLabel: "Filter packages",
+        licenseFilterAriaLabel: "Filter by license",
+        allLicenses: "All licenses ({count})",
+        packageCount: "{shown} of {total} packages",
+        missingLicense:
+          "No license file shipped with this package; declared license: {license}.",
+        notice: "Notice",
+      },
       privacy: {
         metadataTitle: "Privacy | ComplyX",
         metadataDescription:
