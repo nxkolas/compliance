@@ -20,7 +20,23 @@ describe("privacy content", () => {
     expect(renderedGerman).toContain("Automatisierte Entscheidungen");
     expect(renderedGerman).toContain("Ihre Rechte");
     expect(renderedGerman).toContain("Datensicherheit und Änderungen");
-    expect(renderedGerman).toContain("Stand: August 2026");
+    expect(renderedGerman).toContain("Stand: September 2026");
+    expect(messageKeys(english)).toEqual(messageKeys(german));
+  });
+
+  it("documents the current browser-storage inventory in both locales", () => {
+    const german = getDictionaryForLocale("de").legal.cookie;
+    const english = getDictionaryForLocale("en").legal.cookie;
+    const renderedGerman = JSON.stringify(german);
+
+    expect(renderedGerman).toContain("sb-<Projektkennung>-auth-token");
+    expect(renderedGerman).toContain("complyx-guest-applicability-claim");
+    expect(renderedGerman).toContain("complyx-locale");
+    expect(renderedGerman).toContain("complyx-theme");
+    expect(renderedGerman).toContain("comply:tutorial-progress");
+    expect(renderedGerman).toContain("compliancetool.localModelBaseUrl");
+    expect(renderedGerman).toContain("complyx:applicability-draft");
+    expect(renderedGerman).not.toContain("sidebar_state");
     expect(messageKeys(english)).toEqual(messageKeys(german));
   });
 });

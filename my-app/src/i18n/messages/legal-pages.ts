@@ -89,11 +89,12 @@ export const legalPagesMessages = defineFeatureMessages({
           {
             title: "Cookies und lokale Speicherung",
             blocks: [
-              { type: "paragraph", text: "ComplyX verwendet ausschließlich technisch notwendige Cookies oder vergleichbare Speichertechniken. Diese werden beispielsweise benötigt, um:" },
-              { type: "list", items: ["die Anmeldung aufrechtzuerhalten", "Sitzungsinformationen zu speichern", "geschützte Bereiche bereitzustellen", "den Bearbeitungsfortschritt oder Einstellungen zu sichern"] },
+              { type: "paragraph", text: "ComplyX verwendet technisch notwendige Cookies sowie lokale Speichertechniken für ausdrücklich angeforderte Funktionen. Dazu gehören insbesondere:" },
+              { type: "list", items: ["Anmeldung, Sitzungsverwaltung und geschützte Bereiche", "Abruf und Übernahme eines als Gast erstellten Betroffenheitschecks", "von Nutzenden gewählte Sprach- und Darstellungsoptionen", "Entwürfe, Tutorial-Fortschritt und Einstellungen für ein ausdrücklich verbundenes lokales KI-Modell"] },
               { type: "paragraph", text: "Analyse-, Marketing- oder Werbe-Cookies werden derzeit nicht eingesetzt." },
-              { type: "paragraph", text: "Rechtsgrundlage für die Speicherung von Informationen auf Ihrem Endgerät und den Zugriff darauf ist § 25 Abs. 2 Nr. 2 TDDDG. Der Zugriff ist unbedingt erforderlich, damit wir den von Ihnen ausdrücklich gewünschten Dienst, insbesondere die Anmeldung und die geschützten Bereiche, bereitstellen können. Eine Einwilligung ist hierfür nicht erforderlich. Die anschließende Verarbeitung der so erhobenen personenbezogenen Daten richtet sich nach Abschnitt 7." },
+              { type: "paragraph", text: "Die Anmeldung und Sitzungsverwaltung sind für die Bereitstellung des ausdrücklich gewünschten geschützten Dienstes erforderlich. Funktions- und Einstellungswerte werden erst gespeichert, nachdem die entsprechende Funktion ausgewählt oder verwendet wurde. Rechtsgrundlage für diese Zugriffe auf das Endgerät ist § 25 Abs. 2 Nr. 2 TDDDG; eine Einwilligung ist hierfür nicht erforderlich. Die anschließende Verarbeitung personenbezogener Daten richtet sich nach Abschnitt 7." },
               { type: "paragraph", text: "Für technisch nicht erforderliche Cookies wäre nach § 25 Abs. 1 TDDDG grundsätzlich eine vorherige Einwilligung notwendig. Ausgenommen sind Speicherzugriffe, die unbedingt erforderlich sind, um einen ausdrücklich gewünschten digitalen Dienst bereitzustellen." },
+              { type: "paragraph", text: "Eine vollständige Liste der aktuell eingesetzten Cookies und lokalen Speicherwerte mit Zweck und Speicherdauer finden Sie unter /cookie." },
             ],
           },
           {
@@ -155,7 +156,66 @@ export const legalPagesMessages = defineFeatureMessages({
             blocks: [
               { type: "paragraph", text: "Wir setzen angemessene technische und organisatorische Maßnahmen ein, um Daten vor Verlust, Veränderung, unbefugtem Zugriff und unberechtigter Weitergabe zu schützen. Dazu gehören insbesondere verschlüsselte Übertragung, geschützte Benutzerkonten und Zugriffsbeschränkungen." },
               { type: "paragraph", text: "Diese Datenschutzerklärung wird angepasst, wenn sich Funktionen, Dienstleister oder rechtliche Anforderungen ändern." },
-              { type: "strong", text: "Stand: August 2026" },
+              { type: "strong", text: "Stand: September 2026" },
+            ],
+          },
+        ],
+      },
+      cookie: {
+        metadataTitle: "Cookies und lokale Speicherung | ComplyX",
+        metadataDescription:
+          "Informationen zu den von ComplyX verwendeten Cookies und lokalen Speichertechniken.",
+        title: "Cookies und lokale Speicherung",
+        introduction:
+          "Hier erfahren Sie, welche Informationen ComplyX in Ihrem Browser speichert, wofür sie benötigt werden und wie lange sie erhalten bleiben.",
+        sections: [
+          {
+            title: "Aktueller Status",
+            blocks: [
+              { type: "strong", text: "Technisch notwendige und ausdrücklich gewählte Funktionen: aktiv" },
+              { type: "lines", items: ["Analyse: nicht eingesetzt", "Marketing und Werbung: nicht eingesetzt"] },
+              { type: "paragraph", text: "ComplyX verwendet derzeit keine einwilligungspflichtigen Analyse-, Marketing- oder Werbetechnologien. Deshalb zeigen wir kein Einwilligungsbanner und keine Schalter, die eine nicht vorhandene Wahl vortäuschen würden." },
+            ],
+          },
+          {
+            title: "Cookies",
+            blocks: [
+              { type: "subheading", text: "Supabase-Anmeldung" },
+              { type: "paragraph", text: "Name: sb-<Projektkennung>-auth-token; bei größeren Werten gegebenenfalls auf mehrere Cookies mit den Endungen .0, .1 usw. verteilt. Während eines Anmelde- oder Passwortvorgangs kann außerdem ein Cookie mit der Endung -code-verifier verwendet werden." },
+              { type: "paragraph", text: "Anbieter und Zweck: Supabase für Anmeldung, Sitzungsverwaltung, Token-Erneuerung und den Zugriff auf geschützte Bereiche. Speicherdauer: nach der derzeit eingesetzten Bibliothekskonfiguration bis zu 400 Tage; die Werte werden während der Nutzung erneuert und bei der Abmeldung gelöscht." },
+              { type: "subheading", text: "Gast-Betroffenheitscheck" },
+              { type: "paragraph", text: "Name: complyx-guest-applicability-claim. Zweck: Ein zufälliger Anspruchsnachweis ermöglicht es, ein als Gast erstelltes Ergebnis abzurufen oder nach der Anmeldung zu übernehmen. Speicherdauer: 14 Tage; bei Übernahme oder einem ungültigen Nachweis wird das Cookie vorher gelöscht." },
+              { type: "subheading", text: "Sprache" },
+              { type: "paragraph", text: "Name: complyx-locale. Zweck: Speichert die ausdrücklich ausgewählte Sprache Deutsch oder Englisch. Speicherdauer: ein Jahr." },
+              { type: "paragraph", text: "Alle genannten Cookies sind Erstanbieter-Cookies und gelten für den Pfad /. Die Anmelde-Cookies und das Sprach-Cookie verwenden SameSite=Lax. Der Gast-Nachweis verwendet zusätzlich HttpOnly und in der Produktivumgebung Secure." },
+            ],
+          },
+          {
+            title: "Lokale Speicherung im Browser",
+            blocks: [
+              { type: "subheading", text: "Darstellung" },
+              { type: "paragraph", text: "complyx-theme speichert die gewählte helle oder dunkle Darstellung im localStorage. Der Wert bleibt erhalten, bis die Einstellung geändert oder die Websitedaten im Browser gelöscht werden." },
+              { type: "subheading", text: "Tutorial-Fortschritt" },
+              { type: "paragraph", text: "comply:tutorial-progress:<Organisationskennung> speichert den erreichten Tutorial-Schritt erst, nachdem das Tutorial aktiv bedient wurde. Der Wert bleibt bis zum Löschen der Websitedaten erhalten." },
+              { type: "subheading", text: "Lokales KI-Modell" },
+              { type: "paragraph", text: "compliancetool.localModelBaseUrl.<Organisationskennung> speichert die von Ihnen konfigurierte Adresse eines lokalen KI-Modells im localStorage. Der Wert bleibt bis zum Trennen der Verbindung oder Löschen der Websitedaten erhalten und wird nicht für Analyse oder Werbung verwendet." },
+              { type: "subheading", text: "Entwurf des Betroffenheitschecks" },
+              { type: "paragraph", text: "complyx:applicability-draft:<Entwurfskennung> speichert noch nicht übermittelte Eingaben im sessionStorage, damit der Check innerhalb der aktuellen Browsersitzung fortgesetzt werden kann. Der Wert wird beim Abschluss entfernt oder endet spätestens mit der Browsersitzung." },
+            ],
+          },
+          {
+            title: "Verwalten und Löschen",
+            blocks: [
+              { type: "paragraph", text: "Sie können Cookies, localStorage und sessionStorage jederzeit über die Website- oder Datenschutz-Einstellungen Ihres Browsers löschen. Das Löschen der Anmelde-Cookies meldet Sie ab. Das Löschen von Funktionswerten setzt die jeweilige Sprache, Darstellung, den Tutorial-Fortschritt oder die lokale Modellverbindung zurück." },
+              { type: "paragraph", text: "Da derzeit keine optionalen Analyse- oder Marketingtechnologien eingesetzt werden, gibt es auf dieser Seite keine Einwilligungsschalter. Sollten solche Technologien künftig hinzukommen, werden sie erst nach Ihrer vorherigen Auswahl aktiviert und können hier wieder deaktiviert werden." },
+            ],
+          },
+          {
+            title: "Rechtsgrundlage und Änderungen",
+            blocks: [
+              { type: "paragraph", text: "Die Speicherung und der Zugriff erfolgen auf Grundlage von § 25 Abs. 2 Nr. 2 TDDDG, soweit sie unbedingt erforderlich sind, um einen ausdrücklich gewünschten digitalen Dienst oder eine von Ihnen gewählte Funktion bereitzustellen. Die anschließende Verarbeitung personenbezogener Daten wird in der Datenschutzerklärung erläutert." },
+              { type: "paragraph", text: "Diese Übersicht wird aktualisiert, wenn sich Funktionen, Speicherdauern, Anbieter oder rechtliche Anforderungen ändern. Vor der Veröffentlichung wird der tatsächlich bereitgestellte Dienst zusätzlich mit einem neuen Browserprofil technisch geprüft." },
+              { type: "strong", text: "Stand: September 2026" },
             ],
           },
         ],
@@ -306,11 +366,12 @@ export const legalPagesMessages = defineFeatureMessages({
           {
             title: "Cookies and local storage",
             blocks: [
-              { type: "paragraph", text: "ComplyX uses only cookies or comparable storage technologies that are technically necessary. They are required, for example, to:" },
-              { type: "list", items: ["keep users signed in", "store session information", "provide protected areas", "save progress or settings"] },
+              { type: "paragraph", text: "ComplyX uses technically necessary cookies and local storage technologies for functions expressly requested by users. These include in particular:" },
+              { type: "list", items: ["login, session management, and protected areas", "retrieving and claiming an applicability check created as a guest", "language and display options selected by users", "drafts, tutorial progress, and settings for an expressly connected local AI model"] },
               { type: "paragraph", text: "Analytics, marketing, or advertising cookies are currently not used." },
-              { type: "paragraph", text: "The legal basis for storing information on your device and accessing it is Section 25(2)(2) TDDDG. Access is strictly necessary to provide the digital service you expressly request, in particular login and protected areas. Consent is not required for this. Subsequent processing of the personal data collected in this way is governed by section 7." },
+              { type: "paragraph", text: "Login and session management are necessary to provide the expressly requested protected service. Functional and preference values are stored only after the relevant function has been selected or used. The legal basis for these device accesses is Section 25(2)(2) TDDDG; consent is not required. Subsequent processing of personal data is governed by section 7." },
               { type: "paragraph", text: "Cookies that are not technically necessary would generally require prior consent under Section 25(1) TDDDG. Storage access that is strictly necessary to provide an expressly requested digital service is exempt." },
+              { type: "paragraph", text: "A complete list of the cookies and local storage values currently used, including their purposes and retention periods, is available at /cookie." },
             ],
           },
           {
@@ -372,7 +433,66 @@ export const legalPagesMessages = defineFeatureMessages({
             blocks: [
               { type: "paragraph", text: "We use appropriate technical and organizational measures to protect data against loss, alteration, unauthorized access, and unauthorized disclosure. These include encrypted transmission, protected user accounts, and access restrictions." },
               { type: "paragraph", text: "This privacy policy will be updated when functions, service providers, or legal requirements change." },
-              { type: "strong", text: "Last updated: August 2026" },
+              { type: "strong", text: "Last updated: September 2026" },
+            ],
+          },
+        ],
+      },
+      cookie: {
+        metadataTitle: "Cookies and local storage | ComplyX",
+        metadataDescription:
+          "Information about the cookies and local storage technologies used by ComplyX.",
+        title: "Cookies and local storage",
+        introduction:
+          "Learn which information ComplyX stores in your browser, why it is needed, and how long it is retained.",
+        sections: [
+          {
+            title: "Current status",
+            blocks: [
+              { type: "strong", text: "Technically necessary and expressly selected functions: active" },
+              { type: "lines", items: ["Analytics: not used", "Marketing and advertising: not used"] },
+              { type: "paragraph", text: "ComplyX currently does not use analytics, marketing, or advertising technologies that require consent. We therefore do not display a consent banner or switches that would suggest a choice that does not exist." },
+            ],
+          },
+          {
+            title: "Cookies",
+            blocks: [
+              { type: "subheading", text: "Supabase authentication" },
+              { type: "paragraph", text: "Name: sb-<project-reference>-auth-token; larger values may be split across several cookies with suffixes such as .0 and .1. A cookie ending in -code-verifier may also be used during login or password flows." },
+              { type: "paragraph", text: "Provider and purpose: Supabase for authentication, session management, token renewal, and access to protected areas. Retention: up to 400 days under the library configuration currently in use; values are renewed during use and deleted on logout." },
+              { type: "subheading", text: "Guest applicability check" },
+              { type: "paragraph", text: "Name: complyx-guest-applicability-claim. Purpose: A random claim token lets you retrieve a result created as a guest or claim it after signing in. Retention: 14 days; it is deleted earlier when claimed or found to be invalid." },
+              { type: "subheading", text: "Language" },
+              { type: "paragraph", text: "Name: complyx-locale. Purpose: Stores the expressly selected German or English language. Retention: one year." },
+              { type: "paragraph", text: "All listed cookies are first-party cookies and apply to the / path. Authentication and language cookies use SameSite=Lax. The guest claim token additionally uses HttpOnly and, in production, Secure." },
+            ],
+          },
+          {
+            title: "Local browser storage",
+            blocks: [
+              { type: "subheading", text: "Appearance" },
+              { type: "paragraph", text: "complyx-theme stores the selected light or dark appearance in localStorage. It remains until the setting is changed or the site's browser data is deleted." },
+              { type: "subheading", text: "Tutorial progress" },
+              { type: "paragraph", text: "comply:tutorial-progress:<organization-reference> stores the current tutorial step only after the tutorial has been actively used. It remains until the site's browser data is deleted." },
+              { type: "subheading", text: "Local AI model" },
+              { type: "paragraph", text: "compliancetool.localModelBaseUrl.<organization-reference> stores the address of a local AI model configured by you in localStorage. It remains until the connection is disconnected or the site's browser data is deleted, and is not used for analytics or advertising." },
+              { type: "subheading", text: "Applicability-check draft" },
+              { type: "paragraph", text: "complyx:applicability-draft:<draft-reference> stores answers that have not yet been submitted in sessionStorage so the check can continue during the current browser session. It is removed on completion or expires no later than the end of the browser session." },
+            ],
+          },
+          {
+            title: "Managing and deleting data",
+            blocks: [
+              { type: "paragraph", text: "You can delete cookies, localStorage, and sessionStorage at any time through your browser's site or privacy settings. Deleting authentication cookies signs you out. Deleting functional values resets the relevant language, appearance, tutorial progress, or local model connection." },
+              { type: "paragraph", text: "Because no optional analytics or marketing technologies are currently used, this page has no consent switches. If such technologies are added in the future, they will be activated only after your prior selection and can be disabled here again." },
+            ],
+          },
+          {
+            title: "Legal basis and changes",
+            blocks: [
+              { type: "paragraph", text: "Information is stored and accessed under Section 25(2)(2) TDDDG where this is strictly necessary to provide an expressly requested digital service or a function selected by you. The privacy policy explains subsequent processing of personal data." },
+              { type: "paragraph", text: "This overview is updated when functions, retention periods, providers, or legal requirements change. Before publication, the deployed service will also be checked technically with a clean browser profile." },
+              { type: "strong", text: "Last updated: September 2026" },
             ],
           },
         ],

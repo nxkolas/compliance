@@ -67,8 +67,16 @@ describe("authentication route policy", () => {
     expect(isPublicRoute("/unknown")).toBe(false);
   });
 
-  it("keeps the privacy policy publicly accessible", () => {
-    expect(isPublicRoute("/privacy")).toBe(true);
+  it.each(["/cookie", "/imprint", "/licenses.html", "/privacy"])(
+    "keeps the legal document %s publicly accessible",
+    (pathname) => {
+      expect(isPublicRoute(pathname)).toBe(true);
+    },
+  );
+
+  it("keeps nested legal-document routes private", () => {
+    expect(isPublicRoute("/cookie/internal")).toBe(false);
+    expect(isPublicRoute("/imprint/internal")).toBe(false);
     expect(isPublicRoute("/privacy/internal")).toBe(false);
   });
 });

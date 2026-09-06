@@ -101,7 +101,9 @@ export function TutorialWelcome({
       storedStepIndex ?? (legacyWelcomeCompleted ? 1 : 0);
 
     setCurrentStepIndex(nextStepIndex);
-    storeTutorialProgress(storageKey, nextStepIndex);
+    if (storedStepIndex !== null || legacyWelcomeCompleted) {
+      storeTutorialProgress(storageKey, nextStepIndex);
+    }
     window.localStorage.removeItem(legacyWelcomeStorageKey);
   }, [legacyWelcomeStorageKey, storageKey]);
 

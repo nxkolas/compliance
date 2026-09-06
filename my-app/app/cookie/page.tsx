@@ -6,19 +6,19 @@ export async function generateMetadata(): Promise<Metadata> {
   const dictionary = await getDictionary();
 
   return {
-    title: dictionary.legal.privacy.metadataTitle,
-    description: dictionary.legal.privacy.metadataDescription,
+    title: dictionary.legal.cookie.metadataTitle,
+    description: dictionary.legal.cookie.metadataDescription,
   };
 }
 
-export default async function PrivacyPage() {
+export default async function CookiePage() {
   const dictionary = await getDictionary();
 
   return (
     <LegalPage
       dictionary={dictionary}
-      document={dictionary.legal.privacy}
-      page="privacy"
+      document={dictionary.legal.cookie}
+      page="cookie"
     />
   );
 }

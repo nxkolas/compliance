@@ -21,6 +21,12 @@ export const PUBLIC_GUEST_API_ROUTES = [
 const guestOnlyAuthRoutes = new Set<string>(GUEST_ONLY_AUTH_ROUTES);
 const publicAuthFlowRoutes = new Set<string>(PUBLIC_AUTH_FLOW_ROUTES);
 const publicGuestApiRoutes = new Set<string>(PUBLIC_GUEST_API_ROUTES);
+const publicDocumentRoutes = new Set([
+  "/cookie",
+  "/imprint",
+  "/licenses.html",
+  "/privacy",
+]);
 
 function hasPathSegmentPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -53,7 +59,7 @@ export function isPublicRoute(pathname: string) {
 
   return (
     pathname === "/" ||
-    pathname === "/privacy" ||
+    publicDocumentRoutes.has(pathname) ||
     isCheckRoute(pathname) ||
     isGuestOnlyAuthRoute(pathname) ||
     isPublicAuthFlowRoute(pathname)

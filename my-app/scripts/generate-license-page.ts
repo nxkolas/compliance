@@ -207,7 +207,7 @@ ${packages.map(renderPackage).join("\n")}
     <a href="/imprint">Legal notice</a>
     <a href="/privacy">Privacy</a>
     <a class="current" href="/licenses.html" aria-current="page">Licenses</a>
-    <a href="/cookie">Cookie settings</a>
+    <a href="/cookie">Cookies &amp; storage</a>
   </nav>
   <p>© ComplyX 2026</p>
 </footer>

@@ -45,4 +45,20 @@ describe("SiteFooter", () => {
 
     navigation.pathname = "/tool/organizations/organization-1";
   });
+
+  it("uses the legal-page background and marks the cookie link as current", () => {
+    navigation.pathname = "/cookie";
+    const dictionary = getDefaultDictionary();
+    const html = renderToStaticMarkup(
+      <SiteFooter
+        labels={dictionary.home.footer}
+        navigationLabel={dictionary.legal.footerNavigationLabel}
+      />,
+    );
+
+    expect(html).toContain("bg-[#02040E]");
+    expect(html).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/cookie"/);
+
+    navigation.pathname = "/tool/organizations/organization-1";
+  });
 });

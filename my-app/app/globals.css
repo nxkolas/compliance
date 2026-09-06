@@ -326,7 +326,7 @@
   /* Legal pages can be rendered either inside the authenticated app shell or
      in the public shell. Keep the shared footer aligned with the active shell. */
   @media (min-width: 1280px) {
-    body:has([data-privacy-shell="app"]) [data-site-footer] {
+    body:has([data-legal-shell="app"]) [data-site-footer] {
       padding-left: clamp(18rem, 24vw, 24rem);
     }
   }

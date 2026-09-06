@@ -144,7 +144,7 @@ export const homeMessages = defineFeatureMessages({
           "Starten Sie den kostenlosen Betroffenheitscheck und erhalten Sie eine erste, verständliche Einschätzung zur NIS2-Richtlinie.",
       },
       footer: {
-        cookie: "Cookie-Einstellungen",
+        cookie: "Cookies & Speicher",
         imprint: "Impressum",
         privacy: "Datenschutz",
         licenses: "Lizenzen",
@@ -294,7 +294,7 @@ export const homeMessages = defineFeatureMessages({
           "Start the free scope check and receive an initial, easy-to-understand assessment of the NIS2 directive.",
       },
       footer: {
-        cookie: "Cookie settings",
+        cookie: "Cookies & storage",
         imprint: "Legal notice",
         privacy: "Privacy",
         licenses: "Licenses",

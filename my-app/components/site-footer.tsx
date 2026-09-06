@@ -12,7 +12,7 @@ type SiteFooterProps = {
 export function SiteFooter({ labels, navigationLabel }: SiteFooterProps) {
   const pathname = usePathname();
   const isToolPage = pathname.startsWith("/tool");
-  const isPrivacyPage = pathname === "/privacy";
+  const isLegalDocumentPage = pathname === "/privacy" || pathname === "/cookie";
   const links = [
     { href: "/imprint", label: labels.imprint },
     { href: "/privacy", label: labels.privacy },
@@ -23,7 +23,7 @@ export function SiteFooter({ labels, navigationLabel }: SiteFooterProps) {
   return (
     <footer
       data-site-footer
-      className={`w-full shrink-0 ${isPrivacyPage ? "bg-[#02040E]" : "bg-transparent"} ${isToolPage ? "xl:pl-[clamp(18rem,24vw,24rem)]" : ""}`}
+      className={`w-full shrink-0 ${isLegalDocumentPage ? "bg-[#02040E]" : "bg-transparent"} ${isToolPage ? "xl:pl-[clamp(18rem,24vw,24rem)]" : ""}`}
     >
       <div
         aria-hidden="true"
