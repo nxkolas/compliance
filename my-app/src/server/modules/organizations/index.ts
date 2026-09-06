@@ -32,7 +32,11 @@ export {
   revokeOrganizationInvitation,
 } from "./invitations";
 export type * from "./types";
-export { getOrganizationDashboard } from "./dashboard-read-model";
+export {
+  getDashboardProgressHistory,
+  getOrganizationDashboard,
+  listDashboardActivity,
+} from "./dashboard-read-model";
 export { getOrganizationProgress } from "./progress-read-model";
 export { getOrganizationSettings, updateOrganizationSettings } from "./settings-service";
 export {

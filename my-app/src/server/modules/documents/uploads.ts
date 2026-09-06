@@ -297,7 +297,11 @@ export async function finalizeDocumentUpload(input: {
       eventType: "document.uploaded",
       entityType: "document_version",
       entityId: ids.documentVersionId,
-      metadata: { documentId: ids.documentId, jobId: ids.jobId },
+      metadata: {
+        documentId: ids.documentId,
+        documentTitle: session.fileName,
+        jobId: ids.jobId,
+      },
       occurredAt: now,
     }).returning({ id: auditEvents.id });
     if (!auditEvent) throw new Error("Document upload audit event was not created");

@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { gapAnalysisCycles } from "@/src/db/schema";
+import { auditEvents, gapAnalysisCycles } from "@/src/db/schema";
 import {
   currentGapDefinitionHash,
   getCurrentGapDefinition,
@@ -65,6 +65,25 @@ export async function saveQuestionnaireDraftAnswer(input: {
   const [updated] = await executor.update(gapAnalysisCycles).set({ draftAnswers, updatedAt: new Date() })
     .where(and(eq(gapAnalysisCycles.id, cycle.id), eq(gapAnalysisCycles.organizationId, input.organizationId), eq(gapAnalysisCycles.stage, "questions"))).returning();
   if (!updated) throw new ApiError(409, "Gap answers changed", undefined, "GAP_QUESTIONNAIRE_DRAFT_CHANGED");
+  const required = definition.questions.filter((item) => item.required);
+  const answeredRequired = required.filter((item) =>
+    item.options.some(
+      (candidate) => candidate.stableValue === draftAnswers[item.stableKey],
+    ),
+  ).length;
+  await executor.insert(auditEvents).values({
+    organizationId: input.organizationId,
+    actorUserId: input.userId,
+    eventType: "gap_questionnaire.answer_saved",
+    entityType: "gap_analysis_cycle",
+    entityId: cycle.id,
+    metadata: {
+      questionKey: question.stableKey,
+      questionPosition: question.position,
+      answeredRequired,
+      totalRequired: required.length,
+    },
+  });
   return {
     answer: {
       draftId: updated.id,

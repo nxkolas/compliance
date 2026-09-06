@@ -29,6 +29,23 @@ export async function updateActionPlanItem(input: {
   expectedVersion?: number;
 }) {
   return withAuthorizedOrganizationCommand({ actorUserId: input.userId, organizationId: input.organizationId, capability: "plans:contribute" }, async ({ executor }) => {
+    const [previous] = await executor
+      .select({
+        id: actionPlanItems.id,
+        actionPlanId: actionPlanItems.actionPlanId,
+        title: actionPlanItems.title,
+        status: actionPlanItems.status,
+      })
+      .from(actionPlanItems)
+      .where(
+        and(
+          eq(actionPlanItems.id, input.itemId),
+          eq(actionPlanItems.organizationId, input.organizationId),
+        ),
+      )
+      .limit(1)
+      .for("update");
+    if (!previous) throw new ApiError(404, "Action Plan item not found");
     const [item] = await executor.update(actionPlanItems).set({ status: input.status, updatedAt: new Date() })
       .where(and(eq(actionPlanItems.id, input.itemId), eq(actionPlanItems.organizationId, input.organizationId))).returning();
     if (!item) throw new ApiError(404, "Action Plan item not found");
@@ -38,7 +55,12 @@ export async function updateActionPlanItem(input: {
       eventType: "action_plan_item.status_changed",
       entityType: "action_plan_item",
       entityId: item.id,
-      metadata: { status: item.status },
+      metadata: {
+        itemTitle: previous.title,
+        actionPlanId: previous.actionPlanId,
+        previousStatus: previous.status,
+        status: item.status,
+      },
     });
     return item;
   });
