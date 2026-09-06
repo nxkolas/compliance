@@ -59,7 +59,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-transparent text-white">
       <Suspense fallback={<HomeFallback />}>
-        <PublicLanguageSwitcher showThemeSwitcher compactOnMobile />
         <HomeContent />
       </Suspense>
     </div>
@@ -123,16 +122,24 @@ async function HomeContent() {
             </Link>
           </nav>
 
-          <div className="absolute right-4 bottom-2 text-sm sm:static sm:mr-32">
-            {hasEnvVars ? (
-              <Suspense fallback={<div className="h-8 w-48" />}>
-                <AuthButton />
-              </Suspense>
-            ) : (
-              <p className="text-xs text-white/60 sm:text-sm">
-                {dictionary.common.supabaseMissing}
-              </p>
-            )}
+          <div className="absolute top-3 right-4 z-10 flex flex-col items-end gap-3 text-sm xl:static xl:flex-row xl:items-center xl:gap-2">
+            <PublicLanguageSwitcher
+              showThemeSwitcher
+              compactOnMobile
+              inline
+              className="order-1 xl:order-2"
+            />
+            <div className="order-2 xl:order-1">
+              {hasEnvVars ? (
+                <Suspense fallback={<div className="h-8 w-48" />}>
+                  <AuthButton />
+                </Suspense>
+              ) : (
+                <p className="text-xs text-white/60 sm:text-sm">
+                  {dictionary.common.supabaseMissing}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -173,7 +180,7 @@ async function HomeContent() {
                 </h1>
                 <p className="mt-7 max-w-[650px] text-2xl font-normal leading-[1.35] text-white sm:text-3xl lg:text-[34px]">
                   {authenticatedHero.continuationBefore}{" "}
-                  <span className="text-[#002BFF]">
+                  <span className="bg-[linear-gradient(90deg,#0073FF_0%,#FFFFFF_100%)] bg-clip-text text-transparent">
                     {authenticatedHero.continuationHighlight}
                   </span>
                   {authenticatedHero.continuationAfter === "." ? null : " "}
@@ -191,7 +198,7 @@ async function HomeContent() {
                 />
                 <h1 className="w-full max-w-[658px] text-4xl font-normal leading-[1.2] text-white sm:min-h-32 sm:leading-[61px]">
                   {home.hero.titleBefore}{" "}
-                  <span className="font-normal text-[#002BFF]">
+                  <span className="bg-[linear-gradient(90deg,#0073FF_0%,#FFFFFF_100%)] bg-clip-text font-normal text-transparent">
                     {home.hero.titleHighlight}
                   </span>{" "}
                   {home.hero.titleAfter}
@@ -408,32 +415,6 @@ async function HomeContent() {
         </div>
       </section>
 
-      <footer className="bg-transparent">
-        <div
-          aria-hidden="true"
-          className="mx-auto h-px w-[calc(100%_-_3rem)] max-w-[1285.5px] bg-zinc-700 sm:w-[calc(100%_-_5rem)]"
-        />
-        <div className="mx-auto flex max-w-[1285.5px] flex-col items-center px-6 pb-12 pt-4 text-xs text-zinc-500 sm:px-10">
-          <nav
-            aria-label="Rechtliche Informationen"
-            className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2"
-          >
-            <Link className="transition-colors hover:text-zinc-300" href="/imprint">
-              {home.footer.imprint}
-            </Link>
-            <Link className="transition-colors hover:text-zinc-300" href="/privacy">
-              {home.footer.privacy}
-            </Link>
-            <Link className="transition-colors hover:text-zinc-300" href="/licenses.html">
-              {home.footer.licenses}
-            </Link>
-            <Link className="transition-colors hover:text-zinc-300" href="/cookie">
-              {home.footer.cookie}
-            </Link>
-          </nav>
-          <p className="mt-2">{home.footer.copyright}</p>
-        </div>
-      </footer>
     </main>
   );
 }

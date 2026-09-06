@@ -3,6 +3,7 @@ import { Space_Grotesk } from "next/font/google";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { serializeBrowserSupabaseEnvironment } from "@/src/config/env/supabase";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
 const defaultUrl = process.env.APP_PUBLIC_URL ?? "http://localhost:3000";
@@ -27,7 +28,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
+  const [locale, dictionary] = await Promise.all([getLocale(), getDictionary()]);
   const browserConfiguration = serializeBrowserSupabaseEnvironment();
 
   return (
@@ -40,7 +41,20 @@ export default async function RootLayout({
         />
       </head>
       <body className={`${spaceGrotesk.className} antialiased`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <div className="flex min-h-svh flex-col">
+            <div
+              data-site-main
+              className="flex min-h-0 min-w-0 flex-1 flex-col [&>*]:min-h-0 [&>*]:min-w-0 [&>*]:flex-1"
+            >
+              {children}
+            </div>
+            <SiteFooter
+              labels={dictionary.home.footer}
+              navigationLabel={dictionary.legal.footerNavigationLabel}
+            />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

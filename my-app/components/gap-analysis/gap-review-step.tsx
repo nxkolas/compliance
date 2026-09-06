@@ -69,7 +69,7 @@ export function GapReviewStep({
     <section
       aria-labelledby="gap-step-heading"
       data-gap-review
-      className="w-full max-w-[1202px]"
+      className="w-full min-w-0"
     >
       <section className="min-h-40 rounded-xl border-[1.5px] border-[#3D4049] bg-[#1B1E27] px-6 py-8 text-white shadow-sm sm:py-9 sm:pr-6 sm:pl-10">
         <div className="flex items-start justify-between gap-5">
@@ -248,7 +248,7 @@ export function GapReviewStep({
             </div>
           ) : (
             <Button
-              className="h-12 justify-self-end bg-[#002BFF] px-7 text-white hover:brightness-90"
+              className="h-12 cursor-pointer justify-self-end bg-[#002BFF] px-7 text-white hover:brightness-90 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#002BFF" }}
               disabled={Boolean(busy) || !workflow.analysisCycle}
               onClick={onGenerate}

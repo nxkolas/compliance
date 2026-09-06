@@ -73,7 +73,9 @@ function toPackage(id: string, entry: RawEntry): Package {
   const at = id.lastIndexOf("@");
   const name = at > 0 ? id.slice(0, at) : id;
   const version = at > 0 ? id.slice(at + 1) : "";
-  const licenseText = readTextFile(entry.licenseFile);
+  const licenseFile = resolveDependencyFile(entry.licenseFile, name);
+  const noticeFile = resolveDependencyFile(entry.noticeFile, name);
+  const licenseText = readTextFile(licenseFile);
 
   return {
     name,
@@ -83,9 +85,29 @@ function toPackage(id: string, entry: RawEntry): Package {
     publisher: entry.publisher,
     licenseText,
     // Absolute developer-machine paths must never reach the published page.
-    licenseSource: licenseText ? toRelativePath(entry.licenseFile) : undefined,
-    noticeText: readTextFile(entry.noticeFile),
+    licenseSource: licenseText ? toRelativePath(licenseFile) : undefined,
+    noticeText: readTextFile(noticeFile),
   };
+}
+
+function resolveDependencyFile(file: string | undefined, packageName: string): string | undefined {
+  if (!file || fs.existsSync(file)) return file;
+  const normalized = file.replace(/\\/g, "/");
+  const marker = "/node_modules/";
+  const markerIndex = normalized.indexOf(marker);
+  if (markerIndex < 0) return file;
+  const matchingDependencyPath = path.join(
+    projectRoot,
+    normalized.slice(markerIndex + 1),
+  );
+  if (fs.existsSync(matchingDependencyPath)) return matchingDependencyPath;
+  const hoistedDependencyPath = path.join(
+    projectRoot,
+    "node_modules",
+    packageName,
+    path.basename(normalized),
+  );
+  return fs.existsSync(hoistedDependencyPath) ? hoistedDependencyPath : file;
 }
 
 function readTextFile(file: string | undefined): string | undefined {
@@ -152,7 +174,12 @@ summary::marker { color: var(--muted); }
 pre { margin: 0; padding: .8rem; background: var(--bg); border: 1px solid var(--border); border-radius: .4rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
 pre + h4 { margin: 1rem 0 .4rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .empty { color: var(--muted); font-style: italic; }
-footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .85rem; }
+footer { margin-top: 2.5rem; padding: 1rem 0 2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .75rem; text-align: center; }
+footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 1.75rem; }
+footer a { color: var(--muted); text-decoration: none; transition: color .2s; }
+footer a:hover { color: var(--fg); }
+footer a.current { color: var(--fg); font-weight: 700; }
+footer p { margin: .5rem 0 0; }
 </style>
 </head>
 <body>
@@ -176,7 +203,13 @@ ${packages.map(renderPackage).join("\n")}
 </main>
 
 <footer>
-  Regenerate with <code>npm run licenses:scan &amp;&amp; npm run licenses:html</code>.
+  <nav aria-label="Legal information">
+    <a href="/imprint">Legal notice</a>
+    <a href="/privacy">Privacy</a>
+    <a class="current" href="/licenses.html" aria-current="page">Licenses</a>
+    <a href="/cookie">Cookie settings</a>
+  </nav>
+  <p>© ComplyX 2026</p>
 </footer>
 
 <script>

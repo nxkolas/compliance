@@ -9,6 +9,8 @@ import { assertCanAccessOrganization } from "@/src/server/organizations/service"
 import { hasOrganizationCapability } from "@/src/server/auth/capabilities";
 import { getGapAnalysisWorkflow } from "@/src/server/gap-analysis";
 import { connection } from "next/server";
+import { resolvePlanPreparation } from "@/src/server/action-plans/preparation-state";
+import { getActionPlanGenerationStatus } from "@/src/server/action-plans/generation-status";
 
 export default async function ActionPlanPage({
   params,
@@ -29,29 +31,26 @@ export default async function ActionPlanPage({
         organizationId,
         locale,
       });
-  const actionableGapCount = gapWorkflow
-    ? gapWorkflow.gapCounts.all - gapWorkflow.gapCounts.fulfilled
-    : 0;
-  const availableGapRevisionId =
-    gapWorkflow?.revision &&
-    gapWorkflow.lifecycle.canFinalize &&
-    gapWorkflow.canManage &&
-    actionableGapCount > 0 &&
-    gapWorkflow.reviewBlockers.length === 0
-      ? gapWorkflow.revision.id
-      : null;
+  const generationJob = gapWorkflow
+    ? await getActionPlanGenerationStatus(user.id, organizationId, gapWorkflow.revision?.id ?? null)
+    : null;
+  const preparationState = gapWorkflow ? resolvePlanPreparation(gapWorkflow, generationJob) : undefined;
+  const availableGapRevisionId = preparationState === "ready" || preparationState === "failed"
+    ? gapWorkflow?.revision?.id ?? null : null;
 
   return (
-    <section className="flex w-full min-w-0 flex-col gap-8 xl:pl-[17px]">
+    <section className="flex w-full min-w-0 flex-col gap-8">
       <PageHeader
         title={dictionary.modules.actionPlan.title}
         subtitle={dictionary.modules.actionPlan.description}
-        className="max-w-[1274px] [&>p]:max-w-[1130px]"
+        className="w-full [&>p]:w-full [&>p]:max-w-none"
       />
       <ActionPlanWorkflow
         organizationId={organizationId}
         current={current}
         availableGapRevisionId={availableGapRevisionId}
+        preparationState={preparationState}
+        generationJobId={preparationState === "generating" ? generationJob?.id : undefined}
         canContribute={hasOrganizationCapability(membership.role, "plans:contribute")}
         labels={dictionary.modules.actionPlan.workflow}
       />

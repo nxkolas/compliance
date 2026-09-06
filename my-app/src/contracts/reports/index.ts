@@ -16,6 +16,10 @@ export const reportSchema = z.object({
   pdfByteSize: z.number().int().positive().nullable(),
   state: z.enum(["queued", "rendering", "ready", "failed", "cancelled"]),
   createdAt: z.iso.datetime(),
+  metrics: z.object({
+    compliancePercent: z.number().int().min(0).max(100),
+    criticalGapCount: z.number().int().nonnegative(),
+  }).nullable().default(null),
 });
 
 export const reportDetailSchema = z.object({

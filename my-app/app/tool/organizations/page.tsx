@@ -20,7 +20,7 @@ export default async function OrganizationsPage({
   const notice = (await searchParams)?.notice;
 
   return (
-    <div className="flex min-h-[calc(100svh-86px)] w-full flex-col">
+    <div className="flex w-full flex-col">
       <header className="max-w-[1140px]">
         <div className="grid gap-4">
           <h1 className="text-4xl font-bold leading-9 tracking-normal text-foreground">

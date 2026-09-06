@@ -311,7 +311,7 @@
   }
 
   body {
-    @apply min-h-screen bg-background text-foreground;
+    @apply min-h-svh bg-background text-foreground;
     width: 100%;
     max-width: 100%;
     overflow-x: clip;
@@ -321,6 +321,14 @@
     background-repeat: no-repeat;
     background-size: cover;
     letter-spacing: var(--tracking-normal);
+  }
+
+  /* Legal pages can be rendered either inside the authenticated app shell or
+     in the public shell. Keep the shared footer aligned with the active shell. */
+  @media (min-width: 1280px) {
+    body:has([data-privacy-shell="app"]) [data-site-footer] {
+      padding-left: clamp(18rem, 24vw, 24rem);
+    }
   }
 
   ::selection {

@@ -151,45 +151,6 @@ export default async function ImprintPage() {
           </div>
         </section>
 
-        <footer className="bg-transparent">
-          <div
-            aria-hidden="true"
-            className="mx-auto h-px w-[calc(100%_-_3rem)] max-w-[1285.5px] bg-zinc-700 sm:w-[calc(100%_-_5rem)]"
-          />
-          <div className="mx-auto flex max-w-[1285.5px] flex-col items-center px-6 pb-12 pt-4 text-xs text-zinc-500 sm:px-10">
-            <nav
-              aria-label={dictionary.legal.footerNavigationLabel}
-              className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2"
-            >
-              <Link
-                className="font-bold text-zinc-400 transition-colors hover:text-zinc-300"
-                href="/imprint"
-                aria-current="page"
-              >
-                {home.footer.imprint}
-              </Link>
-              <Link
-                className="transition-colors hover:text-zinc-300"
-                href="/privacy"
-              >
-                {home.footer.privacy}
-              </Link>
-              <Link
-                className="transition-colors hover:text-zinc-300"
-                href="/licenses.html"
-              >
-                {home.footer.licenses}
-              </Link>
-              <Link
-                className="transition-colors hover:text-zinc-300"
-                href="/cookie"
-              >
-                {home.footer.cookie}
-              </Link>
-            </nav>
-            <p className="mt-2">{home.footer.copyright}</p>
-          </div>
-        </footer>
       </main>
     </div>
   );

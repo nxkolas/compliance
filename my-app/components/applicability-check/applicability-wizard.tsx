@@ -34,7 +34,8 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { readApplicabilityDraft, writeApplicabilityDraft } from "@/lib/applicability-draft";
 import {
   aggregationAutoAnswer,
   getWizardProgressQuestions,
@@ -90,6 +91,27 @@ export function ApplicabilityWizard({
     ...questionnaire.latestAnswers,
   });
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  useEffect(() => {
+    if (!questionnaire.guestSession) {
+      const stored = readApplicabilityDraft(submitUrl);
+      if (stored) {
+        try {
+          const draft = JSON.parse(stored);
+          if (draft.questionnaireId === questionnaire.id && draft.answers && typeof draft.answers === "object" && !Array.isArray(draft.answers) && Object.values(draft.answers).every((value) => typeof value === "string" || (Array.isArray(value) && value.every((item) => typeof item === "string")))) {
+            setAnswers({ ...questionnaire.defaultAnswers, ...questionnaire.latestAnswers, ...draft.answers });
+            if (Number.isInteger(draft.step) && draft.step >= 0) setCurrentStepIndex(draft.step);
+          }
+        } catch { writeApplicabilityDraft(submitUrl, null); }
+      }
+    }
+    setDraftLoaded(true);
+  }, [submitUrl, questionnaire]);
+  useEffect(() => {
+    if (draftLoaded && !questionnaire.guestSession) {
+      writeApplicabilityDraft(submitUrl, JSON.stringify({ questionnaireId: questionnaire.id, answers, step: currentStepIndex }));
+    }
+  }, [answers, currentStepIndex, draftLoaded, questionnaire.id, questionnaire.guestSession, submitUrl]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<RequestState>({
     message: null,
@@ -199,6 +221,7 @@ export function ApplicabilityWizard({
         questionnaire.guestSession?.token,
       );
       const nextUrl = response.data.resultUrl ?? successUrl;
+      if (!questionnaire.guestSession) writeApplicabilityDraft(submitUrl, null);
       if (navigationMode === "document") {
         window.location.assign(nextUrl);
         return;

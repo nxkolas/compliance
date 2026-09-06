@@ -66,6 +66,11 @@ describe("authentication route policy", () => {
     expect(isPublicRoute("/tool")).toBe(false);
     expect(isPublicRoute("/unknown")).toBe(false);
   });
+
+  it("keeps the privacy policy publicly accessible", () => {
+    expect(isPublicRoute("/privacy")).toBe(true);
+    expect(isPublicRoute("/privacy/internal")).toBe(false);
+  });
 });
 
 describe("safe tool next destinations", () => {

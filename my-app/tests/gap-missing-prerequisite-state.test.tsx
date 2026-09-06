@@ -59,6 +59,8 @@ describe("gap analysis missing prerequisite state", () => {
     expect(html).toContain("Ihre Gap-Analyse kann noch nicht gestartet werden");
     expect(html).toContain("Betroffenheitscheck durchführen");
     expect(html).toContain("Warum diese Reihenfolge?");
+    expect(html).toContain("data-sequence-help");
+    expect(html).toContain('aria-haspopup="dialog"');
     expect(html).toContain("Gut zu wissen");
     expect(html).toContain("/robot-sad.svg");
     expect(html).toContain("lg:mt-16");
@@ -117,6 +119,6 @@ describe("gap analysis missing prerequisite state", () => {
 
     expect(html).not.toContain("data-gap-missing-prerequisite");
     expect(html).not.toContain("/robot-sad.svg");
-    expect(html).toContain("Bereit für Ihre Gap-Analyse");
+    expect(html).toContain("Gap-Analyse starten");
   });
 });

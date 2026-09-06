@@ -36,7 +36,7 @@ export function GapAnalysisStepper({
       data-gap-stepper-variant={variant}
       className={
         variant === "questionnaire"
-          ? `w-full ${documentLayout ? "max-w-[1274px]" : "max-w-[1202px]"}`
+          ? "w-full min-w-0"
           : undefined
       }
     >

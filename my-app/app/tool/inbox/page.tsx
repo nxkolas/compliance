@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { OrganizationInbox } from "@/components/organizations/organization-inbox";
+import { PageHeader } from "@/components/page-header";
 import { getDictionary, getLocale } from "@/lib/i18n";
 import { requireAuth } from "@/lib/supabase/require-auth";
 import { listMailboxInvitationsForUser } from "@/src/server/organizations/service";
@@ -15,14 +16,10 @@ export default async function InboxPage() {
   return (
     <AppShell dictionary={dictionary}>
       <div className="flex w-full flex-col gap-8">
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold">{dictionary.inbox.title}</h1>
-            <p className="max-w-2xl text-[#002BFF] dark:text-muted-foreground">
-              {dictionary.inbox.description}
-            </p>
-          </div>
-        </section>
+        <PageHeader
+          title={dictionary.inbox.title}
+          subtitle={dictionary.inbox.description}
+        />
         <OrganizationInbox
           initialInvitations={serializeForClient(invitations)}
           userEmail={user.email ?? null}

@@ -18,6 +18,8 @@ import { enqueueJob, toJobDto } from "@/src/server/jobs";
 import { getSupabaseAdminClient } from "@/src/server/supabase-admin";
 import { assertReportConcurrency } from "./quota";
 import { resolveReportInputRevisions } from "./input-policy";
+import type { ReportMetrics } from "./metrics";
+import { readReportMetrics } from "./metrics-reader";
 
 export const REPORT_STORAGE_BUCKET = "compliance-reports";
 
@@ -122,8 +124,9 @@ export async function listReportsPage(input: { userId: string; organizationId: s
     .limit(input.limit + 1);
   const page = rows.slice(0, input.limit);
   const last = page.at(-1)?.report;
+  const metrics = await readReportMetrics(db, input.organizationId, page.map(({ report }) => report.gapRevisionId));
   return {
-    reports: page.map(({ report, job }) => toReportDto(report, job)),
+    reports: page.map(({ report, job }) => toReportDto(report, job, metrics.get(report.gapRevisionId ?? "") ?? null)),
     nextCursor: rows.length > input.limit && last ? getCursorCodec().encode(scope, [last.createdAt.toISOString(), last.id]) : undefined,
   };
 }
@@ -142,7 +145,8 @@ export async function getReportDetail(userId: string, organizationId: string, re
   }).from(reportDocumentSources)
     .where(and(eq(reportDocumentSources.organizationId, organizationId), eq(reportDocumentSources.reportId, reportId)))
     .orderBy(asc(reportDocumentSources.position));
-  return { report: toReportDto(row.report, row.job), sources, job: toJobDto(row.job) };
+  const metrics = await readReportMetrics(db, organizationId, [row.report.gapRevisionId]);
+  return { report: toReportDto(row.report, row.job, metrics.get(row.report.gapRevisionId ?? "") ?? null), sources, job: toJobDto(row.job) };
 }
 
 export async function createReportDownload(userId: string, organizationId: string, reportId: string) {
@@ -162,7 +166,7 @@ export async function createReportDownload(userId: string, organizationId: strin
   return { url: data.signedUrl, expiresInSeconds: 120 };
 }
 
-function toReportDto(report: typeof reports.$inferSelect, job: typeof backgroundJobs.$inferSelect) {
+function toReportDto(report: typeof reports.$inferSelect, job: typeof backgroundJobs.$inferSelect, metrics: ReportMetrics | null = null) {
   return {
     id: report.id,
     organizationId: report.organizationId,
@@ -176,6 +180,7 @@ function toReportDto(report: typeof reports.$inferSelect, job: typeof background
     pdfByteSize: report.pdfByteSize,
     state: report.pdfKey ? "ready" as const : deriveReportState(job.state),
     createdAt: report.createdAt.toISOString(),
+    metrics,
   };
 }
 

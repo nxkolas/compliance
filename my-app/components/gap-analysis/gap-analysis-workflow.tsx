@@ -10,7 +10,6 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,6 +38,7 @@ import { GapInputsUsed } from "./gap-inputs-used";
 import { GapHistory } from "./gap-history";
 import type { JobDto } from "@/src/contracts/common/jobs";
 import { GapMissingPrerequisiteState } from "./gap-missing-prerequisite-state";
+import { GapStartState } from "./gap-start-state";
 
 export function GapAnalysisWorkflow({
   organizationId,
@@ -439,6 +439,7 @@ export function GapAnalysisWorkflow({
           description={blocked.description}
           action={blocked.action}
           whySequence={labels.prerequisiteWhySequence}
+          whySequenceExplanation={labels.prerequisiteWhySequenceExplanation}
           infoTitle={labels.prerequisiteInfoTitle}
           infoDescription={labels.prerequisiteInfoDescription}
           variant={isUnsupportedCountry ? "unsupported-country" : "missing"}
@@ -463,29 +464,13 @@ export function GapAnalysisWorkflow({
   }
   if (!workflow.assessment && !workflow.lifecycle.showGeneratedViews) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{labels.startTitle}</CardTitle>
-          <CardDescription>{labels.startDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {workflow.canContribute ? (
-            <Button
-              disabled={Boolean(busy)}
-              onClick={() => void startAssessment()}
-            >
-              {busy === "create" ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Play />
-              )}
-              {labels.startAnalysis}
-            </Button>
-          ) : (
-            <p className="text-sm text-muted-foreground">{labels.readOnly}</p>
-          )}
-        </CardContent>
-      </Card>
+      <GapStartState
+        labels={labels}
+        canContribute={workflow.canContribute}
+        busy={Boolean(busy)}
+        error={error}
+        onStart={() => void startAssessment()}
+      />
     );
   }
 
@@ -497,7 +482,7 @@ export function GapAnalysisWorkflow({
           role="tabpanel"
           className={
             activeView === "results"
-              ? "max-w-[1202px] border-0 bg-transparent py-0 shadow-none"
+              ? "w-full border-0 bg-transparent py-0 shadow-none"
               : undefined
           }
         >
@@ -532,7 +517,7 @@ export function GapAnalysisWorkflow({
   }
 
   return (
-    <div data-gap-workflow-shell className="grid gap-6">
+    <div data-gap-workflow-shell className="grid w-full min-w-0 gap-6">
       {error ? <Notice tone="error">{error}</Notice> : null}
       <GapAnalysisStepper
         activeStep={
@@ -591,7 +576,7 @@ export function GapAnalysisWorkflow({
             onContinue={() => void saveDocuments()}
           />
         ) : (
-          <Card className="max-w-[1202px] border-0 bg-transparent py-0 shadow-none">
+          <Card className="w-full border-0 bg-transparent py-0 shadow-none">
             <CardContent className="px-0">
               <GapResultsStep
                 organizationId={organizationId}

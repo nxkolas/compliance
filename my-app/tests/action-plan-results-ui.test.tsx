@@ -21,6 +21,8 @@ describe("action plan result presentation", () => {
     );
 
     expect(html).toContain("data-action-plan-results");
+    expect(html).toContain("w-full min-w-0");
+    expect(html).not.toContain("max-w-[1202px]");
     expect(html).toContain("data-action-plan-status-summary");
     expectStatusCount(html, "all", 4);
     expectStatusCount(html, "open", 2);

@@ -22,7 +22,8 @@ describe("gap questionnaire background saving", () => {
     )?.[0];
     expect(activeStep).toContain("bg-[#46A95A]");
     expect(activeStep).toContain("text-white");
-    expect(html).toContain("max-w-[1202px]");
+    expect(html).toContain("w-full min-w-0");
+    expect(html).not.toContain("max-w-[1202px]");
     expect(html).toContain("h-12");
     expect(html).toContain("rounded-xl");
     expect(html).toContain("xl:gap-8");

@@ -44,7 +44,10 @@ export function OrganizationInvitePanel({
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"contributor" | "viewer">("contributor");
   const [pending, setPending] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    message: string;
+    tone: "default" | "error";
+  } | null>(null);
 
   async function invite(event: FormEvent) {
     event.preventDefault();
@@ -57,9 +60,15 @@ export function OrganizationInvitePanel({
         ...current.filter((item) => item.email !== result.data.invitation.email),
       ]);
       setEmail("");
-      setNotice(`${labels.successPrefix} ${result.data.invitation.email} ${labels.successSuffix}`);
+      setNotice({
+        message: `${labels.successPrefix} ${result.data.invitation.email} ${labels.successSuffix}`,
+        tone: "default",
+      });
     } catch (error) {
-      setNotice(localizeUiError(error, { fallback: labels.createErrorFallback }));
+      setNotice({
+        message: localizeUiError(error, { fallback: labels.createErrorFallback }),
+        tone: "error",
+      });
     } finally {
       setPending(false);
     }
@@ -69,9 +78,12 @@ export function OrganizationInvitePanel({
     try {
       await organizationsClient.revokeInvitation(organizationId, invitationId);
       setInvitations((current) => current.filter((item) => item.id !== invitationId));
-      setNotice(labels.revoked);
+      setNotice({ message: labels.revoked, tone: "default" });
     } catch (error) {
-      setNotice(localizeUiError(error, { fallback: labels.actionError }));
+      setNotice({
+        message: localizeUiError(error, { fallback: labels.actionError }),
+        tone: "error",
+      });
     }
   }
 
@@ -79,7 +91,7 @@ export function OrganizationInvitePanel({
     return (
       <div className="grid">
         {children}
-        {notice ? <div role="status" className="my-3 rounded-lg border border-border-strong bg-foreground/5 px-4 py-3 text-sm text-muted-foreground">{notice}</div> : null}
+        {notice ? <div role="status" className={`my-3 rounded-lg border px-4 py-3 text-sm ${notice.tone === "error" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border-strong bg-foreground/5 text-muted-foreground"}`}>{notice.message}</div> : null}
         {canManage ? (
           <form className="grid gap-3 border-t border-border-strong/50 px-3 py-5 sm:grid-cols-[minmax(0,1fr)_176px_112px] sm:items-end sm:gap-4" onSubmit={invite}>
             <div className="grid gap-2">
@@ -123,7 +135,7 @@ export function OrganizationInvitePanel({
         <h2 className="text-lg font-semibold">{labels.title}</h2>
         <p className="text-sm text-muted-foreground">{labels.description}</p>
       </div>
-      {notice ? <p role="status" className="text-sm text-muted-foreground">{notice}</p> : null}
+      {notice ? <p role="status" className={`text-sm ${notice.tone === "error" ? "text-destructive" : "text-muted-foreground"}`}>{notice.message}</p> : null}
       {canManage ? (
         <form className="grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end" onSubmit={invite}>
           <div className="grid gap-2">

@@ -81,7 +81,7 @@ export function GapQuestionnaireStep({
     <section
       aria-labelledby="gap-step-heading"
       data-gap-questionnaire
-      className="w-full max-w-[1202px]"
+      className="w-full min-w-0"
     >
       <div className="mt-6 sm:mt-8 lg:mt-10">
         <div className="grid grid-cols-[minmax(0,1fr)_2.5rem] gap-2">

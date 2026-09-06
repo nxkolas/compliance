@@ -1,16 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CircleCheck,
-  CircleHelp,
   CircleX,
   ClipboardList,
   Loader2,
   Pencil,
+  RotateCcw,
   Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,14 +28,18 @@ import type { getCurrentActionPlan } from "@/src/server/action-plans/service";
 import { actionPlansClient } from "@/src/client/action-plans";
 import { pollJob } from "@/src/client/job-polling";
 import { GapCategoryIcon } from "@/components/gap-analysis/gap-category-icon";
+import { SequenceHelp } from "@/components/sequence-help";
+import type { PlanPreparationState } from "@/src/server/action-plans/preparation-state";
 
 type CurrentPlan = Awaited<ReturnType<typeof getCurrentActionPlan>>;
 type Labels = Dictionary["modules"]["actionPlan"]["workflow"];
 
-export function ActionPlanWorkflow({ organizationId, current, availableGapRevisionId = null, canContribute, labels }: {
+export function ActionPlanWorkflow({ organizationId, current, availableGapRevisionId = null, preparationState, generationJobId, canContribute, labels }: {
   organizationId: string;
   current: CurrentPlan;
   availableGapRevisionId?: string | null;
+  preparationState?: PlanPreparationState;
+  generationJobId?: string;
   canContribute: boolean;
   labels: Labels;
 }) {
@@ -46,8 +49,29 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
   const [expandedItemId, setExpandedItemId] = useState<string | null>(
     current?.categories.flatMap((category) => category.actions)[0]?.id ?? null,
   );
+  const state = preparationState ?? (availableGapRevisionId ? "ready" : "applicability_missing");
+  const generating = busy === "generation" || state === "generating";
+  const effectiveState = generating ? "generating" : error && (state === "ready" || state === "failed") ? "failed" : state;
+  const preparationCopy = effectiveState === "ready" ? null : labels.preparation[effectiveState];
+
+  useEffect(() => {
+    if (current || !generationJobId) return;
+    const controller = new AbortController();
+    void pollJob({
+      jobId: generationJobId,
+      signal: controller.signal,
+      finalRefresh: () => router.refresh(),
+    }).catch((caught) => {
+      if (!controller.signal.aborted) {
+        setError(localizeUiError(caught, { fallback: labels.generationFailed }));
+        router.refresh();
+      }
+    });
+    return () => controller.abort();
+  }, [current, generationJobId, labels.generationFailed, router]);
+
   async function generatePlan() {
-    if (!availableGapRevisionId) return;
+    if (!availableGapRevisionId || generating || !["ready", "failed"].includes(state)) return;
     setBusy("generation");
     setError(null);
     try {
@@ -60,30 +84,32 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
         finalRefresh: () => undefined,
       });
       if (job.state !== "succeeded" || !job.result?.actionPlanId) {
-        throw new Error(job.safeError?.message ?? labels.generationFailed);
+        throw new Error(labels.generationFailed);
       }
       router.refresh();
     } catch (caught) {
       setError(localizeUiError(caught, { fallback: labels.generationFailed }));
+      router.refresh();
     } finally {
       setBusy(null);
     }
   }
 
-  if (!current && availableGapRevisionId) {
+  if (!current && effectiveState === "ready") {
     return (
       <div
         data-action-plan-available-state
-        className="mt-8 w-full max-w-[1274px] sm:mt-12 lg:mt-16 xl:mt-16"
+        data-plan-preparation={effectiveState}
+        className="mt-8 w-full min-w-0 sm:mt-12 lg:mt-16 xl:mt-16"
       >
         {error ? (
-          <Alert variant="destructive" className="mb-6 max-w-[673px]">
+          <Alert variant="destructive" className="mb-6 w-full">
             <AlertDescription className="text-current">{error}</AlertDescription>
           </Alert>
         ) : null}
 
-        <div className="relative flex min-w-0 flex-col xl:min-h-[410px]">
-          <section className="relative min-h-[320px] w-full max-w-[697px] overflow-visible">
+        <div className="relative flex min-w-0 flex-col xl:grid xl:min-h-[410px] xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.65fr)] xl:items-start xl:gap-2">
+          <section className="relative min-h-[320px] w-full overflow-visible">
             <svg
               data-action-plan-available-speech-bubble
               aria-hidden="true"
@@ -114,39 +140,27 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
               </defs>
             </svg>
 
-            <div className="relative z-10 px-6 pt-8 sm:px-10 xl:px-[46px] xl:pt-[34px]">
+            <div className="relative z-10 w-[96.7%] px-6 py-8 sm:px-10 xl:px-[46px] xl:pt-[34px]">
               <h2 className="max-w-[560px] text-2xl leading-8 font-bold tracking-tight text-white sm:text-3xl sm:leading-9">
                 {labels.planAvailable}
               </h2>
               <p className="mt-[14px] max-w-[562px] text-base leading-7 text-white">
-                <strong className="font-bold">{labels.createPlanTitle}</strong>
-                <br />
-                {labels.createPlanDescription}
+                <strong className="font-bold">{labels.createPlanTitle}</strong><br />{labels.createPlanDescription}
               </p>
               <Button
                 type="button"
-                className="mt-[29px] h-12 w-full gap-3 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none hover:bg-[#123BFF] sm:w-64"
-                disabled={busy === "generation"}
+                className="mt-[29px] h-auto min-h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-5 py-3 font-['Space_Grotesk'] text-base font-medium whitespace-normal text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-64"
+                disabled={!availableGapRevisionId}
                 onClick={() => void generatePlan()}
               >
-                {busy === "generation" ? (
-                  <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                ) : (
-                  <ClipboardList aria-hidden="true" className="size-4" strokeWidth={1.33} />
-                )}
-                {busy === "generation" ? labels.generating : labels.generate}
+                <ClipboardList aria-hidden="true" className="size-4" strokeWidth={1.33} />
+                {labels.generate}
               </Button>
             </div>
           </section>
 
-          <div className="order-first mb-6 flex w-full justify-center xl:absolute xl:top-3 xl:left-[690px] xl:order-none xl:mb-0 xl:h-[354px] xl:w-[516px] xl:items-center xl:justify-start">
-            <Image
-              src="/images/robot.svg"
-              alt=""
-              width={516}
-              height={354}
-              className="h-auto w-full max-w-[420px] object-contain xl:max-w-none"
-            />
+          <div data-action-plan-mascot-slot className="order-first mb-6 flex w-full justify-center xl:order-none xl:mb-0 xl:h-[320px] xl:items-start xl:justify-center xl:self-start xl:pt-24">
+            <ActionPlanMascot positive />
           </div>
         </div>
       </div>
@@ -157,11 +171,18 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
     return (
       <div
         data-action-plan-empty-state
-        className="mt-8 w-full max-w-[1274px] sm:mt-12 lg:mt-16 xl:mt-16"
+        data-plan-preparation={effectiveState}
+        className="mt-8 w-full min-w-0 sm:mt-12 lg:mt-16 xl:mt-16"
       >
-        <div className="relative flex min-w-0 flex-col xl:min-h-[576px]">
-          <div className="w-full min-w-0 xl:w-[694px]">
-            <section className="relative min-h-[384px] overflow-visible xl:w-[697px]">
+        {error ? (
+          <Alert variant="destructive" className="mb-6 w-full">
+            <AlertDescription className="text-current">{error}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="relative flex min-w-0 flex-col xl:grid xl:min-h-[576px] xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.65fr)] xl:items-start xl:gap-2">
+          <div className="w-full min-w-0">
+            <section className="relative flex min-h-[384px] w-full flex-col overflow-visible">
               <svg
                 data-action-plan-speech-bubble
                 aria-hidden="true"
@@ -199,50 +220,71 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
                 </defs>
               </svg>
 
-              <div className="relative z-10 px-6 pt-8 sm:px-10 xl:px-[46px] xl:pt-[34px]">
+              <div className="relative z-10 w-[96.7%] px-6 pt-8 pb-8 sm:px-10 xl:px-[46px] xl:pt-[34px]">
                 <h2 className="max-w-[474px] text-2xl leading-8 font-bold tracking-tight text-white sm:text-3xl sm:leading-9">
-                  {labels.noPlan}
+                  {preparationCopy?.title ?? labels.noPlan}
                 </h2>
-                <p className="mt-[14px] max-w-[562px] text-base leading-7 font-normal text-white">
-                  {labels.noApprovedRevision}
-                </p>
-                <Button
-                  asChild
-                  className="mt-[29px] h-12 w-full gap-3 overflow-hidden rounded-lg bg-[#002BFF] px-5 font-['Space_Grotesk'] text-base font-medium text-white shadow-none hover:bg-[#002BFF] sm:w-96"
+                <p
+                  role={generating ? "status" : undefined}
+                  className="mt-[14px] max-w-[562px] text-base leading-7 font-normal text-white"
                 >
-                  <Link href={`/tool/organizations/${organizationId}/gap-analysis`}>
-                    <svg
-                      aria-hidden="true"
-                      className="h-[18px] w-[17px] shrink-0"
-                      viewBox="0 0 17 18"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M2.33073 17.3317H13.9974C14.4394 17.3317 14.8633 17.1561 15.1759 16.8435C15.4885 16.531 15.6641 16.1071 15.6641 15.665V5.24837L11.0807 0.665039H3.9974C3.55537 0.665039 3.13145 0.840634 2.81888 1.15319C2.50632 1.46575 2.33073 1.88968 2.33073 2.33171V4.83171M10.6641 0.665039V5.66504H15.6641M6.4974 13.9984L5.2474 12.7484M3.16406 13.165C3.49237 13.165 3.81746 13.1004 4.12077 12.9747C4.42408 12.8491 4.69968 12.665 4.93183 12.4328C5.16398 12.2007 5.34812 11.9251 5.47376 11.6217C5.5994 11.3184 5.66406 10.9933 5.66406 10.665C5.66406 10.3367 5.5994 10.0116 5.47376 9.70833C5.34812 9.40502 5.16398 9.12942 4.93183 8.89727C4.69968 8.66513 4.42408 8.48098 4.12077 8.35534C3.81746 8.2297 3.49237 8.16504 3.16406 8.16504C2.50102 8.16504 1.86514 8.42843 1.3963 8.89727C0.927455 9.36611 0.664063 10.002 0.664062 10.665C0.664063 11.3281 0.927455 11.964 1.3963 12.4328C1.86514 12.9016 2.50102 13.165 3.16406 13.165Z"
-                        stroke="#FBFBFB"
-                        strokeWidth="1.33"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    {labels.openGapAnalysis}
-                  </Link>
-                </Button>
+                  {preparationCopy?.description ?? labels.noApprovedRevision}
+                </p>
+                {effectiveState === "generating" || effectiveState === "failed" ? (
+                  <Button
+                    type="button"
+                    className="mt-[29px] h-auto min-h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-5 py-3 font-['Space_Grotesk'] text-base font-medium whitespace-normal text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-64"
+                    disabled={generating || !availableGapRevisionId}
+                    onClick={() => void generatePlan()}
+                  >
+                    {generating ? (
+                      <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                    ) : (
+                      <RotateCcw aria-hidden="true" className="size-4" strokeWidth={1.33} />
+                    )}
+                    {generating ? labels.generating : preparationCopy?.action}
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    className="mt-[29px] h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-4 py-0 font-['Space_Grotesk'] text-sm font-medium whitespace-nowrap text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-auto sm:px-5 sm:text-base"
+                  >
+                    <Link href={`/tool/organizations/${organizationId}/${effectiveState === "applicability_missing" || effectiveState === "applicability_review" ? "applicability-check" : "gap-analysis"}`}>
+                      {effectiveState === "gap_pending" ? (
+                      <GapAnalysisIcon />
+                    ) : (
+                      <svg
+                        aria-hidden="true"
+                        className="h-[18px] w-[17px] shrink-0"
+                        viewBox="0 0 17 18"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M2.33073 17.3317H13.9974C14.4394 17.3317 14.8633 17.1561 15.1759 16.8435C15.4885 16.531 15.6641 16.1071 15.6641 15.665V5.24837L11.0807 0.665039H3.9974C3.55537 0.665039 3.13145 0.840634 2.81888 1.15319C2.50632 1.46575 2.33073 1.88968 2.33073 2.33171V4.83171M10.6641 0.665039V5.66504H15.6641M6.4974 13.9984L5.2474 12.7484M3.16406 13.165C3.49237 13.165 3.81746 13.1004 4.12077 12.9747C4.42408 12.8491 4.69968 12.665 4.93183 12.4328C5.16398 12.2007 5.34812 11.9251 5.47376 11.6217C5.5994 11.3184 5.66406 10.9933 5.66406 10.665C5.66406 10.3367 5.5994 10.0116 5.47376 9.70833C5.34812 9.40502 5.16398 9.12942 4.93183 8.89727C4.69968 8.66513 4.42408 8.48098 4.12077 8.35534C3.81746 8.2297 3.49237 8.16504 3.16406 8.16504C2.50102 8.16504 1.86514 8.42843 1.3963 8.89727C0.927455 9.36611 0.664063 10.002 0.664062 10.665C0.664063 11.3281 0.927455 11.964 1.3963 12.4328C1.86514 12.9016 2.50102 13.165 3.16406 13.165Z"
+                          stroke="#FBFBFB"
+                          strokeWidth="1.33"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      )}
+                      {preparationCopy?.action ?? labels.openGapAnalysis}
+                    </Link>
+                  </Button>
+                )}
               </div>
 
-              <div className="absolute right-6 bottom-0 left-0 z-10 flex h-[93px] items-center justify-start border-t border-slate-800 pl-6 sm:pl-10 xl:pl-[46px]">
-                <div className="flex items-center gap-[18px] text-white">
-                  <CircleHelp aria-hidden="true" className="size-7 shrink-0" strokeWidth={1.33} />
-                  <span className="text-base leading-5 font-medium">{labels.whySequence}</span>
-                </div>
+              <div className="relative z-10 mt-auto flex min-h-[93px] w-[96.7%] items-center justify-start border-t border-slate-800 px-6 py-5 sm:px-10 xl:px-[46px]">
+                <SequenceHelp label={labels.whySequence} explanation={labels.whySequenceExplanation} />
               </div>
             </section>
 
-            <aside className="relative mt-8 flex min-h-40 w-full items-start rounded-xl bg-[rgba(27,29,38,0.36)] px-6 pt-[23px] text-white outline outline-1 outline-offset-[-1px] outline-[rgba(0,42,255,0.42)] sm:px-10 xl:block xl:h-40 xl:w-[673px] xl:px-0 xl:pt-0">
+            {/* The SVG body ends at x=674 of 697; the remaining width is its tail. */}
+            <aside className="relative mt-8 flex min-h-40 w-[96.7%] items-start rounded-xl bg-[rgba(27,29,38,0.36)] px-6 py-6 text-white outline outline-1 outline-offset-[-1px] outline-[rgba(0,42,255,0.42)] sm:px-10 xl:px-[46px]">
               <svg
                 aria-hidden="true"
-                className="mt-0.5 size-6 shrink-0 xl:absolute xl:top-[23px] xl:left-[46px] xl:mt-0"
+                className="mt-0.5 size-6 shrink-0"
                 viewBox="0 0 24 24"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -257,23 +299,17 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
                 <path d="M12 9H12.01" stroke="white" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M11 12H12V16H13" stroke="white" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <div className="ml-[18px] min-w-0 xl:absolute xl:top-[28px] xl:left-[92px] xl:ml-0 xl:w-[559px]">
+              <div className="ml-[18px] min-w-0 break-words">
                 <h3 className="text-lg leading-5 font-bold">{labels.infoTitle}</h3>
                 <p className="mt-[13px] whitespace-pre-line text-base leading-7 font-normal">
-                  {labels.infoDescription}
+                  {effectiveState === "applicability_missing" ? labels.infoDescription : labels.preparationInfo}
                 </p>
               </div>
             </aside>
           </div>
 
-          <div className="order-first mb-6 flex w-full justify-center xl:absolute xl:top-1 xl:left-[690px] xl:order-none xl:mb-0 xl:size-[560px] xl:justify-start">
-            <Image
-              src="/robot-sad.svg"
-              alt=""
-              width={560}
-              height={560}
-              className="h-auto w-full max-w-[420px] object-contain xl:max-w-none"
-            />
+          <div data-action-plan-mascot-slot className="order-first mb-6 flex w-full justify-center xl:order-none xl:mb-0 xl:h-[384px] xl:items-start xl:justify-center xl:self-start xl:pt-24">
+            <ActionPlanMascot positive={effectiveState === "no_gaps"} />
           </div>
         </div>
       </div>
@@ -307,7 +343,7 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
   for (const { item } of actions) statusCounts[item.status] += 1;
 
   return (
-    <div data-action-plan-results className="w-full max-w-[1202px]">
+    <div data-action-plan-results className="w-full min-w-0">
       {error ? <Alert variant="destructive"><AlertDescription className="text-current">{error}</AlertDescription></Alert> : null}
       {current.sourceStaleness.stale ? <Alert variant="warning"><AlertDescription className="text-current">{labels.staleSources}</AlertDescription></Alert> : null}
 
@@ -498,6 +534,43 @@ function GuidanceList({ id, title, items }: { id: string; title: string; items: 
         {items.map((item, index) => <li key={`${index}:${item}`}>{item}</li>)}
       </ul>
     </section>
+  );
+}
+
+function GapAnalysisIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-[10px] w-[18px] shrink-0"
+      viewBox="0 0 18 10"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M17.3321 0C17.6992 0.000176196 17.9972 0.297878 17.9972 0.665039V5.66504C17.9972 6.0322 17.6992 6.3299 17.3321 6.33008C16.9649 6.32997 16.6671 6.03224 16.6671 5.66504V2.27051L10.7188 8.21875C10.4592 8.4783 10.0381 8.47825 9.77842 8.21875L6.08115 4.52148L1.13584 9.46875C0.876132 9.72835 0.454099 9.72842 0.194433 9.46875C-0.0648651 9.20917 -0.0647568 8.78797 0.194433 8.52832L5.61142 3.11133C5.87104 2.85172 6.29213 2.85189 6.55185 3.11133L10.2481 6.80762L15.7257 1.33008H12.3321C11.9649 1.32997 11.6671 1.03224 11.6671 0.665039C11.6671 0.297835 11.9649 0.000105134 12.3321 0H17.3321Z"
+        fill="#FBFBFB"
+      />
+    </svg>
+  );
+}
+
+function ActionPlanMascot({ positive }: { positive: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="38 179 932 629"
+      width={932}
+      height={629}
+      data-action-plan-mascot={positive ? "brand" : "oops"}
+      className="block h-auto w-full max-w-[420px] shrink-0 xl:max-w-[516px]"
+    >
+      <image
+        href={positive ? "/images/landing/landingpage-maskottchen-mit-logo.svg" : "/robot-sad.svg"}
+        width={1024}
+        height={1024}
+      />
+    </svg>
   );
 }
 

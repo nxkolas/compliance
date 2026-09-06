@@ -6,9 +6,11 @@ import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 export default function Page() {
   return (
     <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-transparent p-4">
-      <Suspense fallback={null}>
-        <PublicLanguageSwitcher compactOnMobile />
-      </Suspense>
+      <div className="absolute top-4 right-4 z-20 sm:top-6 sm:right-6">
+        <Suspense fallback={null}>
+          <PublicLanguageSwitcher showThemeSwitcher compactOnMobile inline />
+        </Suspense>
+      </div>
 
       {/* VORDERGRUND: Die Maske schwebt darüber */}
       <div className="relative z-10 w-full max-w-[476px]">

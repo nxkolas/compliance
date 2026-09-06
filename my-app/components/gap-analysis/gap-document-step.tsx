@@ -43,7 +43,7 @@ export function GapDocumentStep({
   return (
     <section
       aria-labelledby="gap-step-heading"
-      className="grid w-full max-w-[1274px] gap-7 pt-3"
+      className="grid w-full min-w-0 gap-7 pt-3"
     >
       <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,870px)_minmax(190px,1fr)] lg:gap-8">
         <div

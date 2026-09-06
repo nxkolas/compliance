@@ -26,7 +26,7 @@ import {
   projectGapPrerequisiteView,
 } from "./applicability-eligibility";
 import { getGapAnalysisCyclePreauthorized } from "./analysis-cycle-service";
-import { deriveGapLifecycleCapabilities, deriveGapLifecycleMode } from "./workflow-state";
+import { countGapStatuses, deriveGapLifecycleCapabilities, deriveGapLifecycleMode } from "./workflow-state";
 import { projectGapFindingSources, type GapFindingSourceEvidence } from "./finding-source-projection";
 
 export type GapPageReadInput = {
@@ -177,7 +177,7 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
     acceptedFindings: findings,
     candidateFindings: [],
     comparison: [],
-    gapCounts: countStatuses(findings),
+    gapCounts: countGapStatuses(findings),
     lastWorkflowChange: history[0] ?? null,
   };
 }
@@ -343,12 +343,4 @@ function answerIds(release: ReturnType<typeof getCurrentGapDefinition>, answers:
     const option = question?.options.find((item) => item.stableValue === value);
     return question && option ? [[question.id, option.id]] : [];
   }));
-}
-
-function countStatuses(findings: Array<{ finding: { status: string } }>) {
-  return findings.reduce<Record<string, number>>((counts, row) => {
-    counts.all = (counts.all ?? 0) + 1;
-    counts[row.finding.status] = (counts[row.finding.status] ?? 0) + 1;
-    return counts;
-  }, { all: 0 });
 }

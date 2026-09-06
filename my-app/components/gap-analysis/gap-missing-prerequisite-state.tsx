@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CircleHelp, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SequenceHelp } from "@/components/sequence-help";
 
 export function GapMissingPrerequisiteState({
   destination,
@@ -9,6 +10,7 @@ export function GapMissingPrerequisiteState({
   description,
   action,
   whySequence,
+  whySequenceExplanation,
   infoTitle,
   infoDescription,
   variant = "missing",
@@ -19,6 +21,7 @@ export function GapMissingPrerequisiteState({
   description: string;
   action: string;
   whySequence: string;
+  whySequenceExplanation: string;
   infoTitle: string;
   infoDescription: string;
   variant?: "missing" | "unsupported-country";
@@ -29,7 +32,7 @@ export function GapMissingPrerequisiteState({
   return (
     <div
       data-gap-missing-prerequisite
-      className="mt-8 w-full max-w-[1274px] sm:mt-12 lg:mt-16 xl:mt-16"
+      className="mt-8 w-full min-w-0 sm:mt-12 lg:mt-16 xl:mt-16"
     >
       <div className="relative flex min-w-0 flex-col xl:min-h-[576px]">
         <div className="w-full min-w-0 xl:w-[694px]">
@@ -108,10 +111,7 @@ export function GapMissingPrerequisiteState({
 
             {!isUnsupportedCountry ? (
               <div className="absolute right-6 bottom-0 left-0 z-10 flex h-[93px] items-center border-t border-slate-800 pl-6 sm:pl-10 xl:pl-[46px]">
-                <div className="flex items-center gap-[18px] text-white">
-                  <CircleHelp aria-hidden="true" className="size-7 shrink-0" strokeWidth={1.33} />
-                  <span className="text-base leading-5 font-medium">{whySequence}</span>
-                </div>
+                <SequenceHelp label={whySequence} explanation={whySequenceExplanation} />
               </div>
             ) : null}
           </section>

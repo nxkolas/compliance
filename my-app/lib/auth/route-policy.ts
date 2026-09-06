@@ -53,6 +53,7 @@ export function isPublicRoute(pathname: string) {
 
   return (
     pathname === "/" ||
+    pathname === "/privacy" ||
     isCheckRoute(pathname) ||
     isGuestOnlyAuthRoute(pathname) ||
     isPublicAuthFlowRoute(pathname)

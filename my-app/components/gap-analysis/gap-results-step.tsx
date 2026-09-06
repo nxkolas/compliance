@@ -128,7 +128,7 @@ export function GapResultsStep({
   return (
     <section
       data-gap-results
-      className="w-full max-w-[1202px] overflow-hidden rounded-xl border-[1.5px] border-[#3D4049] bg-[#1B1E27] px-6 py-8 text-white shadow-sm sm:px-10 sm:py-10"
+      className="w-full min-w-0 overflow-hidden rounded-xl border-[1.5px] border-[#3D4049] bg-[#1B1E27] px-4 py-6 text-white shadow-sm sm:px-8 sm:py-8 xl:px-10 xl:py-10"
     >
       <div>
         <h2 className="text-2xl leading-8 font-bold">{labels.resultTitle}</h2>
@@ -140,7 +140,7 @@ export function GapResultsStep({
       {workflow.lifecycle.locked ? (
         <div
           data-gap-results-locked
-          className="mt-6 flex min-h-16 w-full max-w-[1111px] items-center gap-4 rounded-xl bg-[#191F3C] px-5 py-3 text-base leading-7 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-[#122272] sm:px-6"
+          className="mt-6 flex min-h-16 w-full items-center gap-4 rounded-xl bg-[#191F3C] px-5 py-3 text-base leading-7 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-[#122272] sm:px-6"
         >
           <LockKeyhole
             aria-hidden="true"
@@ -225,7 +225,7 @@ export function GapResultsStep({
                 <>
                   <div
                     data-gap-contradiction
-                    className="mt-6 flex min-h-24 w-full max-w-[1046px] items-start rounded-xl bg-zinc-800 px-5 py-4 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-red-400"
+                    className="mt-6 flex min-h-24 w-full items-start rounded-xl bg-zinc-800 px-5 py-4 shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.10),0px_1px_3px_0px_rgba(0,0,0,0.10)] outline-[1.5px] outline-offset-[-1.5px] outline-red-400"
                   >
                     <div className="flex items-start gap-3">
                       <AlertTriangle
@@ -318,7 +318,7 @@ export function GapResultsStep({
       actionable.length &&
       workflow.canManage ? (
         <Button
-          className="mt-6 h-12 bg-[#002BFF] px-6 text-white hover:bg-[#123BFF]"
+          className="mt-6 h-12 cursor-pointer bg-[#002BFF] px-6 text-white hover:bg-[#123BFF] disabled:cursor-not-allowed"
           disabled={busy || Boolean(unresolvedContradictions.length)}
           onClick={generateActionPlan}
         >

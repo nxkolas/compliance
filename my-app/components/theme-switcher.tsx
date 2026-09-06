@@ -12,6 +12,7 @@ import {
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 function useMountedTheme() {
   const { theme, setTheme } = useTheme();
@@ -52,9 +53,11 @@ export function ThemeSwitcher({ label }: { label: string }) {
 export function ThemeToggleButton({
   switchToDarkLabel,
   switchToLightLabel,
+  className,
 }: {
   switchToDarkLabel: string;
   switchToLightLabel: string;
+  className?: string;
 }) {
   const { isDark, mounted, setTheme } = useMountedTheme();
   const label = isDark ? switchToLightLabel : switchToDarkLabel;
@@ -71,7 +74,7 @@ export function ThemeToggleButton({
             aria-pressed={isDark}
             disabled={!mounted}
             onClick={() => setTheme(isDark ? "light" : "dark")}
-            className="bg-background/90 backdrop-blur"
+            className={cn("bg-background/90 backdrop-blur", className)}
           >
             {isDark ? (
               <Sun className="size-4" aria-hidden="true" />

@@ -33,7 +33,9 @@ describe("Gap result presentation", () => {
     expect(html).toContain("outline-[#122272]");
     expect(html.match(/data-gap-result-card/g)).toHaveLength(4);
     expect(html.match(/data-gap-contradiction/g)).toHaveLength(1);
-    expect(html).toContain("max-w-[1046px]");
+    expect(html).not.toContain("max-w-[1202px]");
+    expect(html).not.toContain("max-w-[1111px]");
+    expect(html).not.toContain("max-w-[1046px]");
     expect(html).toContain("min-h-24");
     expect(html).toContain("bg-zinc-800");
     expect(html).toContain("outline-red-400");
