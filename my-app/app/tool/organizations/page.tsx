@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { PageHeader } from "@/components/page-header";
 import { OrganizationManagementList } from "@/components/organizations/organization-management-list";
 import { getDictionary, getLocale } from "@/src/i18n";
 import { requireAuth } from "@/src/supabase/require-auth";
@@ -21,16 +22,11 @@ export default async function OrganizationsPage({
 
   return (
     <div className="flex w-full flex-col">
-      <header className="max-w-[1140px]">
-        <div className="grid gap-4">
-          <h1 className="text-4xl font-bold leading-9 tracking-normal text-foreground">
-            {dictionary.organizations.managementTitle}
-          </h1>
-          <p className="max-w-[893px] text-lg font-bold leading-7 text-[#002BFF] dark:text-info-foreground">
-            {dictionary.organizations.managementDescription}
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        className="max-w-[1140px] [&>p]:max-w-[893px]"
+        title={dictionary.organizations.managementTitle}
+        subtitle={dictionary.organizations.managementDescription}
+      />
       {(Array.isArray(notice) ? notice[0] : notice) === "archived" && (
         <div role="status" className="mt-8 rounded-lg border border-border-strong bg-card px-4 py-3 text-sm text-card-foreground">
           {dictionary.organizationManagement.archivedRouteNotice}

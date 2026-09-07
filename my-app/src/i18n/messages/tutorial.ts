@@ -40,7 +40,7 @@ export const tutorialMessages = defineFeatureMessages({
       nextStepsDescription:
         "Dort finden Sie Ihre Ergebnisse, offenen Maßnahmen und den aktuellen Bearbeitungsstand. Aufgaben können verwaltet und Ergebnisse bei Bedarf als PDF exportiert werden.",
       whyOrderTitle: "Möchten Sie das Puzzle fortsetzen?",
-      whyOrderMorePrefix: "Mehr zum von",
+      whyOrderMorePrefix: "Mehr über",
       whyOrderMoreSuffix: "erfahren",
       dashboardAction: "Zum Dashboard",
       applicabilityCheckAction: "Zum Betroffenheitscheck",
@@ -51,7 +51,7 @@ export const tutorialMessages = defineFeatureMessages({
       backAction: "Zurück",
       nextAction: "Weiter",
       disclaimer:
-        "comply bietet eine unverbindliche Orientierung und ersetzt keine individuelle Rechts- oder IT-Sicherheitsberatung.",
+        "complyX bietet eine unverbindliche Orientierung und ersetzt keine individuelle Rechts- oder IT-Sicherheitsberatung.",
       stepLabel: "Schritt",
       steps: {
         welcome: "Willkommen bei comply",
@@ -113,7 +113,7 @@ export const tutorialMessages = defineFeatureMessages({
       backAction: "Back",
       nextAction: "Continue",
       disclaimer:
-        "comply provides non-binding guidance and does not replace individual legal or IT security advice.",
+        "complyX provides non-binding guidance and does not replace individual legal or IT security advice.",
       stepLabel: "Step",
       steps: {
         welcome: "Welcome to comply",

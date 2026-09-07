@@ -251,7 +251,7 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
                 ) : (
                   <Button
                     asChild
-                    className="mt-auto h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-4 py-0 font-['Space_Grotesk'] text-sm font-medium whitespace-nowrap text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-auto sm:px-5 sm:text-base"
+                    className="mt-auto h-12 w-fit max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-5 py-0 font-['Space_Grotesk'] text-base font-medium whitespace-nowrap text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed"
                   >
                     <Link href={`/tool/organizations/${organizationId}/${effectiveState === "applicability_missing" || effectiveState === "applicability_review" ? "applicability-check" : "gap-analysis"}`}>
                       {effectiveState === "applicability_missing" || effectiveState === "applicability_review" ? (

@@ -64,9 +64,8 @@ describe("action plan empty state", () => {
     expect(html).toContain('data-action-plan-mascot="oops"');
     expect(html).toContain("Ihr Maßnahmenplan ist noch nicht verfügbar");
     expect(html).toContain("Betroffenheitscheck durchführen");
-    expect(html).toContain("h-12 w-full max-w-full");
+    expect(html).toContain("h-12 w-fit max-w-full");
     expect(html).toContain("whitespace-nowrap");
-    expect(html).toContain("sm:w-auto");
     expect(html).toContain("Warum diese Reihenfolge?");
     expect(html).toContain("Gut zu wissen");
     expect(html).toContain(

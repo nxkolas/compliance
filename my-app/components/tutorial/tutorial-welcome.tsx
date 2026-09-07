@@ -152,14 +152,14 @@ export function TutorialWelcome({
             <span className="font-normal">{labels.titleSuffix}</span>
           ) : null}
         </h1>
-        <p className="mt-3 max-w-[1081px] text-base font-normal leading-7 text-[#002BFF] md:min-h-10 md:text-lg dark:text-blue-200">
+        <p className="mt-3 max-w-[1081px] text-base font-normal leading-7 text-[#002BFF] md:min-h-10 md:text-lg xl:max-w-none xl:whitespace-nowrap xl:text-[clamp(14px,1.1vw,18px)] dark:text-blue-200">
           {labels.description}
         </p>
       </header>
 
       <ol
         aria-label={labels.titlePrefix}
-        className="mt-10 grid min-w-[760px] grid-cols-6 gap-3 overflow-visible pb-2 max-lg:min-w-0 max-lg:grid-cols-3 max-sm:grid-cols-2 xl:mt-16"
+        className="mt-7 grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-4 overflow-visible pb-2 sm:mt-8 sm:grid-cols-3 sm:gap-x-4 xl:mt-12 xl:grid-cols-6 xl:gap-x-3 xl:gap-y-0"
       >
         {stepKeys.map((key, index) => {
           const status: TutorialStepStatus =
@@ -185,8 +185,8 @@ export function TutorialWelcome({
         })}
       </ol>
 
-      <div className="mt-8 grid flex-1 items-center gap-5 lg:-translate-y-8 lg:grid-cols-[minmax(300px,0.78fr)_minmax(460px,1.22fr)] lg:gap-0 xl:mt-14">
-        <div className="pointer-events-none relative z-30 flex min-h-[190px] items-end justify-center sm:min-h-[240px] lg:min-h-[280px] lg:translate-x-20 lg:translate-y-16">
+      <div className={`mt-8 grid flex-1 items-center gap-5 lg:-translate-y-8 lg:grid-cols-[minmax(300px,0.78fr)_minmax(460px,1.22fr)] lg:gap-0 xl:mt-14 ${currentStepIndex === stepKeys.length - 1 ? "mb-[114px]" : ""}`}>
+        <div className="pointer-events-none relative z-30 flex min-h-[190px] items-end justify-center sm:min-h-[240px] lg:min-h-[280px] lg:translate-x-6 lg:translate-y-16 xl:translate-x-8">
           <div className="relative w-full max-w-[320px] sm:max-w-[430px]">
             <Image
               src="/images/Maskottchen_ohneLogo.svg"
@@ -215,7 +215,7 @@ export function TutorialWelcome({
           </div>
         </div>
 
-        <article className="relative isolate z-20 flex min-h-[320px] w-full max-w-[640px] flex-col justify-self-start rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] px-6 py-6 text-white outline outline-[1.5px] outline-offset-[-1px] outline-[#3D4049] before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:z-0 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] sm:px-10 sm:py-7 lg:-ml-3 lg:rounded-none lg:bg-none lg:bg-transparent lg:outline-none lg:before:hidden">
+        <article className="relative isolate z-40 flex min-h-[320px] w-full max-w-[640px] flex-col justify-self-start rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] px-6 py-6 text-white outline outline-[1.5px] outline-offset-[-1px] outline-[#3D4049] before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:z-0 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] sm:px-10 sm:py-7 lg:-ml-3 lg:rounded-none lg:bg-none lg:bg-transparent lg:outline-none lg:before:hidden">
           <svg
             aria-hidden="true"
             viewBox="0 0 748 364"
@@ -319,7 +319,7 @@ export function TutorialWelcome({
               </p>
             </div>
 
-            <div className="mt-auto flex min-h-12 w-full items-center justify-between gap-3 pt-4">
+            <div className="mt-auto flex min-h-12 w-full flex-wrap items-center justify-between gap-3 pt-4">
               {hasPreviousStep ? (
                 <button
                   type="button"
@@ -337,7 +337,7 @@ export function TutorialWelcome({
                 </button>
               ) : null}
 
-              <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+              <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
                 {!hasPreviousStep ? (
                   <Link
                     href={dashboardHref}
@@ -350,7 +350,7 @@ export function TutorialWelcome({
                 {currentStepIndex === 1 ? (
                   <Link
                     href={applicabilityCheckHref}
-                    className="inline-flex h-12 w-full max-w-72 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                    className="inline-flex h-12 w-72 max-w-full shrink-0 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     <span
                       data-eigenschaft-1="Betroffenheitscheck"
@@ -385,7 +385,7 @@ export function TutorialWelcome({
                 {currentStepIndex === 3 ? (
                   <Link
                     href={gapAnalysisHref}
-                    className="inline-flex h-12 w-full max-w-52 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
+                    className="inline-flex h-12 w-52 max-w-full shrink-0 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 font-['Space_Grotesk'] text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-colors hover:bg-white/5 hover:text-white"
                   >
                     <span
                       data-eigenschaft-1="Gap-Analyse"
@@ -454,18 +454,19 @@ export function TutorialWelcome({
           </div>
 
           {currentStepIndex === stepKeys.length - 1 ? (
-            <div className="absolute top-[calc(100%+18px)] right-1 z-30 h-24 w-96 rounded-xl bg-gradient-to-br from-gray-900 to-slate-800 outline outline-1 outline-offset-[-1px] outline-indigo-50/20">
-              <div className="absolute inset-x-0 top-6 flex justify-center px-4">
+            <div className="absolute inset-x-0 top-[calc(100%+18px)] z-30 min-h-24 w-full rounded-xl bg-gradient-to-br from-gray-900 to-slate-800 outline outline-1 outline-offset-[-1px] outline-indigo-50/20 sm:right-1 sm:left-auto sm:w-96">
+              <div className="flex min-h-24 items-center justify-center px-4 py-5">
                 <div className="flex flex-col items-start gap-3">
-                  <div className="whitespace-nowrap font-['Space_Grotesk'] text-xl leading-5 font-semibold text-white">
+                  <div className="font-['Space_Grotesk'] text-lg leading-6 font-semibold text-white sm:whitespace-nowrap sm:text-xl sm:leading-5">
                     {labels.whyOrderTitle}
                   </div>
-                  <div
+                  <Link
+                    href="/#about"
                     data-eigenschaft-1="Standard"
-                    className="inline-flex h-6 items-center gap-1.5"
+                    className="group inline-flex min-h-6 items-center gap-1.5 rounded-sm text-white/90 transition-[color,filter] duration-200 hover:text-white hover:drop-shadow-[0_0_7px_rgba(255,255,255,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111825] sm:h-6"
                   >
-                    <ContinuePuzzleIcon className="size-5 shrink-0 text-white" />
-                    <div className="inline-flex items-baseline gap-1 whitespace-nowrap font-['Space_Grotesk'] text-base leading-6 font-normal text-white/90">
+                    <ContinuePuzzleIcon className="size-5 shrink-0 text-white transition-transform duration-200 group-hover:translate-x-0.5" />
+                    <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1 font-['Space_Grotesk'] text-sm leading-5 font-normal sm:flex-nowrap sm:whitespace-nowrap sm:text-base sm:leading-6">
                       <span>{labels.whyOrderMorePrefix}</span>
                       <span className="inline-flex items-baseline">
                         <span>comply</span>
@@ -479,8 +480,8 @@ export function TutorialWelcome({
                         />
                       </span>
                       <span>{labels.whyOrderMoreSuffix}</span>
-                    </div>
-                  </div>
+                    </span>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -488,10 +489,51 @@ export function TutorialWelcome({
         </article>
       </div>
 
-      <p className="mt-auto max-w-[787px] translate-y-2 pt-8 text-sm font-normal leading-6 text-zinc-500">
-        {labels.disclaimer}
+      <p className="mt-auto ml-2 max-w-[787px] pt-8 text-sm font-normal leading-6 text-zinc-500 sm:ml-4 md:ml-2 xl:ml-[max(-13px,calc((100%_-_1285.5px)/2))]">
+        <BrandedDisclaimer text={labels.disclaimer} />
       </p>
     </section>
+  );
+}
+
+function BrandedDisclaimer({ text }: { text: string }) {
+  const brandMatch = /complyx/i.exec(text);
+
+  if (!brandMatch) return text;
+
+  const brandIndex = brandMatch.index;
+
+  return (
+    <>
+      {text.slice(0, brandIndex)}
+      <span className="inline-flex items-baseline whitespace-nowrap">
+        <span>comply</span>
+        <BrandXIcon className="ml-px h-[13px] w-[10px]" />
+      </span>
+      {text.slice(brandIndex + brandMatch[0].length)}
+    </>
+  );
+}
+
+function BrandXIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="13"
+      height="17"
+      viewBox="0 0 13 17"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M0.85752 5.11504L2.94987 10.2802L0 16.8997L2.77836 16.9499L4.3905 13.1386L6.07124 17L8.8496 16.8997L5.72823 10.1799C5.72823 10.1799 6.86589 7.58897 7.47757 6.46903C8.06312 5.39697 8.7124 4.34613 9.39842 3.46018C10.0738 2.58796 10.9934 1.73009 11.5937 1.15339C12.0429 0.721823 13 0 13 0C13 0 9.92871 1.16478 9.12401 1.85546C8.63107 2.27855 8.09612 2.74502 7.61478 3.25959C7.08311 3.82791 6.45095 4.52601 5.93404 5.26549C5.40237 6.02607 4.4248 7.82301 4.4248 7.82301L3.29288 5.0649L0.85752 5.11504Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 
@@ -723,14 +765,14 @@ function TutorialStep({
   return (
     <li
       aria-current={isCurrent ? "step" : undefined}
-      className="h-36 w-40 min-w-0"
+      className="h-36 w-full min-w-0"
     >
       <button
         type="button"
         onClick={onSelect}
         disabled={!onSelect}
         aria-label={onSelect ? `${stepLabel} ${index + 1}: ${label}` : undefined}
-        className={`inline-flex h-full w-full min-w-0 flex-col items-center justify-start gap-2 rounded-lg border-0 bg-transparent p-0 text-center text-inherit transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+        className={`mx-auto inline-flex h-full w-full max-w-40 min-w-0 flex-col items-center justify-start gap-2 rounded-lg border-0 bg-transparent p-0 text-center text-inherit transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
           isInactive ? "opacity-20" : "opacity-100"
         } ${
           onSelect

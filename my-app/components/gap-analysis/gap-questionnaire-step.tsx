@@ -254,16 +254,11 @@ export function GapQuestionnaireStep({
               data-eigenschaft-1="Anmelden"
               type="button"
               variant="outline"
-              className="h-12 w-full justify-center overflow-hidden rounded-lg border-0 p-0 font-sans text-base font-medium shadow-none sm:w-56"
-              style={{
-                backgroundColor: "#002BFF80",
-                color: "#FFFFFF80",
-              }}
+              className="h-12 w-full cursor-pointer justify-center overflow-hidden rounded-lg border-0 bg-[#002BFF]/50 p-0 font-sans text-base font-medium text-white/50 shadow-none transition-colors hover:bg-[#002BFF] hover:text-white disabled:cursor-not-allowed sm:w-56"
               onClick={() => move(categoryIndex - 1)}
             >
               <span
-                className="flex w-full items-center justify-center gap-2 px-5 text-center font-sans text-base font-medium"
-                style={{ color: "#FFFFFF80" }}
+                className="flex w-full items-center justify-center gap-2 px-5 text-center font-sans text-base font-medium text-current"
               >
                 <ChevronLeft
                   data-gap-category-arrow="previous"
@@ -287,7 +282,7 @@ export function GapQuestionnaireStep({
                 missing.length > 0
               }
               type="submit"
-              className={`relative h-12 w-full justify-center overflow-hidden rounded-lg p-0 font-sans text-base font-medium text-white ${
+              className={`relative h-12 w-full cursor-pointer justify-center overflow-hidden rounded-lg p-0 font-sans text-base font-medium text-white transition-colors disabled:cursor-not-allowed ${
                 isLast
                   ? "bg-[#002BFF] hover:bg-[#123BFF] sm:w-60"
                   : "bg-[#002BFF] hover:bg-[#123BFF] sm:w-56"
