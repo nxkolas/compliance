@@ -466,7 +466,7 @@ export function TutorialWelcome({
                     className="group inline-flex min-h-6 items-center gap-1.5 rounded-sm text-white/90 transition-[color,filter] duration-200 hover:text-white hover:drop-shadow-[0_0_7px_rgba(255,255,255,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111825] sm:h-6"
                   >
                     <ContinuePuzzleIcon className="size-5 shrink-0 text-white transition-transform duration-200 group-hover:translate-x-0.5" />
-                    <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1 font-['Space_Grotesk'] text-sm leading-5 font-normal sm:flex-nowrap sm:whitespace-nowrap sm:text-base sm:leading-6">
+                    <span className="relative inline-flex min-w-0 flex-wrap items-baseline gap-x-1 font-['Space_Grotesk'] text-sm leading-5 font-normal after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-current after:opacity-0 after:transition-opacity after:duration-200 group-hover:after:opacity-100 sm:flex-nowrap sm:whitespace-nowrap sm:text-base sm:leading-6">
                       <span>{labels.whyOrderMorePrefix}</span>
                       <span className="inline-flex items-baseline">
                         <span>comply</span>
