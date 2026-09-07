@@ -570,7 +570,7 @@ function ChoiceButtons({
             aria-pressed={selected}
             onClick={() => onChange(option.stableValue)}
             className={cn(
-              "flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border-[1.5px] border-border-strong bg-foreground/5 px-4 py-3 text-left text-base font-semibold text-foreground transition-colors hover:border-foreground-subtle hover:bg-foreground/10",
+              "flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-xl border-[1.5px] border-border-strong bg-foreground/5 px-4 py-3 text-left text-base font-semibold text-foreground transition-colors hover:border-foreground-subtle hover:bg-foreground/10",
               selected && "border-primary bg-primary/15 text-foreground",
             )}
           >
@@ -588,7 +588,7 @@ function ChoiceButtons({
               ) : (
                 <Circle className="size-4 shrink-0 text-foreground-subtle" />
               )}
-              <span className="break-words">{option.label}</span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">{option.label}</span>
             </span>
           </button>
         );
@@ -639,11 +639,11 @@ function MultiChoiceCards({
               )
             }
             className={cn(
-              "flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border-[1.5px] border-border-strong bg-foreground/5 px-4 py-3 text-left text-base font-semibold text-foreground transition-colors hover:border-foreground-subtle hover:bg-foreground/10",
+              "flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-xl border-[1.5px] border-border-strong bg-foreground/5 px-4 py-3 text-left text-base font-semibold text-foreground transition-colors hover:border-foreground-subtle hover:bg-foreground/10",
               selected && "border-primary bg-primary/15 text-foreground",
             )}
           >
-            <span className="break-words">{option.label}</span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">{option.label}</span>
             {selected ? (
               <CheckCircle2 className="size-4 shrink-0 text-primary" />
             ) : (

@@ -36,11 +36,11 @@ export function GapMissingPrerequisiteState({
     >
       <div className="relative flex min-w-0 flex-col xl:min-h-[576px]">
         <div className="w-full min-w-0 xl:w-[694px]">
-          <section className="relative min-h-[384px] overflow-visible xl:w-[697px]">
+          <section className="relative min-h-[384px] overflow-visible rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] outline outline-[1.5px] outline-offset-[-1px] outline-[#3D4049] before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] xl:w-[697px] xl:rounded-none xl:bg-none xl:bg-transparent xl:outline-none xl:before:hidden">
             <svg
               data-gap-prerequisite-speech-bubble
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 size-full"
+              className="pointer-events-none absolute inset-0 hidden size-full xl:block"
               viewBox="0 0 697 360"
               fill="none"
               preserveAspectRatio="none"
@@ -135,7 +135,7 @@ export function GapMissingPrerequisiteState({
             alt=""
             width={560}
             height={560}
-            className="h-auto w-full max-w-[420px] object-contain xl:max-w-none"
+            className="h-auto w-full max-w-[280px] object-contain sm:max-w-[380px] xl:max-w-none"
           />
         </div>
       </div>

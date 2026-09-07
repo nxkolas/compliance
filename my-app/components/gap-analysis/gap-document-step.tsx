@@ -48,10 +48,10 @@ export function GapDocumentStep({
       <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,870px)_minmax(190px,1fr)] lg:gap-8">
         <div
           data-gap-document-speech-bubble
-          className="relative min-h-[219px] overflow-visible"
+          className="relative min-h-[219px] overflow-visible rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] outline outline-[1.5px] outline-offset-[-1px] outline-[#3D4049] before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] lg:rounded-none lg:bg-none lg:bg-transparent lg:outline-none lg:before:hidden"
         >
           <DocumentSpeechBubble />
-          <div className="relative z-10 px-7 py-8 pr-12 sm:px-10 sm:py-9 sm:pr-16">
+          <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-9 lg:pr-16">
             <h2
               id="gap-step-heading"
               tabIndex={-1}
@@ -65,11 +65,11 @@ export function GapDocumentStep({
           </div>
         </div>
 
-        <div className="flex min-h-[219px] items-center justify-center">
+        <div className="order-first flex min-h-[180px] items-center justify-center lg:order-none lg:min-h-[219px]">
           <Image
             aria-hidden="true"
             alt=""
-            className="h-auto w-full max-w-[300px] object-contain lg:max-w-[330px]"
+            className="h-auto w-full max-w-[260px] object-contain sm:max-w-[300px] lg:max-w-[330px]"
             src="/images/Maskottchen_ohneLogo.svg"
             width={932}
             height={628}
@@ -406,7 +406,7 @@ function DocumentSpeechBubble() {
       fill="none"
       preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="pointer-events-none absolute inset-0 size-full"
+      className="pointer-events-none absolute inset-0 hidden size-full lg:block"
     >
       <g filter="url(#gap-document-speech-shadow)">
         <path

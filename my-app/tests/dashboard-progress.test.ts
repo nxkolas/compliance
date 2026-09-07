@@ -58,7 +58,7 @@ describe("dashboard progress", () => {
       ],
     });
 
-    expect(history.points.map((point) => point.percentage)).toEqual([33, 50, 75]);
+    expect(history.points.map((point) => point.percentage)).toEqual([0, 33, 50, 75]);
     expect(history.delta).toBe(25);
     expect(history.milestones.map((milestone) => milestone.code)).toEqual([
       "applicability_submitted",

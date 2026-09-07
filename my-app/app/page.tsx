@@ -7,6 +7,7 @@ import { PuzzleWorkflowReveal } from "@/components/landing/puzzle-workflow-revea
 import { ProductVideo } from "@/components/landing/product-video";
 import { LandingQuestionCard } from "@/components/landing/question-card";
 import { TeamPuzzleSection } from "@/components/landing/team-puzzle-section";
+import { DashboardOrganizationCta } from "@/components/landing/dashboard-organization-cta";
 import { PublicLanguageSwitcher } from "@/components/public-language-switcher";
 import { Button } from "@/components/ui/button";
 import { getDictionary } from "@/src/i18n";
@@ -68,7 +69,12 @@ export default function Home() {
 async function HomeContent() {
   const dictionary = await getDictionary();
   const home = dictionary.home;
-  const userState = await getLandingUserState();
+  const {
+    state: userState,
+    organizations,
+    nextOrganizationsCursor,
+    dashboardFallbackHref,
+  } = await getLandingUserState();
   const isAuthenticated = userState !== "guest";
   const isNewUser = userState === "new-user";
   const authenticatedHero = isNewUser
@@ -77,7 +83,7 @@ async function HomeContent() {
   const heroPrimaryHref = isNewUser
     ? "/tool/organizations/new"
     : isAuthenticated
-      ? "/tool/organizations"
+      ? dashboardFallbackHref
       : "/check/applicability";
   const heroPrimaryLabel = isNewUser
     ? home.newUserHero.primaryCta
@@ -211,22 +217,40 @@ async function HomeContent() {
                 : home.heroDescription}
             </p>
             <div className={isAuthenticated ? "mt-8 flex flex-col gap-4 sm:flex-row" : "mt-9 flex flex-col gap-4 sm:flex-row"}>
-              <Button
-                asChild
-                size="lg"
-                className="h-12 min-w-64 rounded-lg bg-[#002BFF] px-7 text-base transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#002BFF] hover:shadow-[0px_7px_16px_0px_rgba(0,43,255,0.55)] active:translate-y-0"
-              >
-                <Link href={heroPrimaryHref}>
-                  {isNewUser ? (
-                    <Building2 className="size-5 shrink-0" aria-hidden="true" />
-                  ) : isAuthenticated ? (
-                    <LandingDashboardIcon />
-                  ) : (
-                    <ApplicabilityCheckIcon />
-                  )}
-                  {heroPrimaryLabel}
-                </Link>
-              </Button>
+              {userState === "existing-user" ? (
+                <DashboardOrganizationCta
+                  organizations={organizations}
+                  nextCursor={nextOrganizationsCursor}
+                  fallbackHref={dashboardFallbackHref}
+                  labels={{
+                    button: heroPrimaryLabel,
+                    title: home.dashboardPicker.title,
+                    description: home.dashboardPicker.description,
+                    searchLabel: dictionary.organizations.switcherSearchLabel,
+                    searchPlaceholder: dictionary.organizations.switcherSearchPlaceholder,
+                    loading: dictionary.organizations.switcherLoading,
+                    noResults: dictionary.organizations.switcherNoResults,
+                    loadError: dictionary.organizations.switcherLoadError,
+                    manage: dictionary.organizations.switcherManage,
+                    close: home.dashboardPicker.close,
+                  }}
+                />
+              ) : (
+                <Button
+                  asChild
+                  size="lg"
+                  className="h-12 min-w-64 rounded-lg bg-[#002BFF] px-7 text-base transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#002BFF] hover:shadow-[0px_7px_16px_0px_rgba(0,43,255,0.55)] active:translate-y-0"
+                >
+                  <Link href={heroPrimaryHref}>
+                    {isNewUser ? (
+                      <Building2 className="size-5 shrink-0" aria-hidden="true" />
+                    ) : (
+                      <ApplicabilityCheckIcon />
+                    )}
+                    {heroPrimaryLabel}
+                  </Link>
+                </Button>
+              )}
               <Link
                 href="#product-video"
                 className="inline-flex h-12 w-full max-w-72 items-center justify-center overflow-hidden rounded-lg bg-transparent font-sans text-base font-medium text-white/70 shadow-[0px_4px_4px_0px_rgba(255,255,255,0.25)] outline outline-[1.5px] outline-offset-[-1.5px] outline-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:text-white hover:shadow-[0px_7px_14px_0px_rgba(255,255,255,0.32)] hover:outline-white active:translate-y-0"
@@ -420,10 +444,20 @@ async function HomeContent() {
 }
 
 type LandingUserState = "guest" | "new-user" | "existing-user";
+type LandingUserContext = {
+  state: LandingUserState;
+  organizations: Array<{ id: string; name: string }>;
+  nextOrganizationsCursor?: string;
+  dashboardFallbackHref: string;
+};
 
-async function getLandingUserState(): Promise<LandingUserState> {
+async function getLandingUserState(): Promise<LandingUserContext> {
   if (!hasEnvVars) {
-    return "guest";
+    return {
+      state: "guest",
+      organizations: [],
+      dashboardFallbackHref: "/tool/organizations",
+    };
   }
 
   const supabase = await createClient();
@@ -432,14 +466,18 @@ async function getLandingUserState(): Promise<LandingUserState> {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return "guest";
+    return {
+      state: "guest",
+      organizations: [],
+      dashboardFallbackHref: "/tool/organizations",
+    };
   }
 
   const [activeOrganizations, archivedOrganizations] = await Promise.all([
     listOrganizationsForUserPage({
       userId: user.id,
       status: "active",
-      limit: 1,
+      limit: 25,
     }),
     listOrganizationsForUserPage({
       userId: user.id,
@@ -448,10 +486,28 @@ async function getLandingUserState(): Promise<LandingUserState> {
     }),
   ]);
 
-  return activeOrganizations.organizations.length > 0 ||
-    archivedOrganizations.organizations.length > 0
-    ? "existing-user"
-    : "new-user";
+  const activeOrganization = activeOrganizations.organizations[0];
+
+  if (activeOrganization) {
+    return {
+      state: "existing-user",
+      organizations: activeOrganizations.organizations.map(({ id, name }) => ({ id, name })),
+      nextOrganizationsCursor: activeOrganizations.nextCursor,
+      dashboardFallbackHref: `/tool/organizations/${encodeURIComponent(activeOrganization.id)}`,
+    };
+  }
+
+  return archivedOrganizations.organizations.length > 0
+    ? {
+        state: "existing-user",
+        organizations: [],
+        dashboardFallbackHref: "/tool/organizations",
+      }
+    : {
+        state: "new-user",
+        organizations: [],
+        dashboardFallbackHref: "/tool/organizations/new",
+      };
 }
 
 function HeroLaptopPreview({
@@ -499,23 +555,6 @@ function ApplicabilityCheckIcon() {
         strokeWidth="1.33"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function LandingDashboardIcon() {
-  return (
-    <svg
-      viewBox="0 0 17 17"
-      fill="none"
-      className="size-5 shrink-0"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d="M0.666992 0C1.03518 0 1.33398 0.298802 1.33398 0.666992V14C1.33398 14.2652 1.43942 14.5195 1.62695 14.707C1.81449 14.8946 2.06877 15 2.33398 15H15.667C16.0352 15 16.334 15.2988 16.334 15.667C16.334 16.0352 16.0352 16.334 15.667 16.334H2.33398C1.71515 16.334 1.12118 16.088 0.683594 15.6504C0.246009 15.2128 0 14.6188 0 14V0.666992C0 0.298802 0.298802 0 0.666992 0ZM4.83398 9.16699C5.20201 9.16719 5.50098 9.46592 5.50098 9.83398V12.334C5.50071 12.7018 5.20184 13.0008 4.83398 13.001C4.46596 13.001 4.16726 12.702 4.16699 12.334V9.83398C4.16699 9.46579 4.46579 9.16699 4.83398 9.16699ZM9 1.66699C9.36819 1.66699 9.66699 1.96579 9.66699 2.33398V12.334C9.66673 12.702 9.36803 13.001 9 13.001C8.63214 13.0008 8.33327 12.7018 8.33301 12.334V2.33398C8.33301 1.96592 8.63198 1.66719 9 1.66699ZM13.167 5C13.5352 5 13.834 5.2988 13.834 5.66699V12.334C13.8338 12.702 13.5351 13 13.167 13C12.7989 13 12.5002 12.702 12.5 12.334V5.66699C12.5 5.2988 12.7988 5 13.167 5Z"
-        fill="currentColor"
       />
     </svg>
   );

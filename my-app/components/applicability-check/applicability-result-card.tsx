@@ -308,7 +308,7 @@ export function ApplicabilityResultCard({
       <section className="grid min-w-0 items-center gap-6 @5xl/result-card:mt-4 @5xl/result-card:w-full @5xl/result-card:grid-cols-[minmax(0,1.46fr)_minmax(0,1fr)] @5xl/result-card:gap-[52px]">
         <div
           className={cn(
-            "relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center px-6 py-10 sm:px-[54px] @5xl/result-card:justify-start @5xl/result-card:pt-[50px] @5xl/result-card:pb-[30px] @7xl/result-card:max-w-none",
+            "relative flex min-h-72 w-full max-w-[758.5px] flex-col items-start justify-center rounded-xl px-6 py-10 before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] sm:px-[54px] @5xl/result-card:justify-start @5xl/result-card:rounded-none @5xl/result-card:pt-[50px] @5xl/result-card:pb-[30px] @5xl/result-card:before:hidden @7xl/result-card:max-w-none",
             isNotDirectlyInScope &&
               "@5xl/result-card:px-[58px] @5xl/result-card:pt-[80px] @5xl/result-card:pb-[20px]",
             isClarificationRequired &&
@@ -364,14 +364,14 @@ export function ApplicabilityResultCard({
             </Button>
           ) : null}
         </div>
-        <div className="flex min-w-0 items-center justify-center @5xl/result-card:min-h-72 @5xl/result-card:translate-y-[19px] @5xl/result-card:justify-end">
+        <div className="order-first flex min-w-0 items-center justify-center @5xl/result-card:order-none @5xl/result-card:min-h-72 @5xl/result-card:translate-y-[19px] @5xl/result-card:justify-end">
           <Image
             src="/images/Maskottchen_ohneLogo.svg"
             alt=""
             aria-hidden="true"
             width={520}
             height={350}
-            className="h-auto w-full max-w-[360px] sm:max-w-[430px] @5xl/result-card:max-w-[520px] @7xl/result-card:max-w-none"
+            className="h-auto w-full max-w-[280px] sm:max-w-[380px] @5xl/result-card:max-w-[520px] @7xl/result-card:max-w-none"
           />
         </div>
       </section>

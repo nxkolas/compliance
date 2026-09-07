@@ -3,11 +3,10 @@
 import type { DashboardActivityItem } from "@/src/contracts/dashboard";
 import { dashboardClient } from "@/src/client/dashboard";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Labels = {
   empty: string;
-  more: string;
   loading: string;
   loadError: string;
   activityText: Record<DashboardActivityItem["code"], string>;
@@ -32,7 +31,7 @@ export function DashboardActivityFeed({
   const [error, setError] = useState(false);
   const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
 
-  async function loadMore() {
+  const loadMore = useCallback(async () => {
     if (!cursor || loading) return;
     setLoading(true);
     setError(false);
@@ -48,13 +47,31 @@ export function DashboardActivityFeed({
     } finally {
       setLoading(false);
     }
-  }
+  }, [cursor, loading, organizationId]);
+
+  const loadTriggerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const trigger = loadTriggerRef.current;
+    const scrollContainer = trigger?.parentElement;
+    if (!trigger || !scrollContainer || !cursor) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) void loadMore();
+      },
+      { root: scrollContainer, rootMargin: "0px 0px 80px" },
+    );
+    observer.observe(trigger);
+    return () => observer.disconnect();
+  }, [cursor, loadMore]);
 
   if (!items.length) return <p className="flex h-full min-h-24 items-center justify-center py-6 text-center text-sm text-muted-foreground">{labels.empty}</p>;
 
   return <>
     <ul className="space-y-4">{items.map((item) => <li key={item.id}>{activityLink(item, labels.activityText[item.code], relative)}</li>)}</ul>
-    {cursor && <button type="button" onClick={loadMore} disabled={loading} className="mt-5 ml-auto block text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50">{loading ? labels.loading : labels.more}</button>}
+    {cursor && <div ref={loadTriggerRef} aria-hidden="true" className="h-px" data-activity-load-trigger />}
+    {loading && <p className="mt-3 text-center text-xs text-muted-foreground">{labels.loading}</p>}
     {error && <p role="alert" className="mt-3 text-xs text-destructive">{labels.loadError}</p>}
   </>;
 }

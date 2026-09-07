@@ -29,6 +29,10 @@ import { actionPlansClient } from "@/src/client/action-plans";
 import { pollJob } from "@/src/client/job-polling";
 import { GapCategoryIcon } from "@/components/gap-analysis/gap-category-icon";
 import { SequenceHelp } from "@/components/sequence-help";
+import {
+  ApplicabilityCheckIcon,
+  GapAnalysisIcon,
+} from "@/components/workflow-icons";
 import type { PlanPreparationState } from "@/src/server/modules/action-plans/preparation-state";
 
 type CurrentPlan = Awaited<ReturnType<typeof getCurrentActionPlan>>;
@@ -109,11 +113,11 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
         ) : null}
 
         <div className="relative flex min-w-0 flex-col xl:grid xl:min-h-[410px] xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.65fr)] xl:items-start xl:gap-2">
-          <section className="relative min-h-[320px] w-full overflow-visible">
+          <section className="relative min-h-[320px] w-full overflow-visible rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] outline outline-[1.5px] outline-offset-[-1px] outline-[#3D4049] before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] xl:rounded-none xl:bg-none xl:bg-transparent xl:outline-none xl:before:hidden">
             <svg
               data-action-plan-available-speech-bubble
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 size-full"
+              className="pointer-events-none absolute inset-0 hidden size-full xl:block"
               viewBox="0 0 697 320"
               fill="none"
               preserveAspectRatio="none"
@@ -140,7 +144,7 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
               </defs>
             </svg>
 
-            <div className="relative z-10 w-[96.7%] px-6 py-8 sm:px-10 xl:px-[46px] xl:pt-[34px]">
+            <div className="relative z-10 w-full px-6 py-8 sm:px-10 xl:w-[96.7%] xl:px-[46px] xl:pt-[42px] xl:pb-6">
               <h2 className="max-w-[560px] text-2xl leading-8 font-bold tracking-tight text-white sm:text-3xl sm:leading-9">
                 {labels.planAvailable}
               </h2>
@@ -149,7 +153,7 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
               </p>
               <Button
                 type="button"
-                className="mt-[29px] h-auto min-h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-5 py-3 font-['Space_Grotesk'] text-base font-medium whitespace-normal text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-64"
+                className="mt-[29px] h-12 w-fit max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-5 py-0 font-['Space_Grotesk'] text-base font-medium whitespace-nowrap text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed"
                 disabled={!availableGapRevisionId}
                 onClick={() => void generatePlan()}
               >
@@ -182,11 +186,11 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
 
         <div className="relative flex min-w-0 flex-col xl:grid xl:min-h-[576px] xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.65fr)] xl:items-start xl:gap-2">
           <div className="w-full min-w-0">
-            <section className="relative flex min-h-[384px] w-full flex-col overflow-visible">
+            <section className="relative flex min-h-[384px] w-full flex-col overflow-visible rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] outline outline-[1.5px] outline-offset-[-1px] outline-[#3D4049] before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] xl:rounded-none xl:bg-none xl:bg-transparent xl:outline-none xl:before:hidden">
               <svg
                 data-action-plan-speech-bubble
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 size-full"
+                className="pointer-events-none absolute inset-0 hidden size-full xl:block"
                 viewBox="0 0 697 360"
                 fill="none"
                 preserveAspectRatio="none"
@@ -220,7 +224,7 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
                 </defs>
               </svg>
 
-              <div className="relative z-10 w-[96.7%] px-6 pt-8 pb-8 sm:px-10 xl:px-[46px] xl:pt-[34px]">
+              <div className="relative z-10 flex w-full flex-1 flex-col px-6 pt-8 pb-8 sm:px-10 xl:w-[96.7%] xl:px-[46px] xl:pt-[34px]">
                 <h2 className="max-w-[474px] text-2xl leading-8 font-bold tracking-tight text-white sm:text-3xl sm:leading-9">
                   {preparationCopy?.title ?? labels.noPlan}
                 </h2>
@@ -233,7 +237,7 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
                 {effectiveState === "generating" || effectiveState === "failed" ? (
                   <Button
                     type="button"
-                    className="mt-[29px] h-auto min-h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-5 py-3 font-['Space_Grotesk'] text-base font-medium whitespace-normal text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-64"
+                    className="mt-auto h-auto min-h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-5 py-3 font-['Space_Grotesk'] text-base font-medium whitespace-normal text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-64"
                     disabled={generating || !availableGapRevisionId}
                     onClick={() => void generatePlan()}
                   >
@@ -247,27 +251,13 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
                 ) : (
                   <Button
                     asChild
-                    className="mt-[29px] h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-4 py-0 font-['Space_Grotesk'] text-sm font-medium whitespace-nowrap text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-auto sm:px-5 sm:text-base"
+                    className="mt-auto h-12 w-full max-w-full cursor-pointer gap-3 rounded-lg bg-[#002BFF] px-4 py-0 font-['Space_Grotesk'] text-sm font-medium whitespace-nowrap text-white shadow-none hover:bg-[#123BFF] disabled:cursor-not-allowed sm:w-auto sm:px-5 sm:text-base"
                   >
                     <Link href={`/tool/organizations/${organizationId}/${effectiveState === "applicability_missing" || effectiveState === "applicability_review" ? "applicability-check" : "gap-analysis"}`}>
-                      {effectiveState === "gap_pending" ? (
-                      <GapAnalysisIcon />
-                    ) : (
-                      <svg
-                        aria-hidden="true"
-                        className="h-[18px] w-[17px] shrink-0"
-                        viewBox="0 0 17 18"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M2.33073 17.3317H13.9974C14.4394 17.3317 14.8633 17.1561 15.1759 16.8435C15.4885 16.531 15.6641 16.1071 15.6641 15.665V5.24837L11.0807 0.665039H3.9974C3.55537 0.665039 3.13145 0.840634 2.81888 1.15319C2.50632 1.46575 2.33073 1.88968 2.33073 2.33171V4.83171M10.6641 0.665039V5.66504H15.6641M6.4974 13.9984L5.2474 12.7484M3.16406 13.165C3.49237 13.165 3.81746 13.1004 4.12077 12.9747C4.42408 12.8491 4.69968 12.665 4.93183 12.4328C5.16398 12.2007 5.34812 11.9251 5.47376 11.6217C5.5994 11.3184 5.66406 10.9933 5.66406 10.665C5.66406 10.3367 5.5994 10.0116 5.47376 9.70833C5.34812 9.40502 5.16398 9.12942 4.93183 8.89727C4.69968 8.66513 4.42408 8.48098 4.12077 8.35534C3.81746 8.2297 3.49237 8.16504 3.16406 8.16504C2.50102 8.16504 1.86514 8.42843 1.3963 8.89727C0.927455 9.36611 0.664063 10.002 0.664062 10.665C0.664063 11.3281 0.927455 11.964 1.3963 12.4328C1.86514 12.9016 2.50102 13.165 3.16406 13.165Z"
-                          stroke="#FBFBFB"
-                          strokeWidth="1.33"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      {effectiveState === "applicability_missing" || effectiveState === "applicability_review" ? (
+                        <ApplicabilityCheckIcon className="h-[18px] w-[17px] shrink-0" />
+                      ) : (
+                        <GapAnalysisIcon className="h-[10px] w-[18px] shrink-0" />
                       )}
                       {preparationCopy?.action ?? labels.openGapAnalysis}
                     </Link>
@@ -275,7 +265,7 @@ export function ActionPlanWorkflow({ organizationId, current, availableGapRevisi
                 )}
               </div>
 
-              <div className="relative z-10 mt-auto flex min-h-[93px] w-[96.7%] items-center justify-start border-t border-slate-800 px-6 py-5 sm:px-10 xl:px-[46px]">
+              <div className="relative z-10 mt-auto flex min-h-[93px] w-full items-center justify-start border-t border-slate-800 px-6 py-5 sm:px-10 xl:w-[96.7%] xl:px-[46px]">
                 <SequenceHelp label={labels.whySequence} explanation={labels.whySequenceExplanation} />
               </div>
             </section>
@@ -537,23 +527,6 @@ function GuidanceList({ id, title, items }: { id: string; title: string; items: 
   );
 }
 
-function GapAnalysisIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-[10px] w-[18px] shrink-0"
-      viewBox="0 0 18 10"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M17.3321 0C17.6992 0.000176196 17.9972 0.297878 17.9972 0.665039V5.66504C17.9972 6.0322 17.6992 6.3299 17.3321 6.33008C16.9649 6.32997 16.6671 6.03224 16.6671 5.66504V2.27051L10.7188 8.21875C10.4592 8.4783 10.0381 8.47825 9.77842 8.21875L6.08115 4.52148L1.13584 9.46875C0.876132 9.72835 0.454099 9.72842 0.194433 9.46875C-0.0648651 9.20917 -0.0647568 8.78797 0.194433 8.52832L5.61142 3.11133C5.87104 2.85172 6.29213 2.85189 6.55185 3.11133L10.2481 6.80762L15.7257 1.33008H12.3321C11.9649 1.32997 11.6671 1.03224 11.6671 0.665039C11.6671 0.297835 11.9649 0.000105134 12.3321 0H17.3321Z"
-        fill="#FBFBFB"
-      />
-    </svg>
-  );
-}
-
 function ActionPlanMascot({ positive }: { positive: boolean }) {
   return (
     <svg
@@ -563,7 +536,7 @@ function ActionPlanMascot({ positive }: { positive: boolean }) {
       width={932}
       height={629}
       data-action-plan-mascot={positive ? "brand" : "oops"}
-      className="block h-auto w-full max-w-[420px] shrink-0 xl:max-w-[516px]"
+      className="block h-auto w-full max-w-[280px] shrink-0 sm:max-w-[380px] xl:max-w-[516px]"
     >
       <image
         href={positive ? "/images/landing/landingpage-maskottchen-mit-logo.svg" : "/robot-sad.svg"}

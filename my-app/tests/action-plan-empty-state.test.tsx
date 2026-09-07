@@ -27,6 +27,9 @@ describe("action plan empty state", () => {
       "xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.65fr)]",
     );
     expect(html).toContain("data-action-plan-available-speech-bubble");
+    expect(html).toContain("h-12 w-fit max-w-full");
+    expect(html).toContain("whitespace-nowrap");
+    expect(html).toContain("xl:pt-[42px] xl:pb-6");
     expect(html).toContain('data-action-plan-mascot="brand"');
     expect(html).toContain("data-action-plan-mascot-slot");
     expect(html).toContain("xl:h-[320px]");
@@ -104,6 +107,23 @@ describe("action plan empty state", () => {
     expect(html).toContain("Warum diese Reihenfolge?");
     expect(html).toContain("Gut zu wissen");
     expect(html).not.toContain("Betroffenheitscheck durchführen");
+  });
+
+  it("uses the Gap Analysis icon and lower button alignment while the evaluation runs", () => {
+    const labels = getDefaultDictionary().modules.actionPlan.workflow;
+    const html = renderToStaticMarkup(
+      <ActionPlanWorkflow
+        organizationId="organization-1"
+        current={null}
+        preparationState="gap_generating"
+        canContribute={false}
+        labels={labels}
+      />,
+    );
+
+    expect(html).toContain('viewBox="0 0 18 10"');
+    expect(html).toContain("mt-auto h-12");
+    expect(html).toContain("flex w-full flex-1 flex-col");
   });
 
   it("offers retry after failed generation without discarding the gap result", () => {

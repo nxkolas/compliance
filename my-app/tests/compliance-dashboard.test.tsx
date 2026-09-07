@@ -59,10 +59,15 @@ describe("compliance dashboard", () => {
     expect(render(0)).toContain("min-h-24 translate-y-4");
   });
   it("calculates implementation from actual action counts", () => {
-    expect(render(2)).toContain('aria-label="75% umgesetzt"');
-    expect(render(2)).toContain('data-dashboard-layout="action-plan"');
-    expect(render(2)).toContain("75% In Bearbeitung");
-    expect(render(2)).toContain('text-[#FFAA00]');
+    const html = render(2);
+    expect(html).toContain('aria-label="75% umgesetzt"');
+    expect(html).toContain('data-dashboard-layout="action-plan"');
+    expect(html).toContain("@min-[640px]:items-stretch");
+    expect(html).toContain("@min-[640px]:[contain:size]");
+    expect(html).toContain("@min-[640px]:min-h-0 @min-[640px]:flex-1 @min-[640px]:overflow-hidden");
+    expect(html).toContain("h-[320px] overflow-hidden @min-[640px]:h-full @min-[640px]:min-h-0");
+    expect(html).toContain("75% In Bearbeitung");
+    expect(html).toContain('text-[#FFAA00]');
     expect(render(2, 0)).toContain('aria-label="100% umgesetzt"');
     expect(render(0)).toContain("Noch keine gespeicherten Aktivitäten");
   });
@@ -79,8 +84,10 @@ describe("compliance dashboard", () => {
   it("shows the compact empty and ready report states", () => {
     const empty = render(2);
     expect(empty).toContain("data-dashboard-report-empty");
+    expect(empty).toContain("min-h-32 translate-y-3");
     expect(empty).toContain("Noch kein Report erstellt");
     expect(empty).toContain("REPORT ERSTELLEN");
+    expect(empty).toMatch(/class="[^"]*translate-y-6[^"]*" href="\/tool\/organizations\/org\/pdf-export"/);
     expect(empty.match(/h-8 w-36/g)?.length).toBeGreaterThanOrEqual(2);
     expect(empty).toContain('data-status-progress="0"');
 
@@ -97,7 +104,7 @@ describe("compliance dashboard", () => {
     expect(ready).toContain("Maßnahmen");
     expect(ready).toContain("w-[88px]");
   });
-  it("offers another activity page when the aggregate supplies a cursor", () => {
+  it("adds an automatic activity load trigger instead of a load-more button", () => {
     const labels = dashboardWorkflowMessages.de;
     const html = renderToStaticMarkup(<DashboardActivityFeed
       organizationId="org"
@@ -115,13 +122,13 @@ describe("compliance dashboard", () => {
       }]}
       labels={{
         empty: labels.empty,
-        more: labels.moreActivity,
         loading: labels.loadingActivity,
         loadError: labels.activityLoadError,
         activityText: labels.activityText,
       }}
     />);
-    expect(html).toContain("MEHR ANZEIGEN");
+    expect(html).toContain("data-activity-load-trigger");
+    expect(html).not.toContain("MEHR ANZEIGEN");
     expect(html).toContain("Policy.pdf");
   });
 });

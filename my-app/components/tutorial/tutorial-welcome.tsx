@@ -185,9 +185,9 @@ export function TutorialWelcome({
         })}
       </ol>
 
-      <div className="mt-8 grid flex-1 items-center gap-0 lg:-translate-y-8 lg:grid-cols-[minmax(300px,0.78fr)_minmax(460px,1.22fr)] xl:mt-14">
-        <div className="pointer-events-none relative z-30 flex min-h-[280px] items-end justify-center lg:translate-x-20 lg:translate-y-16">
-          <div className="relative w-full max-w-[430px]">
+      <div className="mt-8 grid flex-1 items-center gap-5 lg:-translate-y-8 lg:grid-cols-[minmax(300px,0.78fr)_minmax(460px,1.22fr)] lg:gap-0 xl:mt-14">
+        <div className="pointer-events-none relative z-30 flex min-h-[190px] items-end justify-center sm:min-h-[240px] lg:min-h-[280px] lg:translate-x-20 lg:translate-y-16">
+          <div className="relative w-full max-w-[320px] sm:max-w-[430px]">
             <Image
               src="/images/Maskottchen_ohneLogo.svg"
               alt=""
@@ -215,13 +215,13 @@ export function TutorialWelcome({
           </div>
         </div>
 
-        <article className="relative isolate z-20 flex min-h-[320px] w-full max-w-[640px] flex-col justify-self-start px-8 py-6 text-white sm:px-10 sm:py-7 lg:-ml-3">
+        <article className="relative isolate z-20 flex min-h-[320px] w-full max-w-[640px] flex-col justify-self-start rounded-xl bg-[linear-gradient(159.75deg,#1A2540_0%,#111825_100%)] px-6 py-6 text-white outline outline-[1.5px] outline-offset-[-1px] outline-[#3D4049] before:pointer-events-none before:absolute before:-top-[13px] before:left-1/2 before:z-0 before:-translate-x-1/2 before:border-x-[15px] before:border-b-[14px] before:border-x-transparent before:border-b-[#1A2540] sm:px-10 sm:py-7 lg:-ml-3 lg:rounded-none lg:bg-none lg:bg-transparent lg:outline-none lg:before:hidden">
           <svg
             aria-hidden="true"
             viewBox="0 0 748 364"
             fill="none"
             preserveAspectRatio="none"
-            className="pointer-events-none absolute -left-5 top-0 z-0 h-full w-[calc(100%+20px)] overflow-visible"
+            className="pointer-events-none absolute -left-5 top-0 z-0 hidden h-full w-[calc(100%+20px)] overflow-visible lg:block"
           >
             <g filter="url(#tutorial-bubble-shadow)">
               <path

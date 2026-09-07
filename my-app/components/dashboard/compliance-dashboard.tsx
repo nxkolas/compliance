@@ -61,7 +61,7 @@ function relativeDashboardTime(value: string, locale: Locale) {
 function Panel({ title, icon, headerAccessory, centerIcon = false, scrollable = false, expandedScroll = false, children }: { title: string; icon: ReactNode; headerAccessory?: ReactNode; centerIcon?: boolean; scrollable?: boolean; expandedScroll?: boolean; children: ReactNode }) {
   const height = scrollable
     ? expandedScroll
-      ? "h-[320px] overflow-hidden @min-[640px]:h-full @min-[640px]:min-h-[240px]"
+      ? "h-[320px] overflow-hidden @min-[640px]:h-full @min-[640px]:min-h-0"
       : "h-[240px] overflow-hidden"
     : "h-full min-h-[240px]";
   return <section className={`flex min-w-0 flex-col rounded-2xl border border-border-strong bg-card p-5 shadow-sm dark:bg-[#1e2029] sm:p-6 ${height}`}><div className="mb-5 flex shrink-0 items-center justify-between gap-3"><h2 className={`min-w-0 flex justify-start gap-2 font-sans text-2xl leading-6 font-bold text-card-foreground [&>svg]:shrink-0 ${centerIcon ? "items-center [&>span]:translate-y-[2px]" : "items-start [&>svg]:mt-[3px]"}`}>{icon}<span className="min-w-0 break-words">{title}</span></h2>{headerAccessory}</div><div className={`flex-1 [overflow-wrap:anywhere] ${scrollable ? "min-h-0 overflow-y-auto overscroll-contain" : ""}`}>{children}</div></section>;
@@ -216,7 +216,11 @@ export function ComplianceDashboard({ dashboard: d, organizationId, labels, loca
       {!locked && actionLink(
         report ? "pdf-export" : routes[index],
         report ? (d.report.id ? t.manageReport : t.createReport) : index === 2 && d.plan.id ? t.continue : t.open,
-        index === 1 && !d.gap.revisionId ? "translate-y-6" : undefined,
+        report
+          ? "translate-y-6"
+          : index === 1 && !d.gap.revisionId
+            ? "translate-y-6"
+            : undefined,
       )}
     </Panel>
   );
@@ -252,9 +256,9 @@ export function ComplianceDashboard({ dashboard: d, organizationId, labels, loca
   </Panel>
 </div>
       </div>
-      <div className={expandedActionPlanLayout ? "contents @min-[640px]:flex @min-[640px]:h-full @min-[640px]:min-w-0 @min-[640px]:flex-col @min-[640px]:gap-5" : "contents"}>
+      <div className={expandedActionPlanLayout ? "contents @min-[640px]:flex @min-[640px]:h-full @min-[640px]:min-w-0 @min-[640px]:flex-col @min-[640px]:gap-5 @min-[640px]:overflow-hidden @min-[640px]:[contain:size]" : "contents"}>
         <div className="order-2 min-w-0" data-dashboard-slot="next">{stageCard(phase + 1)}</div>
-        <div className={`order-4 min-w-0 ${expandedActionPlanLayout ? "@min-[640px]:min-h-0 @min-[640px]:flex-1" : ""}`} data-dashboard-slot="activity"><Panel title={t.activity} scrollable expandedScroll={expandedActionPlanLayout} icon={<Activity size={18} />}><DashboardActivityFeed organizationId={organizationId} initialItems={d.recentActivity} initialCursor={d.recentActivityNextCursor} locale={locale} labels={{ empty: t.empty, more: t.moreActivity, loading: t.loadingActivity, loadError: t.activityLoadError, activityText: t.activityText }} /></Panel></div>
+        <div className={`order-4 min-w-0 ${expandedActionPlanLayout ? "@min-[640px]:min-h-0 @min-[640px]:flex-1 @min-[640px]:overflow-hidden" : ""}`} data-dashboard-slot="activity"><Panel title={t.activity} scrollable expandedScroll={expandedActionPlanLayout} icon={<Activity size={18} />}><DashboardActivityFeed organizationId={organizationId} initialItems={d.recentActivity} initialCursor={d.recentActivityNextCursor} locale={locale} labels={{ empty: t.empty, loading: t.loadingActivity, loadError: t.activityLoadError, activityText: t.activityText }} /></Panel></div>
       </div>
     </div>
     <ProgressChart dashboard={d} labels={t} months={months} />
@@ -299,7 +303,7 @@ function DashboardReportSummary({ dashboard: d, labels, locale }: { dashboard: D
   const state = normalizeReportState(d.report.state);
   if (!d.report.id || !state) {
     return (
-      <div className="flex min-h-32 items-center gap-4 rounded-xl border border-dashed border-border-strong bg-foreground/[0.02] p-4" data-dashboard-report-empty>
+      <div className="flex min-h-32 translate-y-3 items-center gap-4 rounded-xl border border-dashed border-border-strong bg-foreground/[0.02] p-4" data-dashboard-report-empty>
         <div className="relative flex h-20 w-16 shrink-0 items-center justify-center rounded-lg border border-[#3D4149] bg-[#292C34] shadow-lg shadow-black/15">
           <FileText aria-hidden="true" className="size-8 text-zinc-400" strokeWidth={1.4} />
           <span className="absolute -right-2 -top-2 flex size-7 items-center justify-center rounded-full border-2 border-card bg-[#002BFF] text-white dark:border-[#1e2029]">

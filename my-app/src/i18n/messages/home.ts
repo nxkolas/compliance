@@ -47,6 +47,12 @@ export const homeMessages = defineFeatureMessages({
       heroDescription:
         "ComplyX ist die Web-Anwendung, die kleinen und mittelgroßen Unternehmen hilft, ihre NIS2-Betroffenheit zu prüfen, Risiken einzuschätzen und die nächsten Schritte klar zu erkennen.",
       dashboardCta: "Zum Dashboard",
+      dashboardPicker: {
+        title: "Organisation auswählen",
+        description:
+          "Das Dashboard zeigt immer die Daten einer Organisation. Bitte wählen Sie eine Organisation aus.",
+        close: "Schließen",
+      },
       selfCheckCta: "Betroffenheit prüfen",
       trust: {
         gdpr: "DSGVO-konform",
@@ -199,6 +205,12 @@ export const homeMessages = defineFeatureMessages({
       heroDescription:
         "ComplyX is the web application that helps small and medium-sized companies assess their NIS2 scope, understand risks, and clearly identify the next steps.",
       dashboardCta: "Go to dashboard",
+      dashboardPicker: {
+        title: "Select an organization",
+        description:
+          "The dashboard always shows data for one organization. Please select an organization.",
+        close: "Close",
+      },
       selfCheckCta: "Check your scope",
       trust: {
         gdpr: "GDPR compliant",

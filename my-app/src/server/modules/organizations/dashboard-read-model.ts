@@ -515,19 +515,24 @@ export function buildDashboardProgressHistory(input: {
     }
   }
 
-  const points = monthBucketEnds(input.from, input.to).map((at) => {
-    const snapshot = snapshots.findLast((item) => item.at <= at);
-    return toProgressPoint(at, snapshot?.progress ?? emptyProgress());
-  });
+  const startSnapshot = snapshots.findLast((item) => item.at <= input.from);
+  const points = [
+    toProgressPoint(
+      input.from,
+      startSnapshot?.progress ?? emptyProgress(),
+    ),
+    ...monthBucketEnds(input.from, input.to)
+      .filter((at) => at.getTime() > input.from.getTime())
+      .map((at) => {
+        const snapshot = snapshots.findLast((item) => item.at <= at);
+        return toProgressPoint(at, snapshot?.progress ?? emptyProgress());
+      }),
+  ];
   if (input.now >= input.from && input.now <= input.to) {
     const currentPoint = toProgressPoint(input.now, input.current);
     if (points.length && sameUtcMonth(new Date(points.at(-1)!.at), input.now))
       points[points.length - 1] = currentPoint;
     else points.push(currentPoint);
-  }
-  if (!points.length) {
-    const snapshot = snapshots.findLast((item) => item.at <= input.to);
-    points.push(toProgressPoint(input.to, snapshot?.progress ?? emptyProgress()));
   }
   const latest = points.at(-1)!;
   const previous = points.at(-2);
