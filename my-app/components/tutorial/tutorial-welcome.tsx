@@ -200,18 +200,6 @@ export function TutorialWelcome({
             <span className="absolute left-[29.5%] top-[34%] flex h-[45%] w-[44%] items-center justify-center text-8xl font-bold leading-none text-primary">
               {currentStepIndex + 1}
             </span>
-            {isDocumentsStep ? (
-              <>
-                <span className="absolute left-[0.3%] top-[33%] flex h-[25%] w-[23%] items-center justify-center">
-                  <span className="box-content flex h-[38px] w-[49px] origin-top-left -rotate-[17.09deg] items-center justify-center p-[2px]">
-                    <RobotTrendIcon className="size-full text-white" />
-                  </span>
-                </span>
-                <span className="absolute right-[-0.6%] top-[29%] flex h-[25%] w-[23%] items-center justify-center">
-                  <RobotUploadIcon className="size-12 origin-top-left -rotate-[7.06deg] text-primary" />
-                </span>
-              </>
-            ) : null}
           </div>
         </div>
 
@@ -648,53 +636,6 @@ function DocumentUploadStepIcon({ className }: { className?: string }) {
         d="M2.5 12.5V15.8333C2.5 16.7538 3.24619 17.5 4.16667 17.5H15.8333C16.7538 17.5 17.5 16.7538 17.5 15.8333V12.5M5.83333 6.66667L10 2.5M10 2.5L14.1667 6.66667M10 2.5V12.5"
         stroke="currentColor"
         strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function RobotTrendIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 44 36"
-      fill="none"
-      className={className}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d="M5.5 31L12.25 17.5L23 21L29.5 7.5M29.5 7.5L20.75 9.75M29.5 7.5L32 16"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function RobotUploadIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      fill="none"
-      className={className}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d="M8.64 27.33V35.33C8.64 38.64 11.33 41.33 14.64 41.33H34.64C37.95 41.33 40.64 38.64 40.64 35.33V27.33"
-        stroke="currentColor"
-        strokeWidth="2.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M13.11 18.87L23.11 6.87L33.11 18.87M23.32 7.98V27.98"
-        stroke="currentColor"
-        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

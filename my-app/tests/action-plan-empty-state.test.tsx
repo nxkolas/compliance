@@ -36,7 +36,7 @@ describe("action plan empty state", () => {
     expect(html).toContain("xl:items-start");
     expect(html).toContain("xl:pt-24");
     expect(html).toContain("/images/landing/landingpage-maskottchen-mit-logo.svg");
-    expect(html).not.toContain("/robot-sad.svg");
+    expect(html).not.toContain("/images/action-plan-oops-mascot.svg");
     expect(html).toContain("Ihr Maßnahmenplan ist verfügbar");
     expect(html).toContain("Erstellen Sie Ihren Maßnahmenplan");
     expect(html).toContain("Maßnahmenplan erstellen");
@@ -60,7 +60,7 @@ describe("action plan empty state", () => {
     expect(html).toContain("w-full min-w-0");
     expect(html).not.toContain("max-w-[1274px]");
     expect(html).toContain("data-action-plan-speech-bubble");
-    expect(html).toContain("/robot-sad.svg");
+    expect(html).toContain("/images/action-plan-oops-mascot.svg");
     expect(html).toContain('data-action-plan-mascot="oops"');
     expect(html).toContain("Ihr Maßnahmenplan ist noch nicht verfügbar");
     expect(html).toContain("Betroffenheitscheck durchführen");
@@ -100,7 +100,7 @@ describe("action plan empty state", () => {
     expect(html).toContain(labels.preparation.generating.title);
     expect(html).toContain('role="status"');
     expect(html).toContain('disabled=""');
-    expect(html).toContain("/robot-sad.svg");
+    expect(html).toContain("/images/action-plan-oops-mascot.svg");
     expect(html).not.toContain('data-action-plan-mascot="brand"');
     expect(html).toContain('data-action-plan-mascot="oops"');
     expect(html).toContain("Warum diese Reihenfolge?");
@@ -130,7 +130,7 @@ describe("action plan empty state", () => {
     const html = renderToStaticMarkup(<ActionPlanWorkflow organizationId="organization-1" current={null} preparationState="failed" availableGapRevisionId="gap-1" canContribute labels={labels} />);
     expect(html).toContain(labels.preparation.failed.title);
     expect(html).toContain("Erneut versuchen");
-    expect(html).toContain("/robot-sad.svg");
+    expect(html).toContain("/images/action-plan-oops-mascot.svg");
     expect(html).toContain("Warum diese Reihenfolge?");
     expect(html).toContain("Gut zu wissen");
     expect(html).not.toContain('disabled=""');
@@ -140,6 +140,6 @@ describe("action plan empty state", () => {
     const labels = getDefaultDictionary().modules.actionPlan.workflow;
     const html = renderToStaticMarkup(<ActionPlanWorkflow organizationId="organization-1" current={null} preparationState="no_gaps" canContribute={false} labels={labels} />);
     expect(html).toContain('data-action-plan-mascot="brand"');
-    expect(html).not.toContain("/robot-sad.svg");
+    expect(html).not.toContain("/images/action-plan-oops-mascot.svg");
   });
 });

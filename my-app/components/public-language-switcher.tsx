@@ -30,7 +30,7 @@ export async function PublicLanguageSwitcher({
           ? "h-8 gap-1 border-0 bg-transparent p-0 shadow-none backdrop-blur-none [&_[aria-pressed=true]]:bg-[#002BFF] [&_[aria-pressed=true]]:text-white [&_[aria-pressed=true]]:shadow-sm [&_[data-slot=button]]:h-8 [&_[data-slot=button]]:rounded-lg [&_[data-slot=button]]:hover:bg-foreground/10"
           : inline
             ? undefined
-          : "safe-area-top fixed right-4 top-0 z-50"
+          : "safe-area-top fixed right-4 z-50"
       }
     />
   );
@@ -42,7 +42,7 @@ export async function PublicLanguageSwitcher({
       data-public-preferences
       className={cn(
         "flex h-10 shrink-0 items-center gap-1 rounded-lg border border-input bg-background p-1 text-foreground shadow-xs dark:bg-input/30",
-        !inline && "safe-area-top fixed top-4 right-4 z-50",
+        !inline && "safe-area-top fixed right-4 z-50",
         className,
       )}
     >

@@ -539,7 +539,7 @@ function ActionPlanMascot({ positive }: { positive: boolean }) {
       className="block h-auto w-full max-w-[280px] shrink-0 sm:max-w-[380px] xl:max-w-[516px]"
     >
       <image
-        href={positive ? "/images/landing/landingpage-maskottchen-mit-logo.svg" : "/robot-sad.svg"}
+        href={positive ? "/images/landing/landingpage-maskottchen-mit-logo.svg" : "/images/action-plan-oops-mascot.svg"}
         width={1024}
         height={1024}
       />

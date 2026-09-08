@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { GapAnalysisIcon } from "@/components/workflow-icons";
 import type { GapLabels } from "./types";
 
 export function GapStartState({
@@ -67,15 +68,7 @@ export function GapStartState({
                 {busy ? (
                   <Loader2 aria-hidden="true" className="size-5 shrink-0 animate-spin" />
                 ) : (
-                  <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20" fill="none" className="size-5 shrink-0">
-                    <path
-                      d="M10 7.2V10M10 12.8H10.0075M10 17C10 17 16 14.2 16 10V5.1L10 3L4 5.1V10C4 14.2 10 17 10 17Z"
-                      stroke="currentColor"
-                      strokeWidth="1.33"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <GapAnalysisIcon className="h-[11px] w-[19px] shrink-0" />
                 )}
                 <span className="min-w-0">{labels.startAnalysis}</span>
               </Button>
