@@ -55,6 +55,7 @@ describe("asynchronous API job wake-up", () => {
       "app/api/organizations/[organizationId]/settings/route.ts",
       "app/api/organizations/[organizationId]/route.ts",
       "app/api/organizations/[organizationId]/document-upload-sessions/[sessionId]/complete/route.ts",
+      "app/api/organizations/[organizationId]/documents/[documentId]/retry-indexing/route.ts",
     ];
     const { readFileSync } = await import("node:fs");
 

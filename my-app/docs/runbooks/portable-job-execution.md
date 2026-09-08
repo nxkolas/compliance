@@ -28,9 +28,10 @@ enqueues work and returns anything else must call `scheduleAfterResponseDrain`
 itself, or its job sits `queued` until some unrelated request happens to drain
 it.
 
-Two routes rely on the explicit call today, both answering 200 or 201:
+These routes rely on the explicit call today, answering 200 or 201:
 
 - `document-upload-sessions/[sessionId]/complete` (201) — `document_indexing`
+- `documents/[documentId]/retry-indexing` (200) — `document_indexing`
 - `organizations/[organizationId]/settings` and `organizations/[organizationId]`
   (200) — `organization_reembedding`
 
