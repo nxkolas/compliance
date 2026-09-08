@@ -265,6 +265,8 @@ export const gapWorkflowReadSchema = z.object({
       id: z.uuid(),
       title: z.string(),
       mimeType: z.string(),
+      byteSize: z.number().int().positive().nullable(),
+      uploadedAt: timestampSchema.nullable(),
       archivedAt: timestampSchema.nullable(),
       eligibleForAnalysis: z.boolean(),
     }).strict()) }),

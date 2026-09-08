@@ -127,6 +127,8 @@ export async function getGapAnalysisWorkflow(input: GapPageReadInput) {
         id: document.id,
         title: document.name,
         mimeType: version?.mimeType ?? "application/octet-stream",
+        byteSize: version?.byteSize ?? null,
+        uploadedAt: version?.createdAt.toISOString() ?? null,
         archivedAt: document.archivedAt?.toISOString() ?? null,
         eligibleForAnalysis: !document.archivedAt && version?.indexingStatus === "succeeded",
       })),

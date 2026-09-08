@@ -27,6 +27,33 @@ describe("OrganizationDocumentManager layout", () => {
             status: "active",
             indexStatus: "indexed",
           },
+          {
+            id: "00000000-0000-4000-8000-000000000003",
+            title: "Indexing policy",
+            mimeType: "application/pdf",
+            byteSize: 1_000,
+            uploadedAt: "2026-07-12T12:00:00.000Z",
+            status: "active",
+            indexStatus: "processing",
+          },
+          {
+            id: "00000000-0000-4000-8000-000000000004",
+            title: "Failed policy",
+            mimeType: "application/pdf",
+            byteSize: 1_000,
+            uploadedAt: "2026-07-12T12:00:00.000Z",
+            status: "active",
+            indexStatus: "failed",
+          },
+          {
+            id: "00000000-0000-4000-8000-000000000005",
+            title: "Archived policy",
+            mimeType: "application/pdf",
+            byteSize: 1_000,
+            uploadedAt: "2026-07-12T12:00:00.000Z",
+            status: "archived",
+            indexStatus: "indexed",
+          },
         ]}
         initialPermissions={{
           canUpload: true,
@@ -61,6 +88,10 @@ describe("OrganizationDocumentManager layout", () => {
     expect(html).toContain("top-[57.06px]");
     expect(html).toContain("top-[82.26px]");
     expect(html).toContain("NIS2-Richtlinie Umsetzungskonzept");
+    expect(html).toContain(dictionary.modules.documents.workflow.indexed);
+    expect(html).toContain(dictionary.modules.documents.workflow.processing);
+    expect(html).toContain(dictionary.modules.documents.workflow.failed);
+    expect(html).toContain(dictionary.modules.documents.workflow.archived);
     expect(html).toContain('data-slot="dropdown-menu-trigger"');
     expect(html).toContain("min-w-[1190px]");
     expect(html).toContain("w-full min-w-0");

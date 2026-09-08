@@ -27,6 +27,8 @@ function workflowFixture() {
           id: "00000000-0000-4000-8000-000000000002",
           title: "NIS2-Richtlinie Umsetzungskonzept",
           mimeType: "application/pdf",
+          byteSize: 2_400_000,
+          uploadedAt: "2026-07-12T12:00:00.000Z",
           archivedAt: null,
           eligibleForAnalysis: true,
         },
@@ -35,6 +37,8 @@ function workflowFixture() {
           title: "Archivierte Datenschutzfolgeabschätzung",
           mimeType:
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          byteSize: 24_000,
+          uploadedAt: "2026-07-11T12:00:00.000Z",
           archivedAt: "2026-07-12T12:00:00.000Z",
           eligibleForAnalysis: false,
         },
@@ -63,6 +67,7 @@ describe("Gap document step", () => {
         organizationId={organizationId}
         workflow={workflowFixture()}
         labels={labels}
+        locale="de"
         selected={["00000000-0000-4000-8000-000000000002"]}
         busy={false}
         onToggle={vi.fn()}
@@ -81,6 +86,8 @@ describe("Gap document step", () => {
     expect(html).toContain(labels.documentSizeColumn);
     expect(html).toContain(labels.documentDateColumn);
     expect(html).toContain(labels.documentStatusColumn);
+    expect(html).toContain("2,3 MB");
+    expect(html).toContain("12.07.2026");
     expect(html).toContain("min-w-[1190px]");
     expect(html).toContain("outline-[1.2px]");
     expect(html).toContain("h-20");
@@ -93,6 +100,7 @@ describe("Gap document step", () => {
         organizationId={organizationId}
         workflow={workflowFixture()}
         labels={labels}
+        locale="de"
         selected={[]}
         busy={false}
         onToggle={vi.fn()}
@@ -124,6 +132,7 @@ describe("Gap document step", () => {
           documentLibrary: { documents: [] },
         }}
         labels={labels}
+        locale="de"
         selected={[]}
         busy={false}
         onToggle={vi.fn()}
@@ -145,6 +154,7 @@ describe("Gap document step", () => {
       organizationId,
       workflow: workflowFixture(),
       labels,
+      locale: "de",
       selected: [],
       busy: false,
       onToggle,

@@ -158,6 +158,8 @@ describe("one-time document browser contracts", () => {
               id,
               title: "Policy",
               mimeType: "application/pdf",
+              byteSize: 1024,
+              uploadedAt: "2026-07-12T12:00:00.000Z",
               archivedAt: null,
               eligibleForAnalysis: true,
               documentVersionId: id,

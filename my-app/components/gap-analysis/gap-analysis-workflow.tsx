@@ -564,6 +564,7 @@ export function GapAnalysisWorkflow({
             organizationId={organizationId}
             workflow={workflow}
             labels={labels}
+            locale={locale}
             selected={selectedDocuments}
             busy={busy === "documents"}
             onToggle={(versionId, checked) =>

@@ -558,9 +558,8 @@ export function OrganizationDocumentManager({
                       <td className="px-0 py-3">
                         <div className="flex w-full justify-center">
                           <DocumentStatusBadge
-                            archivedLabel={labels.archived}
-                            activeLabel={labels.active}
-                            status={document.status}
+                            document={document}
+                            labels={labels}
                           />
                         </div>
                       </td>
@@ -837,18 +836,32 @@ function DocumentFileIcon({ datatype }: { datatype: string }) {
 }
 
 function DocumentStatusBadge({
-  activeLabel,
-  archivedLabel,
-  status,
+  document,
+  labels,
 }: {
-  activeLabel: string;
-  archivedLabel: string;
-  status: DocumentDto["status"];
+  document: DocumentDto;
+  labels: Labels;
 }) {
-  if (status === "archived") {
+  if (document.status === "archived") {
     return (
       <span className="inline-flex h-8 w-32 items-center justify-center rounded-full bg-warning/10 px-2 py-0.5 text-base leading-4 font-medium text-warning-foreground">
-        {archivedLabel}
+        {labels.archived}
+      </span>
+    );
+  }
+
+  if (document.indexStatus === "failed") {
+    return (
+      <span className="inline-flex h-8 w-40 items-center justify-center rounded-full bg-destructive/10 px-2 py-0.5 text-base leading-4 font-medium text-destructive">
+        {labels.failed}
+      </span>
+    );
+  }
+
+  if (document.indexStatus === "processing") {
+    return (
+      <span className="inline-flex h-8 w-32 items-center justify-center rounded-full bg-foreground/5 px-2 py-0.5 text-base leading-4 font-medium text-muted-foreground">
+        {labels.processing}
       </span>
     );
   }
@@ -856,7 +869,7 @@ function DocumentStatusBadge({
   return (
     <span className="inline-flex h-8 w-32 items-center justify-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-base leading-4 font-medium text-success">
       <CircleCheck className="size-3" strokeWidth={1.5} />
-      {activeLabel}
+      {labels.indexed}
     </span>
   );
 }

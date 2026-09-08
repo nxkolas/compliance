@@ -14,8 +14,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { documentTypeLabel } from "@/src/documents/format";
+import { documentTypeLabel, formatDocumentBytes } from "@/src/documents/format";
 import { documentsClient } from "@/src/client/documents";
+import type { Locale } from "@/src/i18n";
+import { formatDate } from "@/src/i18n/format";
 import type { GapLabels, GapWorkflow } from "./types";
 
 const ACCEPTED_FILES =
@@ -25,6 +27,7 @@ export function GapDocumentStep({
   organizationId,
   workflow,
   labels,
+  locale,
   selected,
   busy,
   onToggle,
@@ -33,6 +36,7 @@ export function GapDocumentStep({
   organizationId: string;
   workflow: GapWorkflow;
   labels: GapLabels;
+  locale: Locale;
   selected: string[];
   busy: boolean;
   onToggle: (documentId: string, checked: boolean) => void;
@@ -202,15 +206,15 @@ export function GapDocumentStep({
                         </td>
 
                         <td className="py-3 pl-1.5 text-base leading-5 text-foreground/30">
-                          <span aria-label={labels.documentMetadataUnavailable}>
-                            —
-                          </span>
+                          {document.byteSize === null ? (
+                            <span aria-label={labels.documentMetadataUnavailable}>—</span>
+                          ) : formatDocumentBytes(document.byteSize, locale)}
                         </td>
 
                         <td className="py-3 pl-1.5 text-base leading-5 text-foreground/30">
-                          <span aria-label={labels.documentMetadataUnavailable}>
-                            —
-                          </span>
+                          {document.uploadedAt === null ? (
+                            <span aria-label={labels.documentMetadataUnavailable}>—</span>
+                          ) : formatDate(document.uploadedAt, locale)}
                         </td>
 
                         <td className="py-3">
