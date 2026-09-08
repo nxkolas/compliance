@@ -130,7 +130,6 @@ async function HomeContent() {
 
           <div className="absolute top-3 right-4 z-10 flex flex-col items-end gap-3 text-sm xl:static xl:flex-row xl:items-center xl:gap-2">
             <PublicLanguageSwitcher
-              showThemeSwitcher
               compactOnMobile
               inline
               className="order-1 xl:order-2"

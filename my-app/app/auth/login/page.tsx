@@ -8,7 +8,7 @@ export default function Page() {
     <main className="relative flex min-h-svh w-full items-center justify-center overflow-hidden bg-transparent p-4">
       <div className="absolute top-4 right-4 z-20 sm:top-6 sm:right-6">
         <Suspense fallback={null}>
-          <PublicLanguageSwitcher showThemeSwitcher compactOnMobile inline />
+          <PublicLanguageSwitcher compactOnMobile inline />
         </Suspense>
       </div>
 
