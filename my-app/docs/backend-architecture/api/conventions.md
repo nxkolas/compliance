@@ -119,20 +119,20 @@ Result locators are typed (e.g., `analysis_output_revision`,
 
 ## Rate limiting
 
-Two layers exist:
+A shared guard and stricter operation policies use one counter implementation:
 
-- `enforceRateLimit` (`src/server/platform/http/rate-limit.ts`): fixed-window counter
-  against a store (durable PostgreSQL windows in
-  `api_rate_limit_windows`).
-- `enforceOperationRateLimit` (`src/server/platform/http/operation-rate-limit.ts`):
-  named operation policies:
+- Every application API request first passes through one shared limit in the
+  Next.js proxy: 300 requests per minute per forwarded client IP. Health probes
+  are intentionally outside the proxy matcher.
+
+- `rate-limit.ts` owns the fixed-window PostgreSQL counter and exposes the
+  shared request guard plus named operation policies:
 
 | Operation | Limit |
 | --- | --- |
 | `uploads:create` / `uploads:complete` | 30 / 20 per minute |
 | `gap:generate` / `plans:generate` / `reports:create` | 5 per 5 minutes |
 | `invitations:write` | 20 per hour |
-| `corpus:operate` | 20 per 5 minutes |
 | `jobs:poll` | 120 per minute |
 | `client-inference:claim` / `heartbeat` / `result` / `failure` | 60/60/30/30 per minute |
 
@@ -154,7 +154,6 @@ return `200` while their queued follow-up continues. See [Jobs](../jobs/jobs.md)
 ## Practical navigation
 
 - Shared machinery: `src/server/platform/http/` (handler, request, response, errors,
-  auth, idempotency, rate-limit, operation-rate-limit, pagination,
-  request-id).
+  auth, idempotency, rate-limit, pagination, request-id).
 - Contracts for envelopes, IDs, and DTOs: `src/contracts/`.
 - Every route: [Route map](./route-map.md).

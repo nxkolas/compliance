@@ -5,7 +5,7 @@ import { claimIdempotency, completeIdempotency, failIdempotency, fingerprintRequ
 import { parseInput, readJsonBody } from "@/src/server/platform/http/request";
 import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
 import { createReport, getReportDetail, listReportsPage } from "@/src/server/modules/reports";
-import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/rate-limit";
 import { paginationQuerySchema } from "@/src/contracts/common/pagination";
 type Context = { params: Promise<{ organizationId: string }> };
 export const GET = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: Context }) => {

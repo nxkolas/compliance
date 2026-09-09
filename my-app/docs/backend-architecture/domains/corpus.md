@@ -65,8 +65,7 @@ feature:
 4. Activation validates the candidate, then advances the family's immutable
    snapshot pointer atomically (`activateLegalCorpusSnapshot`).
 
-Operator actions are idempotent, audited in `platform_audit_events`, and
-rate-limited (`corpus:operate`).
+Operator actions are idempotent and audited in `platform_audit_events`.
 
 ## Pinning and retrieval
 

@@ -1,6 +1,6 @@
 import { requireApiUser } from "@/src/server/platform/http/auth";
 import { apiRoute } from "@/src/server/platform/http/handler";
-import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/rate-limit";
 import { readJsonBody } from "@/src/server/platform/http/request";
 import { assertCanAccessOrganization } from "@/src/server/modules/organizations";
 import { clientInferenceFailureSchema } from "@/src/contracts/client-inference";

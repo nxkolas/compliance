@@ -6,7 +6,7 @@ import { requireApiUser } from "@/src/server/platform/http/auth";
 import { apiRoute } from "@/src/server/platform/http/handler";
 import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
 import { readJsonBody } from "@/src/server/platform/http/request";
-import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/rate-limit";
 import { enqueueGapAnalysisGeneration, retryGapAnalysisGeneration } from "@/src/server/modules/gap-analysis";
 import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
 import { getAuthorizedJob } from "@/src/server/platform/jobs";

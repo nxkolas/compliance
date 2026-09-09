@@ -7,6 +7,10 @@ import {
   isPublicRoute,
   parseSafeToolNext,
 } from "../auth/route-policy";
+import { ApiError } from "@/src/server/platform/http/errors";
+import { enforceApiRequestRateLimit } from "@/src/server/platform/http/rate-limit";
+import { resolveRequestId } from "@/src/server/platform/http/request-id";
+import { jsonError } from "@/src/server/platform/http/response";
 
 function copySessionCookies(
   response: NextResponse,
@@ -59,6 +63,22 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   if (isApiRoute(pathname)) {
+    try {
+      await enforceApiRequestRateLimit(request);
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      return jsonError(
+        {
+          status: error.status,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+        },
+        resolveRequestId(request),
+        error.headers,
+      );
+    }
+
     // API handlers authenticate authoritatively at their own boundary. Avoid a
     // second remote identity lookup here, including for polling and recovery.
     return supabaseResponse;

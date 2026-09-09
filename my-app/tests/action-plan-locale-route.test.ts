@@ -12,7 +12,7 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/src/server/platform/http/auth", () => ({
   requireApiUser: mocks.requireApiUser,
 }));
-vi.mock("@/src/server/platform/http/operation-rate-limit", () => ({
+vi.mock("@/src/server/platform/http/rate-limit", () => ({
   enforceOperationRateLimit: mocks.enforceOperationRateLimit,
 }));
 vi.mock("@/src/server/platform/http/idempotency", () => ({

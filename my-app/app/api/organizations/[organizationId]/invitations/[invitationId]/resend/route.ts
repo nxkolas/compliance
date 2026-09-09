@@ -1,7 +1,7 @@
 import { apiRoute } from "@/src/server/platform/http/handler";
 import { requireApiUser } from "@/src/server/platform/http/auth";
 import { getOrganizationInvitation, resendOrganizationInvitation } from "@/src/server/modules/organizations";
-import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/rate-limit";
 import { runIdempotentCommand } from "@/src/server/platform/http/idempotency"; import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
 import type { OrganizationInvitationDto } from "@/src/server/modules/organizations";
 export const POST = apiRoute(async ({ request, routeContext }: { request: Request; routeContext: { params: Promise<{ organizationId: string; invitationId: string }> } }) => {

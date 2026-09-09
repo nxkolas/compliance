@@ -3,7 +3,7 @@ import { requireApiUser } from "@/src/server/platform/http/auth";
 import { apiRoute } from "@/src/server/platform/http/handler";
 import { parseInput } from "@/src/server/platform/http/request";
 import { getAuthorizedJob } from "@/src/server/platform/jobs";
-import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/rate-limit";
 
 type RouteContext = { params: Promise<{ jobId: string }> };
 

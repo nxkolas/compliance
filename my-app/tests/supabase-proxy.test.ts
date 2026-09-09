@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createServerClient: vi.fn(),
   getUser: vi.fn(),
+  enforceApiRequestRateLimit: vi.fn(),
   cookiesToSet: [
     {
       name: "sb-session",
@@ -18,6 +19,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: mocks.createServerClient,
+}));
+
+vi.mock("@/src/server/platform/http/rate-limit", () => ({
+  enforceApiRequestRateLimit: mocks.enforceApiRequestRateLimit,
 }));
 
 import { NextRequest } from "next/server";
@@ -109,6 +114,36 @@ describe("Supabase authentication proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(mocks.createServerClient).not.toHaveBeenCalled();
     expect(mocks.getUser).not.toHaveBeenCalled();
+    expect(mocks.enforceApiRequestRateLimit).toHaveBeenCalledOnce();
+  });
+
+  it("returns the standard error envelope when the shared API limit is exceeded", async () => {
+    const { ApiError } = await import("@/src/server/platform/http/errors");
+    mocks.enforceApiRequestRateLimit.mockRejectedValueOnce(
+      new ApiError(
+        429,
+        "Too many requests",
+        { retryAfterSeconds: 30 },
+        "RATE_LIMITED",
+        { "retry-after": "30" },
+      ),
+    );
+
+    const response = await updateSession(
+      request("/api/organizations", { "x-request-id": "rate-limit-request" }),
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("30");
+    expect(await response.json()).toEqual({
+      error: {
+        code: "RATE_LIMITED",
+        message: "Too many requests",
+        details: { retryAfterSeconds: 30 },
+        requestId: "rate-limit-request",
+      },
+    });
+    expect(mocks.createServerClient).not.toHaveBeenCalled();
   });
 
   it("treats anonymous sessions as unauthenticated for private pages", async () => {

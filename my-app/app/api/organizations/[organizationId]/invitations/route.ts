@@ -4,7 +4,7 @@ import { requireApiUser } from "@/src/server/platform/http/auth";
 import { parseInput, readJsonBody } from "@/src/server/platform/http/request";
 import { createOrganizationInvitation, getOrganizationInvitation, listOrganizationInvitationsPage } from "@/src/server/modules/organizations";
 import { invitationInputSchema } from "@/src/contracts/organizations";
-import { enforceOperationRateLimit } from "@/src/server/platform/http/operation-rate-limit";
+import { enforceOperationRateLimit } from "@/src/server/platform/http/rate-limit";
 import { runIdempotentCommand } from "@/src/server/platform/http/idempotency";
 import { databaseIdempotencyRepository } from "@/src/server/platform/idempotency";
 import type { OrganizationInvitationDto } from "@/src/server/modules/organizations";
