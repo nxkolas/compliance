@@ -217,7 +217,7 @@ export function ComplianceDashboard({ dashboard: d, organizationId, labels, loca
         report ? "pdf-export" : routes[index],
         report ? (d.report.id ? t.manageReport : t.createReport) : index === 2 && d.plan.id ? t.continue : t.open,
         report
-          ? "translate-y-6"
+          ? "translate-y-3"
           : index === 1 && !d.gap.revisionId
             ? "translate-y-6"
             : undefined,

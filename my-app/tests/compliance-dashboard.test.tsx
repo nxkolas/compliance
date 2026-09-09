@@ -87,7 +87,7 @@ describe("compliance dashboard", () => {
     expect(empty).toContain("min-h-32 translate-y-3");
     expect(empty).toContain("Noch kein Report erstellt");
     expect(empty).toContain("REPORT ERSTELLEN");
-    expect(empty).toMatch(/class="[^"]*translate-y-6[^"]*" href="\/tool\/organizations\/org\/pdf-export"/);
+    expect(empty).toMatch(/class="[^"]*translate-y-3[^"]*" href="\/tool\/organizations\/org\/pdf-export"/);
     expect(empty.match(/h-8 w-36/g)?.length).toBeGreaterThanOrEqual(2);
     expect(empty).toContain('data-status-progress="0"');
 
