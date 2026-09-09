@@ -1,13 +1,15 @@
 # Background Jobs
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 ## Why durable jobs
 
 AI generation, document indexing, corpus processing, and PDF rendering can
 take minutes. The application does not hold an HTTP request open for them:
-an API route enqueues a `background_jobs` row, returns `202`, and the browser
-polls `GET /api/jobs/:jobId` for progress and the final result locator.
+an API route enqueues a `background_jobs` row and the browser polls
+`GET /api/jobs/:jobId` for progress and the final result locator. Most
+long-running commands return `202`; synchronous resource updates that enqueue
+follow-up work can return `200`.
 
 The queue is PostgreSQL itself — there is no separate message broker.
 
@@ -71,7 +73,7 @@ All adapters drain the same queue with the same handlers
 
 | Adapter | Where | Typical bound |
 | --- | --- | --- |
-| `after_response` | Next.js `after()` following a `202` response | 25 jobs, ~4:45 min |
+| `after_response` | Next.js `after()`; automatic after `202`, explicit for `200` commands that enqueue follow-up work | 25 jobs, ~4:45 min |
 | `recovery_route` | `GET/POST /api/internal/jobs/drain` (cron secret) | 50 jobs, ~4:45 min |
 
 ## Job catalog

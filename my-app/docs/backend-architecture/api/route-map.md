@@ -1,6 +1,6 @@
 # API Route Map
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 All routes are under `app/api/`. JSON application routes return the standard envelope; health checks return a small bare health payload, and document download/source-access routes return redirects. `:id`
 placeholders are entity UUIDs; `:organizationId` is the tenant scope.
@@ -16,7 +16,9 @@ placeholders are entity UUIDs; `:organizationId` is the tenant scope.
 | GET / PATCH | `/api/organizations/:organizationId/settings` | Read / update settings |
 | GET / PUT | `/api/organizations/:organizationId/model-settings` | Read / change AI model settings |
 | GET | `/api/organizations/:organizationId/progress` | Organization progress read model |
-| GET | `/api/organizations/:organizationId/dashboard` | Dashboard data |
+| GET | `/api/organizations/:organizationId/dashboard` | Dashboard summary, recent activity, and current-year progress history |
+| GET | `/api/organizations/:organizationId/dashboard/activity` | Cursor-paginated dashboard activity |
+| GET | `/api/organizations/:organizationId/dashboard/progress-history` | Monthly progress history for a requested date range |
 | GET | `/api/organizations/:organizationId/audit-events` | Organization audit stream |
 
 ## Members and invitations
@@ -129,5 +131,8 @@ Guest (public) flow:
 - The `202`-returning routes are Gap generation, contradiction resolution,
   Action Plan generation, report creation, and local-inference result/failure
   acknowledgement.
+- Upload completion, indexing retry, and settings changes that enqueue
+  indexing or re-embedding keep their ordinary success status and explicitly
+  schedule the same after-response job drain.
 - Route behavior details and DTOs live in `src/contracts/` per domain; the
   shared envelope is documented in [Conventions](./conventions.md).

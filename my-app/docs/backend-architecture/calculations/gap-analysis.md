@@ -1,6 +1,6 @@
 # Gap-Analyse Calculation
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 ## What this calculation produces
 
@@ -103,7 +103,8 @@ Missing or weak evidence does not block generation — it is reported as
 ## Contradiction resolution
 
 If a finding contains a material direct contradiction, the reviewer chooses
-one of two paths (`contradiction-resolution-service.ts`):
+one of two paths
+(`src/server/modules/gap-analysis/contradiction-resolution-service.ts`):
 
 - **Trust questionnaire**: only the `conflicting` document context links are
   marked rejected; unrelated `supporting` links remain.
@@ -119,10 +120,13 @@ are never edited in place.
 
 - Current contract and response schema:
   `src/server/modules/gap-analysis/current-contract.ts`,
-  `generation-schema.ts`.
-- Deterministic evaluation: `deterministic-evaluator.ts`,
-  `trigger-policy.ts`.
-- Generation: `atomic-gap-generation.ts`, `generation-domain.ts`.
+  `src/server/modules/gap-analysis/generation-schema.ts`.
+- Deterministic evaluation:
+  `src/server/modules/gap-analysis/deterministic-evaluator.ts`,
+  `src/server/modules/gap-analysis/trigger-policy.ts`.
+- Generation: `src/server/modules/gap-analysis/atomic-gap-generation.ts`,
+  `src/server/modules/gap-analysis/generation-domain.ts`.
 - Publication: `src/server/modules/gap-analysis/` (atomic-gap-generation and
   workflow services).
-- Contradiction resolution: `contradiction-resolution-service.ts`.
+- Contradiction resolution:
+  `src/server/modules/gap-analysis/contradiction-resolution-service.ts`.

@@ -1,6 +1,6 @@
 # Action Plan Calculation
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 ## What this calculation produces
 
@@ -68,9 +68,12 @@ All selected AI runs resolve through `action_plans.generation_job_id` and
 
 ## Practical navigation
 
-- Contract and response schema: `action-plans/current-contract.ts`,
-  `generation-schema.ts`.
-- Generation: `action-plans/generation-service.ts`.
-- Publication lease: `action-plans/publication-lease-policy.ts`.
-- Item status updates and reads: `action-plans/service.ts`,
-  `progress-service.ts`.
+- Contract and response schema:
+  `src/server/modules/action-plans/current-contract.ts`,
+  `src/server/modules/action-plans/generation-schema.ts`.
+- Generation: `src/server/modules/action-plans/generation-service.ts`.
+- Publication lease:
+  `src/server/modules/action-plans/publication-lease-policy.ts`.
+- Item status updates and reads:
+  `src/server/modules/action-plans/action-plan.ts`,
+  `src/server/modules/action-plans/progress-service.ts`.

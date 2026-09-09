@@ -1,6 +1,6 @@
 # Legal Corpus
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 ## Purpose
 

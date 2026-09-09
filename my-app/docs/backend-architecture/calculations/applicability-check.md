@@ -1,7 +1,7 @@
 # Betroffenheitscheck Calculation
 
-> Status: current as of 8 August 2026. Describes the guided-wizard
-> applicability check (`nis2_applicability`, release `2026-v1`, evaluator
+> Status: current as of 9 September 2026. Describes the guided-wizard
+> applicability check (`nis2_applicability`, release `2026-v2`, evaluator
 > `nis2_scope_v3`).
 
 ## Purpose
@@ -14,6 +14,10 @@ The wizard is Germany-only. Germany is the only supported jurisdiction
 (`SUPPORTED_JURISDICTION_CODES = ["DE"]`), and the first question covers every
 German-competence case. Non-German cases end in `not_directly_in_scope` or
 `clarification_required` through the equivalent evaluator facts.
+
+Release `2026-v2` inherits the `2026-v1` questionnaire and evaluator unchanged
+and extends only the versioned legal-provision catalogue used by the current
+Gap release.
 
 ## Guided wizard
 
@@ -128,10 +132,10 @@ questions.
 
 ## Source files
 
-- Release definition: `src/server/modules/compliance/nis2/releases/2026-v1/release.ts`
+- Current release definition: `src/server/modules/compliance/nis2/releases/2026-v2/release.ts`
 - Wizard question content: `src/server/modules/compliance/nis2/releases/2026-v1/release-source.ts`
-- Evaluator: `src/server/modules/applicability-check/rules.ts` (unchanged)
+- Evaluator: `src/server/modules/compliance/nis2/rules.ts`
 - Fact derivation: `src/server/modules/applicability-check/fact-derivation.ts`
-- Visibility/route model: `src/server/modules/applicability-check/question-visibility.ts`
+- Visibility/route model: `src/server/modules/compliance/runtime-release/question-visibility.ts`
 - Wizard UI: `components/applicability-check/applicability-wizard.tsx` and
   `components/applicability-check/wizard-flow.ts`

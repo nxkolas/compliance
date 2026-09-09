@@ -1,6 +1,6 @@
 # Organization Documents
 
-> Status: current as of 7 August 2026.
+> Status: current as of 9 September 2026.
 
 ## Purpose
 
@@ -33,16 +33,21 @@ flowchart TD
 4. **Embedding and search**: each chunk stores the embedding vector and a
    generated full-text `search_vector`; retrieval fuses semantic and lexical
    scores.
-5. **Indexing state** is durable on the version row; failed indexing can be
-   retried (`POST .../documents/:id/retry-indexing`).
+5. **Indexing state** is durable on the version row. Retrying a failed current
+   version (`POST .../documents/:id/retry-indexing`) clears partial chunks and
+   failure fields, returns the version to `pending`, enqueues a fresh
+   `document_indexing` job, and explicitly wakes the after-response drain. A
+   retry is a no-op unless the current version is failed, and archived
+   documents must be restored first.
 
 ## Embedding identity
 
 Vectors are only comparable within one embedding space. Every version row
 records the embedding identity: provider, model, model revision, dimensions,
 retrieval instruction profile, and chunking version, all folded into a hash
-(`src/server/modules/documents/document-config.ts`, `embeddings.ts`). Retrieval
-filters on that hash so a half-finished re-index never mixes spaces.
+(`src/server/modules/documents/document-config.ts`,
+`src/server/modules/documents/embeddings.ts`). Retrieval filters on that hash
+so a half-finished re-index never mixes spaces.
 
 Changing the organization's embedding model triggers an
 `organization_reembedding` job that is resumable: each attempt skips versions
@@ -66,7 +71,10 @@ and indexed versions only during gap evidence selection).
 ## Practical navigation
 
 - Service and indexing jobs: `src/server/modules/documents/`.
-- Parsing/chunking/embeddings: `parser.ts`, `chunker.ts`, `embeddings.ts`.
-- Configuration: `document-config.ts`.
+- Parsing/chunking/embeddings:
+  `src/server/platform/content-processing/parser.ts`,
+  `src/server/platform/content-processing/chunker.ts`,
+  `src/server/modules/documents/embeddings.ts`.
+- Configuration: `src/server/modules/documents/document-config.ts`.
 - Routes: `app/api/organizations/:id/documents/...`.
 

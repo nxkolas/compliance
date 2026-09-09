@@ -1,6 +1,6 @@
 # Backend Architecture
 
-> Status: current as of 4 September 2026.
+> Status: current as of 9 September 2026.
 > Scope: backend and database only. Frontend pages, browser components, and
 > browser API clients are intentionally not covered.
 
@@ -29,7 +29,7 @@ backend-architecture/
 ├── calculations/
 │   ├── gap-analysis.md        ← how Gap-Analyse results are computed
 │   ├── action-plan.md         ← how Action Plans are generated
-│   └── applicability-check.md ← Betroffenheitscheck (calculation TBD)
+│   └── applicability-check.md ← Betroffenheitscheck calculation
 ├── jobs/
 │   └── jobs.md                ← durable job runtime and job catalog
 ├── api/

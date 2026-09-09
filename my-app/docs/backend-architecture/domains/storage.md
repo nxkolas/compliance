@@ -1,6 +1,6 @@
 # Object Storage
 
-> Status: current as of 7 August 2026.
+> Status: current as of 9 September 2026.
 
 ## Buckets
 

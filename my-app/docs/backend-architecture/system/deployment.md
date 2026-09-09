@@ -1,14 +1,16 @@
 # Deployment
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 ## Execution model
 
 The application ships as one web process:
 
-- The **web process** (`next start`) serves pages and API routes. After
-  returning a `202` response it can run a bounded portable job drain via
-  Next.js `after()` (`src/server/platform/jobs/execution/after-response.ts`).
+- The **web process** (`next start`) serves pages and API routes. Responses
+  that enqueue work can run a bounded portable job drain via Next.js
+  `after()` (`src/server/platform/jobs/execution/after-response.ts`). The API
+  wrapper schedules it automatically for `202`; successful `200` commands
+  that enqueue follow-up work schedule it explicitly.
 - A scheduled, authenticated recovery route
   (`app/api/internal/jobs/drain/route.ts`) provides durable wake-ups for
   all deployments. Hosted deployments register it as a cron job; self-hosted
@@ -43,8 +45,8 @@ who wakes the queue.
 - Next.js dev server against a hosted Supabase project; `.env.local` holds
   configuration. Requests trigger after-response drains, and the recovery
   route can be invoked with `CRON_SECRET` when needed.
-- Optional local model testing runs Ollama natively on the host
-  (`docs/ai/local-ai.md` in this folder).
+- Optional local model testing runs Ollama natively on the host; see
+  [Local AI](../ai/local-ai.md).
 
 ## Self-hosted topology
 

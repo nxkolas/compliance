@@ -1,6 +1,6 @@
 # End-to-End Backend Workflows
 
-> Status: current as of 7 August 2026.
+> Status: current as of 9 September 2026.
 
 This document walks the main journeys through the backend and shows which
 API routes, jobs, AI calls, and database tables fire at each step. It is the
@@ -58,6 +58,10 @@ Tables: `organizations`, `organization_memberships`,
 4. Members read the document list and metadata under
    `/api/organizations/:id/documents`; downloads and source access are served
    from Storage through the server.
+5. If the current version fails, a member can retry indexing
+   (`POST .../documents/:documentId/retry-indexing`). The server resets the
+   failed indexing state, enqueues a replacement job, and explicitly wakes an
+   after-response drain even though the resource response remains `200`.
 
 Tables: `upload_sessions`, `documents`, `document_versions`,
 `document_chunks`, `background_jobs`.

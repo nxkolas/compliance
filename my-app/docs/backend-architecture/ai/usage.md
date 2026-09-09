@@ -1,6 +1,6 @@
 # AI Usage
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 ## What AI is used for
 
@@ -24,7 +24,8 @@ Action Plan generation:
 - `self_hosted` — two shapes:
   - An organization that recorded its chosen models in
     `organization_model_settings` runs them on a user's machine through the
-    **browser relay** (`providers/client-relay.ts`).
+    **browser relay**
+    (`src/server/modules/grounding/providers/client-relay.ts`).
   - An organization without that record uses the deployment's
     `SELF_HOSTED_AI_*` endpoint directly — the local development and
     on-premises topology where the server can reach the model over a network.
@@ -66,10 +67,10 @@ parallel:
 
 - **Legal context**: pinned legal snapshot chunks, resolved through reviewed
   provision bindings, ranked lexically, filtered by authority tier
-  (`legal-retrieval.ts`).
+  (`src/server/modules/grounding/legal-retrieval.ts`).
 - **Organization evidence**: chunks of the selected document versions, ranked
   by fused semantic (embedding) and lexical scores
-  (`organization-retrieval.ts`).
+  (`src/server/modules/grounding/organization-retrieval.ts`).
 - **Guidance context**: optional reviewed guidance bound to the same
   provision keys.
 - **Questionnaire assertions**: the exact answers used, as citable excerpts.
@@ -125,13 +126,16 @@ rejected as a duplicate.
 ## Generation concurrency and failures
 
 - Category generation is coordinated with bounded concurrency
-  (`src/server/platform/ai/generation/concurrency.ts`, `category-coordinator.ts`).
+  (`src/server/platform/ai/generation/concurrency.ts`,
+  `src/server/platform/ai/generation/category-coordinator.ts`).
 - Provider calls are limited by a permit limiter.
-- Failures are classified (`failures.ts`) into transient provider failures
-  (retryable with delay), content/validation failures (non-retryable), and
-  cancellation; safe codes are persisted on the run and the job.
+- Failures are classified
+  (`src/server/platform/ai/generation/failures.ts`) into transient provider
+  failures (retryable with delay), content/validation failures
+  (non-retryable), and cancellation; safe codes are persisted on the run and
+  the job.
 - Job-linked runs require the parent job's live lease both at creation and
-  publication (`job-run-lifecycle.ts`).
+  publication (`src/server/platform/ai/generation/job-run-lifecycle.ts`).
 
 ## Embeddings
 

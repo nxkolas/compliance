@@ -1,6 +1,6 @@
 # PDF Reports
 
-> Status: current as of 9 August 2026.
+> Status: current as of 9 September 2026.
 
 ## Purpose
 
@@ -32,6 +32,17 @@ Completed reports are **immutable**: the pinned revisions, the render
 snapshot hash, and the PDF hash cannot change. The report is the audit trail
 of exactly what was shown at render time.
 
+## Read model metrics
+
+Report list and detail responses derive two summary metrics from the report's
+pinned Gap revision, never from the organization's current revision:
+
+- `compliancePercent`: fulfilled findings divided by all findings, rounded to
+  a whole percentage;
+- `criticalGapCount`: critical findings whose status is not `fulfilled`.
+
+Applicability-only reports have `metrics: null`.
+
 ## Download
 
 Downloads are authorized server-side reads
@@ -45,5 +56,8 @@ PDF from Storage. Report creation is rate-limited and concurrency-bounded
 - Service: `src/server/modules/reports/report-library.ts`.
 - Render job: `src/server/modules/reports/job-handler.ts`.
 - Snapshot hashing: `src/server/modules/reports/render-snapshot.ts`.
-- Renderer and theme: `src/server/modules/reports/renderer.tsx`, `theme.ts`.
+- Renderer and theme: `src/server/modules/reports/renderer.tsx`,
+  `src/server/modules/reports/theme.ts`.
 - Legal references: `src/server/modules/reports/legal-references.ts`.
+- Metrics: `src/server/modules/reports/metrics.ts`,
+  `src/server/modules/reports/metrics-reader.ts`.

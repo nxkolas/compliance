@@ -1,10 +1,11 @@
 # API Conventions
 
-> Status: current as of 3 September 2026.
+> Status: current as of 9 September 2026.
 
 All HTTP routes live under `app/api/` and are thin. They authenticate,
-validate, enforce limits, and dispatch to a server service in
-`src/server/<domain>/`. The shared machinery lives in `src/server/platform/http/`.
+validate, enforce limits, and dispatch through a public business-module
+interface in `src/server/modules/<domain>/index.ts`. The shared machinery lives
+in `src/server/platform/http/`.
 
 ## Route handlers
 
@@ -18,6 +19,10 @@ Most routes are declared as exported constants built with `apiRoute(...)`
 - maps errors to the error envelope;
 - schedules an after-response job drain whenever a handler returns `202`;
 - logs method, path, status, and duration per request.
+
+Commands that enqueue work but intentionally return `200` schedule the same
+drain explicitly. These include upload completion, document indexing retry,
+and organization/model setting changes that start re-embedding.
 
 ## Envelope
 
@@ -141,8 +146,10 @@ Supabase secret key).
 ## Long-running commands
 
 Expensive commands (AI generation, indexing, report rendering) enqueue a
-`background_jobs` row, return `202`, and let the browser poll the authorized
-job endpoint (`GET /api/jobs/:jobId`). See [Jobs](../jobs/jobs.md).
+`background_jobs` row and let the browser poll the authorized job endpoint
+(`GET /api/jobs/:jobId`). Generation and rendering commands normally return
+`202`; commands whose primary resource update completed synchronously can
+return `200` while their queued follow-up continues. See [Jobs](../jobs/jobs.md).
 
 ## Practical navigation
 

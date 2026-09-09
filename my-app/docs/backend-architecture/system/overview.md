@@ -1,6 +1,6 @@
 # System Overview
 
-> Status: current as of 4 September 2026.
+> Status: current as of 9 September 2026.
 
 ## Short answer
 
@@ -47,7 +47,7 @@ mechanisms do not create separate business implementations.
 
 | Surface | Location | Role |
 | --- | --- | --- |
-| Web process | `next start` | Renders pages, serves API routes, runs a portable job drain after responses. |
+| Web process | `next start` | Renders pages, serves API routes, and schedules a portable job drain after responses that enqueue work. |
 | Recovery route | `app/api/internal/jobs/drain/route.ts` | Authenticated scheduled endpoint that wakes and drains jobs (cron in hosted deployments). |
 | Scripts | `scripts/` | Operator and verification commands run directly against the same services. |
 
@@ -104,8 +104,10 @@ All ordinary public tables have RLS enabled with no browser-role application
 policies. Default-deny RLS protects direct browser access; the service layer
 provides tenant locality for trusted application connections.
 
-Expensive commands normally enqueue a `background_jobs` row, return `202`,
-and let the browser poll an authorized status endpoint.
+Expensive commands enqueue a `background_jobs` row and let the browser poll
+an authorized status endpoint. Most return `202`; synchronous resource
+updates that enqueue follow-up indexing or re-embedding return `200` and
+schedule the same after-response drain explicitly.
 
 ## Cross-cutting guarantees
 

@@ -1,6 +1,6 @@
 # Organizations (Multi-Tenancy)
 
-> Status: current as of 7 August 2026.
+> Status: current as of 9 September 2026.
 
 ## The tenant model
 
@@ -46,6 +46,27 @@ it.
 view (applicability done, gap current, action plan state) used by the
 dashboard and workflow gates (`GET /api/organizations/:id/progress`).
 
+The richer dashboard read model lives in
+`src/server/modules/organizations/dashboard-read-model.ts`:
+
+- `GET /api/organizations/:id/dashboard` returns the current applicability,
+  Gap, evidence, Action Plan, and latest-report summaries, three workflow
+  steps, suggested next steps, four recent activity items, and current-year
+  progress history.
+- `GET /api/organizations/:id/dashboard/activity` returns relevant
+  `audit_events` using organization-scoped signed-cursor pagination.
+- `GET /api/organizations/:id/dashboard/progress-history` reconstructs monthly
+  points and milestones from audit events. The default range is the current
+  year, only `month` buckets are supported, and a requested range may span at
+  most two years.
+
+Dashboard progress is a rounded average of applicability, Gap, and Action
+Plan progress. A completed applicability revision contributes 100%; Gap uses
+required questionnaire completion until a Gap revision exists; Action Plan
+progress counts `done` items fully and `in_progress` items halfway, excluding
+cancelled items. An accepted `not_directly_in_scope` applicability result
+short-circuits all three components to 100%.
+
 ## Workflow permissions
 
 Actions map to capabilities by role (`src/server/modules/organizations/workflow-permissions.ts`
@@ -62,5 +83,7 @@ enqueueing.
 - Model settings: `src/server/modules/organizations/model-settings-service.ts`.
 - Embedding migration: `src/server/modules/organizations/embedding-migration-service.ts`.
 - Progress: `src/server/modules/organizations/progress-read-model.ts`.
+- Dashboard: `src/server/modules/organizations/dashboard-read-model.ts`,
+  `src/server/modules/organizations/dashboard-progress.ts`.
 - Routes: `app/api/organizations/`, `app/api/organization-invitations/`.
 

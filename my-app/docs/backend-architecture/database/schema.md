@@ -1,6 +1,6 @@
 # Database Schema
 
-> Status: current as of 4 September 2026.
+> Status: current as of 9 September 2026.
 
 ## Source of truth
 
